@@ -149,25 +149,33 @@ function App() {
             <div className="loading-message">Loading available models...</div>
           ) : (
             <div className="models-grid">
-              {availableModelsList.map((model) => (
-                <div
-                  key={model.id}
-                  className={`model-card ${selectedModels.includes(model.id) ? 'selected' : ''}`}
-                  onClick={() => handleModelToggle(model.id)}
-                >
-                  <div className="model-header">
+              {availableModelsList.map((model) => {
+                const isSelected = selectedModels.includes(model.id);
+                return (
+                  <label
+                    key={model.id}
+                    className={`model-card${isSelected ? ' selected' : ''}`}
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    htmlFor={`model-checkbox-${model.id}`}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                  >
                     <input
+                      id={`model-checkbox-${model.id}`}
                       type="checkbox"
-                      checked={selectedModels.includes(model.id)}
+                      checked={isSelected}
                       onChange={() => handleModelToggle(model.id)}
                       className="model-checkbox"
+                      tabIndex={-1}
                     />
-                    <h3>{model.name}</h3>
-                  </div>
-                  <p>{model.description}</p>
-                  <span className="model-category">{model.category}</span>
-                </div>
-              ))}
+                    <div className="model-header">
+                      <h3>{model.name}</h3>
+                    </div>
+                    <p>{model.description}</p>
+                    <span className="model-category">{model.category}</span>
+                  </label>
+                );
+              })}
             </div>
           )}
         </section>
