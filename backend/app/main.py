@@ -44,24 +44,24 @@ async def health_check():
 async def compare(req: CompareRequest) -> CompareResponse:
     if not req.input_data.strip():
         raise HTTPException(status_code=400, detail="Input data cannot be empty")
-    
+
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
-    
+
     try:
         loop = asyncio.get_running_loop()
         results = await loop.run_in_executor(None, run_models, req.input_data, req.models)
-        
+
         # Add metadata
         metadata = {
             "input_length": len(req.input_data),
             "models_requested": len(req.models),
             "models_processed": len(results),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
         return CompareResponse(results=results, metadata=metadata)
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 

@@ -11,6 +11,7 @@ interface CompareResponse {
   };
 }
 
+// Restore the original Model interface and availableModels array
 interface Model {
   id: string;
   name: string;
@@ -19,17 +20,23 @@ interface Model {
 }
 
 const availableModels: Model[] = [
-  { id: 'gpt-4', name: 'GPT-4', description: 'OpenAI\'s most advanced language model', category: 'Language' },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient language model', category: 'Language' },
-  { id: 'claude-3', name: 'Claude 3', description: 'Anthropic\'s latest AI assistant', category: 'Language' },
-  { id: 'bert-base', name: 'BERT Base', description: 'Google\'s bidirectional transformer', category: 'Language' },
-  { id: 't5-base', name: 'T5 Base', description: 'Text-to-Text Transfer Transformer', category: 'Language' },
+  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', description: "OpenAI's GPT-4 Turbo", category: 'Language' },
+  { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus', description: "Anthropic's Claude 3 Opus", category: 'Language' },
+  { id: 'deepseek/deepseek-chat-v3-0324:free', name: 'DeepSeek Chat V3 (Free)', description: 'DeepSeek Chat V3 (Free Tier)', category: 'Vision/Language' },
+  { id: 'anthropic/claude-3-sonnet-20240229', name: 'Claude 3.5 Sonnet', description: "Anthropic's Claude 3.5 Sonnet (2024-02-29)", category: 'Language' },
+  { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's Claude 3.7 Sonnet", category: 'Language' },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', description: "Anthropic's Claude Sonnet 4", category: 'Language' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', description: "OpenAI's GPT-4o (4.1)", category: 'Language' },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free)', description: 'DeepSeek R1 (Free Tier)', category: 'Language/Reasoning' },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: "Google's Gemini 2.5 Pro", category: 'Language' },
+  { id: 'google/gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite', description: "Google's Gemini 2.0 Flash Lite (001)", category: 'Language' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', description: "Google's Gemini 2.0 Flash (001)", category: 'Language' },
 ];
 
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
   const [input, setInput] = useState('');
-  const [selectedModels, setSelectedModels] = useState<string[]>(['gpt-4', 'claude-3']);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableModelsList, setAvailableModelsList] = useState<Model[]>(availableModels);
@@ -45,7 +52,7 @@ function App() {
           setAvailableModelsList(data.models);
         }
       } catch (err) {
-        console.error('Failed to fetch models:', err);
+        console.error('Failed to fetch models:', err instanceof Error ? err.message : String(err));
         // Fallback to default models
         setAvailableModelsList(availableModels);
       } finally {
@@ -102,12 +109,14 @@ function App() {
       const data = await res.json();
       setResponse(data);
     } catch (err) {
-      if (err.name === 'AbortError') {
+      if (err instanceof Error && err.name === 'AbortError') {
         setError('Request timed out. Please try again.');
-      } else if (err.message.includes('Failed to fetch')) {
+      } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
         setError('Unable to connect to the server. Please check if the backend is running.');
-      } else {
+      } else if (err instanceof Error) {
         setError(err.message || 'An unexpected error occurred');
+      } else {
+        setError('An unexpected error occurred');
       }
     } finally {
       setIsLoading(false);
@@ -206,10 +215,10 @@ function App() {
             </div>
 
             <div className="results-grid">
-              {Object.entries(response.results).map(([model, output]) => (
-                <div key={model} className="result-card">
+              {Object.entries(response.results).map(([modelId, output]) => (
+                <div key={modelId} className="result-card">
                   <div className="result-header">
-                    <h3>{availableModelsList.find(m => m.id === model)?.name || model}</h3>
+                    <h3>{availableModelsList.find(m => m.id === modelId)?.name || modelId}</h3>
                     <div className="result-stats">
                       <span className="output-length">{output.length} chars</span>
                       <span className={`status ${output.startsWith('Error') ? 'error' : 'success'}`}>
