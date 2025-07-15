@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
-from app.model_runner import run_models
+from typing import Any
+from app.model_runner import run_models, OPENROUTER_MODELS
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+import asyncio
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
 
@@ -21,12 +22,12 @@ app.add_middleware(
 
 class CompareRequest(BaseModel):
     input_data: str
-    models: List[str]
+    models: list[str]
 
 
 class CompareResponse(BaseModel):
-    results: Dict[str, str]
-    metadata: Dict[str, Any]
+    results: dict[str, str]
+    metadata: dict[str, Any]
 
 
 @app.get("/")
@@ -48,7 +49,8 @@ async def compare(req: CompareRequest) -> CompareResponse:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
     
     try:
-        results = await run_models(req.input_data, req.models)
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(None, run_models, req.input_data, req.models)
         
         # Add metadata
         metadata = {
@@ -66,12 +68,4 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
 @app.get("/models")
 async def get_available_models():
-    """Get list of available models"""
-    models = [
-        {"id": "gpt-4", "name": "GPT-4", "description": "OpenAI's most advanced language model", "category": "Language"},
-        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "description": "Fast and efficient language model", "category": "Language"},
-        {"id": "claude-3", "name": "Claude 3", "description": "Anthropic's latest AI assistant", "category": "Language"},
-        {"id": "bert-base", "name": "BERT Base", "description": "Google's bidirectional transformer", "category": "Language"},
-        {"id": "t5-base", "name": "T5 Base", "description": "Text-to-Text Transfer Transformer", "category": "Language"},
-    ]
-    return {"models": models}
+    return {"models": OPENROUTER_MODELS}

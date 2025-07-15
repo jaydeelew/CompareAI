@@ -1,4 +1,4 @@
-#!/home/dan_wsl/jaydeelew/CompareAI/venv/bin/python3
+#!/home/dan_wsl/jaydeelew/CompareAI/venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys
