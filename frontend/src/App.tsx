@@ -31,6 +31,7 @@ const availableModels: Model[] = [
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: "Google's Gemini 2.5 Pro", category: 'Language' },
   { id: 'google/gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite', description: "Google's Gemini 2.0 Flash Lite (001)", category: 'Language' },
   { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', description: "Google's Gemini 2.0 Flash (001)", category: 'Language' },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp (Free)', description: "Google's Gemini 2.0 Flash Exp (Free Tier)", category: 'Language' },
 ];
 
 function App() {
@@ -87,7 +88,7 @@ function App() {
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
       
       const res = await fetch('http://localhost:8000/compare', {
         method: 'POST',

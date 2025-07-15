@@ -1,6 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+import concurrent.futures
 
 load_dotenv()
 
@@ -74,6 +75,12 @@ OPENROUTER_MODELS = [
         "description": "Google's Gemini 2.0 Flash (001)",
         "category": "Chat/Code",
     },
+    {
+        "id": "google/gemini-2.0-flash-exp:free",
+        "name": "Gemini 2.0 Flash Exp (Free)",
+        "description": "Google's Gemini 2.0 Flash Exp (Free Tier)",
+        "category": "Chat/Code",
+    },
 ]
 
 client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/v1")
@@ -89,9 +96,17 @@ def call_openrouter(prompt: str, model_id: str) -> str:
 
 def run_models(prompt: str, model_list: list[str]) -> dict[str, str]:
     results = {}
-    for model_id in model_list:
+
+    def call(model_id):
         try:
-            results[model_id] = call_openrouter(prompt, model_id)
+            return model_id, call_openrouter(prompt, model_id)
         except Exception as e:
-            results[model_id] = f"Error: {str(e)}"
+            return model_id, f"Error: {str(e)}"
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(call, model_id) for model_id in model_list]
+        for future in concurrent.futures.as_completed(futures):
+            model_id, result = future.result()
+            results[model_id] = result
+
     return results
