@@ -95,3 +95,5 @@ Contributions are welcome! Please open issues or pull requests for suggestions a
 ---
 
 _Stay tuned for more updates as development progresses!_
+
+![CompareAI](CompareAI.png)
