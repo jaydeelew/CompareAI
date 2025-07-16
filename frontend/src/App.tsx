@@ -168,24 +168,26 @@ function App() {
         </section>
 
         <section className="models-section">
-          <h2>Select Models to Compare</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: 0 }}>Select Models to Compare</h2>
+            <div className="select-all-container">
+              <input
+                type="checkbox"
+                id="select-all-models"
+                checked={selectedModels.length === availableModelsList.length}
+                ref={selectAllRef}
+                onChange={handleSelectAll}
+                className="select-all-checkbox"
+              />
+              <label htmlFor="select-all-models" className="select-all-label">
+                Select All
+              </label>
+            </div>
+          </div>
           {isLoadingModels ? (
             <div className="loading-message">Loading available models...</div>
           ) : (
             <div className="models-grid">
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                <input
-                  type="checkbox"
-                  id="select-all-models"
-                  checked={selectedModels.length === availableModelsList.length}
-                  ref={selectAllRef}
-                  onChange={handleSelectAll}
-                  style={{ marginRight: '0.5rem' }}
-                />
-                <label htmlFor="select-all-models" style={{ fontWeight: 500, cursor: 'pointer' }}>
-                  Select All
-                </label>
-              </div>
               {availableModelsList.map((model) => {
                 const isSelected = selectedModels.includes(model.id);
                 return (
