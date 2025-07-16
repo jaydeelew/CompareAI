@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 interface CompareResponse {
@@ -43,6 +43,8 @@ function App() {
   const [availableModelsList, setAvailableModelsList] = useState<Model[]>(availableModels);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
 
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
   // Fetch available models on component mount
   useEffect(() => {
     const fetchModels = async () => {
@@ -63,6 +65,28 @@ function App() {
 
     fetchModels();
   }, []);
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      if (selectedModels.length === 0) {
+        selectAllRef.current.indeterminate = false;
+        selectAllRef.current.checked = false;
+      } else if (selectedModels.length === availableModelsList.length) {
+        selectAllRef.current.indeterminate = false;
+        selectAllRef.current.checked = true;
+      } else {
+        selectAllRef.current.indeterminate = true;
+      }
+    }
+  }, [selectedModels, availableModelsList.length]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedModels(availableModelsList.map((model) => model.id));
+    } else {
+      setSelectedModels([]);
+    }
+  };
 
   const handleModelToggle = (modelId: string) => {
     setSelectedModels(prev => 
@@ -149,6 +173,19 @@ function App() {
             <div className="loading-message">Loading available models...</div>
           ) : (
             <div className="models-grid">
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  id="select-all-models"
+                  checked={selectedModels.length === availableModelsList.length}
+                  ref={selectAllRef}
+                  onChange={handleSelectAll}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <label htmlFor="select-all-models" style={{ fontWeight: 500, cursor: 'pointer' }}>
+                  Select All
+                </label>
+              </div>
               {availableModelsList.map((model) => {
                 const isSelected = selectedModels.includes(model.id);
                 return (
@@ -172,7 +209,6 @@ function App() {
                       <h3>{model.name}</h3>
                     </div>
                     <p>{model.description}</p>
-                    <span className="model-category">{model.category}</span>
                   </label>
                 );
               })}
