@@ -119,7 +119,7 @@ body {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  color: #fff;
+  color: #2d3748; /* Dark gray that contrasts well with translucent background */
   position: relative;
   padding: 1.5rem;
   padding-bottom: 3rem; /* Extra padding at bottom for checkbox */
