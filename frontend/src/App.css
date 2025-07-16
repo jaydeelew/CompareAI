@@ -119,10 +119,10 @@ body {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  color: #2d3748; /* Dark gray that contrasts well with translucent background */
+  color: #2d3748;
   position: relative;
   padding: 1.5rem;
-  padding-bottom: 3rem; /* Extra padding at bottom for checkbox */
+  /* Remove extra bottom padding */
 }
 
 .model-card:hover {
@@ -166,12 +166,12 @@ body {
 .model-checkbox {
   width: 18px;
   height: 18px;
-  position: relative; /* Ensure the checkbox is the positioning context */
-  bottom: 1rem;
-  right: 1rem;
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
   appearance: none;
   -webkit-appearance: none;
-  background-color: #f3f3fa; /* Light background for unchecked */
+  background-color: #f3f3fa;
   border: 2px solid #7346d4;
   border-radius: 4px;
   cursor: pointer;
@@ -411,9 +411,34 @@ body {
 .select-all-checkbox {
   width: 18px;
   height: 18px;
-  margin-right: 0.5rem;
-  accent-color: #7346d4;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #f3f3fa;
+  border: 2px solid #7346d4;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: grid;
+  place-content: center;
+  position: relative;
+  margin-right: 0.5rem;
+}
+
+.select-all-checkbox:checked {
+  background-color: #7346d4;
+  border-color: #7346d4;
+}
+
+.select-all-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
 }
 
 .select-all-label {
@@ -421,6 +446,7 @@ body {
   cursor: pointer;
   color: #2d3748;
   font-size: 1rem;
+  user-select: none;
 }
 
 /* Responsive */
