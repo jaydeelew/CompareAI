@@ -11,8 +11,9 @@ app = FastAPI(title="CompareAI API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Frontend dev server
-        "http://localhost:3000",  # Alternative frontend port
+        "http://54.163.207.252",  # Your frontend URL
+        "http://localhost:5173",  # For local development
+        "http://localhost:3000",  # Alternative local port
     ],
     allow_credentials=True,
     allow_methods=["*"],
