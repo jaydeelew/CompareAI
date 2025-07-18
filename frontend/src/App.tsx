@@ -11,7 +11,6 @@ interface CompareResponse {
   };
 }
 
-// Restore the original Model interface and availableModels array
 interface Model {
   id: string;
   name: string;
