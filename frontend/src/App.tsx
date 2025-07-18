@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface CompareResponse {
   results: { [key: string]: string };
   metadata: {
@@ -48,7 +50,7 @@ function App() {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const res = await fetch('http://localhost:8000/models');
+        const res = await fetch(`${API_URL}/models`);
         if (res.ok) {
           const data = await res.json();
           setAvailableModelsList(data.models);
@@ -113,7 +115,7 @@ function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
       
-      const res = await fetch('http://localhost:8000/compare', {
+      const res = await fetch(`${API_URL}/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
