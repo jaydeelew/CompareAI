@@ -12,6 +12,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://54.163.207.252",  # Your frontend URL
+        "http://compareintel.com",  # Your frontend domain
         "http://localhost:5173",  # For local development
         "http://localhost:3000",  # Alternative local port
     ],
