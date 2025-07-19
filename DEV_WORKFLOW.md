@@ -31,7 +31,7 @@ git add .
 git commit -m "Description of your changes"
 
 # Push to origin
-git push origin main
+git push origin master
 ```
 
 ### 5. Test Production Build Locally
@@ -74,7 +74,7 @@ ssh -i CompareAI.pem ec2-user@your-ec2-ip
 cd /path/to/CompareAI
 
 # Pull latest changes
-git pull origin main
+git pull origin master
 
 # Stop current production services
 docker-compose -f docker-compose.prod.yml down
@@ -112,12 +112,12 @@ docker-compose -f docker-compose.prod.yml down             # Stop prod build
 ```bash
 git add .
 git commit -m "Your message"
-git push origin main
+git push origin master
 ```
 
 **EC2 Deployment:**
 ```bash
-git pull origin main
+git pull origin master
 docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
