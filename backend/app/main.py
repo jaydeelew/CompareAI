@@ -5,6 +5,9 @@ from app.model_runner import run_models, OPENROUTER_MODELS
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import asyncio
+import os
+
+print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
 

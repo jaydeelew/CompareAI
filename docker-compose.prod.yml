@@ -4,11 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        ENVIRONMENT: development  # or production
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+        ENVIRONMENT: production
     environment:
       - PYTHONPATH=/app
     env_file:
@@ -17,30 +13,32 @@ services:
       - compareai-network
 
   frontend:
-    build: 
+    build:
       context: ./frontend
-      target: dev
-    ports:
-      - "5173:5173"
+      dockerfile: Dockerfile
+      target: build
+      args:
+        - VITE_API_URL=/api
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://nginx
-    command: npm run dev -- --host 0.0.0.0
+      - ./frontend/dist:/app/dist
     depends_on:
       - backend
     networks:
       - compareai-network
+    command: npm run build
 
   nginx:
-    image: nginx:1.25
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
     ports:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
+      - frontend
     networks:
       - compareai-network
 
