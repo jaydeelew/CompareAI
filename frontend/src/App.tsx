@@ -90,8 +90,8 @@ function App() {
   };
 
   const handleModelToggle = (modelId: string) => {
-    setSelectedModels(prev => 
-      prev.includes(modelId) 
+    setSelectedModels(prev =>
+      prev.includes(modelId)
         ? prev.filter(id => id !== modelId)
         : [...prev, modelId]
     );
@@ -102,7 +102,7 @@ function App() {
       setError('Please enter some text to compare');
       return;
     }
-    
+
     if (selectedModels.length === 0) {
       setError('Please select at least one model');
       return;
@@ -110,28 +110,28 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-      
+
       const res = await fetch(`${API_URL}/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          input_data: input, 
-          models: selectedModels 
+        body: JSON.stringify({
+          input_data: input,
+          models: selectedModels
         }),
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
       }
-      
+
       const data = await res.json();
       setResponse(data);
     } catch (err) {
@@ -152,8 +152,34 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>🤖 CompareAI</h1>
-        <p>Compare multiple AI models side by side</p>
+        <div className="header-content">
+          <div className="logo-container">
+            <div className="ai-icon">
+              <div className="comparison-visual">
+                <div className="ai-model ai-model-1">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="ai-model ai-model-2">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="ai-model ai-model-3">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="comparison-beam"></div>
+                <div className="analysis-center">
+                  <div className="comparison-dot"></div>
+                  <div className="comparison-dot"></div>
+                  <div className="comparison-dot"></div>
+                </div>
+              </div>
+            </div>
+            <h1>CompareAI</h1>
+          </div>
+          <p>Compare multiple AI models side by side</p>
+        </div>
       </header>
 
       <main className="app-main">
@@ -245,7 +271,7 @@ function App() {
         {response && (
           <section className="results-section">
             <h2>Comparison Results</h2>
-            
+
             {/* Metadata */}
             <div className="results-metadata">
               <div className="metadata-item">
