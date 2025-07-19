@@ -732,3 +732,17 @@ body {
     gap: 1rem;
   }
 }
+
+/* Build info footer */
+.build-info {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+}

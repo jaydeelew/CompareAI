@@ -309,6 +309,11 @@ function App() {
           </section>
         )}
       </main>
+
+      {/* Build version indicator */}
+      <footer className="build-info">
+        <small>Build: {new Date().toISOString().slice(0, 16).replace('T', ' ')}</small>
+      </footer>
     </div>
   );
 }

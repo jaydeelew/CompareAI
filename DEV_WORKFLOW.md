@@ -115,11 +115,17 @@ git commit -m "Your message"
 git push origin master
 ```
 
-**EC2 Deployment:**
+**EC2 Deployment (Option 1 - Your Current Method):**
 ```bash
 git pull origin master
 docker compose -f docker-compose.prod.yml down
 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**EC2 Deployment (Option 2 - Automated Script):**
+```bash
+git pull origin master
+./deploy.sh
 ```
 
 ## Workflow Summary
@@ -128,6 +134,8 @@ This workflow ensures you:
 2. Commit and push your changes to version control
 3. Test the production build locally before deploying
 4. Deploy confidently to your EC2 instance with the tested production build
+
+**Cache Busting**: Your builds now automatically generate unique filenames (e.g., `index.abc123.js`) so users always get the latest version without needing to clear their browser cache.
 
 ## Notes
 - Always test production builds locally before deploying to EC2
