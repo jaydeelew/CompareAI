@@ -2,21 +2,15 @@
 
 echo "🚀 Starting deployment..."
 
-# Build the frontend with hash-based filenames
-echo "📦 Building frontend..."
-cd frontend
-npm run build
-cd ..
-
-# Build and start the production containers
+# Build and start the production containers (frontend build happens inside Docker)
 echo "🐳 Building and starting production containers..."
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml build --no-cache
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
 
 echo "✅ Deployment complete!"
 echo "📊 Container status:"
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "🌐 Your website should now be available with cache-busted assets!"
