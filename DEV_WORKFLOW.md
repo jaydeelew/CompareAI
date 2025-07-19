@@ -36,8 +36,22 @@ git push origin main
 
 ### 5. Test Production Build Locally
 ```bash
+# Clean Docker cache if you encounter build errors
+docker system prune -a
+
 # Build and run production services
 docker-compose -f docker-compose.prod.yml up -d --build
+
+# If build fails with snapshot errors, rebuild with no cache:
+# docker-compose -f docker-compose.prod.yml build --no-cache
+# docker-compose -f docker-compose.prod.yml up -d
+
+# If you get 502 Bad Gateway, check service status and logs:
+# docker-compose -f docker-compose.prod.yml ps
+# docker-compose -f docker-compose.prod.yml logs
+
+# Test if the website is accessible:
+# curl -I http://localhost
 
 # Access the production build at http://localhost
 # Test all functionality to ensure production build works correctly
