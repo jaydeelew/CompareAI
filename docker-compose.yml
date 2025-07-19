@@ -26,7 +26,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://nginx
+      - VITE_API_URL=http://localhost/api
     command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
