@@ -7,19 +7,19 @@ Edit your frontend or backend code as needed.
 
 ### 2. (Optional) Install New Dependencies
 If you add new packages:
-- `docker-compose build frontend` (for npm packages)
-- `docker-compose build backend` (for pip packages)
+- `docker compose build frontend` (for npm packages)
+- `docker compose build backend` (for pip packages)
 
 ### 3. Test Changes Locally (Development)
 ```bash
 # Start all services
-docker-compose up
+docker compose up
 
 # Access the app at http://localhost
 # Hot reloading - code changes automatically reload without rebuilding
 
 # Stop services when done testing
-docker-compose down
+docker compose down
 ```
 
 ### 4. Commit and Push Changes
@@ -40,15 +40,15 @@ git push origin master
 docker system prune -a
 
 # Build and run production services
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # If build fails with snapshot errors, rebuild with no cache:
-# docker-compose -f docker-compose.prod.yml build --no-cache
-# docker-compose -f docker-compose.prod.yml up -d
+# docker compose -f docker-compose.prod.yml build --no-cache
+# docker compose -f docker-compose.prod.yml up -d
 
 # If you get 502 Bad Gateway, check service status and logs:
-# docker-compose -f docker-compose.prod.yml ps
-# docker-compose -f docker-compose.prod.yml logs
+# docker compose -f docker-compose.prod.yml ps
+# docker compose -f docker-compose.prod.yml logs
 
 # Test if the website is accessible:
 # curl -I http://localhost
@@ -57,10 +57,10 @@ docker-compose -f docker-compose.prod.yml up -d --build
 # Test all functionality to ensure production build works correctly
 
 # View production logs if needed
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Stop production services
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ### 6. Deploy to AWS EC2
@@ -77,16 +77,16 @@ cd /path/to/CompareAI
 git pull origin master
 
 # Stop current production services
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 
 # Build and start updated production services
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # Verify services are running
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # Check logs if needed
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ### 7. Verify Production Deployment
@@ -98,14 +98,14 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 **Development:**
 ```bash
-docker-compose up              # Start dev services
-docker-compose down            # Stop dev services
+docker compose up              # Start dev services
+docker compose down            # Stop dev services
 ```
 
 **Production Testing:**
 ```bash
-docker-compose -f docker-compose.prod.yml up -d --build    # Start prod build
-docker-compose -f docker-compose.prod.yml down             # Stop prod build
+docker compose -f docker-compose.prod.yml up -d --build    # Start prod build
+docker compose -f docker-compose.prod.yml down             # Stop prod build
 ```
 
 **Git:**
@@ -118,8 +118,8 @@ git push origin master
 **EC2 Deployment:**
 ```bash
 git pull origin master
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ## Workflow Summary
