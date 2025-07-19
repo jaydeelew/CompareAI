@@ -3,7 +3,7 @@
 ## Complete Development to Production Pipeline
 
 ### 1. Make Code Changes
-Edit your frontend or backend code as needed.
+Edit frontend or backend code as needed.
 
 ### 2. (Optional) Install New Dependencies
 If you add new packages:
@@ -115,7 +115,7 @@ git commit -m "Your message"
 git push origin master
 ```
 
-**EC2 Deployment (Option 1 - Your Current Method):**
+**EC2 Deployment (Option 1 - manual):**
 ```bash
 git pull origin master
 docker compose -f docker-compose.prod.yml down
