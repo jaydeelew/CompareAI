@@ -1,0 +1,101 @@
+# Docker Compose Commands for CompareAI
+
+## Development Environment Commands
+
+### Build and run (development):
+# Build and start all services in detached mode
+docker-compose up -d --build
+
+# Or build first, then run
+docker-compose build
+docker-compose up -d
+
+### View logs:
+# View all service logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f nginx
+
+### Stop services:
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes
+docker-compose down -v
+
+### Rebuild specific services:
+# Rebuild and restart specific service
+docker-compose up -d --build backend
+docker-compose up -d --build frontend
+
+## Production Environment Commands
+
+### Build and run (production):
+# Build and start production services
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Or build first, then run
+docker-compose -f docker-compose.prod.yml build
+docker-compose -f docker-compose.prod.yml up -d
+
+### View logs:
+# View production logs
+docker-compose -f docker-compose.prod.yml logs -f
+
+# View specific service logs
+docker-compose -f docker-compose.prod.yml logs -f backend
+docker-compose -f docker-compose.prod.yml logs -f nginx
+
+### Stop production services:
+# Stop production services
+docker-compose -f docker-compose.prod.yml down
+
+# Stop and remove volumes
+docker-compose -f docker-compose.prod.yml down -v
+
+## Utility Commands
+
+### Check running containers:
+# Development
+docker-compose ps
+
+# Production
+docker-compose -f docker-compose.prod.yml ps
+
+### Execute commands in running containers:
+# Development
+docker-compose exec backend bash
+docker-compose exec frontend sh
+
+# Production
+docker-compose -f docker-compose.prod.yml exec backend bash
+
+### Clean up (remove unused images, containers, etc.):
+# Remove stopped containers, unused networks, images, and build cache
+docker system prune -a
+
+# Remove only unused images
+docker image prune -a
+
+### Quick restart:
+# Development
+docker-compose restart
+
+# Production
+docker-compose -f docker-compose.prod.yml restart
+
+## Key Differences Between Environments
+
+- Development: Frontend runs on port 5173 with hot reload, volumes mounted for live code changes
+- Production: Frontend is built and served through Nginx, no direct frontend port exposure
+- Port Access: 
+  - Dev: Frontend (5173), Nginx (80)
+  - Prod: Only Nginx (80)
+
+## Notes
+
+The production setup uses a multi-stage build where the frontend is built and served through Nginx, 
+while development uses live reloading with volume mounts for faster development cycles.
