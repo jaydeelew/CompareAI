@@ -23,11 +23,11 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - /home/dan_wsl/jaydeelew/CompareAI/frontend:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost/api
-    command: npm run dev -- --host 0.0.0.0
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
     networks:

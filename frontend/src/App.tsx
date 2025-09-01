@@ -21,19 +21,34 @@ interface Model {
 }
 
 const availableModels: Model[] = [
-  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', description: "OpenAI's GPT-4 Turbo", category: 'Language' },
-  { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus', description: "Anthropic's Claude 3 Opus", category: 'Language' },
-  { id: 'deepseek/deepseek-chat-v3-0324:free', name: 'DeepSeek Chat V3 (Free)', description: 'DeepSeek Chat V3 (Free Tier)', category: 'Vision/Language' },
-  { id: 'anthropic/claude-3-sonnet-20240229', name: 'Claude 3.5 Sonnet', description: "Anthropic's Claude 3.5 Sonnet (2024-02-29)", category: 'Language' },
-  { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's Claude 3.7 Sonnet", category: 'Language' },
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', description: "Anthropic's Claude Sonnet 4", category: 'Language' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', description: "OpenAI's GPT-4o (4.1)", category: 'Language' },
-  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free)', description: 'DeepSeek R1 (Free Tier)', category: 'Language/Reasoning' },
-  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: "Google's Gemini 2.5 Pro", category: 'Language' },
-  { id: 'google/gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite', description: "Google's Gemini 2.0 Flash Lite (001)", category: 'Language' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', description: "Google's Gemini 2.0 Flash (001)", category: 'Language' },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp (Free)', description: "Google's Gemini 2.0 Flash Exp (Free Tier)", category: 'Language' },
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', description: "Anthropic's top-ranked model with exceptional performance and capability", category: 'Language' },
+  { id: 'anthropic/claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: "Anthropic's highly capable model with excellent reasoning and writing abilities", category: 'Language' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', description: "OpenAI's latest multimodal model with enhanced reasoning and code capabilities", category: 'Language' },
+  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', description: "OpenAI's fast and efficient GPT-4 variant for complex reasoning tasks", category: 'Language' },
+  { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash', description: "Google's fast and efficient model for quick responses and reasoning", category: 'Language' },
+  { id: 'google/gemini-pro-1.5', name: 'Gemini 1.5 Pro', description: "Google's advanced model with superior performance on complex tasks", category: 'Language' },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', description: "DeepSeek's conversational model with strong reasoning capabilities", category: 'Language/Reasoning' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: "DeepSeek's reasoning-focused model with enhanced analytical abilities", category: 'Language/Reasoning' },
+  { id: 'meta-llama/llama-3.2-90b-vision-instruct', name: 'Llama 3.2 90B Vision', description: "Meta's large multimodal model with vision and text capabilities", category: 'Language' },
+  { id: 'mistralai/mixtral-8x7b-instruct', name: 'Mixtral 8x7B Instruct', description: "Mistral's mixture of experts model optimized for instruction following", category: 'Language/Reasoning' },
+  { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's earlier Sonnet model with reliable performance", category: 'Language' },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: "OpenAI's efficient model balancing performance and speed", category: 'Language' },
 ];
+
+// Function to extract company name from model description
+const getCompanyName = (description: string): string => {
+  if (description.toLowerCase().includes('openai')) return 'OpenAI';
+  if (description.toLowerCase().includes('anthropic')) return 'Anthropic';
+  if (description.toLowerCase().includes('deepseek')) return 'DeepSeek';
+  if (description.toLowerCase().includes('google')) return 'Google';
+  if (description.toLowerCase().includes('xai')) return 'xAI';
+  if (description.toLowerCase().includes('qwen')) return 'Qwen';
+  // Fallback: try to extract company name before "'s"
+  const match = description.match(/^([^']+)'s/);
+  if (match) return match[1];
+  // If no pattern matches, return the first word
+  return description.split(' ')[0];
+};
 
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
@@ -179,6 +194,49 @@ function App() {
             <h1>CompareAI</h1>
           </div>
           <p>Compare multiple AI models side by side</p>
+
+          <div className="purpose-section">
+            <div className="purpose-content">
+              <div className="capability-tags">
+                <span
+                  className="capability-tag"
+                  data-tooltip="Analyze and process text content across multiple AI models to compare writing quality, comprehension, and language understanding capabilities"
+                >
+                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
+                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <path d="M8 12h8M8 16h6" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  Text Processing
+                  <div className="tooltip-text">Analyze and process text content across multiple AI models to compare writing quality, comprehension, and language understanding capabilities</div>
+                </span>
+                <span
+                  className="capability-tag"
+                  data-tooltip="Generate and evaluate code solutions from different AI models to compare programming accuracy, efficiency, and best practices"
+                >
+                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
+                    <path d="M8 21h8" stroke="currentColor" strokeWidth="2" />
+                    <path d="M12 17v4" stroke="currentColor" strokeWidth="2" />
+                    <path d="M7 7h.01M7 10h.01M7 13h.01" stroke="currentColor" strokeWidth="2" />
+                    <path d="M11 7h6M11 10h6M11 13h4" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  Code Generation
+                  <div className="tooltip-text">Generate and evaluate code solutions from different AI models to compare programming accuracy, efficiency, and best practices</div>
+                </span>
+                <span
+                  className="capability-tag"
+                  data-tooltip="Instantly compare responses from multiple AI models side-by-side to evaluate performance, accuracy, and approach differences"
+                >
+                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
+                  </svg>
+                  Real-time Comparison
+                  <div className="tooltip-text">Instantly compare responses from multiple AI models side-by-side to evaluate performance, accuracy, and approach differences</div>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -237,15 +295,13 @@ function App() {
                     <div className="model-header">
                       <h3>{model.name}</h3>
                     </div>
-                    <p>{model.description}</p>
+                    <p>{getCompanyName(model.description)}</p>
                   </label>
                 );
               })}
             </div>
           )}
-        </section>
-
-        <section className="action-section">
+        </section>        <section className="action-section">
           <button
             onClick={handleSubmit}
             disabled={isLoading || selectedModels.length === 0}
@@ -309,11 +365,6 @@ function App() {
           </section>
         )}
       </main>
-
-      {/* Build version indicator */}
-      <footer className="build-info">
-        <small>Build: {new Date().toISOString().slice(0, 16).replace('T', ' ')}</small>
-      </footer>
     </div>
   );
 }
