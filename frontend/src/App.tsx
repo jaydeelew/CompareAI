@@ -29,7 +29,7 @@ const availableModels: Model[] = [
   { id: 'google/gemini-pro-1.5', name: 'Gemini 1.5 Pro', description: "Google's advanced model with superior performance on complex tasks", category: 'Language' },
   { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', description: "DeepSeek's conversational model with strong reasoning capabilities", category: 'Language/Reasoning' },
   { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: "DeepSeek's reasoning-focused model with enhanced analytical abilities", category: 'Language/Reasoning' },
-  { id: 'meta-llama/llama-3.2-90b-vision-instruct', name: 'Llama 3.2 90B Vision', description: "Meta's large multimodal model with vision and text capabilities", category: 'Language' },
+  { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B Instruct', description: "Meta's large language model optimized for text and code generation", category: 'Code/Language' },
   { id: 'mistralai/mixtral-8x7b-instruct', name: 'Mixtral 8x7B Instruct', description: "Mistral's mixture of experts model optimized for instruction following", category: 'Language/Reasoning' },
   { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's earlier Sonnet model with reliable performance", category: 'Language' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: "OpenAI's efficient model balancing performance and speed", category: 'Language' },

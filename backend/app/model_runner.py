@@ -58,10 +58,10 @@ OPENROUTER_MODELS = [
         "category": "Language/Reasoning",
     },
     {
-        "id": "meta-llama/llama-3.2-90b-vision-instruct",
-        "name": "Llama 3.2 90B Vision",
-        "description": "Meta's large multimodal model with vision and text capabilities",
-        "category": "Language",
+        "id": "meta-llama/llama-3.1-70b-instruct",
+        "name": "Llama 3.1 70B Instruct",
+        "description": "Meta's large language model optimized for text and code generation",
+        "category": "Code/Language",
     },
     {
         "id": "mistralai/mixtral-8x7b-instruct",

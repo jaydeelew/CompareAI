@@ -68,7 +68,7 @@ SSH into your AWS EC2 instance and pull the latest changes:
 
 ```bash
 # SSH into your EC2 instance
-ssh -i CompareAI.pem ec2-user@your-ec2-ip
+ssh -i CompareAI.pem ubuntu@54.163.207.252
 
 # Navigate to your project directory
 cd /path/to/CompareAI
