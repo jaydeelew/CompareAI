@@ -1,0 +1,50 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        ENVIRONMENT: production
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - ./backend/.env
+    networks:
+      - compareai-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: build
+      args:
+        - VITE_API_URL=/api
+    volumes:
+      - ./frontend/dist:/app/dist
+    depends_on:
+      - backend
+    networks:
+      - compareai-network
+    command: npm run build
+
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.ssl.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - compareai-network
+
+networks:
+  compareai-network:
+    driver: bridge
