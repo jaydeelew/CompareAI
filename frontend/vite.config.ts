@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['compareintel.com'],
+    allowedHosts: ['compareintel.com', 'frontend', 'localhost'],
   },
   build: {
     // Ensure assets are chunked properly with hashes

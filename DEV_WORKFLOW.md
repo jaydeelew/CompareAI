@@ -104,7 +104,8 @@ cd /path/to/CompareAI
 # Pull latest changes (to get SSL setup files)
 git pull origin master
 
-# ONE-TIME: Set up SSL certificates (only run this once)
+# ONE-TIME: Set up SSL certificates for both domains (only run this once)
+# This automatically sets up SSL for both compareintel.com AND www.compareintel.com
 ./setup-compareintel-ssl.sh
 
 # Deploy with SSL
@@ -137,7 +138,8 @@ docker compose -f docker-compose.ssl.yml logs -f
 
 ### 7. Verify Production Deployment
 - Access your live site at **https://compareintel.com** (SSL enabled)
-- Verify the padlock icon shows in the browser
+- Also verify **https://www.compareintel.com** works (SSL enabled)
+- Verify the padlock icon shows in the browser for both URLs
 - Monitor logs for any errors
 - Test key functionality
 

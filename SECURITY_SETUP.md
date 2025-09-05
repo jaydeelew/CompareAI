@@ -17,9 +17,11 @@ You'll need SSL for both development and production environments. Here's how to 
 
 ```bash
 # Option 1: Pre-configured for CompareIntel.com (easiest)
+# Automatically sets up SSL for both compareintel.com AND www.compareintel.com
 ./setup-compareintel-ssl.sh
 
 # Option 2: General script with your details
+# Automatically includes both domain and www.domain
 ./setup-ssl.sh compareintel.com jaydeelew@gmail.com
 ```
 
@@ -111,7 +113,9 @@ docker-compose -f docker-compose.dev-ssl.yml up -d
 
 1. **Domain Requirements:**
    - Own a domain name (e.g., `myapp.com`)
-   - DNS pointing to your server's IP address
+   - DNS pointing to your server's IP address for both domain and www subdomain:
+     - `compareintel.com` → `54.163.207.252`
+     - `www.compareintel.com` → `54.163.207.252`
    - Server accessible from the internet on ports 80 and 443
 
 2. **Server Requirements:**
@@ -142,6 +146,8 @@ docker-compose -f docker-compose.dev-ssl.yml up -d
 
 4. **Test your secure site:**
    - Visit `https://compareintel.com`
+   - Visit `https://www.compareintel.com`
+   - Both should show the padlock icon and be secure
    - Check SSL grade at [SSL Labs](https://www.ssllabs.com/ssltest/)
 
 ## 🛡️ Security Features Implemented
