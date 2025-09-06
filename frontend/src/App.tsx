@@ -33,6 +33,9 @@ const availableModels: Model[] = [
   { id: 'mistralai/mixtral-8x7b-instruct', name: 'Mixtral 8x7B Instruct', description: "Mistral's mixture of experts model optimized for instruction following", category: 'Language/Reasoning' },
   { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's earlier Sonnet model with reliable performance", category: 'Language' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: "OpenAI's efficient model balancing performance and speed", category: 'Language' },
+  { id: 'x-ai/grok-3', name: 'Grok 3', description: "xAI's advanced Grok model with enhanced reasoning and text capabilities", category: 'Language' },
+  { id: 'x-ai/grok-4', name: 'Grok 4', description: "xAI's most intelligent model with native tool use and real-time search", category: 'Language' },
+  { id: 'x-ai/grok-code-fast-1', name: 'Grok Code Fast 1', description: "xAI's speedy model optimized for agentic coding and low cost", category: 'Code/Language' },
 ];
 
 // Function to extract company name from model description
@@ -169,29 +172,9 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="logo-container">
-            <div className="ai-icon">
-              <div className="comparison-visual">
-                <div className="ai-model ai-model-1">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="ai-model ai-model-2">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="ai-model ai-model-3">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="comparison-beam"></div>
-                <div className="analysis-center">
-                  <div className="comparison-dot"></div>
-                  <div className="comparison-dot"></div>
-                  <div className="comparison-dot"></div>
-                </div>
-              </div>
+            <div className="static-logo">
+              <h1>CompareIntel</h1>
             </div>
-            <h1>CompareAI</h1>
           </div>
           <p>Compare multiple AI models side by side</p>
 
@@ -319,7 +302,28 @@ function App() {
 
         {isLoading && (
           <div className="loading-section">
-            <div className="loading-spinner"></div>
+            <div className="loading-animation">
+              <div className="comparison-visual">
+                <div className="ai-model ai-model-1">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="ai-model ai-model-2">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="ai-model ai-model-3">
+                  <div className="model-core"></div>
+                  <div className="data-ring"></div>
+                </div>
+                <div className="comparison-beam"></div>
+                <div className="analysis-center">
+                  <div className="comparison-dot"></div>
+                  <div className="comparison-dot"></div>
+                  <div className="comparison-dot"></div>
+                </div>
+              </div>
+            </div>
             <p>Running models...</p>
           </div>
         )}
