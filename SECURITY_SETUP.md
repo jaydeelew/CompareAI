@@ -1,14 +1,18 @@
 # 🔒 CompareAI Security Setup Guide
 
-Your website shows as "insecure" because it's only serving HTTP traffic. This guide will help you implement HTTPS/SSL encryption to make your website secure.
+This guide provides detailed security implementation, monitoring, and troubleshooting for CompareAI's SSL/HTTPS setup.
 
-## 🎯 SSL Setup for Different Environments
+> 📋 **Quick Start:** For daily workflow commands across all environments, see [DEV_WORKFLOW.md](DEV_WORKFLOW.md)
 
-You'll need SSL for both development and production environments. Here's how to set up each:
+## 🎯 SSL Implementation Details
+
+This document covers the security aspects of CompareAI's 4-environment structure:
 
 ### 🚀 Production SSL with Let's Encrypt
 
 **When to use:** Deploying to a live server with a real domain name
+
+> 📋 **Quick Commands:** For step-by-step deployment commands, see [Environment 4: AWS Production](DEV_WORKFLOW.md#environment-4-aws-production-https) in DEV_WORKFLOW.md
 
 **Requirements:**
 - Own a domain name (e.g., `compareintel.com`)
@@ -40,59 +44,35 @@ You'll need SSL for both development and production environments. Here's how to 
 - Local development environment
 - Testing HTTPS functionality before production
 
-```bash
-# Create self-signed certificates for localhost
-./create-dev-ssl.sh
+> 📋 **For step-by-step environment commands:** See [Environment 2: Local Development (HTTPS)](DEV_WORKFLOW.md#environment-2-local-development-https) in DEV_WORKFLOW.md
 
-# Start development environment with SSL
-docker-compose -f docker-compose.dev-ssl.yml up -d
-```
+### 🛠️ Development SSL (Self-Signed)
 
-**What this provides:**
+**When to use:** Local development and testing SSL-dependent features
+
+> 💡 **Quick Commands:** See [Environment 2](DEV_WORKFLOW.md#environment-2-local-development-https) in DEV_WORKFLOW.md for basic setup commands
+
+**Technical Details:**
 - ✅ HTTPS on localhost for development
 - ✅ Test SSL-dependent features locally
 - ✅ Browser security warning (expected for self-signed certs)
 - ✅ Same HTTPS behavior as production
 
-## 🔄 Typical Development Workflow
+## 🔄 SSL Environment Overview
 
-**Important:** SSL certificates must be set up on your AWS EC2 server (`54.163.207.252`) where `compareintel.com` points, not on your local development machine.
+> 📋 **For detailed workflow steps:** See [Four Development Environments](DEV_WORKFLOW.md#four-development-environments) in DEV_WORKFLOW.md
 
-**Most developers will use both setups:**
+**SSL Implementation Summary:**
+- **Environment 1 (Local HTTP):** No SSL - fastest for daily development
+- **Environment 2 (Local HTTPS):** Self-signed certificates for SSL testing  
+- **Environment 3 (Local Prod Test):** No SSL - production build testing
+- **Environment 4 (AWS Production):** Let's Encrypt certificates for live site
 
-1. **During Development (Local Machine):**
-   ```bash
-   # Option A: HTTP development (faster, use 90% of the time)
-   docker compose up
-   # Access at: http://localhost
-   
-   # Option B: HTTPS development (when testing SSL features)
-   ./create-dev-ssl.sh  # Run once to create self-signed certs
-   docker compose -f docker-compose.dev-ssl.yml up
-   # Access at: https://localhost (accept browser warning)
-   ```
-
-2. **When Deploying to Production (AWS EC2):**
-   ```bash
-   # SSH to your production server where compareintel.com points
-   ssh -i CompareAI.pem ubuntu@54.163.207.252
-   
-   # Pull latest changes to get SSL setup files
-   git pull origin master
-   
-   # Set up production HTTPS with trusted certificates (one-time)
-   ./setup-compareintel-ssl.sh
-   
-   # Deploy with SSL
-   docker compose -f docker-compose.ssl.yml up -d
-   # Access at: https://compareintel.com (trusted, no warnings)
-   ```
-
-**Why you need both:**
-- **Development SSL** lets you test HTTPS features locally (optional, use when needed)
-- **Production SSL** provides trusted certificates for real users (required)
-- **HTTP development** is faster for daily development work
-- All environments ensure your app works consistently
+**Key Security Points:**
+- SSL certificates must be set up on AWS EC2 server (`54.163.207.252`)
+- Local development uses self-signed certificates for testing
+- Production uses trusted Let's Encrypt certificates
+- All environments ensure consistent app behavior
 
 **When to use HTTPS development:**
 - Testing Service Workers, Geolocation, Camera access
@@ -100,13 +80,15 @@ docker-compose -f docker-compose.dev-ssl.yml up -d
 - Testing integrations requiring HTTPS
 - Debugging SSL-related issues
 
-## 🔧 Manual Setup Steps
+## 🔧 Production SSL Implementation
 
-### ⚠️ Important: AWS EC2 vs Local Development
+> 💡 **Quick Setup:** For basic production deployment commands, see [Environment 4: AWS Production](DEV_WORKFLOW.md#environment-4-aws-production-https) in DEV_WORKFLOW.md
 
-**Your setup:**
-- **Development:** Local machine (`172.23.193.222`) - for coding and testing
-- **Production:** AWS EC2 (`54.163.207.252`) - where `compareintel.com` points
+### ⚠️ Important: Server Requirements
+
+**Production Environment Details:**
+- **Development:** Local machine - for coding and testing
+- **Production:** AWS EC2 (`54.163.207.252`) - where `compareintel.com` points  
 - **SSL Setup:** Must be done on AWS EC2, not your local machine
 
 ### Prerequisites for Production SSL
@@ -177,7 +159,9 @@ docker-compose -f docker-compose.dev-ssl.yml up -d
 
 ## 🔍 Troubleshooting
 
-### Common Issues
+> 🛠️ **Basic Setup Issues:** If you're having problems with environment setup, see [Development Workflow Steps](DEV_WORKFLOW.md#development-workflow-steps) in DEV_WORKFLOW.md
+
+### Common SSL Issues
 
 1. **"SSL certificate not found"**
    - Ensure your domain points to your server
