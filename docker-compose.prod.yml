@@ -25,7 +25,6 @@ services:
       - backend
     networks:
       - compareai-network
-    command: npm run build
 
   nginx:
     build:

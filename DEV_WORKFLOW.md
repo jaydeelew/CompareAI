@@ -1,99 +1,119 @@
 # CompareAI Development Workflow
 
-## Complete Development to Production Pipeline
-
-### SSL Setup Overview
 
 **Important:** SSL certificates must be set up on your AWS EC2 server where `compareintel.com` points, not on your local development machine.
 
-**Three environments:**
-1. **Local Development:** HTTP or HTTPS with self-signed certs
-2. **Local Production Testing:** HTTP (for testing build process)
-3. **AWS Production:** HTTPS with Let's Encrypt certificates
+## Four Development Environments
+1. **Local Development (HTTP):** Fast development with hot reload
+2. **Local Development (HTTPS):** Development with self-signed SSL certificates
+3. **Local Production Testing:** HTTP build testing (no SSL complexity)
+4. **AWS Production:** HTTPS with Let's Encrypt certificates
 
-### 1. Make Code Changes
-Edit frontend or backend code as needed.
+---
 
-### 2. (Optional) Install New Dependencies
-If you add new packages:
-- `docker compose build frontend` (for npm packages)
-- `docker compose build backend` (for pip packages)
+## Environment 1: Local Development (HTTP)
+**Use 90% of the time for regular development**
 
-### 3. Test Changes Locally (Development)
+### When to Use
+- General UI work and styling
+- API development and testing
+- Most feature development
+- When you need fastest startup times
 
-**Choose based on what you're developing:**
-
+### Commands
 ```bash
-# Option A: HTTP development (use 90% of the time)
+# Start development environment
 docker compose up
-# Access at http://localhost
-# ✅ Faster startup, no SSL complexity
-# ✅ Good for: UI work, API development, general features
 
-# Option B: HTTPS development (use when testing SSL features)
-./create-dev-ssl.sh  # Run once to create self-signed certs
-docker compose -f docker-compose.dev-ssl.yml up
-# Access at https://localhost (accept browser warning)
-# ✅ Matches production SSL behavior
-# ✅ Good for: Testing before deployment, SSL-dependent features
+# Install new dependencies (if needed)
+docker compose build frontend  # for npm packages
+docker compose build backend   # for pip packages
 
-# Hot reloading works in both modes
-# Stop services when done testing
+# Stop development environment
 docker compose down
 ```
 
-**When to use HTTPS development:**
+### Access
+- **URL:** http://localhost:8080
+- **Features:** Hot reload, fast startup, no SSL complexity
+- **File:** `docker-compose.yml`
+
+---
+
+## Environment 2: Local Development (HTTPS)
+**Use when testing SSL-dependent features**
+
+### When to Use
 - Testing Service Workers, Geolocation, Camera/microphone access
 - Before major deployments to production
 - Testing payment integrations or OAuth
 - Debugging SSL-related issues
+- Testing features that require HTTPS
 
-### 4. Commit and Push Changes
+### Commands
 ```bash
-# Stage changes
-git add .
+# One-time setup: Create self-signed certificates
+./create-dev-ssl.sh
 
-# Commit with descriptive message
-git commit -m "Description of your changes"
+# Start HTTPS development environment
+docker compose -f docker-compose.dev-ssl.yml up
 
-# Push to origin
-git push origin master
+# Stop HTTPS development environment
+docker compose -f docker-compose.dev-ssl.yml down
 ```
 
-### 5. Test Production Build Locally
+> 🔒 **SSL Issues?** For detailed SSL troubleshooting and security configuration, see [SECURITY_SETUP.md](SECURITY_SETUP.md#troubleshooting)
+
+### Access
+- **URL:** https://localhost (accept browser security warning)
+- **Features:** Hot reload, matches production SSL behavior
+- **File:** `docker-compose.dev-ssl.yml`
+
+---
+
+## Environment 3: Local Production Testing (HTTP)
+**Use to test production builds before deployment**
+
+### When to Use
+- Testing production build process locally
+- Verifying optimized builds work correctly
+- Final testing before AWS deployment
+- Debugging production build issues
+
+### Commands
 ```bash
-# Clean Docker cache if you encounter build errors
+# Clean Docker cache if encountering build errors
 docker system prune -a
 
-# Build and run production services (without SSL for local testing)
+# Build and start production services locally
 docker compose -f docker-compose.prod.yml up -d --build
 
-# If build fails with snapshot errors, rebuild with no cache:
-# docker compose -f docker-compose.prod.yml build --no-cache
-# docker compose -f docker-compose.prod.yml up -d
+# If build fails, rebuild with no cache
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
 
-# If you get 502 Bad Gateway, check service status and logs:
-# docker compose -f docker-compose.prod.yml ps
-# docker compose -f docker-compose.prod.yml logs
-
-# Test if the website is accessible:
-# curl -I http://localhost
-
-# Access the production build at http://localhost
-# Test all functionality to ensure production build works correctly
-
-# View production logs if needed
+# Check service status and logs
+docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs -f
 
-# Stop production services
+# Test website accessibility
+curl -I http://localhost:8080
+
+# Stop production testing
 docker compose -f docker-compose.prod.yml down
 ```
 
-**Note:** Local production testing uses HTTP. The actual AWS deployment will use HTTPS with SSL.
+### Access
+- **URL:** http://localhost:8080
+- **Features:** Production build, optimized assets, no SSL complexity
+- **File:** `docker-compose.prod.yml`
 
-### 6. Deploy to AWS EC2
+---
 
-#### First Time: Set Up SSL on Production Server (One-time setup)
+## Environment 4: AWS Production (HTTPS)
+**Live production deployment with SSL certificates**
+
+### First Time Setup (One-time only)
 ```bash
 # SSH into your EC2 instance
 ssh -i CompareAI.pem ubuntu@54.163.207.252
@@ -101,18 +121,19 @@ ssh -i CompareAI.pem ubuntu@54.163.207.252
 # Navigate to your project directory
 cd /path/to/CompareAI
 
-# Pull latest changes (to get SSL setup files)
+# Pull latest changes
 git pull origin master
 
-# ONE-TIME: Set up SSL certificates for both domains (only run this once)
-# This automatically sets up SSL for both compareintel.com AND www.compareintel.com
+# ONE-TIME: Set up SSL certificates for both domains
 ./setup-compareintel-ssl.sh
 
 # Deploy with SSL
 docker compose -f docker-compose.ssl.yml up -d --build
 ```
 
-#### Regular Deployments (After SSL is set up)
+> 🔒 **Detailed SSL Setup:** For comprehensive production SSL configuration, see [Production SSL Implementation](SECURITY_SETUP.md#production-ssl-implementation) in SECURITY_SETUP.md
+
+### Regular Deployments
 ```bash
 # SSH into your EC2 instance
 ssh -i CompareAI.pem ubuntu@54.163.207.252
@@ -126,89 +147,116 @@ git pull origin master
 # Stop current production services
 docker compose -f docker-compose.ssl.yml down
 
-# Build and start updated production services WITH SSL
+# Deploy updated production services with SSL
 docker compose -f docker-compose.ssl.yml up -d --build
 
-# Verify services are running
+# Verify deployment
 docker compose -f docker-compose.ssl.yml ps
-
-# Check logs if needed
 docker compose -f docker-compose.ssl.yml logs -f
 ```
 
-### 7. Verify Production Deployment
-- Access your live site at **https://compareintel.com** (SSL enabled)
-- Also verify **https://www.compareintel.com** works (SSL enabled)
-- Verify the padlock icon shows in the browser for both URLs
-- Monitor logs for any errors
-- Test key functionality
+### Access & Verification
+- **Primary URL:** https://compareintel.com
+- **Secondary URL:** https://www.compareintel.com
+- **Features:** Production build, Let's Encrypt SSL, optimized performance
+- **File:** `docker-compose.ssl.yml`
 
-## Quick Reference Commands
+**Post-deployment checklist:**
+- ✅ Verify padlock icon shows in browser for both URLs
+- ✅ Test key functionality
+- ✅ Monitor logs for any errors
 
-**Development:**
+> 🔍 **Need troubleshooting help?** See [SSL Troubleshooting](SECURITY_SETUP.md#troubleshooting) and [SSL Monitoring](SECURITY_SETUP.md#monitoring-ssl-health) in SECURITY_SETUP.md
+
+---
+
+## Development Workflow Steps
+
+### 1. Make Code Changes
+Edit frontend or backend code as needed.
+
+### 2. Test Locally
+Choose the appropriate environment:
+- **Environment 1** (HTTP) for most development
+- **Environment 2** (HTTPS) for SSL-dependent features
+
+### 3. Commit and Push Changes
 ```bash
-# HTTP development (faster)
-docker compose up              
-docker compose down            
-
-# HTTPS development (matches production)
-./create-dev-ssl.sh            # One-time setup
-docker compose -f docker-compose.dev-ssl.yml up
-docker compose -f docker-compose.dev-ssl.yml down
+git add .
+git commit -m "Description of your changes"
+git push origin master
 ```
 
-**Production Testing (Local):**
+### 4. Test Production Build
+Use **Environment 3** to test production build locally:
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build    # HTTP testing
+docker compose -f docker-compose.prod.yml up -d --build
+# Test at http://localhost:8080
 docker compose -f docker-compose.prod.yml down
 ```
 
-**Production Deployment (AWS EC2):**
-```bash
-# First time setup (one-time)
-./setup-compareintel-ssl.sh   # Sets up SSL certificates
+### 5. Deploy to Production
+Use **Environment 4** to deploy to AWS with SSL.
 
-# Regular deployments
-docker compose -f docker-compose.ssl.yml up -d --build     # HTTPS production
+---
+
+## Quick Reference
+
+### Environment Commands
+```bash
+# Environment 1: Local Development (HTTP)
+docker compose up
+docker compose down
+
+# Environment 2: Local Development (HTTPS) 
+./create-dev-ssl.sh                                    # One-time setup
+docker compose -f docker-compose.dev-ssl.yml up
+docker compose -f docker-compose.dev-ssl.yml down
+
+# Environment 3: Local Production Testing (HTTP)
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml down
+
+# Environment 4: AWS Production (HTTPS)
+./setup-compareintel-ssl.sh                           # One-time setup
+docker compose -f docker-compose.ssl.yml up -d --build
 docker compose -f docker-compose.ssl.yml down
 ```
 
-**Git:**
+### Git Commands
 ```bash
 git add .
 git commit -m "Your message"
 git push origin master
 ```
 
-**EC2 Deployment (Option 1 - manual):**
+### Automated Deployment Script
 ```bash
-git pull origin master
-docker compose -f docker-compose.ssl.yml down
-docker compose -f docker-compose.ssl.yml up -d --build
+# On EC2 (after git pull)
+./deploy.sh  # Update this script to use docker-compose.ssl.yml
 ```
 
-**EC2 Deployment (Option 2 - Automated Script):**
-```bash
-git pull origin master
-./deploy.sh  # You'll need to update this script to use docker-compose.ssl.yml
-```
+---
 
-## Workflow Summary
-This workflow ensures you:
-1. Test changes locally in development mode (HTTP or HTTPS as needed)
-2. Commit and push your changes to version control
-3. Test the production build locally before deploying (HTTP)
-4. Deploy confidently to your EC2 instance with SSL-enabled production build (HTTPS)
+## Environment Summary
 
-**Your Three Docker Compose Files:**
+| Environment | File | URL | Purpose | SSL |
+|-------------|------|-----|---------|-----|
+| **1. Local Dev (HTTP)** | `docker-compose.yml` | http://localhost:8080 | Daily development, hot reload | None |
+| **2. Local Dev (HTTPS)** | `docker-compose.dev-ssl.yml` | https://localhost | SSL feature testing, hot reload | Self-signed |
+| **3. Local Prod Test** | `docker-compose.prod.yml` | http://localhost:8080 | Production build testing | None |
+| **4. AWS Production** | `docker-compose.ssl.yml` | https://compareintel.com | Live production site | Let's Encrypt |
+
+**Your Four Docker Compose Files:**
 - `docker-compose.yml` - Local development (HTTP, hot reload)
+- `docker-compose.dev-ssl.yml` - Local development (HTTPS with self-signed certs, hot reload)
 - `docker-compose.prod.yml` - Local production testing (HTTP, no SSL complexity)
 - `docker-compose.ssl.yml` - AWS production deployment (HTTPS, trusted certificates)
 
-**Cache Busting**: Your builds now automatically generate unique filenames (e.g., `index.abc123.js`) so users always get the latest version without needing to clear their browser cache.
+**Cache Busting**: Your builds automatically generate unique filenames (e.g., `index.abc123.js`) so users always get the latest version without clearing browser cache.
 
 ## Notes
-- Always test production builds locally before deploying to EC2
+- Always test production builds locally (Environment 3) before deploying to EC2
 - Monitor logs after deployment to catch any issues
 - Keep your EC2 key file secure and properly configured
 - Ensure your EC2 security groups allow necessary traffic
