@@ -173,53 +173,107 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-content">
-          <div className="logo-container">
-            <div className="static-logo">
-              <h1>CompareIntel</h1>
+        <nav className="navbar">
+          <div className="nav-brand">
+            <div className="brand-logo">
+              <svg className="logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Background circle */}
+                <circle cx="24" cy="24" r="24" fill="url(#logoGradient)" />
+
+                {/* AI Brain/Neural Network Pattern */}
+                <g>
+                  {/* Central node */}
+                  <circle cx="24" cy="24" r="3" fill="white" />
+
+                  {/* Left side nodes */}
+                  <circle cx="12" cy="18" r="2" fill="white" opacity="0.9" />
+                  <circle cx="12" cy="24" r="2" fill="white" opacity="0.9" />
+                  <circle cx="12" cy="30" r="2" fill="white" opacity="0.9" />
+
+                  {/* Right side nodes */}
+                  <circle cx="36" cy="18" r="2" fill="white" opacity="0.9" />
+                  <circle cx="36" cy="24" r="2" fill="white" opacity="0.9" />
+                  <circle cx="36" cy="30" r="2" fill="white" opacity="0.9" />
+
+                  {/* Connection lines */}
+                  <line x1="14" y1="18" x2="21" y2="21" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="14" y1="24" x2="21" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="14" y1="30" x2="21" y2="27" stroke="white" strokeWidth="1.5" opacity="0.7" />
+
+                  <line x1="27" y1="21" x2="34" y2="18" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="27" y1="24" x2="34" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="27" y1="27" x2="34" y2="30" stroke="white" strokeWidth="1.5" opacity="0.7" />
+
+                  {/* Comparison arrows */}
+                  <path d="M16 15 L20 12 L20 14 L28 14 L28 12 L32 15 L28 18 L28 16 L20 16 L20 18 Z"
+                    fill="white" opacity="0.8" />
+                  <path d="M16 33 L20 30 L20 32 L28 32 L28 30 L32 33 L28 36 L28 34 L20 34 L20 36 Z"
+                    fill="white" opacity="0.8" />
+                </g>
+
+                <defs>
+                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#2563eb" />
+                    <stop offset="50%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1d4ed8" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="brand-text">
+                <h1>CompareIntel</h1>
+                <span className="brand-tagline">AI Model Comparison Platform</span>
+              </div>
             </div>
           </div>
-          <p>Compare multiple AI models side by side</p>
 
-          <div className="purpose-section">
-            <div className="purpose-content">
-              <div className="capability-tags">
-                <span
-                  className="capability-tag"
-                  data-tooltip="Analyze and process text content across multiple AI models to compare writing quality, comprehension, and language understanding capabilities"
-                >
-                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
-                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" fill="none" />
+          <div className="nav-actions">
+            <button className="nav-button" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </button>
+          </div>
+        </nav>
+
+        <div className="hero-section">
+          <div className="hero-content">
+            <h2 className="hero-title">Compare AI Models Side by Side</h2>
+            <p className="hero-description">
+              Get instant comparisons across multiple AI models to find the best solution for your needs.
+              Test text processing, code generation, and analysis capabilities in real-time.
+            </p>
+
+            <div className="capability-showcase">
+              <div className="capability-item">
+                <div className="capability-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6C4.9 2 4 2.9 4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" stroke="currentColor" strokeWidth="2" />
+                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" />
                     <path d="M8 12h8M8 16h6" stroke="currentColor" strokeWidth="2" />
                   </svg>
-                  Text Processing
-                  <div className="tooltip-text">Analyze and process text content across multiple AI models to compare writing quality, comprehension, and language understanding capabilities</div>
-                </span>
-                <span
-                  className="capability-tag"
-                  data-tooltip="Generate and evaluate code solutions from different AI models to compare programming accuracy, efficiency, and best practices"
-                >
-                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
-                    <path d="M8 21h8" stroke="currentColor" strokeWidth="2" />
-                    <path d="M12 17v4" stroke="currentColor" strokeWidth="2" />
-                    <path d="M7 7h.01M7 10h.01M7 13h.01" stroke="currentColor" strokeWidth="2" />
-                    <path d="M11 7h6M11 10h6M11 13h4" stroke="currentColor" strokeWidth="2" />
+                </div>
+                <span>Text Analysis</span>
+              </div>
+
+              <div className="capability-item">
+                <div className="capability-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+                    <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
+                    <path d="M7 7h.01M7 10h.01M7 13h.01M11 7h6M11 10h6M11 13h4" stroke="currentColor" strokeWidth="2" />
                   </svg>
-                  Code Generation
-                  <div className="tooltip-text">Generate and evaluate code solutions from different AI models to compare programming accuracy, efficiency, and best practices</div>
-                </span>
-                <span
-                  className="capability-tag"
-                  data-tooltip="Instantly compare responses from multiple AI models side-by-side to evaluate performance, accuracy, and approach differences"
-                >
-                  <svg className="tag-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" fill="rgba(255,255,255,0.1)" />
+                </div>
+                <span>Code Generation</span>
+              </div>
+
+              <div className="capability-item">
+                <div className="capability-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" />
                   </svg>
-                  Real-time Comparison
-                  <div className="tooltip-text">Instantly compare responses from multiple AI models side-by-side to evaluate performance, accuracy, and approach differences</div>
-                </span>
+                </div>
+                <span>Real-time Results</span>
               </div>
             </div>
           </div>
@@ -357,29 +411,8 @@ function App() {
 
         {isLoading && (
           <div className="loading-section">
-            <div className="loading-animation">
-              <div className="comparison-visual">
-                <div className="ai-model ai-model-1">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="ai-model ai-model-2">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="ai-model ai-model-3">
-                  <div className="model-core"></div>
-                  <div className="data-ring"></div>
-                </div>
-                <div className="comparison-beam"></div>
-                <div className="analysis-center">
-                  <div className="comparison-dot"></div>
-                  <div className="comparison-dot"></div>
-                  <div className="comparison-dot"></div>
-                </div>
-              </div>
-            </div>
-            <p>Running models...</p>
+            <div className="modern-spinner"></div>
+            <p>Analyzing responses across AI models...</p>
           </div>
         )}
 
