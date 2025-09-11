@@ -272,8 +272,10 @@ function App() {
                     onClick={() => toggleDropdown(provider)}
                     aria-expanded={openDropdowns.has(provider)}
                   >
-                    <span className="provider-name">{provider}</span>
-                    <span className="provider-count">({models.length} models)</span>
+                    <div className="provider-left">
+                      <span className="provider-name">{provider}</span>
+                      <span className="provider-count">({models.length} models)</span>
+                    </div>
                     <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
                       ▼
                     </span>
