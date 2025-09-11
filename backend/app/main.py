@@ -1,15 +1,21 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Any
-from app.model_runner import run_models, OPENROUTER_MODELS
+from app.model_runner import run_models, OPENROUTER_MODELS, MODELS_BY_PROVIDER
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import asyncio
 import os
+import json
+from collections import defaultdict
+from typing import Dict, Any, Optional
 
 print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
+
+# In-memory storage for model performance tracking
+model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,11 +63,27 @@ async def compare(req: CompareRequest) -> CompareResponse:
         loop = asyncio.get_running_loop()
         results = await loop.run_in_executor(None, run_models, req.input_data, req.models)
 
+        # Count successful vs failed models
+        successful_models = 0
+        failed_models = 0
+        
+        for model_id, result in results.items():
+            current_time = datetime.now().isoformat()
+            if result.startswith("Error:"):
+                failed_models += 1
+                model_stats[model_id]["failure"] += 1
+                model_stats[model_id]["last_error"] = current_time
+            else:
+                successful_models += 1
+                model_stats[model_id]["success"] += 1
+                model_stats[model_id]["last_success"] = current_time
+
         # Add metadata
         metadata = {
             "input_length": len(req.input_data),
             "models_requested": len(req.models),
-            "models_processed": len(results),
+            "models_successful": successful_models,
+            "models_failed": failed_models,
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -73,4 +95,25 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
 @app.get("/models")
 async def get_available_models():
-    return {"models": OPENROUTER_MODELS}
+    return {
+        "models": OPENROUTER_MODELS,
+        "models_by_provider": MODELS_BY_PROVIDER
+    }
+
+
+@app.get("/model-stats")
+async def get_model_stats():
+    """Get success/failure statistics for all models"""
+    stats = {}
+    for model_id, data in model_stats.items():
+        total_attempts = data["success"] + data["failure"]
+        success_rate = (data["success"] / total_attempts * 100) if total_attempts > 0 else 0
+        stats[model_id] = {
+            "success_count": data["success"],
+            "failure_count": data["failure"],
+            "total_attempts": total_attempts,
+            "success_rate": round(success_rate, 1),
+            "last_error": data["last_error"],
+            "last_success": data["last_success"]
+        }
+    return {"model_statistics": stats}

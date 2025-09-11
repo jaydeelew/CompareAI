@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
 /* Reset and base styles */
 * {
   margin: 0;
@@ -454,9 +456,6 @@ body {
   transform: scale(1.1);
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-
 .tooltip-content strong {
   color: #333;
   font-size: 1rem;
@@ -717,6 +716,201 @@ body {
   font-weight: 500;
 }
 
+/* Provider dropdown styles */
+.provider-dropdowns {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.provider-dropdown {
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+  transition: border-color 0.3s ease;
+}
+
+.provider-dropdown:hover {
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  transition: background-color 0.2s ease;
+}
+
+.provider-header:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.provider-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.provider-count {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin-left: 0.5rem;
+}
+
+.dropdown-arrow {
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+  color: #667eea;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.provider-models {
+  border-top: 1px solid rgba(102, 126, 234, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.model-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.05);
+  gap: 1rem;
+}
+
+.model-option:last-child {
+  border-bottom: none;
+}
+
+.model-option:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.model-option.selected {
+  background: rgba(102, 126, 234, 0.15);
+  border-left: 4px solid #667eea;
+}
+
+.model-option .model-checkbox {
+  position: static;
+  margin: 0;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.model-info {
+  flex: 1;
+}
+
+.model-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.model-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Selected models section */
+.selected-models-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid rgba(102, 126, 234, 0.1);
+}
+
+.selected-models-section h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.selected-models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.selected-model-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.selected-model-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.selected-model-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.selected-model-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.remove-model-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.remove-model-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.selected-model-provider {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+}
+
+.selected-model-description {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  line-height: 1.4;
+  margin: 0;
+}
+
 /* Button */
 .compare-button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -880,6 +1074,16 @@ body {
   font-size: 1rem;
   color: #333;
   font-weight: 600;
+}
+
+.metadata-value.failed {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+.metadata-value.successful {
+  color: #2ecc71;
+  font-weight: 700;
 }
 
 /* Result header */

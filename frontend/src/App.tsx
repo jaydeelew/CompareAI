@@ -8,7 +8,8 @@ interface CompareResponse {
   metadata: {
     input_length: number;
     models_requested: number;
-    models_processed: number;
+    models_successful: number;
+    models_failed: number;
     timestamp: string;
   };
 }
@@ -18,40 +19,12 @@ interface Model {
   name: string;
   description: string;
   category: string;
+  provider: string;
 }
 
-const availableModels: Model[] = [
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', description: "Anthropic's top-ranked model with exceptional performance and capability", category: 'Language' },
-  { id: 'anthropic/claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: "Anthropic's highly capable model with excellent reasoning and writing abilities", category: 'Language' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', description: "OpenAI's latest multimodal model with enhanced reasoning and code capabilities", category: 'Language' },
-  { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', description: "OpenAI's fast and efficient GPT-4 variant for complex reasoning tasks", category: 'Language' },
-  { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash', description: "Google's fast and efficient model for quick responses and reasoning", category: 'Language' },
-  { id: 'google/gemini-pro-1.5', name: 'Gemini 1.5 Pro', description: "Google's advanced model with superior performance on complex tasks", category: 'Language' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', description: "DeepSeek's conversational model with strong reasoning capabilities", category: 'Language/Reasoning' },
-  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: "DeepSeek's reasoning-focused model with enhanced analytical abilities", category: 'Language/Reasoning' },
-  { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B Instruct', description: "Meta's large language model optimized for text and code generation", category: 'Code/Language' },
-  { id: 'mistralai/mixtral-8x7b-instruct', name: 'Mixtral 8x7B Instruct', description: "Mistral's mixture of experts model optimized for instruction following", category: 'Language/Reasoning' },
-  { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet', description: "Anthropic's earlier Sonnet model with reliable performance", category: 'Language' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: "OpenAI's efficient model balancing performance and speed", category: 'Language' },
-  { id: 'x-ai/grok-3', name: 'Grok 3', description: "xAI's advanced Grok model with enhanced reasoning and text capabilities", category: 'Language' },
-  { id: 'x-ai/grok-4', name: 'Grok 4', description: "xAI's most intelligent model with native tool use and real-time search", category: 'Language' },
-  { id: 'x-ai/grok-code-fast-1', name: 'Grok Code Fast 1', description: "xAI's speedy model optimized for agentic coding and low cost", category: 'Code/Language' },
-];
-
-// Function to extract company name from model description
-const getCompanyName = (description: string): string => {
-  if (description.toLowerCase().includes('openai')) return 'OpenAI';
-  if (description.toLowerCase().includes('anthropic')) return 'Anthropic';
-  if (description.toLowerCase().includes('deepseek')) return 'DeepSeek';
-  if (description.toLowerCase().includes('google')) return 'Google';
-  if (description.toLowerCase().includes('xai')) return 'xAI';
-  if (description.toLowerCase().includes('qwen')) return 'Qwen';
-  // Fallback: try to extract company name before "'s"
-  const match = description.match(/^([^']+)'s/);
-  if (match) return match[1];
-  // If no pattern matches, return the first word
-  return description.split(' ')[0];
-};
+interface ModelsByProvider {
+  [provider: string]: Model[];
+}
 
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
@@ -59,26 +32,44 @@ function App() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [availableModelsList, setAvailableModelsList] = useState<Model[]>(availableModels);
+  const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
 
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  // Get all models in a flat array for compatibility
+  const allModels = Object.values(modelsByProvider).flat();
 
   // Fetch available models on component mount
   useEffect(() => {
     const fetchModels = async () => {
       try {
+        console.log('Fetching models from:', `${API_URL}/models`);
         const res = await fetch(`${API_URL}/models`);
+        console.log('Response status:', res.status);
+
         if (res.ok) {
           const data = await res.json();
-          setAvailableModelsList(data.models);
+          console.log('Received data:', data);
+
+          if (data.models_by_provider && Object.keys(data.models_by_provider).length > 0) {
+            setModelsByProvider(data.models_by_provider);
+            console.log('Set modelsByProvider:', data.models_by_provider);
+          } else {
+            console.error('No models_by_provider data received');
+            setError('No model data received from server');
+          }
+        } else {
+          console.error('Failed to fetch models, status:', res.status);
+          setError(`Failed to fetch models: ${res.status}`);
         }
       } catch (err) {
         console.error('Failed to fetch models:', err instanceof Error ? err.message : String(err));
-        // Fallback to default models
-        setAvailableModelsList(availableModels);
+        setError(`Failed to fetch models: ${err instanceof Error ? err.message : String(err)}`);
       } finally {
         setIsLoadingModels(false);
+        console.log('Finished loading models');
       }
     };
 
@@ -90,21 +81,33 @@ function App() {
       if (selectedModels.length === 0) {
         selectAllRef.current.indeterminate = false;
         selectAllRef.current.checked = false;
-      } else if (selectedModels.length === availableModelsList.length) {
+      } else if (selectedModels.length === allModels.length) {
         selectAllRef.current.indeterminate = false;
         selectAllRef.current.checked = true;
       } else {
         selectAllRef.current.indeterminate = true;
       }
     }
-  }, [selectedModels, availableModelsList.length]);
+  }, [selectedModels, allModels.length]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedModels(availableModelsList.map((model) => model.id));
+      setSelectedModels(allModels.map((model) => model.id));
     } else {
       setSelectedModels([]);
     }
+  };
+
+  const toggleDropdown = (provider: string) => {
+    setOpenDropdowns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(provider)) {
+        newSet.delete(provider);
+      } else {
+        newSet.add(provider);
+      }
+      return newSet;
+    });
   };
 
   const handleModelToggle = (modelId: string) => {
@@ -242,7 +245,7 @@ function App() {
               <input
                 type="checkbox"
                 id="select-all-models"
-                checked={selectedModels.length === availableModelsList.length}
+                checked={selectedModels.length === allModels.length}
                 ref={selectAllRef}
                 onChange={handleSelectAll}
                 className="select-all-checkbox"
@@ -252,36 +255,86 @@ function App() {
               </label>
             </div>
           </div>
+
           {isLoadingModels ? (
             <div className="loading-message">Loading available models...</div>
+          ) : Object.keys(modelsByProvider).length === 0 ? (
+            <div className="error-message">
+              <p>No models available. Please check the server connection.</p>
+              <p>Debug info: modelsByProvider keys: {JSON.stringify(Object.keys(modelsByProvider))}</p>
+            </div>
           ) : (
-            <div className="models-grid">
-              {availableModelsList.map((model) => {
-                const isSelected = selectedModels.includes(model.id);
-                return (
-                  <label
-                    key={model.id}
-                    className={`model-card${isSelected ? ' selected' : ''}`}
-                    tabIndex={0}
-                    aria-pressed={isSelected}
-                    htmlFor={`model-checkbox-${model.id}`}
-                    style={{ cursor: 'pointer', userSelect: 'none' }}
+            <div className="provider-dropdowns">
+              {Object.entries(modelsByProvider).map(([provider, models]) => (
+                <div key={provider} className="provider-dropdown">
+                  <button
+                    className="provider-header"
+                    onClick={() => toggleDropdown(provider)}
+                    aria-expanded={openDropdowns.has(provider)}
                   >
-                    <input
-                      id={`model-checkbox-${model.id}`}
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleModelToggle(model.id)}
-                      className="model-checkbox"
-                      tabIndex={-1}
-                    />
-                    <div className="model-header">
-                      <h3>{model.name}</h3>
+                    <span className="provider-name">{provider}</span>
+                    <span className="provider-count">({models.length} models)</span>
+                    <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {openDropdowns.has(provider) && (
+                    <div className="provider-models">
+                      {models.map((model) => {
+                        const isSelected = selectedModels.includes(model.id);
+                        return (
+                          <label
+                            key={model.id}
+                            className={`model-option ${isSelected ? 'selected' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleModelToggle(model.id)}
+                              className="model-checkbox"
+                            />
+                            <div className="model-info">
+                              <h4>{model.name}</h4>
+                              <p>{model.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
-                    <p>{getCompanyName(model.description)}</p>
-                  </label>
-                );
-              })}
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Selected Models Cards */}
+          {selectedModels.length > 0 && (
+            <div className="selected-models-section">
+              <h3>Selected Models ({selectedModels.length})</h3>
+              <div className="selected-models-grid">
+                {selectedModels.map((modelId) => {
+                  const model = allModels.find(m => m.id === modelId);
+                  if (!model) return null;
+
+                  return (
+                    <div key={modelId} className="selected-model-card">
+                      <div className="selected-model-header">
+                        <h4>{model.name}</h4>
+                        <button
+                          className="remove-model-btn"
+                          onClick={() => handleModelToggle(modelId)}
+                          aria-label={`Remove ${model.name}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="selected-model-provider">{model.provider}</p>
+                      <p className="selected-model-description">{model.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>        <section className="action-section">
@@ -339,9 +392,17 @@ function App() {
                 <span className="metadata-value">{response.metadata.input_length} characters</span>
               </div>
               <div className="metadata-item">
-                <span className="metadata-label">Models Processed:</span>
-                <span className="metadata-value">{response.metadata.models_processed}/{response.metadata.models_requested}</span>
+                <span className="metadata-label">Models Successful:</span>
+                <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
+                  {response.metadata.models_successful}/{response.metadata.models_requested}
+                </span>
               </div>
+              {response.metadata.models_failed > 0 && (
+                <div className="metadata-item">
+                  <span className="metadata-label">Models Failed:</span>
+                  <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                </div>
+              )}
               <div className="metadata-item">
                 <span className="metadata-label">Timestamp:</span>
                 <span className="metadata-value">{new Date(response.metadata.timestamp).toLocaleString()}</span>
@@ -352,7 +413,7 @@ function App() {
               {Object.entries(response.results).map(([modelId, output]) => (
                 <div key={modelId} className="result-card">
                   <div className="result-header">
-                    <h3>{availableModelsList.find(m => m.id === modelId)?.name || modelId}</h3>
+                    <h3>{allModels.find(m => m.id === modelId)?.name || modelId}</h3>
                     <div className="result-stats">
                       <span className="output-length">{output.length} chars</span>
                       <span className={`status ${output.startsWith('Error') ? 'error' : 'success'}`}>
