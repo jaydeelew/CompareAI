@@ -2,10 +2,21 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import concurrent.futures
+from typing import Dict, List, Any
+import time
 
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Configuration for handling large numbers of models
+MAX_CONCURRENT_REQUESTS = 12  # Increase concurrent requests for faster processing
+INDIVIDUAL_MODEL_TIMEOUT = 30  # Reduce timeout per model to fail faster
+BATCH_SIZE = 15  # Larger batches to reduce overhead
+
+# Connection quality optimizations
+# For slower connections, you may want to reduce MAX_CONCURRENT_REQUESTS to 6-8
+# and increase INDIVIDUAL_MODEL_TIMEOUT to 45-60 seconds
 
 # List of available models organized by providers
 MODELS_BY_PROVIDER = {
@@ -164,12 +175,41 @@ MODELS_BY_PROVIDER = {
             "provider": "Google"
         },
         {
-            "id": "google/gemini-2.0-flash-exp",
-            "name": "Gemini 2.0 Flash Experimental",
-            "description": "Google's cutting-edge experimental Gemini 2.0 model with latest capabilities",
+            "id": "google/gemini-flash-1.5-8b",
+            "name": "Gemini 1.5 Flash 8B",
+            "description": "Google's compact and efficient Gemini 1.5 model with 8B parameters",
             "category": "Language",
             "provider": "Google"
         },
+        {
+            "id": "google/gemini-2.0-flash-001",
+            "name": "Gemini 2.0 Flash",
+            "description": "Google's latest Gemini 2.0 Flash with significantly faster time to first token",
+            "category": "Language",
+            "provider": "Google"
+        },
+        {
+            "id": "google/gemini-2.0-flash-lite-001",
+            "name": "Gemini 2.0 Flash Lite",
+            "description": "Google's lightweight Gemini 2.0 Flash model optimized for speed",
+            "category": "Language",
+            "provider": "Google"
+        },
+        # Previous models that were commented out - now with correct IDs above
+        # {
+        #     "id": "google/gemini-2.0-flash-experimental",  # OLD - INCORRECT ID
+        #     "name": "Gemini 2.0 Flash Experimental",
+        #     "description": "Google's cutting-edge experimental Gemini 2.0 model with latest capabilities",
+        #     "category": "Language",
+        #     "provider": "Google"
+        # },
+        # {
+        #     "id": "google/gemini-2.0-flash-thinking-experimental",  # OLD - INCORRECT ID
+        #     "name": "Gemini 2.0 Flash Thinking Experimental", 
+        #     "description": "Google's experimental Gemini 2.0 with advanced reasoning capabilities",
+        #     "category": "Language",
+        #     "provider": "Google"
+        # },
         {
             "id": "google/gemini-2.5-flash",
             "name": "Gemini 2.5 Flash",
@@ -411,15 +451,31 @@ client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/
 
 
 def call_openrouter(prompt: str, model_id: str) -> str:
-    response = client.chat.completions.create(
-        model=model_id,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    content = response.choices[0].message.content
-    return content if content is not None else "No response generated"
+    try:
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": prompt}],
+            timeout=INDIVIDUAL_MODEL_TIMEOUT
+        )
+        content = response.choices[0].message.content
+        return content if content is not None else "No response generated"
+    except Exception as e:
+        error_str = str(e).lower()
+        # More descriptive error messages for faster debugging
+        if "timeout" in error_str:
+            return f"Error: Timeout ({INDIVIDUAL_MODEL_TIMEOUT}s)"
+        elif "rate limit" in error_str or "429" in error_str:
+            return f"Error: Rate limited"
+        elif "not found" in error_str or "404" in error_str:
+            return f"Error: Model not available"
+        elif "unauthorized" in error_str or "401" in error_str:
+            return f"Error: Authentication failed"
+        else:
+            return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models(prompt: str, model_list: list[str]) -> dict[str, str]:
+def run_models_batch(prompt: str, model_batch: List[str]) -> Dict[str, str]:
+    """Run a batch of models with limited concurrency"""
     results = {}
 
     def call(model_id):
@@ -428,10 +484,127 @@ def run_models(prompt: str, model_list: list[str]) -> dict[str, str]:
         except Exception as e:
             return model_id, f"Error: {str(e)}"
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(call, model_id) for model_id in model_list]
-        for future in concurrent.futures.as_completed(futures):
-            model_id, result = future.result()
-            results[model_id] = result
+    # Use a limited number of threads to prevent overwhelming the API
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
+        # Submit all futures
+        future_to_model = {executor.submit(call, model_id): model_id for model_id in model_batch}
+        
+        # Set a more aggressive timeout for the entire batch
+        batch_timeout = min(120, len(model_batch) * 10)  # 10 seconds per model in batch, max 120s
+        
+        try:
+            # Wait for all futures to complete or timeout
+            for future in concurrent.futures.as_completed(future_to_model, timeout=batch_timeout):
+                model_id = future_to_model[future]
+                try:
+                    _, result = future.result(timeout=2)  # Quick result retrieval
+                    results[model_id] = result
+                except Exception as e:
+                    results[model_id] = f"Error: {str(e)}"
+                    
+        except concurrent.futures.TimeoutError:
+            # Handle batch timeout - get results from completed futures and mark others as failed
+            print(f"Batch timeout after {batch_timeout}s, processing completed results...")
+            
+        # Handle any remaining incomplete futures
+        for future, model_id in future_to_model.items():
+            if model_id not in results:
+                if future.done():
+                    try:
+                        _, result = future.result(timeout=1)
+                        results[model_id] = result
+                    except Exception as e:
+                        results[model_id] = f"Error: {str(e)}"
+                else:
+                    future.cancel()
+                    results[model_id] = f"Error: Timeout after {batch_timeout}s"
 
     return results
+
+
+def run_models(prompt: str, model_list: List[str]) -> Dict[str, str]:
+    """Run models with batching to prevent timeouts and API overload"""
+    import time
+    start_time = time.time()
+    
+    all_results = {}
+    
+    print(f"Starting model processing: {len(model_list)} models total")
+    
+    # Process models in batches
+    for i in range(0, len(model_list), BATCH_SIZE):
+        batch = model_list[i:i + BATCH_SIZE]
+        batch_num = i // BATCH_SIZE + 1
+        total_batches = (len(model_list) + BATCH_SIZE - 1) // BATCH_SIZE
+        batch_start = time.time()
+        print(f"Processing batch {batch_num}/{total_batches}: {len(batch)} models")
+        
+        try:
+            batch_results = run_models_batch(prompt, batch)
+            all_results.update(batch_results)
+            batch_duration = time.time() - batch_start
+            print(f"Batch {batch_num} completed in {batch_duration:.2f}s: {len(batch_results)} results")
+        except Exception as e:
+            # If a batch fails entirely, mark all models in that batch as failed
+            batch_duration = time.time() - batch_start
+            print(f"Batch {batch_num} failed after {batch_duration:.2f}s with error: {e}")
+            for model_id in batch:
+                all_results[model_id] = f"Error: Batch processing failed - {str(e)}"
+    
+    total_duration = time.time() - start_time
+    successful_count = sum(1 for result in all_results.values() if not result.startswith('Error:'))
+    print(f"Total processing completed in {total_duration:.2f}s: {successful_count}/{len(model_list)} successful")
+
+    return all_results
+
+
+def test_connection_quality() -> Dict[str, Any]:
+    """Test connection quality by making a quick API call"""
+    test_model = "anthropic/claude-3-haiku"  # Fast, reliable model for testing
+    test_prompt = "Hello"
+    
+    print("Testing connection quality...")
+    start_time = time.time()
+    
+    try:
+        response = client.chat.completions.create(
+            model=test_model,
+            messages=[{"role": "user", "content": test_prompt}],
+            timeout=10  # Short timeout for connection test
+        )
+        
+        end_time = time.time()
+        response_time = end_time - start_time
+        
+        # Categorize connection quality
+        if response_time < 2:
+            quality = "excellent"
+            multiplier = 1.0
+        elif response_time < 4:
+            quality = "good"
+            multiplier = 1.2
+        elif response_time < 7:
+            quality = "average"
+            multiplier = 1.5
+        else:
+            quality = "slow"
+            multiplier = 2.0
+            
+        print(f"Connection test completed in {response_time:.2f}s - Quality: {quality}")
+        
+        return {
+            "response_time": response_time,
+            "quality": quality,
+            "time_multiplier": multiplier,
+            "success": True
+        }
+        
+    except Exception as e:
+        print(f"Connection test failed: {e}")
+        return {
+            "response_time": 0,
+            "quality": "poor",
+            "time_multiplier": 3.0,
+            "success": False,
+            "error": str(e)
+        }

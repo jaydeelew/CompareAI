@@ -58,6 +58,10 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
+    
+    # Warn about large requests
+    if len(req.models) > 40:
+        print(f"Warning: Large request with {len(req.models)} models - this may take several minutes")
 
     try:
         loop = asyncio.get_running_loop()
@@ -90,7 +94,9 @@ async def compare(req: CompareRequest) -> CompareResponse:
         return CompareResponse(results=results, metadata=metadata)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+        error_msg = f"Error processing request: {str(e)}"
+        print(f"Backend error: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @app.get("/models")

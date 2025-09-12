@@ -1590,43 +1590,60 @@ body {
 }
 
 .modern-spinner {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   position: relative;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* First rotating ring */
 .modern-spinner::before {
   content: '';
+  position: absolute;
   width: 60px;
   height: 60px;
+  border: 3px solid transparent;
+  border-top: 3px solid var(--primary-color);
+  border-right: 3px solid var(--primary-color);
   border-radius: 50%;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  animation: modernSpin 1s linear infinite;
-  position: absolute;
+  animation: rotateClockwise 2s linear infinite;
 }
 
+/* Second rotating ring - intersecting */
 .modern-spinner::after {
   content: '';
+  position: absolute;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   border: 3px solid transparent;
-  border-bottom-color: var(--accent-color);
-  animation: modernSpin 0.75s linear infinite reverse;
-  position: absolute;
-  top: 10px;
-  left: 10px;
+  border-bottom: 3px solid var(--accent-color);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 50%;
+  animation: rotateCounterClockwise 1.5s linear infinite;
 }
 
-@keyframes modernSpin {
+/* Clockwise rotation for outer ring */
+@keyframes rotateClockwise {
   0% {
     transform: rotate(0deg);
   }
 
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* Counter-clockwise rotation for inner ring */
+@keyframes rotateCounterClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(-360deg);
   }
 }
 

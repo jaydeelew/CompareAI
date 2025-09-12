@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 interface CompareResponse {
   results: { [key: string]: string };
@@ -35,8 +35,6 @@ function App() {
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
-
-  const selectAllRef = useRef<HTMLInputElement>(null);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
@@ -76,28 +74,6 @@ function App() {
     fetchModels();
   }, []);
 
-  useEffect(() => {
-    if (selectAllRef.current) {
-      if (selectedModels.length === 0) {
-        selectAllRef.current.indeterminate = false;
-        selectAllRef.current.checked = false;
-      } else if (selectedModels.length === allModels.length) {
-        selectAllRef.current.indeterminate = false;
-        selectAllRef.current.checked = true;
-      } else {
-        selectAllRef.current.indeterminate = true;
-      }
-    }
-  }, [selectedModels, allModels.length]);
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedModels(allModels.map((model) => model.id));
-    } else {
-      setSelectedModels([]);
-    }
-  };
-
   const toggleDropdown = (provider: string) => {
     setOpenDropdowns(prev => {
       const newSet = new Set(prev);
@@ -107,6 +83,32 @@ function App() {
         newSet.add(provider);
       }
       return newSet;
+    });
+  };
+
+  const collapseAllDropdowns = () => {
+    setOpenDropdowns(new Set());
+  };
+
+  const toggleAllForProvider = (provider: string) => {
+    const providerModels = modelsByProvider[provider] || [];
+    const providerModelIds = providerModels.map(model => model.id);
+
+    // Check if all provider models are currently selected
+    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
+
+    setSelectedModels(prev => {
+      const newSelection = new Set(prev);
+
+      if (allProviderModelsSelected) {
+        // Deselect all provider models
+        providerModelIds.forEach(id => newSelection.delete(id));
+      } else {
+        // Select all provider models
+        providerModelIds.forEach(id => newSelection.add(id));
+      }
+
+      return Array.from(newSelection);
     });
   };
 
@@ -134,7 +136,15 @@ function App() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+      // Dynamic timeout based on number of models selected
+      // For large selections (50+ models), allow up to 8 minutes
+      const baseTimeout = 60000; // 1 minute base
+      const additionalTime = Math.floor(selectedModels.length / 5) * 15000; // 15s per 5 models
+      const maxTimeout = selectedModels.length > 40 ? 480000 : 300000; // 8 minutes for 40+ models, 5 minutes otherwise
+      const dynamicTimeout = Math.min(baseTimeout + additionalTime, maxTimeout);
+
+      const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
       const res = await fetch(`${API_URL}/compare`, {
         method: 'POST',
@@ -157,7 +167,9 @@ function App() {
       setResponse(data);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setError('Request timed out. Please try again.');
+        const timeoutMinutes = Math.floor(dynamicTimeout / 60000);
+        const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000);
+        setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} models). Try selecting fewer models, or wait a moment and try again.`);
       } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
         setError('Unable to connect to the server. Please check if the backend is running.');
       } else if (err instanceof Error) {
@@ -295,20 +307,75 @@ function App() {
         <section className="models-section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0 }}>Select Models to Compare</h2>
-            <div className="select-all-container">
-              <input
-                type="checkbox"
-                id="select-all-models"
-                checked={selectedModels.length === allModels.length}
-                ref={selectAllRef}
-                onChange={handleSelectAll}
-                className="select-all-checkbox"
-              />
-              <label htmlFor="select-all-models" className="select-all-label">
-                Select All
-              </label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setSelectedModels([])}
+                  disabled={selectedModels.length === 0}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid #dc2626',
+                    background: 'transparent',
+                    color: selectedModels.length === 0 ? '#9ca3af' : '#dc2626',
+                    borderRadius: '6px',
+                    cursor: selectedModels.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: selectedModels.length === 0 ? 0.5 : 1
+                  }}
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={collapseAllDropdowns}
+                  disabled={openDropdowns.size === 0}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid #3b82f6',
+                    background: 'transparent',
+                    color: openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6',
+                    borderRadius: '6px',
+                    cursor: openDropdowns.size === 0 ? 'not-allowed' : 'pointer',
+                    opacity: openDropdowns.size === 0 ? 0.5 : 1
+                  }}
+                >
+                  Collapse All
+                </button>
+              </div>
+              <div style={{
+                padding: '0.5rem 1rem',
+                background: selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                color: selectedModels.length > 0 ? 'white' : '#6b7280',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                border: '1px solid #e5e7eb'
+              }}>
+                {selectedModels.length} of {allModels.length} selected
+              </div>
             </div>
           </div>
+
+          {/* Warning for large selections */}
+          {selectedModels.length > 30 && (
+            <div className="warning-message" style={{
+              background: '#fff3cd',
+              border: '1px solid #ffeaa7',
+              color: '#856404',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span>⚠️</span>
+              <span>
+                You've selected {selectedModels.length} models. This may take 3-5 minutes to complete.
+                Consider selecting fewer models for faster results.
+              </span>
+            </div>
+          )}
 
           {isLoadingModels ? (
             <div className="loading-message">Loading available models...</div>
@@ -330,9 +397,39 @@ function App() {
                       <span className="provider-name">{provider}</span>
                       <span className="provider-count">({models.length} models)</span>
                     </div>
-                    <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
-                      ▼
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {(() => {
+                        const providerModels = modelsByProvider[provider] || [];
+                        const providerModelIds = providerModels.map(model => model.id);
+                        const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
+                        const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAllForProvider(provider);
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.7rem',
+                              border: `1px solid ${allProviderModelsSelected ? '#dc2626' : '#667eea'}`,
+                              background: 'transparent',
+                              color: allProviderModelsSelected ? '#dc2626' : '#667eea',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              opacity: hasAnySelected && !allProviderModelsSelected ? 0.7 : 1
+                            }}
+                            title={allProviderModelsSelected ? `Deselect all ${provider} models` : `Select all ${provider} models`}
+                          >
+                            {allProviderModelsSelected ? 'Deselect All' : 'Select All'}
+                          </button>
+                        );
+                      })()}
+                      <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                        ▼
+                      </span>
+                    </div>
                   </button>
 
                   {openDropdowns.has(provider) && (
@@ -399,8 +496,49 @@ function App() {
             disabled={isLoading || selectedModels.length === 0}
             className="compare-button"
           >
-            {isLoading ? 'Comparing...' : 'Compare Models'}
+            {isLoading ? `Comparing ${selectedModels.length} models...` : `Compare ${selectedModels.length || ''} Model${selectedModels.length !== 1 ? 's' : ''}`}
           </button>
+          {selectedModels.length > 0 && (
+            <p style={{
+              fontSize: '0.875rem',
+              color: '#666',
+              margin: '0.5rem 0 0 0',
+              textAlign: 'center'
+            }}>
+              {(() => {
+                const count = selectedModels.length;
+
+                let indicator, description;
+
+                if (count === 1) {
+                  indicator = "⚡ Very Quick";
+                  description = "Single model comparison";
+                } else if (count <= 5) {
+                  indicator = "🚀 Quick";
+                  description = "Small batch processing";
+                } else if (count <= 15) {
+                  indicator = "⏱️ Moderate";
+                  description = "Medium batch processing";
+                } else if (count <= 30) {
+                  indicator = "⏳ Takes a while";
+                  description = "Large batch processing";
+                } else {
+                  indicator = "🕐 Be patient";
+                  description = "Very large batch - grab a coffee!";
+                }
+
+                return (
+                  <>
+                    <strong>{indicator}</strong> - {description}
+                    <br />
+                    <span style={{ fontSize: '0.75rem', color: '#888' }}>
+                      {count} model{count !== 1 ? 's' : ''} selected • Processing time depends on your Internet connection
+                    </span>
+                  </>
+                );
+              })()}
+            </p>
+          )}
         </section>
 
         {error && (
@@ -412,7 +550,7 @@ function App() {
         {isLoading && (
           <div className="loading-section">
             <div className="modern-spinner"></div>
-            <p>Analyzing responses across AI models...</p>
+            <p>Analyzing responses from {selectedModels.length} AI models...</p>
           </div>
         )}
 
