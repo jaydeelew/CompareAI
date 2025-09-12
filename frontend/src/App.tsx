@@ -134,15 +134,15 @@ function App() {
     setIsLoading(true);
     setError(null);
 
+    // Dynamic timeout based on number of models selected
+    // For large selections (50+ models), allow up to 8 minutes
+    const baseTimeout = 60000; // 1 minute base
+    const additionalTime = Math.floor(selectedModels.length / 5) * 15000; // 15s per 5 models
+    const maxTimeout = selectedModels.length > 40 ? 480000 : 300000; // 8 minutes for 40+ models, 5 minutes otherwise
+    const dynamicTimeout = Math.min(baseTimeout + additionalTime, maxTimeout);
+
     try {
       const controller = new AbortController();
-
-      // Dynamic timeout based on number of models selected
-      // For large selections (50+ models), allow up to 8 minutes
-      const baseTimeout = 60000; // 1 minute base
-      const additionalTime = Math.floor(selectedModels.length / 5) * 15000; // 15s per 5 models
-      const maxTimeout = selectedModels.length > 40 ? 480000 : 300000; // 8 minutes for 40+ models, 5 minutes otherwise
-      const dynamicTimeout = Math.min(baseTimeout + additionalTime, maxTimeout);
 
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
