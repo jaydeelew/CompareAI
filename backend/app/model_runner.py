@@ -468,8 +468,8 @@ def run_models_batch(prompt: str, model_batch: List[str]) -> Dict[str, str]:
         # Submit all futures
         future_to_model = {executor.submit(call, model_id): model_id for model_id in model_batch}
         
-        # Set a more generous timeout for the entire batch
-        batch_timeout = min(180, len(model_batch) * 15)  # 15 seconds per model in batch, max 180s (3 minutes)
+        # Set a generous timeout for the entire batch to match individual model timeouts
+        batch_timeout = min(300, len(model_batch) * 50)  # 50 seconds per model in batch, max 300s (5 minutes)
         
         try:
             # Wait for all futures to complete or timeout
