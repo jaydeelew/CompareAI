@@ -377,8 +377,7 @@ function App() {
             }}>
               <span>⚠️</span>
               <span>
-                You've selected {selectedModels.length} models. This may take 3-5 minutes to complete.
-                Consider selecting fewer models for faster results.
+                You've selected {selectedModels.length} models. Consider selecting fewer models for faster results.
               </span>
             </div>
           )}
