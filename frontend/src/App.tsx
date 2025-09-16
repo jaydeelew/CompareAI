@@ -42,6 +42,22 @@ function App() {
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
 
+  // Scroll to loading section when loading starts
+  useEffect(() => {
+    if (isLoading) {
+      // Small delay to ensure the loading section is rendered
+      setTimeout(() => {
+        const loadingSection = document.querySelector('.loading-section');
+        if (loadingSection) {
+          loadingSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+      }, 100);
+    }
+  }, [isLoading]);
+
   // Fetch available models on component mount
   useEffect(() => {
     const fetchModels = async () => {
@@ -146,6 +162,7 @@ function App() {
 
     setIsLoading(true);
     setError(null);
+    setResponse(null); // Clear previous results
     setProcessingTime(null);
     userCancelledRef.current = false;
 
