@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -36,6 +36,8 @@ function App() {
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
   const [processingTime, setProcessingTime] = useState<number | null>(null);
+  const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
+  const userCancelledRef = useRef(false);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
@@ -121,6 +123,16 @@ function App() {
     );
   };
 
+  const handleCancel = () => {
+    if (currentAbortController) {
+      userCancelledRef.current = true;
+      currentAbortController.abort();
+      setCurrentAbortController(null);
+      setIsLoading(false);
+      // Don't set error here - we'll handle it in the catch block
+    }
+  };
+
   const handleSubmit = async () => {
     if (!input.trim()) {
       setError('Please enter some text to compare');
@@ -135,6 +147,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setProcessingTime(null);
+    userCancelledRef.current = false;
 
     const startTime = Date.now();
 
@@ -147,6 +160,7 @@ function App() {
 
     try {
       const controller = new AbortController();
+      setCurrentAbortController(controller);
 
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
@@ -173,9 +187,15 @@ function App() {
       setResponse(data);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        const timeoutMinutes = Math.floor(dynamicTimeout / 60000);
-        const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000);
-        setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} models). Try selecting fewer models, or wait a moment and try again.`);
+        if (userCancelledRef.current) {
+          const elapsedTime = Date.now() - startTime;
+          const elapsedSeconds = (elapsedTime / 1000).toFixed(1);
+          setError(`Comparison cancelled by user after ${elapsedSeconds} seconds`);
+        } else {
+          const timeoutMinutes = Math.floor(dynamicTimeout / 60000);
+          const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000);
+          setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} models). Try selecting fewer models, or wait a moment and try again.`);
+        }
       } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
         setError('Unable to connect to the server. Please check if the backend is running.');
       } else if (err instanceof Error) {
@@ -184,6 +204,8 @@ function App() {
         setError('An unexpected error occurred');
       }
     } finally {
+      setCurrentAbortController(null);
+      userCancelledRef.current = false;
       setIsLoading(false);
     }
   };
@@ -554,8 +576,18 @@ function App() {
 
         {isLoading && (
           <div className="loading-section">
-            <div className="modern-spinner"></div>
-            <p>Analyzing responses from {selectedModels.length} AI models...</p>
+            <div className="loading-content">
+              <div className="modern-spinner"></div>
+              <p>Analyzing responses from {selectedModels.length} AI models...</p>
+            </div>
+            <button
+              onClick={handleCancel}
+              className="cancel-button"
+              aria-label="Stop comparison"
+            >
+              <span className="cancel-x">✕</span>
+              <span className="cancel-text">Cancel</span>
+            </button>
           </div>
         )}
 
