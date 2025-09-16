@@ -94,23 +94,16 @@ MODELS_BY_PROVIDER = {
     ],
     "Cohere": [
         {
-            "id": "cohere/command",
-            "name": "Command",
-            "description": "Cohere's foundational command model for instruction following",
-            "category": "Language",
-            "provider": "Cohere"
-        },
-        {
-            "id": "cohere/command-r",
-            "name": "Command R (Standard)",
-            "description": "Cohere's proven command model for general language tasks",
+            "id": "cohere/command-r7b-12-2024",
+            "name": "Command R7B (Dec 2024)",
+            "description": "Cohere's latest compact model with excellent efficiency and performance",
             "category": "Language",
             "provider": "Cohere"
         },
         {
             "id": "cohere/command-r-08-2024",
             "name": "Command R (Aug 2024)",
-            "description": "Cohere's latest command-optimized model for business and enterprise use",
+            "description": "Cohere's latest command model with enhanced capabilities for general tasks",
             "category": "Language",
             "provider": "Cohere"
         },
@@ -119,13 +112,6 @@ MODELS_BY_PROVIDER = {
             "name": "Command R+ (Aug 2024)",
             "description": "Cohere's most powerful model with enhanced reasoning and instruction following",
             "category": "Language/Reasoning",
-            "provider": "Cohere"
-        },
-        {
-            "id": "cohere/command-r7b-12-2024",
-            "name": "Command R7B (Dec 2024)",
-            "description": "Cohere's latest compact model with excellent efficiency and performance",
-            "category": "Language",
             "provider": "Cohere"
         }
     ],
@@ -142,13 +128,6 @@ MODELS_BY_PROVIDER = {
             "name": "DeepSeek Chat V3.1",
             "description": "DeepSeek's most advanced conversational model with superior reasoning",
             "category": "Language/Reasoning",
-            "provider": "DeepSeek"
-        },
-        {
-            "id": "deepseek/deepseek-coder",
-            "name": "DeepSeek Coder",
-            "description": "DeepSeek's specialized model for code generation and programming tasks",
-            "category": "Code",
             "provider": "DeepSeek"
         },
         {
@@ -380,9 +359,9 @@ MODELS_BY_PROVIDER = {
             "provider": "OpenAI"
         },
         {
-            "id": "openai/o1-preview",
-            "name": "o1-preview",
-            "description": "OpenAI's reasoning model designed for complex problem-solving tasks",
+            "id": "openai/o1",
+            "name": "OpenAI o1",
+            "description": "OpenAI's latest reasoning model designed to think before responding",
             "category": "Reasoning",
             "provider": "OpenAI"
         }

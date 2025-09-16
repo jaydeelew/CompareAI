@@ -35,6 +35,7 @@ function App() {
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [processingTime, setProcessingTime] = useState<number | null>(null);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
@@ -133,6 +134,9 @@ function App() {
 
     setIsLoading(true);
     setError(null);
+    setProcessingTime(null);
+
+    const startTime = Date.now();
 
     // Dynamic timeout based on number of models selected
     // For large selections (50+ models), allow up to 8 minutes
@@ -164,6 +168,8 @@ function App() {
       }
 
       const data = await res.json();
+      const endTime = Date.now();
+      setProcessingTime(endTime - startTime);
       setResponse(data);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -576,10 +582,24 @@ function App() {
                   <span className="metadata-value failed">{response.metadata.models_failed}</span>
                 </div>
               )}
-              <div className="metadata-item">
-                <span className="metadata-label">Timestamp:</span>
-                <span className="metadata-value">{new Date(response.metadata.timestamp).toLocaleString()}</span>
-              </div>
+              {processingTime && (
+                <div className="metadata-item">
+                  <span className="metadata-label">Processing Time:</span>
+                  <span className="metadata-value">
+                    {(() => {
+                      if (processingTime < 1000) {
+                        return `${processingTime}ms`;
+                      } else if (processingTime < 60000) {
+                        return `${(processingTime / 1000).toFixed(1)}s`;
+                      } else {
+                        const minutes = Math.floor(processingTime / 60000);
+                        const seconds = Math.floor((processingTime % 60000) / 1000);
+                        return `${minutes}m ${seconds}s`;
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="results-grid">
