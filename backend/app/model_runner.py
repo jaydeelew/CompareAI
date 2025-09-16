@@ -11,12 +11,12 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # Configuration for handling large numbers of models
 MAX_CONCURRENT_REQUESTS = 12  # Increase concurrent requests for faster processing
-INDIVIDUAL_MODEL_TIMEOUT = 30  # Reduce timeout per model to fail faster
+INDIVIDUAL_MODEL_TIMEOUT = 45  # More generous timeout per model for better success rate
 BATCH_SIZE = 15  # Larger batches to reduce overhead
 
 # Connection quality optimizations
 # For slower connections, you may want to reduce MAX_CONCURRENT_REQUESTS to 6-8
-# and increase INDIVIDUAL_MODEL_TIMEOUT to 45-60 seconds
+# and increase INDIVIDUAL_MODEL_TIMEOUT to 60-90 seconds
 
 # List of available models organized by providers
 MODELS_BY_PROVIDER = {
@@ -468,8 +468,8 @@ def run_models_batch(prompt: str, model_batch: List[str]) -> Dict[str, str]:
         # Submit all futures
         future_to_model = {executor.submit(call, model_id): model_id for model_id in model_batch}
         
-        # Set a more aggressive timeout for the entire batch
-        batch_timeout = min(120, len(model_batch) * 10)  # 10 seconds per model in batch, max 120s
+        # Set a more generous timeout for the entire batch
+        batch_timeout = min(180, len(model_batch) * 15)  # 15 seconds per model in batch, max 180s (3 minutes)
         
         try:
             # Wait for all futures to complete or timeout
