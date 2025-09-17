@@ -5,7 +5,7 @@
 
 ## Four Development Environments
 1. **Local Development (HTTP):** Fast development with hot reload
-2. **Local Development (HTTPS):** Development with self-signed SSL certificates
+2. **Local Development (HTTPS):** Development with self-signed SSL certificates using nginx
 3. **Local Production Testing:** HTTP build testing (no SSL complexity)
 4. **AWS Production:** HTTPS with Let's Encrypt certificates
 
