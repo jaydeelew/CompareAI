@@ -324,17 +324,17 @@ MODELS_BY_PROVIDER = {
     ],
     "OpenAI": [
         {
-            "id": "openai/gpt-4-turbo",
-            "name": "GPT-4 Turbo",
-            "description": "OpenAI's fast and efficient GPT-4 variant for complex reasoning tasks",
-            "category": "Language",
+            "id": "openai/o1-mini",
+            "name": "o1-mini",
+            "description": "OpenAI's efficient reasoning model for faster complex problem solving",
+            "category": "Reasoning",
             "provider": "OpenAI"
         },
         {
-            "id": "openai/gpt-4o",
-            "name": "GPT-4o (Standard)",
-            "description": "OpenAI's latest multimodal model with enhanced reasoning and code capabilities",
-            "category": "Language",
+            "id": "openai/o1",
+            "name": "OpenAI o1",
+            "description": "OpenAI's latest reasoning model designed to think before responding",
+            "category": "Reasoning",
             "provider": "OpenAI"
         },
         {
@@ -352,17 +352,31 @@ MODELS_BY_PROVIDER = {
             "provider": "OpenAI"
         },
         {
-            "id": "openai/o1-mini",
-            "name": "o1-mini",
-            "description": "OpenAI's efficient reasoning model for faster complex problem solving",
-            "category": "Reasoning",
+            "id": "openai/gpt-4-turbo",
+            "name": "GPT-4 Turbo",
+            "description": "OpenAI's fast and efficient GPT-4 variant for complex reasoning tasks",
+            "category": "Language",
             "provider": "OpenAI"
         },
         {
-            "id": "openai/o1",
-            "name": "OpenAI o1",
-            "description": "OpenAI's latest reasoning model designed to think before responding",
-            "category": "Reasoning",
+            "id": "openai/gpt-4o",
+            "name": "GPT-4o (Standard)",
+            "description": "OpenAI's latest multimodal model with enhanced reasoning and code capabilities",
+            "category": "Language",
+            "provider": "OpenAI"
+        },
+        {
+            "id": "openai/gpt-5",
+            "name": "GPT-5",
+            "description": "OpenAI's most advanced model, offering major improvements in reasoning, code quality, and user experience",
+            "category": "Language",
+            "provider": "OpenAI"
+        },
+        {
+            "id": "openai/gpt-5-mini",
+            "name": "GPT-5 Mini",
+            "description": "GPT-5 Mini is a compact version of GPT-5, designed to handle lighter-weight reasoning tasks with reduced latency and cost",
+            "category": "Language",
             "provider": "OpenAI"
         }
     ],
