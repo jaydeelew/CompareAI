@@ -12,7 +12,7 @@
 
 ## ✨ Key Features
 
-- **🤖 100+ AI Models:** Compare responses from models across multiple providers:
+- **🤖 50+ AI Models:** Compare responses from models across multiple providers:
   - **Anthropic:** Claude 3 Haiku, Claude 3.5 Sonnet, Claude 3 Opus
   - **OpenAI:** GPT-4, GPT-4 Turbo, GPT-3.5 Turbo variations
   - **Google:** Gemini Pro, Gemini Flash, Gemini Exp models
@@ -214,5 +214,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **🌟 Star this repository if you find it useful!**
-
-Built with ❤️ for the AI development community
