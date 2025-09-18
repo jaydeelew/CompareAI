@@ -37,6 +37,7 @@ function App() {
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
   const [processingTime, setProcessingTime] = useState<number | null>(null);
   const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
+  const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
   const userCancelledRef = useRef(false);
 
   // Get all models in a flat array for compatibility
@@ -149,6 +150,14 @@ function App() {
     }
   };
 
+  const closeResultCard = (modelId: string) => {
+    setClosedCards(prev => new Set(prev).add(modelId));
+  };
+
+  const showAllResults = () => {
+    setClosedCards(new Set());
+  };
+
   const handleSubmit = async () => {
     if (!input.trim()) {
       setError('Please enter some text to compare');
@@ -163,6 +172,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setResponse(null); // Clear previous results
+    setClosedCards(new Set()); // Clear closed cards for new results
     setProcessingTime(null);
     userCancelledRef.current = false;
 
@@ -610,7 +620,35 @@ function App() {
 
         {response && (
           <section className="results-section">
-            <h2>Comparison Results</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0 }}>Comparison Results</h2>
+              {closedCards.size > 0 && (
+                <button
+                  onClick={showAllResults}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid var(--primary-color)',
+                    background: 'var(--primary-color)',
+                    color: 'white',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    fontWeight: '500'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-hover)';
+                    e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-color)';
+                    e.currentTarget.style.borderColor = 'var(--primary-color)';
+                  }}
+                >
+                  Show All Results ({closedCards.size} hidden)
+                </button>
+              )}
+            </div>
 
             {/* Metadata */}
             <div className="results-metadata">
@@ -624,6 +662,14 @@ function App() {
                   {response.metadata.models_successful}/{response.metadata.models_requested}
                 </span>
               </div>
+              {Object.keys(response.results).length > 0 && (
+                <div className="metadata-item">
+                  <span className="metadata-label">Results Visible:</span>
+                  <span className="metadata-value">
+                    {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                  </span>
+                </div>
+              )}
               {response.metadata.models_failed > 0 && (
                 <div className="metadata-item">
                   <span className="metadata-label">Models Failed:</span>
@@ -651,22 +697,34 @@ function App() {
             </div>
 
             <div className="results-grid">
-              {Object.entries(response.results).map(([modelId, output]) => (
-                <div key={modelId} className="result-card">
-                  <div className="result-header">
-                    <h3>{allModels.find(m => m.id === modelId)?.name || modelId}</h3>
-                    <div className="result-stats">
-                      <span className="output-length">{output.length} chars</span>
-                      <span className={`status ${output.startsWith('Error') ? 'error' : 'success'}`}>
-                        {output.startsWith('Error') ? 'Failed' : 'Success'}
-                      </span>
+              {Object.entries(response.results)
+                .filter(([modelId]) => !closedCards.has(modelId))
+                .map(([modelId, output]) => (
+                  <div key={modelId} className="result-card">
+                    <div className="result-header">
+                      <h3>{allModels.find(m => m.id === modelId)?.name || modelId}</h3>
+                      <div className="result-actions">
+                        <div className="result-stats">
+                          <span className="output-length">{output.length} chars</span>
+                          <span className={`status ${output.startsWith('Error') ? 'error' : 'success'}`}>
+                            {output.startsWith('Error') ? 'Failed' : 'Success'}
+                          </span>
+                        </div>
+                        <button
+                          className="close-card-btn"
+                          onClick={() => closeResultCard(modelId)}
+                          title="Close this result"
+                          aria-label={`Close result for ${allModels.find(m => m.id === modelId)?.name || modelId}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    <div className="result-content">
+                      <pre>{String(output)}</pre>
                     </div>
                   </div>
-                  <div className="result-content">
-                    <pre>{String(output)}</pre>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </section>
         )}
