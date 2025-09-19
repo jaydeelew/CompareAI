@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: ['compareintel.com', 'frontend', 'localhost'],
+    proxy: {
+      '/api': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   build: {
     // Ensure assets are chunked properly with hashes
