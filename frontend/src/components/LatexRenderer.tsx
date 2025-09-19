@@ -39,6 +39,101 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
+            // Handle LaTeX inline math delimiters \(...\)
+            processedText = processedText.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, (match, math) => {
+                try {
+                    const rendered = katex.renderToString(math.trim(), {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    console.warn('Error rendering LaTeX inline math:', error);
+                    return match;
+                }
+            });
+
+            // Handle LaTeX display math delimiters \[...\] 
+            processedText = processedText.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (match, math) => {
+                try {
+                    const rendered = katex.renderToString(math.trim(), {
+                        displayMode: true,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    console.warn('Error rendering LaTeX display math:', error);
+                    return match;
+                }
+            });
+
+            // Handle single \[ and \] on separate lines (common in AI responses)
+            processedText = processedText.replace(/^\\\[\s*$/gm, '');
+            processedText = processedText.replace(/^\\\]\s*$/gm, '');
+
+            // Handle LaTeX commands that appear as plain text
+            processedText = processedText.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (match, num, den) => {
+                try {
+                    const rendered = katex.renderToString(`\\frac{${num}}{${den}}`, {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    return match;
+                }
+            });
+
+            // Handle \left( and \right) parentheses
+            processedText = processedText.replace(/\\left\(/g, '(');
+            processedText = processedText.replace(/\\right\)/g, ')');
+
+            // Handle \cdot multiplication
+            processedText = processedText.replace(/\\cdot/g, () => {
+                try {
+                    const rendered = katex.renderToString('\\cdot', {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    return '·';
+                }
+            });
+
+            // Handle \boxed{} for boxed equations
+            processedText = processedText.replace(/\\boxed\{([^}]+)\}/g, (_, content) => {
+                try {
+                    // Process any LaTeX delimiters within the boxed content first
+                    let cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    const rendered = katex.renderToString(`\\boxed{${cleanContent}}`, {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    // Process LaTeX delimiters in fallback content too
+                    let cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    return `<span style="border: 1px solid currentColor; padding: 2px 6px; border-radius: 3px; display: inline-block;">${cleanContent}</span>`;
+                }
+            });
+
+            // Handle markdown bold syntax **text**
+            processedText = processedText.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+
+            // Handle derivative notation d/dx
+            processedText = processedText.replace(/\bd\/d([a-zA-Z])/g, (match, variable) => {
+                try {
+                    const rendered = katex.renderToString(`\\frac{d}{d${variable}}`, {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    return match;
+                }
+            });
+
             // Handle Unicode superscripts (x², x³, etc.)
             processedText = processedText.replace(/([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g, (match, base, superscript) => {
                 const superscriptMap: { [key: string]: string } = {
@@ -47,6 +142,19 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 };
                 try {
                     const exp = superscriptMap[superscript] || superscript;
+                    const rendered = katex.renderToString(`${base}^{${exp}}`, {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    return match;
+                }
+            });
+
+            // Handle curly brace exponents x^{3-1}, x^{n-1}
+            processedText = processedText.replace(/([a-zA-Z0-9]+)\^\{([^}]+)\}/g, (match, base, exp) => {
+                try {
                     const rendered = katex.renderToString(`${base}^{${exp}}`, {
                         displayMode: false,
                         throwOnError: false
@@ -101,6 +209,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
+            // Handle expressions with coefficients like nx^(n-1), 2x^(2-1) with coefficient
+            processedText = processedText.replace(/(\d*)([a-zA-Z])\^(\([^)]+\))/g, (match, coeff, base, exp) => {
+                try {
+                    const cleanExp = exp.replace(/^\(|\)$/g, '');
+                    const fullBase = coeff ? `${coeff}${base}` : base;
+                    const rendered = katex.renderToString(`${fullBase}^{${cleanExp}}`, {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch (error) {
+                    return match;
+                }
+            });
+
             // Handle function notation with primes f'(x), f''(x)
             processedText = processedText.replace(/\b([a-zA-Z])('+)(\([^)]*\))/g, (match, func, primes, args) => {
                 try {
@@ -127,21 +250,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
-            // Handle expressions like nx^(n-1), 2x^(2-1) with coefficient
-            processedText = processedText.replace(/(\d*)([a-zA-Z])\^(\([^)]+\))/g, (match, coeff, base, exp) => {
-                try {
-                    const cleanExp = exp.replace(/^\(|\)$/g, '');
-                    const fullBase = coeff ? `${coeff}${base}` : base;
-                    const rendered = katex.renderToString(`${fullBase}^{${cleanExp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    return match;
-                }
-            });
-
             // Handle simple fractions in parentheses like (n-1)
             processedText = processedText.replace(/\(([^)]+)\)\/\(([^)]+)\)/g, (match, num, den) => {
                 try {
@@ -154,6 +262,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     return match;
                 }
             });
+
+            // Final cleanup: remove any remaining \( and \) delimiters
+            processedText = processedText.replace(/\\\(/g, '');
+            processedText = processedText.replace(/\\\)/g, '');
 
             return processedText;
         } catch (error) {
