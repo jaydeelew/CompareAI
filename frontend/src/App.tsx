@@ -349,17 +349,6 @@ function App() {
       </header>
 
       <main className="app-main">
-        <section className="input-section">
-          <h2>Input Text</h2>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter your text here to compare how different AI models respond..."
-            className="input-textarea"
-            rows={6}
-          />
-        </section>
-
         <section className="models-section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0 }}>Select Models to Compare</h2>
@@ -545,7 +534,20 @@ function App() {
               </div>
             </div>
           )}
-        </section>        <section className="action-section">
+        </section>
+
+        <section className="input-section">
+          <h2>Input Text</h2>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Enter your text here to compare how different AI models respond..."
+            className="input-textarea"
+            rows={6}
+          />
+        </section>
+
+        <section className="action-section">
           <button
             onClick={handleSubmit}
             disabled={isLoading || selectedModels.length === 0}
