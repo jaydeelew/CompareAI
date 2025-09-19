@@ -15,6 +15,18 @@ interface CompareResponse {
   };
 }
 
+interface ConversationMessage {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+interface ModelConversation {
+  modelId: string;
+  messages: ConversationMessage[];
+}
+
 interface Model {
   id: string;
   name: string;
@@ -39,10 +51,33 @@ function App() {
   const [processingTime, setProcessingTime] = useState<number | null>(null);
   const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
   const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
+  const [conversations, setConversations] = useState<ModelConversation[]>([]);
+  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
+  const [originalInput, setOriginalInput] = useState('');
   const userCancelledRef = useRef(false);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
+
+  // Helper function to create a conversation message
+  const createMessage = (type: 'user' | 'assistant', content: string): ConversationMessage => ({
+    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    type,
+    content,
+    timestamp: new Date().toISOString()
+  });
+
+  // Helper function to initialize conversations from response
+  const initializeConversations = (response: CompareResponse) => {
+    const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
+      modelId,
+      messages: [
+        createMessage('user', originalInput || input),
+        createMessage('assistant', String(output))
+      ]
+    }));
+    setConversations(newConversations);
+  };
 
   // Scroll to loading section when loading starts
   useEffect(() => {
@@ -159,6 +194,29 @@ function App() {
     setClosedCards(new Set());
   };
 
+  const handleFollowUp = () => {
+    setIsFollowUpMode(true);
+    setInput('');
+  };
+
+  const handleContinueConversation = () => {
+    if (!input.trim()) {
+      setError('Please enter a follow-up question or code');
+      return;
+    }
+    handleSubmit();
+  };
+
+  const handleNewComparison = () => {
+    setIsFollowUpMode(false);
+    setInput('');
+    setOriginalInput('');
+    setConversations([]);
+    setResponse(null);
+    setClosedCards(new Set());
+    setError(null);
+  };
+
   const handleSubmit = async () => {
     if (!input.trim()) {
       setError('Please enter some text to compare');
@@ -172,6 +230,12 @@ function App() {
 
     setIsLoading(true);
     setError(null);
+    
+    // If this is the first submission, store the original input
+    if (!isFollowUpMode) {
+      setOriginalInput(input);
+    }
+    
     setResponse(null); // Clear previous results
     setClosedCards(new Set()); // Clear closed cards for new results
     setProcessingTime(null);
@@ -192,12 +256,25 @@ function App() {
 
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
+      // Prepare conversation history for the API
+      // For follow-up mode, we send the conversation history from the first conversation
+      // (all conversations should have the same user messages)
+      const conversationHistory = isFollowUpMode && conversations.length > 0 
+        ? conversations[0].messages
+            .filter(msg => msg.type === 'user') // Only send user messages as context
+            .map(msg => ({
+              role: 'user',
+              content: msg.content
+            }))
+        : [];
+
       const res = await fetch(`${API_URL}/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           input_data: input,
-          models: selectedModels
+          models: selectedModels,
+          conversation_history: conversationHistory
         }),
         signal: controller.signal,
       });
@@ -213,6 +290,24 @@ function App() {
       const endTime = Date.now();
       setProcessingTime(endTime - startTime);
       setResponse(data);
+      
+      // Initialize or update conversations
+      if (isFollowUpMode) {
+        // Add new messages to existing conversations
+        setConversations(prevConversations => 
+          prevConversations.map(conv => {
+            const newUserMessage = createMessage('user', input);
+            const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'));
+            return {
+              ...conv,
+              messages: [...conv.messages, newUserMessage, newAssistantMessage]
+            };
+          })
+        );
+      } else {
+        // Initialize new conversations
+        initializeConversations(data);
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         if (userCancelledRef.current) {
@@ -548,13 +643,29 @@ function App() {
         </section>
 
         <section className="action-section">
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading || selectedModels.length === 0}
-            className="compare-button"
-          >
-            {isLoading ? `Comparing ${selectedModels.length} models...` : `Compare ${selectedModels.length || ''} Model${selectedModels.length !== 1 ? 's' : ''}`}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={isFollowUpMode ? handleContinueConversation : handleSubmit}
+              disabled={isLoading || selectedModels.length === 0}
+              className="compare-button"
+            >
+              {isLoading 
+                ? `Comparing ${selectedModels.length} models...` 
+                : isFollowUpMode 
+                  ? 'Continue Conversation' 
+                  : `Compare ${selectedModels.length || ''} Model${selectedModels.length !== 1 ? 's' : ''}`
+              }
+            </button>
+            {isFollowUpMode && (
+              <button
+                onClick={handleNewComparison}
+                className="new-comparison-button"
+                title="Start a new comparison"
+              >
+                New Comparison
+              </button>
+            )}
+          </div>
           {selectedModels.length > 0 && (
             <p style={{
               fontSize: '0.875rem',
@@ -625,32 +736,43 @@ function App() {
           <section className="results-section">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0 }}>Comparison Results</h2>
-              {closedCards.size > 0 && (
-                <button
-                  onClick={showAllResults}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--primary-color)',
-                    background: 'var(--primary-color)',
-                    color: 'white',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    fontWeight: '500'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = 'var(--primary-hover)';
-                    e.currentTarget.style.borderColor = 'var(--primary-hover)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'var(--primary-color)';
-                    e.currentTarget.style.borderColor = 'var(--primary-color)';
-                  }}
-                >
-                  Show All Results ({closedCards.size} hidden)
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                {!isFollowUpMode && (
+                  <button
+                    onClick={handleFollowUp}
+                    className="follow-up-button"
+                    title="Ask a follow-up question"
+                  >
+                    Follow up
+                  </button>
+                )}
+                {closedCards.size > 0 && (
+                  <button
+                    onClick={showAllResults}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      border: '1px solid var(--primary-color)',
+                      background: 'var(--primary-color)',
+                      color: 'white',
+                      borderRadius: 'var(--radius-md)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      fontWeight: '500'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'var(--primary-hover)';
+                      e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'var(--primary-color)';
+                      e.currentTarget.style.borderColor = 'var(--primary-color)';
+                    }}
+                  >
+                    Show All Results ({closedCards.size} hidden)
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Metadata */}
@@ -700,34 +822,56 @@ function App() {
             </div>
 
             <div className="results-grid">
-              {Object.entries(response.results)
-                .filter(([modelId]) => !closedCards.has(modelId))
-                .map(([modelId, output]) => (
-                  <div key={modelId} className="result-card">
-                    <div className="result-header">
-                      <h3>{allModels.find(m => m.id === modelId)?.name || modelId}</h3>
-                      <div className="result-actions">
-                        <div className="result-stats">
-                          <span className="output-length">{output.length} chars</span>
-                          <span className={`status ${output.startsWith('Error') ? 'error' : 'success'}`}>
-                            {output.startsWith('Error') ? 'Failed' : 'Success'}
-                          </span>
+              {conversations
+                .filter((conv) => !closedCards.has(conv.modelId))
+                .map((conversation) => {
+                  const model = allModels.find(m => m.id === conversation.modelId);
+                  const latestMessage = conversation.messages[conversation.messages.length - 1];
+                  const isError = latestMessage?.content.startsWith('Error');
+                  
+                  return (
+                    <div key={conversation.modelId} className="result-card conversation-card">
+                      <div className="result-header">
+                        <h3>{model?.name || conversation.modelId}</h3>
+                        <div className="result-actions">
+                          <div className="result-stats">
+                            <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                            <span className={`status ${isError ? 'error' : 'success'}`}>
+                              {isError ? 'Failed' : 'Success'}
+                            </span>
+                          </div>
+                          <button
+                            className="close-card-btn"
+                            onClick={() => closeResultCard(conversation.modelId)}
+                            title="Close this result"
+                            aria-label={`Close result for ${model?.name || conversation.modelId}`}
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <button
-                          className="close-card-btn"
-                          onClick={() => closeResultCard(modelId)}
-                          title="Close this result"
-                          aria-label={`Close result for ${allModels.find(m => m.id === modelId)?.name || modelId}`}
-                        >
-                          ✕
-                        </button>
+                      </div>
+                      <div className="conversation-content">
+                        {conversation.messages.map((message, index) => (
+                          <div key={message.id} className={`conversation-message ${message.type}`}>
+                            <div className="message-header">
+                              <span className="message-type">
+                                {message.type === 'user' ? '👤 You' : '🤖 AI'}
+                              </span>
+                              <span className="message-time">
+                                {new Date(message.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <div className="message-content">
+                              <LatexRenderer className="result-output">
+                                {message.content}
+                              </LatexRenderer>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="result-content">
-                      <LatexRenderer className="result-output">{String(output)}</LatexRenderer>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </section>
         )}

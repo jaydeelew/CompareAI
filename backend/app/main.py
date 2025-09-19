@@ -31,9 +31,14 @@ app.add_middleware(
 )
 
 
+class ConversationMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
 class CompareRequest(BaseModel):
     input_data: str
     models: list[str]
+    conversation_history: list[ConversationMessage] = []  # Optional conversation context
 
 
 class CompareResponse(BaseModel):
@@ -65,7 +70,7 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
     try:
         loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, run_models, req.input_data, req.models)
+        results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.conversation_history)
 
         # Count successful vs failed models
         successful_models = 0

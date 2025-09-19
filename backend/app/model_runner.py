@@ -443,11 +443,22 @@ for provider, models in MODELS_BY_PROVIDER.items():
 client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/v1")
 
 
-def call_openrouter(prompt: str, model_id: str) -> str:
+def call_openrouter(prompt: str, model_id: str, conversation_history: list = None) -> str:
     try:
+        # Build messages array with conversation history
+        messages = []
+        
+        # Add conversation history if provided
+        if conversation_history:
+            for msg in conversation_history:
+                messages.append({"role": msg.role, "content": msg.content})
+        
+        # Add current prompt as user message
+        messages.append({"role": "user", "content": prompt})
+        
         response = client.chat.completions.create(
             model=model_id,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             timeout=INDIVIDUAL_MODEL_TIMEOUT
         )
         content = response.choices[0].message.content
@@ -467,13 +478,13 @@ def call_openrouter(prompt: str, model_id: str) -> str:
             return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models_batch(prompt: str, model_batch: List[str]) -> Dict[str, str]:
+def run_models_batch(prompt: str, model_batch: List[str], conversation_history: list = None) -> Dict[str, str]:
     """Run a batch of models with limited concurrency"""
     results = {}
 
     def call(model_id):
         try:
-            return model_id, call_openrouter(prompt, model_id)
+            return model_id, call_openrouter(prompt, model_id, conversation_history)
         except Exception as e:
             return model_id, f"Error: {str(e)}"
 
@@ -515,7 +526,7 @@ def run_models_batch(prompt: str, model_batch: List[str]) -> Dict[str, str]:
     return results
 
 
-def run_models(prompt: str, model_list: List[str]) -> Dict[str, str]:
+def run_models(prompt: str, model_list: List[str], conversation_history: list = None) -> Dict[str, str]:
     """Run models with batching to prevent timeouts and API overload"""
     import time
     start_time = time.time()
@@ -523,6 +534,8 @@ def run_models(prompt: str, model_list: List[str]) -> Dict[str, str]:
     all_results = {}
     
     print(f"Starting model processing: {len(model_list)} models total")
+    if conversation_history:
+        print(f"Using conversation context with {len(conversation_history)} previous messages")
     
     # Process models in batches
     for i in range(0, len(model_list), BATCH_SIZE):
@@ -533,7 +546,7 @@ def run_models(prompt: str, model_list: List[str]) -> Dict[str, str]:
         print(f"Processing batch {batch_num}/{total_batches}: {len(batch)} models")
         
         try:
-            batch_results = run_models_batch(prompt, batch)
+            batch_results = run_models_batch(prompt, batch, conversation_history)
             all_results.update(batch_results)
             batch_duration = time.time() - batch_start
             print(f"Batch {batch_num} completed in {batch_duration:.2f}s: {len(batch_results)} results")
