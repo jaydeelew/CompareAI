@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import LatexRenderer from './components/LatexRenderer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -721,7 +722,7 @@ function App() {
                       </div>
                     </div>
                     <div className="result-content">
-                      <pre>{String(output)}</pre>
+                      <LatexRenderer className="result-output">{String(output)}</LatexRenderer>
                     </div>
                   </div>
                 ))}
