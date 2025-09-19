@@ -1982,7 +1982,7 @@ body {
   text-align: center;
 }
 
-.latex-content .katex-display > .katex {
+.latex-content .katex-display>.katex {
   display: inline-block;
   text-align: initial;
 }
