@@ -202,6 +202,17 @@ function App() {
   const handleFollowUp = () => {
     setIsFollowUpMode(true);
     setInput('');
+    
+    // Scroll to input section and bring it to the top of the page
+    setTimeout(() => {
+      const inputSection = document.querySelector('.input-section');
+      if (inputSection) {
+        inputSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
   };
 
   const handleContinueConversation = () => {
