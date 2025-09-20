@@ -444,8 +444,8 @@ function App() {
           <div className="hero-content">
             <h2 className="hero-title">Compare AI Models Side by Side</h2>
             <p className="hero-description">
-              Get instant comparisons across multiple AI models to find the best solution for your needs.
-              Test text processing, code generation, and analysis capabilities in real-time.
+              Get comparisons across multiple AI models to find the best solution for your needs.
+              Test text analysis and code generation capabilities using concurrent processing of multiple AI models.
             </p>
 
             <div className="capability-showcase">
@@ -463,21 +463,21 @@ function App() {
               <div className="capability-item">
                 <div className="capability-icon">
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                </div>
+                <span>Concurrent Processing</span>
+              </div>
+
+              <div className="capability-item">
+                <div className="capability-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
                     <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="2" />
                     <path d="M7 7h.01M7 10h.01M7 13h.01M11 7h6M11 10h6M11 13h4" stroke="currentColor" strokeWidth="2" />
                   </svg>
                 </div>
                 <span>Code Generation</span>
-              </div>
-
-              <div className="capability-item">
-                <div className="capability-icon">
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                </div>
-                <span>Real-time Results</span>
               </div>
             </div>
           </div>
