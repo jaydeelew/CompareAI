@@ -77,7 +77,7 @@ function App() {
     const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
       modelId,
       messages: [
-        createMessage('user', originalInput || input, userTimestamp),
+        createMessage('user', input, userTimestamp),
         createMessage('assistant', String(output), aiTimestamp) // AI response gets current timestamp
       ]
     }));
