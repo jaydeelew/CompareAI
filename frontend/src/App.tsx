@@ -54,7 +54,7 @@ function App() {
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [originalInput, setOriginalInput] = useState('');
-  const [userMessageTimestamp, setUserMessageTimestamp] = useState<string>('');
+  const [, setUserMessageTimestamp] = useState<string>('');
   const userCancelledRef = useRef(false);
 
   // Get all models in a flat array for compatibility
@@ -865,7 +865,7 @@ function App() {
                         </div>
                       </div>
                       <div className="conversation-content">
-                        {conversation.messages.map((message, index) => (
+                        {conversation.messages.map((message) => (
                           <div key={message.id} className={`conversation-message ${message.type}`}>
                             <div className="message-header">
                               <span className="message-type">
