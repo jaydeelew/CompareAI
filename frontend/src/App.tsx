@@ -655,7 +655,7 @@ function App() {
         </section>
 
         <section className="input-section">
-          <h2>Input Text</h2>
+          <h2>{isFollowUpMode ? 'Follow Up' : 'Input Text'}</h2>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -685,7 +685,7 @@ function App() {
                 className="new-comparison-button"
                 title="Start a new comparison"
               >
-                New Comparison
+                New Inquiry
               </button>
             )}
           </div>
