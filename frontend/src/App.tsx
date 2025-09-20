@@ -278,13 +278,11 @@ function App() {
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
       // Prepare conversation history for the API
-      // For follow-up mode, we send only user messages from the conversation history
-      // This ensures models get context without seeing previous AI responses
+      // For follow-up mode, we send the complete conversation history (both user and assistant messages)
+      // This matches how official AI chat interfaces work and provides proper context
       const conversationHistory = isFollowUpMode && conversations.length > 0 
-        ? conversations[0].messages
-            .filter(msg => msg.type === 'user') // Only send user messages as context
-            .map(msg => ({
-              role: 'user',
+        ? conversations[0].messages.map(msg => ({
+              role: msg.type === 'user' ? 'user' : 'assistant',
               content: msg.content
             }))
         : [];

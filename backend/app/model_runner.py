@@ -445,28 +445,16 @@ client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/
 
 def call_openrouter(prompt: str, model_id: str, conversation_history: list = None) -> str:
     try:
-        # Build messages array with conversation history
+        # Build messages array - use standard format like official AI providers
         messages = []
         
-        # Add conversation history if provided
+        # Add conversation history if provided (include both user and assistant messages)
         if conversation_history:
-            # Create explicit context from conversation history
-            context_messages = []
             for msg in conversation_history:
-                if msg.role == "user":  # Only include user messages
-                    context_messages.append(f"User: {msg.content}")
-            
-            # Create explicit context prompt
-            if context_messages:
-                context_text = "Previous conversation:\n" + "\n".join(context_messages)
-                explicit_prompt = f"{context_text}\n\nPlease respond to this follow-up: {prompt}"
-            else:
-                explicit_prompt = prompt
-        else:
-            explicit_prompt = prompt
+                messages.append({"role": msg.role, "content": msg.content})
         
-        # Add the explicit prompt as user message
-        messages.append({"role": "user", "content": explicit_prompt})
+        # Add the current prompt as user message
+        messages.append({"role": "user", "content": prompt})
         
         response = client.chat.completions.create(
             model=model_id,
