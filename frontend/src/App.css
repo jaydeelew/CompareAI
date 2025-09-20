@@ -2512,6 +2512,20 @@ body {
   user-select: none;
 }
 
+.select-all-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .app-main {
