@@ -118,8 +118,91 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
+            // Handle markdown tables (must come before other markdown processing)
+            processedText = processedText.replace(/^\|(.+)\|$/gm, (_, content) => {
+                return '___TABLE_ROW___' + content + '___/TABLE_ROW___';
+            });
+            
+            // Process table rows and convert to HTML table
+            processedText = processedText.replace(/(___TABLE_ROW___[\s\S]*?___\/TABLE_ROW___)+/g, (match) => {
+                const rows = match.split('___/TABLE_ROW___').filter(row => row.trim());
+                let tableHTML = '<table class="markdown-table">';
+                let isHeader = true;
+                
+                rows.forEach((row, index) => {
+                    const cleanRow = row.replace('___TABLE_ROW___', '').trim();
+                    if (cleanRow.match(/^[-|\s:]+$/)) {
+                        // Skip separator rows (like |----|----|)
+                        isHeader = false;
+                        return;
+                    }
+                    
+                    const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    if (cells.length > 0) {
+                        const tag = isHeader ? 'th' : 'td';
+                        const rowHTML = '<tr>' + cells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
+                        tableHTML += rowHTML;
+                        if (index === 0) isHeader = false; // Only first row is header
+                    }
+                });
+                
+                tableHTML += '</table>';
+                return tableHTML;
+            });
+
+            // Handle markdown horizontal rules (must come before other processing)
+            processedText = processedText.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
+            processedText = processedText.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
+            processedText = processedText.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
+
+            // Handle markdown headings (must come before other markdown processing)
+            processedText = processedText.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            // Handle markdown blockquotes
+            processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
+            
+            // Merge consecutive blockquotes
+            processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
+
+            // Handle markdown strikethrough ~~text~~
+            processedText = processedText.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
+
             // Handle markdown bold syntax **text**
             processedText = processedText.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+
+            // Handle markdown italic syntax *text*
+            processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+
+            // Handle markdown line breaks (double spaces or double newlines)
+            processedText = processedText.replace(/  \n/g, '<br>');
+            processedText = processedText.replace(/\n\n/g, '</p><p>');
+
+            // Handle markdown code blocks ```
+            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+
+            // Handle inline code `text`
+            processedText = processedText.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+
+            // Handle markdown lists more carefully
+            // First, handle unordered lists
+            processedText = processedText.replace(/^- (.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
+            
+            // Then handle ordered lists  
+            processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
+            
+            // Convert consecutive unordered list items to proper HTML
+            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___)+/g, (match) => {
+                const items = match.replace(/___UL_ITEM___(.*?)___\/UL_ITEM___/g, '<li>$1</li>');
+                return '<ul>' + items + '</ul>';
+            });
+            
+            // Convert consecutive ordered list items to proper HTML
+            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___)+/g, (match) => {
+                const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
+                return '<ol>' + items + '</ol>';
+            });
 
             // Handle derivative notation d/dx
             processedText = processedText.replace(/\bd\/d([a-zA-Z])/g, (match, variable) => {
@@ -267,6 +350,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/\\\(/g, '');
             processedText = processedText.replace(/\\\)/g, '');
 
+            // Wrap content in paragraphs if we added paragraph breaks
+            if (processedText.includes('</p><p>')) {
+                processedText = '<p>' + processedText + '</p>';
+            }
+
             return processedText;
         } catch (error) {
             console.warn('Error processing LaTeX:', error);
@@ -283,7 +371,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             style={{
                 whiteSpace: 'pre-wrap',
                 fontFamily: 'inherit',
-                lineHeight: 'inherit'
+                lineHeight: 'inherit',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                maxWidth: '100%',
+                overflow: 'hidden'
             }}
         />
     );
