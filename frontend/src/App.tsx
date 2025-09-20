@@ -53,7 +53,6 @@ function App() {
   const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
-  const [originalInput, setOriginalInput] = useState('');
   const [, setUserMessageTimestamp] = useState<string>('');
   const userCancelledRef = useRef(false);
 
@@ -226,7 +225,6 @@ function App() {
   const handleNewComparison = () => {
     setIsFollowUpMode(false);
     setInput('');
-    setOriginalInput('');
     setConversations([]);
     setResponse(null);
     setClosedCards(new Set());
@@ -252,10 +250,7 @@ function App() {
     setUserMessageTimestamp(userTimestamp);
     console.log('Setting user timestamp:', userTimestamp);
     
-    // If this is the first submission, store the original input
-    if (!isFollowUpMode) {
-      setOriginalInput(input);
-    }
+    // Original input functionality removed - not needed
     
     setResponse(null); // Clear previous results
     setClosedCards(new Set()); // Clear closed cards for new results
