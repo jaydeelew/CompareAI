@@ -592,6 +592,11 @@ function App() {
                       <span className="provider-count">({models.length} models)</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {selectAllError && selectAllError.includes(provider) && (
+                        <div className="select-all-error">
+                          ⚠️ {selectAllError}
+                        </div>
+                      )}
                       {(() => {
                         const providerModels = modelsByProvider[provider] || [];
                         const providerModelIds = providerModels.map(model => model.id);
@@ -626,11 +631,6 @@ function App() {
                           </button>
                         );
                       })()}
-                      {selectAllError && selectAllError.includes(provider) && (
-                        <div className="select-all-error">
-                          ⚠️ {selectAllError}
-                        </div>
-                      )}
                       <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
                         ▼
                       </span>
