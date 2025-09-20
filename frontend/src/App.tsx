@@ -39,6 +39,9 @@ interface ModelsByProvider {
   [provider: string]: Model[];
 }
 
+// Maximum number of models that can be selected
+const MAX_MODELS_LIMIT = 12;
+
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
   const [input, setInput] = useState('');
@@ -164,8 +167,15 @@ function App() {
         // Deselect all provider models
         providerModelIds.forEach(id => newSelection.delete(id));
       } else {
-        // Select all provider models
-        providerModelIds.forEach(id => newSelection.add(id));
+        // Select all provider models, but respect the limit
+        const remainingSlots = MAX_MODELS_LIMIT - prev.length;
+        const modelsToAdd = providerModelIds.slice(0, remainingSlots);
+        
+        if (providerModelIds.length > remainingSlots) {
+          setError(`Cannot select all ${provider} models. Only ${remainingSlots} slots remaining (max ${MAX_MODELS_LIMIT} total).`);
+        }
+        
+        modelsToAdd.forEach(id => newSelection.add(id));
       }
 
       return Array.from(newSelection);
@@ -173,11 +183,24 @@ function App() {
   };
 
   const handleModelToggle = (modelId: string) => {
-    setSelectedModels(prev =>
-      prev.includes(modelId)
-        ? prev.filter(id => id !== modelId)
-        : [...prev, modelId]
-    );
+    if (selectedModels.includes(modelId)) {
+      setSelectedModels(prev => prev.filter(id => id !== modelId));
+      // Clear any previous error when deselecting a model
+      if (error && error.includes('Maximum')) {
+        setError(null);
+      }
+    } else {
+      // Check limit before adding
+      if (selectedModels.length >= MAX_MODELS_LIMIT) {
+        setError(`Maximum ${MAX_MODELS_LIMIT} models allowed for optimal performance. Please deselect some models first.`);
+        return;
+      }
+      setSelectedModels(prev => [...prev, modelId]);
+      // Clear any previous error when successfully adding a model
+      if (error && error.includes('Maximum')) {
+        setError(null);
+      }
+    }
   };
 
   const handleCancel = () => {
@@ -464,7 +487,12 @@ function App() {
       <main className="app-main">
         <section className="models-section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0 }}>Select Models to Compare</h2>
+            <div>
+              <h2 style={{ margin: 0 }}>Select Models to Compare</h2>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                Choose up to {MAX_MODELS_LIMIT} models for optimal performance
+              </p>
+            </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
@@ -502,20 +530,22 @@ function App() {
               </div>
               <div style={{
                 padding: '0.5rem 1rem',
-                background: selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                color: selectedModels.length > 0 ? 'white' : '#6b7280',
+                background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' : 
+                            selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
+                       selectedModels.length > 0 ? 'white' : '#6b7280',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 fontWeight: '600',
-                border: '1px solid #e5e7eb'
+                border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
               }}>
-                {selectedModels.length} of {allModels.length} selected
+                {selectedModels.length} of {MAX_MODELS_LIMIT} selected
               </div>
             </div>
           </div>
 
-          {/* Warning for large selections */}
-          {selectedModels.length > 30 && (
+          {/* Warning for approaching limit */}
+          {selectedModels.length > 8 && selectedModels.length < MAX_MODELS_LIMIT && (
             <div className="warning-message" style={{
               background: '#fff3cd',
               border: '1px solid #ffeaa7',
@@ -529,10 +559,11 @@ function App() {
             }}>
               <span>⚠️</span>
               <span>
-                You've selected {selectedModels.length} models. Consider selecting fewer models for faster results.
+                You've selected {selectedModels.length} models. Maximum {MAX_MODELS_LIMIT} allowed for optimal performance.
               </span>
             </div>
           )}
+
 
           {isLoadingModels ? (
             <div className="loading-message">Loading available models...</div>
@@ -560,24 +591,30 @@ function App() {
                         const providerModelIds = providerModels.map(model => model.id);
                         const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
                         const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+                        const isDisabled = selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected;
 
                         return (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleAllForProvider(provider);
+                              if (!isDisabled) {
+                                toggleAllForProvider(provider);
+                              }
                             }}
+                            disabled={isDisabled}
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.7rem',
-                              border: `1px solid ${allProviderModelsSelected ? '#dc2626' : '#667eea'}`,
+                              border: `1px solid ${isDisabled ? '#d1d5db' : allProviderModelsSelected ? '#dc2626' : '#667eea'}`,
                               background: 'transparent',
-                              color: allProviderModelsSelected ? '#dc2626' : '#667eea',
+                              color: isDisabled ? '#9ca3af' : allProviderModelsSelected ? '#dc2626' : '#667eea',
                               borderRadius: '4px',
-                              cursor: 'pointer',
-                              opacity: hasAnySelected && !allProviderModelsSelected ? 0.7 : 1
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              opacity: isDisabled ? 0.5 : (hasAnySelected && !allProviderModelsSelected ? 0.7 : 1)
                             }}
-                            title={allProviderModelsSelected ? `Deselect all ${provider} models` : `Select all ${provider} models`}
+                            title={isDisabled ? `Cannot select more models (max ${MAX_MODELS_LIMIT})` : 
+                                   allProviderModelsSelected ? `Deselect all ${provider} models` : 
+                                   `Select all ${provider} models`}
                           >
                             {allProviderModelsSelected ? 'Deselect All' : 'Select All'}
                           </button>
@@ -593,15 +630,21 @@ function App() {
                     <div className="provider-models">
                       {models.map((model) => {
                         const isSelected = selectedModels.includes(model.id);
+                        const isDisabled = selectedModels.length >= MAX_MODELS_LIMIT && !isSelected;
                         return (
                           <label
                             key={model.id}
-                            className={`model-option ${isSelected ? 'selected' : ''}`}
+                            className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                            style={{
+                              opacity: isDisabled ? 0.5 : 1,
+                              cursor: isDisabled ? 'not-allowed' : 'pointer'
+                            }}
                           >
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => handleModelToggle(model.id)}
+                              disabled={isDisabled}
+                              onChange={() => !isDisabled && handleModelToggle(model.id)}
                               className="model-checkbox"
                             />
                             <div className="model-info">

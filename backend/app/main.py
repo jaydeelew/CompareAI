@@ -14,6 +14,9 @@ print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
 
+# Maximum number of models allowed per request
+MAX_MODELS_PER_REQUEST = 12
+
 # In-memory storage for model performance tracking
 model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
 
@@ -34,6 +37,7 @@ app.add_middleware(
 class ConversationMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
+
 
 class CompareRequest(BaseModel):
     input_data: str
@@ -63,10 +67,13 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
-    
-    # Warn about large requests
-    if len(req.models) > 40:
-        print(f"Warning: Large request with {len(req.models)} models - this may take several minutes")
+
+    # Enforce model limit
+    if len(req.models) > MAX_MODELS_PER_REQUEST:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum {MAX_MODELS_PER_REQUEST} models allowed per request. You selected {len(req.models)} models.",
+        )
 
     try:
         loop = asyncio.get_running_loop()
@@ -75,7 +82,7 @@ async def compare(req: CompareRequest) -> CompareResponse:
         # Count successful vs failed models
         successful_models = 0
         failed_models = 0
-        
+
         for model_id, result in results.items():
             current_time = datetime.now().isoformat()
             if result.startswith("Error:"):
@@ -106,10 +113,7 @@ async def compare(req: CompareRequest) -> CompareResponse:
 
 @app.get("/models")
 async def get_available_models():
-    return {
-        "models": OPENROUTER_MODELS,
-        "models_by_provider": MODELS_BY_PROVIDER
-    }
+    return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
 
 
 @app.get("/model-stats")
@@ -125,6 +129,6 @@ async def get_model_stats():
             "total_attempts": total_attempts,
             "success_rate": round(success_rate, 1),
             "last_error": data["last_error"],
-            "last_success": data["last_success"]
+            "last_success": data["last_success"],
         }
     return {"model_statistics": stats}
