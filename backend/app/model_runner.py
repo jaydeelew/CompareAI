@@ -450,11 +450,23 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         
         # Add conversation history if provided
         if conversation_history:
+            # Create explicit context from conversation history
+            context_messages = []
             for msg in conversation_history:
-                messages.append({"role": msg.role, "content": msg.content})
+                if msg.role == "user":  # Only include user messages
+                    context_messages.append(f"User: {msg.content}")
+            
+            # Create explicit context prompt
+            if context_messages:
+                context_text = "Previous conversation:\n" + "\n".join(context_messages)
+                explicit_prompt = f"{context_text}\n\nPlease respond to this follow-up: {prompt}"
+            else:
+                explicit_prompt = prompt
+        else:
+            explicit_prompt = prompt
         
-        # Add current prompt as user message
-        messages.append({"role": "user", "content": prompt})
+        # Add the explicit prompt as user message
+        messages.append({"role": "user", "content": explicit_prompt})
         
         response = client.chat.completions.create(
             model=model_id,

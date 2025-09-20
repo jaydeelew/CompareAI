@@ -54,26 +54,31 @@ function App() {
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [originalInput, setOriginalInput] = useState('');
+  const [userMessageTimestamp, setUserMessageTimestamp] = useState<string>('');
   const userCancelledRef = useRef(false);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
 
   // Helper function to create a conversation message
-  const createMessage = (type: 'user' | 'assistant', content: string): ConversationMessage => ({
+  const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type,
     content,
-    timestamp: new Date().toISOString()
+    timestamp: customTimestamp || new Date().toISOString()
   });
 
   // Helper function to initialize conversations from response
-  const initializeConversations = (response: CompareResponse) => {
+  const initializeConversations = (response: CompareResponse, userTimestamp: string) => {
+    const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
+    console.log('User timestamp:', userTimestamp);
+    console.log('AI timestamp:', aiTimestamp);
+    
     const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
       modelId,
       messages: [
-        createMessage('user', originalInput || input),
-        createMessage('assistant', String(output))
+        createMessage('user', originalInput || input, userTimestamp),
+        createMessage('assistant', String(output), aiTimestamp) // AI response gets current timestamp
       ]
     }));
     setConversations(newConversations);
@@ -231,6 +236,11 @@ function App() {
     setIsLoading(true);
     setError(null);
     
+    // Capture user timestamp when they actually submit
+    const userTimestamp = new Date().toISOString();
+    setUserMessageTimestamp(userTimestamp);
+    console.log('Setting user timestamp:', userTimestamp);
+    
     // If this is the first submission, store the original input
     if (!isFollowUpMode) {
       setOriginalInput(input);
@@ -257,8 +267,8 @@ function App() {
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
 
       // Prepare conversation history for the API
-      // For follow-up mode, we send the conversation history from the first conversation
-      // (all conversations should have the same user messages)
+      // For follow-up mode, we send only user messages from the conversation history
+      // This ensures models get context without seeing previous AI responses
       const conversationHistory = isFollowUpMode && conversations.length > 0 
         ? conversations[0].messages
             .filter(msg => msg.type === 'user') // Only send user messages as context
@@ -294,10 +304,14 @@ function App() {
       // Initialize or update conversations
       if (isFollowUpMode) {
         // Add new messages to existing conversations
+        const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
+        console.log('Follow-up - User timestamp:', userTimestamp);
+        console.log('Follow-up - AI timestamp:', aiTimestamp);
+        
         setConversations(prevConversations => 
           prevConversations.map(conv => {
-            const newUserMessage = createMessage('user', input);
-            const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'));
+            const newUserMessage = createMessage('user', input, userTimestamp);
+            const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'), aiTimestamp); // AI response gets current timestamp
             return {
               ...conv,
               messages: [...conv.messages, newUserMessage, newAssistantMessage]
@@ -306,7 +320,7 @@ function App() {
         );
       } else {
         // Initialize new conversations
-        initializeConversations(data);
+        initializeConversations(data, userTimestamp);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
