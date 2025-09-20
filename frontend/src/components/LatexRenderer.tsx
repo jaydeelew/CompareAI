@@ -79,7 +79,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -96,24 +96,81 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return '·';
                 }
+            });
+
+            // Handle \times multiplication
+            processedText = processedText.replace(/\\times/g, () => {
+                try {
+                    const rendered = katex.renderToString('\\times', {
+                        displayMode: false,
+                        throwOnError: false
+                    });
+                    return rendered;
+                } catch {
+                    return '×';
+                }
+            });
+
+            // Handle other common LaTeX math symbols
+            const mathSymbols = [
+                { pattern: /\\div/g, fallback: '÷' },
+                { pattern: /\\pm/g, fallback: '±' },
+                { pattern: /\\mp/g, fallback: '∓' },
+                { pattern: /\\leq/g, fallback: '≤' },
+                { pattern: /\\geq/g, fallback: '≥' },
+                { pattern: /\\neq/g, fallback: '≠' },
+                { pattern: /\\approx/g, fallback: '≈' },
+                { pattern: /\\infty/g, fallback: '∞' },
+                { pattern: /\\sum/g, fallback: '∑' },
+                { pattern: /\\prod/g, fallback: '∏' },
+                { pattern: /\\int/g, fallback: '∫' },
+                { pattern: /\\sqrt/g, fallback: '√' },
+                { pattern: /\\alpha/g, fallback: 'α' },
+                { pattern: /\\beta/g, fallback: 'β' },
+                { pattern: /\\gamma/g, fallback: 'γ' },
+                { pattern: /\\delta/g, fallback: 'δ' },
+                { pattern: /\\epsilon/g, fallback: 'ε' },
+                { pattern: /\\theta/g, fallback: 'θ' },
+                { pattern: /\\lambda/g, fallback: 'λ' },
+                { pattern: /\\mu/g, fallback: 'μ' },
+                { pattern: /\\pi/g, fallback: 'π' },
+                { pattern: /\\sigma/g, fallback: 'σ' },
+                { pattern: /\\tau/g, fallback: 'τ' },
+                { pattern: /\\phi/g, fallback: 'φ' },
+                { pattern: /\\omega/g, fallback: 'ω' }
+            ];
+
+            mathSymbols.forEach(({ pattern, fallback }) => {
+                processedText = processedText.replace(pattern, () => {
+                    try {
+                        const symbol = pattern.source.replace(/\\/g, '\\').replace(/g$/, '');
+                        const rendered = katex.renderToString(symbol, {
+                            displayMode: false,
+                            throwOnError: false
+                        });
+                        return rendered;
+                    } catch {
+                        return fallback;
+                    }
+                });
             });
 
             // Handle \boxed{} for boxed equations
             processedText = processedText.replace(/\\boxed\{([^}]+)\}/g, (_, content) => {
                 try {
                     // Process any LaTeX delimiters within the boxed content first
-                    let cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    const cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
                     const rendered = katex.renderToString(`\\boxed{${cleanContent}}`, {
                         displayMode: false,
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     // Process LaTeX delimiters in fallback content too
-                    let cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    const cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
                     return `<span style="border: 1px solid currentColor; padding: 2px 6px; border-radius: 3px; display: inline-block;">${cleanContent}</span>`;
                 }
             });
@@ -176,7 +233,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
 
             // Handle markdown line breaks (double spaces or double newlines)
-            processedText = processedText.replace(/  \n/g, '<br>');
+            processedText = processedText.replace(/ {2}\n/g, '<br>');
             processedText = processedText.replace(/\n\n/g, '</p><p>');
 
             // Handle markdown code blocks ```
@@ -212,7 +269,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -230,7 +287,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -243,7 +300,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -258,7 +315,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -272,7 +329,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -287,7 +344,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -302,7 +359,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -315,7 +372,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -328,7 +385,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
@@ -341,7 +398,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         throwOnError: false
                     });
                     return rendered;
-                } catch (error) {
+                } catch {
                     return match;
                 }
             });
