@@ -185,8 +185,6 @@ function App() {
       if (error && error.includes('Maximum')) {
         setError(null);
       }
-      // Clear select all error when deselecting
-      setSelectAllError(null);
     } else {
       // Check limit before adding
       if (selectedModels.length >= MAX_MODELS_LIMIT) {
