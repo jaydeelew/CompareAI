@@ -581,7 +581,12 @@ function App() {
                   >
                     <div className="provider-left">
                       <span className="provider-name">{provider}</span>
-                      <span className="provider-count">({models.length} models)</span>
+                      <span className="provider-count">
+                        {(() => {
+                          const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                          return `${selectedCount} of ${models.length} selected`;
+                        })()}
+                      </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {(() => {
