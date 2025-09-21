@@ -48,7 +48,6 @@ function App() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectAllError, setSelectAllError] = useState<string | null>(null);
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -167,17 +166,10 @@ function App() {
       if (allProviderModelsSelected) {
         // Deselect all provider models
         providerModelIds.forEach(id => newSelection.delete(id));
-        setSelectAllError(null);
       } else {
         // Select all provider models, but respect the limit
         const remainingSlots = MAX_MODELS_LIMIT - prev.length;
         const modelsToAdd = providerModelIds.slice(0, remainingSlots);
-        
-        if (providerModelIds.length > remainingSlots) {
-          setSelectAllError(`Cannot select all ${provider} models. Only ${remainingSlots} slots remaining (max ${MAX_MODELS_LIMIT} total).`);
-        } else {
-          setSelectAllError(null);
-        }
         
         modelsToAdd.forEach(id => newSelection.add(id));
       }
@@ -592,11 +584,6 @@ function App() {
                       <span className="provider-count">({models.length} models)</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {selectAllError && selectAllError.includes(provider) && (
-                        <div className="select-all-error">
-                          ⚠️ {selectAllError}
-                        </div>
-                      )}
                       {(() => {
                         const providerModels = modelsByProvider[provider] || [];
                         const providerModelIds = providerModels.map(model => model.id);
