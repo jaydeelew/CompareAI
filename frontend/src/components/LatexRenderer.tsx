@@ -311,8 +311,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Handle definition lists
             // First, collect definition list items
+            // Only match lines that look like definitions (not Bible references or other colon usage)
             const definitionMap: { [key: string]: string[] } = {};
-            processedText = processedText.replace(/^([^:\n]+)\s*:\s*(.+)$/gm, (match, term, definition) => {
+            processedText = processedText.replace(/^([^:\n\d]+)\s*:\s*(.+)$/gm, (match, term, definition) => {
+                // Skip if it looks like a Bible reference (contains numbers and colon)
+                if (/\d+:\d+/.test(match)) {
+                    return match;
+                }
+                // Skip if it looks like a time reference (HH:MM format)
+                if (/^\d{1,2}:\d{2}/.test(match)) {
+                    return match;
+                }
+                // Skip if it's very short (likely not a definition)
+                if (term.trim().length < 3) {
+                    return match;
+                }
+                
                 const cleanTerm = term.trim();
                 if (!definitionMap[cleanTerm]) {
                     definitionMap[cleanTerm] = [];
@@ -501,7 +515,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/\\\)/g, '');
 
             // Wrap content in paragraphs if we added paragraph breaks
-            if (processedText.includes('</p><p>')) {
+            // Only wrap if the content doesn't already start with a block element
+            if (processedText.includes('</p><p>') && !processedText.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|dl|div)/)) {
                 processedText = '<p>' + processedText + '</p>';
             }
 
@@ -519,7 +534,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             className={`latex-content ${className}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
             style={{
-                whiteSpace: 'pre-wrap',
+                whiteSpace: 'normal',
                 fontFamily: 'inherit',
                 lineHeight: 'inherit',
                 wordWrap: 'break-word',
