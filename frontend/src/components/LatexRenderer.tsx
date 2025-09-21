@@ -213,6 +213,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
 
             // Handle markdown headings (must come before other markdown processing)
+            processedText = processedText.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+            processedText = processedText.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+            processedText = processedText.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
             processedText = processedText.replace(/^### (.+)$/gm, '<h3>$1</h3>');
             processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
             processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
@@ -232,6 +235,36 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle markdown italic syntax *text*
             processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
 
+            // Handle markdown links [text](url) and [text](url "title")
+            processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (match, text, url, title) => {
+                const titleAttr = title ? ` title="${title}"` : '';
+                return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+            });
+
+            // Handle reference-style links [text][ref] and [ref]: url
+            // First, collect all reference definitions
+            const referenceMap: { [key: string]: string } = {};
+            processedText = processedText.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (match, ref, url) => {
+                referenceMap[ref.toLowerCase()] = url.trim();
+                return ''; // Remove the definition line
+            });
+
+            // Then replace reference-style links
+            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
+                const reference = ref || text.toLowerCase();
+                const url = referenceMap[reference];
+                if (url) {
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                }
+                return match; // Return original if reference not found
+            });
+
+            // Handle markdown images ![alt](url) and ![alt](url "title")
+            processedText = processedText.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (match, alt, url, title) => {
+                const titleAttr = title ? ` title="${title}"` : '';
+                return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
+            });
+
             // Handle markdown line breaks (double spaces or double newlines)
             processedText = processedText.replace(/ {2}\n/g, '<br>');
             processedText = processedText.replace(/\n\n/g, '</p><p>');
@@ -242,12 +275,27 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle inline code `text`
             processedText = processedText.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
 
+            // Handle markdown task lists - [x] and [ ]
+            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (match, checked, text) => {
+                const isChecked = checked === 'x';
+                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
+            });
+
             // Handle markdown lists more carefully
-            // First, handle unordered lists
-            processedText = processedText.replace(/^- (.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
+            // First, handle unordered lists (but not task lists)
+            processedText = processedText.replace(/^- (?!\[[ x]\])(.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
             
             // Then handle ordered lists  
             processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
+            
+            // Convert task list items to proper HTML
+            processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
+                const items = match.replace(/___TASK_ITEM___(checked|unchecked)___(.*?)___\/TASK_ITEM___/g, (_, checked, text) => {
+                    const checkedAttr = checked === 'checked' ? 'checked' : '';
+                    return `<li class="task-list-item"><input type="checkbox" ${checkedAttr} disabled> ${text}</li>`;
+                });
+                return '<ul class="task-list">' + items + '</ul>';
+            });
             
             // Convert consecutive unordered list items to proper HTML
             processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___)+/g, (match) => {
@@ -260,6 +308,48 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
                 return '<ol>' + items + '</ol>';
             });
+
+            // Handle definition lists
+            // First, collect definition list items
+            const definitionMap: { [key: string]: string[] } = {};
+            processedText = processedText.replace(/^([^:\n]+)\s*:\s*(.+)$/gm, (match, term, definition) => {
+                const cleanTerm = term.trim();
+                if (!definitionMap[cleanTerm]) {
+                    definitionMap[cleanTerm] = [];
+                }
+                definitionMap[cleanTerm].push(definition.trim());
+                return ''; // Remove the definition line
+            });
+
+            // Convert definition lists to HTML
+            Object.keys(definitionMap).forEach(term => {
+                const definitions = definitionMap[term];
+                const definitionHTML = definitions.map(def => `<dd>${def}</dd>`).join('');
+                processedText += `<dl><dt>${term}</dt>${definitionHTML}</dl>`;
+            });
+
+            // Handle footnotes [^1] and [^1]: content
+            const footnoteMap: { [key: string]: string } = {};
+            processedText = processedText.replace(/^\[\^([^\]]+)\]:\s*(.+)$/gm, (match, ref, content) => {
+                footnoteMap[ref] = content.trim();
+                return ''; // Remove the footnote definition line
+            });
+
+            // Replace footnote references with links
+            processedText = processedText.replace(/\[\^([^\]]+)\]/g, (match, ref) => {
+                if (footnoteMap[ref]) {
+                    return `<sup><a href="#footnote-${ref}" id="footnote-ref-${ref}" class="footnote-ref">${ref}</a></sup>`;
+                }
+                return match;
+            });
+
+            // Add footnote definitions at the end
+            const footnotes = Object.keys(footnoteMap).map(ref => 
+                `<div id="footnote-${ref}" class="footnote-def"><sup>${ref}</sup> ${footnoteMap[ref]} <a href="#footnote-ref-${ref}" class="footnote-backref">↩</a></div>`
+            ).join('');
+            if (footnotes) {
+                processedText += `<div class="footnotes">${footnotes}</div>`;
+            }
 
             // Handle derivative notation d/dx
             processedText = processedText.replace(/\bd\/d([a-zA-Z])/g, (match, variable) => {
@@ -402,6 +492,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     return match;
                 }
             });
+
+            // Handle escaped characters (must be last before final cleanup)
+            processedText = processedText.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1');
 
             // Final cleanup: remove any remaining \( and \) delimiters
             processedText = processedText.replace(/\\\(/g, '');
