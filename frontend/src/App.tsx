@@ -975,8 +975,8 @@ function App() {
                           <button
                             className="close-card-btn"
                             onClick={() => closeResultCard(conversation.modelId)}
-                            title="Close this result"
-                            aria-label={`Close result for ${model?.name || conversation.modelId}`}
+                            title="Hide this result"
+                            aria-label={`Hide result for ${model?.name || conversation.modelId}`}
                           >
                             ✕
                           </button>
