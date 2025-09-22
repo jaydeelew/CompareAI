@@ -75,7 +75,7 @@ function App() {
     const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
     console.log('User timestamp:', userTimestamp);
     console.log('AI timestamp:', aiTimestamp);
-    
+
     const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
       modelId,
       messages: [
@@ -170,7 +170,7 @@ function App() {
         // Select all provider models, but respect the limit
         const remainingSlots = MAX_MODELS_LIMIT - prev.length;
         const modelsToAdd = providerModelIds.slice(0, remainingSlots);
-        
+
         modelsToAdd.forEach(id => newSelection.add(id));
       }
 
@@ -197,13 +197,13 @@ function App() {
         }, 5000);
         return;
       }
-      
+
       // Check limit before adding (only in normal mode)
       if (selectedModels.length >= MAX_MODELS_LIMIT) {
         setError(`Maximum ${MAX_MODELS_LIMIT} models allowed for optimal performance. Please deselect some models first.`);
         return;
       }
-      
+
       setSelectedModels(prev => [...prev, modelId]);
       // Clear any previous error when successfully adding a model
       if (error && error.includes('Maximum')) {
@@ -233,7 +233,7 @@ function App() {
   const handleFollowUp = () => {
     setIsFollowUpMode(true);
     setInput('');
-    
+
     // Scroll to input section and bring it to the top of the page
     setTimeout(() => {
       const inputSection = document.querySelector('.input-section');
@@ -276,14 +276,14 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    
+
     // Capture user timestamp when they actually submit
     const userTimestamp = new Date().toISOString();
     setUserMessageTimestamp(userTimestamp);
     console.log('Setting user timestamp:', userTimestamp);
-    
+
     // Original input functionality removed - not needed
-    
+
     setResponse(null); // Clear previous results
     setClosedCards(new Set()); // Clear closed cards for new results
     setProcessingTime(null);
@@ -307,13 +307,13 @@ function App() {
       // Prepare conversation history for the API
       // For follow-up mode, we send the complete conversation history (both user and assistant messages)
       // This matches how official AI chat interfaces work and provides proper context
-      const conversationHistory = isFollowUpMode && conversations.length > 0 
+      const conversationHistory = isFollowUpMode && conversations.length > 0
         ? conversations
-            .filter(conv => selectedModels.includes(conv.modelId))
-            .find(conv => conv.messages.length > 0)?.messages.map(msg => ({
-              role: msg.type === 'user' ? 'user' : 'assistant',
-              content: msg.content
-            })) || []
+          .filter(conv => selectedModels.includes(conv.modelId))
+          .find(conv => conv.messages.length > 0)?.messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          })) || []
         : [];
 
       const res = await fetch(`${API_URL}/compare`, {
@@ -337,7 +337,7 @@ function App() {
       const data = await res.json();
       const endTime = Date.now();
       setProcessingTime(endTime - startTime);
-      
+
       // Filter response results to only include selected models
       const filteredData = {
         ...data,
@@ -347,31 +347,31 @@ function App() {
         metadata: {
           ...data.metadata,
           models_requested: selectedModels.length,
-          models_successful: Object.keys(data.results).filter(modelId => 
+          models_successful: Object.keys(data.results).filter(modelId =>
             selectedModels.includes(modelId) && !data.results[modelId].startsWith('Error')
           ).length,
-          models_failed: Object.keys(data.results).filter(modelId => 
+          models_failed: Object.keys(data.results).filter(modelId =>
             selectedModels.includes(modelId) && data.results[modelId].startsWith('Error')
           ).length
         }
       };
-      
+
       setResponse(filteredData);
-      
+
       // Clear input after successful submission
       setInput('');
-      
+
       // Initialize or update conversations
       if (isFollowUpMode) {
         // Add new messages to existing conversations, but only for currently selected models
         const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
         console.log('Follow-up - User timestamp:', userTimestamp);
         console.log('Follow-up - AI timestamp:', aiTimestamp);
-        
+
         setConversations(prevConversations => {
           // Filter to only keep conversations for selected models, and update them
           const selectedConversations = prevConversations.filter(conv => selectedModels.includes(conv.modelId));
-          
+
           return selectedConversations.map(conv => {
             const newUserMessage = createMessage('user', input, userTimestamp);
             const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'), aiTimestamp);
@@ -480,8 +480,7 @@ function App() {
           <div className="hero-content">
             <h2 className="hero-title">Compare AI Models Side by Side</h2>
             <p className="hero-description">
-              Get comparisons across multiple AI models to find the best solution for your needs.
-              Test text analysis and code generation capabilities using concurrent processing of multiple AI models.
+              Get responses from multiple AI models to find the best solution for your needs. Compare natural language responses, code generation capabilities, and formatted math results using concurrent processing of multiple AI models.
             </p>
 
             <div className="capability-showcase">
@@ -493,16 +492,7 @@ function App() {
                     <path d="M8 12h8M8 16h6" stroke="currentColor" strokeWidth="2" />
                   </svg>
                 </div>
-                <span>Text Analysis</span>
-              </div>
-
-              <div className="capability-item">
-                <div className="capability-icon">
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                </div>
-                <span>Concurrent Processing</span>
+                <span>Compare Text Responses</span>
               </div>
 
               <div className="capability-item">
@@ -513,7 +503,27 @@ function App() {
                     <path d="M7 7h.01M7 10h.01M7 13h.01M11 7h6M11 10h6M11 13h4" stroke="currentColor" strokeWidth="2" />
                   </svg>
                 </div>
-                <span>Code Generation</span>
+                <span>Evaluate Code Generation</span>
+              </div>
+
+              <div className="capability-item">
+                <div className="capability-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 3h18v18H3z" stroke="currentColor" strokeWidth="2" />
+                    <path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" strokeWidth="2" />
+                    <path d="M7 7l2 2 4-4" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                </div>
+                <span>Examine Math Results</span>
+              </div>
+            </div>
+
+            <div className="capability-note">
+              <div className="note-content">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="note-icon">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                <span className="note-text">Models Processed Concurrently</span>
               </div>
             </div>
           </div>
@@ -528,7 +538,7 @@ function App() {
                 {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
               </h2>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                {isFollowUpMode 
+                {isFollowUpMode
                   ? 'You can deselect models but cannot add new ones during follow-up'
                   : `Choose up to ${MAX_MODELS_LIMIT} models for optimal performance`
                 }
@@ -572,10 +582,10 @@ function App() {
               </div>
               <div style={{
                 padding: '0.5rem 1rem',
-                background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' : 
-                            selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
+                  selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
                 color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
-                       selectedModels.length > 0 ? 'white' : '#6b7280',
+                  selectedModels.length > 0 ? 'white' : '#6b7280',
                 borderRadius: '8px',
                 fontSize: '0.875rem',
                 fontWeight: '600',
@@ -638,8 +648,8 @@ function App() {
                         const providerModelIds = providerModels.map(model => model.id);
                         const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
                         const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
-                        const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) || 
-                                         (isFollowUpMode && !hasAnySelected);
+                        const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
+                          (isFollowUpMode && !hasAnySelected);
 
                         return (
                           <button
@@ -660,10 +670,10 @@ function App() {
                               cursor: isDisabled ? 'not-allowed' : 'pointer',
                               opacity: isDisabled ? 0.5 : (hasAnySelected && !allProviderModelsSelected ? 0.7 : 1)
                             }}
-                            title={isDisabled ? 
-                                   (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) : 
-                                   allProviderModelsSelected ? `Deselect all ${provider} models` : 
-                                   `Select all ${provider} models`}
+                            title={isDisabled ?
+                              (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) :
+                              allProviderModelsSelected ? `Deselect all ${provider} models` :
+                                `Select all ${provider} models`}
                           >
                             {allProviderModelsSelected ? 'Deselect All' : 'Select All'}
                           </button>
@@ -679,8 +689,8 @@ function App() {
                     <div className="provider-models">
                       {models.map((model) => {
                         const isSelected = selectedModels.includes(model.id);
-                        const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) || 
-                                         (isFollowUpMode && !isSelected);
+                        const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) ||
+                          (isFollowUpMode && !isSelected);
                         return (
                           <label
                             key={model.id}
@@ -702,7 +712,7 @@ function App() {
                               <h4>
                                 {model.name}
                                 {isFollowUpMode && !isSelected && (
-                                  <span 
+                                  <span
                                     style={{
                                       fontSize: '0.7rem',
                                       marginLeft: '0.5rem',
@@ -765,8 +775,8 @@ function App() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isFollowUpMode 
-              ? "Enter your follow-up question or request here..." 
+            placeholder={isFollowUpMode
+              ? "Enter your follow-up question or request here..."
               : "Enter your text here to compare how different AI models respond..."
             }
             className="input-textarea"
@@ -781,10 +791,10 @@ function App() {
               disabled={isLoading || selectedModels.length === 0}
               className="compare-button"
             >
-              {isLoading 
-                ? `Comparing ${selectedModels.length} models...` 
-                : isFollowUpMode 
-                  ? 'Continue Conversation' 
+              {isLoading
+                ? `Comparing ${selectedModels.length} models...`
+                : isFollowUpMode
+                  ? 'Continue Conversation'
                   : `Compare ${selectedModels.length || ''} Model${selectedModels.length !== 1 ? 's' : ''}`
               }
             </button>
@@ -960,7 +970,7 @@ function App() {
                   const model = allModels.find(m => m.id === conversation.modelId);
                   const latestMessage = conversation.messages[conversation.messages.length - 1];
                   const isError = latestMessage?.content.startsWith('Error');
-                  
+
                   return (
                     <div key={conversation.modelId} className="result-card conversation-card">
                       <div className="result-header">
