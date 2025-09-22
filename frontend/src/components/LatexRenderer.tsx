@@ -250,7 +250,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Then replace reference-style links
-            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (_, text, ref) => {
+            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
                 const reference = ref || text.toLowerCase();
                 const url = referenceMap[reference];
                 if (url) {
