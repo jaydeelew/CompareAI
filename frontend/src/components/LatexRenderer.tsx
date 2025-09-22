@@ -179,13 +179,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/^\|(.+)\|$/gm, (_, content) => {
                 return '___TABLE_ROW___' + content + '___/TABLE_ROW___';
             });
-            
+
             // Process table rows and convert to HTML table
             processedText = processedText.replace(/(___TABLE_ROW___[\s\S]*?___\/TABLE_ROW___)+/g, (match) => {
                 const rows = match.split('___/TABLE_ROW___').filter(row => row.trim());
                 let tableHTML = '<table class="markdown-table">';
                 let isHeader = true;
-                
+
                 rows.forEach((row, index) => {
                     const cleanRow = row.replace('___TABLE_ROW___', '').trim();
                     if (cleanRow.match(/^[-|\s:]+$/)) {
@@ -193,7 +193,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         isHeader = false;
                         return;
                     }
-                    
+
                     const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
                     if (cells.length > 0) {
                         const tag = isHeader ? 'th' : 'td';
@@ -202,7 +202,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         if (index === 0) isHeader = false; // Only first row is header
                     }
                 });
-                
+
                 tableHTML += '</table>';
                 return tableHTML;
             });
@@ -222,7 +222,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Handle markdown blockquotes
             processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
-            
+
             // Merge consecutive blockquotes
             processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
 
@@ -236,7 +236,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
 
             // Handle markdown links [text](url) and [text](url "title")
-            processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (match, text, url, title) => {
+            processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
                 const titleAttr = title ? ` title="${title}"` : '';
                 return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
             });
@@ -244,13 +244,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle reference-style links [text][ref] and [ref]: url
             // First, collect all reference definitions
             const referenceMap: { [key: string]: string } = {};
-            processedText = processedText.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (match, ref, url) => {
+            processedText = processedText.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (_, ref, url) => {
                 referenceMap[ref.toLowerCase()] = url.trim();
                 return ''; // Remove the definition line
             });
 
             // Then replace reference-style links
-            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
+            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (_, text, ref) => {
                 const reference = ref || text.toLowerCase();
                 const url = referenceMap[reference];
                 if (url) {
@@ -260,7 +260,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Handle markdown images ![alt](url) and ![alt](url "title")
-            processedText = processedText.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (match, alt, url, title) => {
+            processedText = processedText.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) => {
                 const titleAttr = title ? ` title="${title}"` : '';
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
@@ -276,7 +276,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
 
             // Handle markdown task lists - [x] and [ ]
-            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (match, checked, text) => {
+            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
                 const isChecked = checked === 'x';
                 return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
             });
@@ -284,10 +284,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle markdown lists more carefully
             // First, handle unordered lists (but not task lists)
             processedText = processedText.replace(/^- (?!\[[ x]\])(.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
-            
+
             // Then handle ordered lists  
             processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
-            
+
             // Convert task list items to proper HTML
             processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
                 const items = match.replace(/___TASK_ITEM___(checked|unchecked)___(.*?)___\/TASK_ITEM___/g, (_, checked, text) => {
@@ -296,13 +296,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 });
                 return '<ul class="task-list">' + items + '</ul>';
             });
-            
+
             // Convert consecutive unordered list items to proper HTML
             processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___)+/g, (match) => {
                 const items = match.replace(/___UL_ITEM___(.*?)___\/UL_ITEM___/g, '<li>$1</li>');
                 return '<ul>' + items + '</ul>';
             });
-            
+
             // Convert consecutive ordered list items to proper HTML
             processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___)+/g, (match) => {
                 const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
@@ -326,7 +326,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 if (term.trim().length < 3) {
                     return match;
                 }
-                
+
                 const cleanTerm = term.trim();
                 if (!definitionMap[cleanTerm]) {
                     definitionMap[cleanTerm] = [];
@@ -344,7 +344,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Handle footnotes [^1] and [^1]: content
             const footnoteMap: { [key: string]: string } = {};
-            processedText = processedText.replace(/^\[\^([^\]]+)\]:\s*(.+)$/gm, (match, ref, content) => {
+            processedText = processedText.replace(/^\[\^([^\]]+)\]:\s*(.+)$/gm, (_, ref, content) => {
                 footnoteMap[ref] = content.trim();
                 return ''; // Remove the footnote definition line
             });
@@ -358,7 +358,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Add footnote definitions at the end
-            const footnotes = Object.keys(footnoteMap).map(ref => 
+            const footnotes = Object.keys(footnoteMap).map(ref =>
                 `<div id="footnote-${ref}" class="footnote-def"><sup>${ref}</sup> ${footnoteMap[ref]} <a href="#footnote-ref-${ref}" class="footnote-backref">↩</a></div>`
             ).join('');
             if (footnotes) {
