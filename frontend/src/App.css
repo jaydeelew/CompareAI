@@ -1206,6 +1206,7 @@ body {
 
 .model-option:last-child {
   margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .model-option:hover {
@@ -1540,35 +1541,7 @@ body {
   background: rgba(255, 255, 255, 0.5);
 }
 
-.model-option {
-  display: flex;
-  align-items: flex-start;
-  padding: 1rem 1.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  border-bottom: 1px solid rgba(102, 126, 234, 0.05);
-  gap: 1rem;
-}
-
-.model-option:last-child {
-  border-bottom: none;
-}
-
-.model-option:hover {
-  background: rgba(102, 126, 234, 0.08);
-}
-
-.model-option.selected {
-  background: rgba(102, 126, 234, 0.15);
-  border-left: 4px solid #667eea;
-}
-
-.model-option .model-checkbox {
-  position: static;
-  margin: 0;
-  flex-shrink: 0;
-  margin-top: 0.25rem;
-}
+/* Removed duplicate .model-option rules - using the first set above */
 
 .model-info {
   flex: 1;
