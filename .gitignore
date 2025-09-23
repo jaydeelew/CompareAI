@@ -81,6 +81,8 @@ build/
 .npm
 .eslintcache
 .yarn-integrity
+.yarn/
+.pnpm-store/
 
 # AI/ML Model Files (Large files)
 *.pkl
@@ -103,11 +105,15 @@ huggingface/
 # Docker
 .dockerignore
 docker-compose.override.yml
+.docker/
+docker-data/
 
 # Logs
 logs/
 *.log
 *.log.*
+server.log
+dev.log
 
 # OS Generated Files
 .DS_Store
@@ -153,6 +159,11 @@ settings.local.*
 *.crt
 *.p12
 *.pfx
+# SSL Certificates
+/etc/letsencrypt/
+/var/lib/letsencrypt/
+ssl/
+certs/
 
 # Monitoring and Analytics
 .sentryclirc
@@ -188,4 +199,111 @@ cython_debug/
 
 # Local development
 .local/
-local/ 
+local/
+
+# Vite
+.vite/
+vite.config.js.timestamp-*
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierignore
+
+# Turbo
+.turbo/
+
+# Next.js (if ever used)
+.next/
+out/
+
+# Nuxt.js (if ever used)
+.nuxt/
+.output/
+
+# SvelteKit (if ever used)
+.svelte-kit/
+
+# Astro (if ever used)
+.astro/
+
+# Remix (if ever used)
+.remix/
+
+# Storybook
+storybook-static/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Jest
+coverage/
+
+# Webpack
+.webpack/
+
+# Rollup
+.rollup.cache/
+
+# Parcel
+.parcel-cache/
+
+# Snowpack
+.snowpack/
+
+# Microbundle
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.* 
