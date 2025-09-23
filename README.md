@@ -1,18 +1,18 @@
 # CompareIntel
 
-**CompareIntel** is a production-ready AI model comparison platform that allows users to compare responses from 50+ AI models simultaneously. Built with modern web technologies and deployed with SSL/HTTPS support, this platform provides real-time insights into AI model performance across different providers.
+A production-ready AI model comparison platform that enables side-by-side comparison of responses from 50+ AI models simultaneously. Built with modern web technologies and deployed with SSL/HTTPS support.
 
-## 🌐 Live Demo
+## Live Demo
 
 **Production URL:** [https://compareintel.com](https://compareintel.com)
 
 ## Overview
 
-**CompareIntel** is a comprehensive web application that enables side-by-side comparison of multiple AI language models from leading providers including OpenAI, Anthropic, Google, Cohere, DeepSeek, and many others. Users can submit text input and instantly see how different models respond, with detailed performance metrics and success/failure tracking.
+CompareIntel is a comprehensive web application that enables comparison of multiple AI language models from leading providers including OpenAI, Anthropic, Google, Cohere, DeepSeek, and many others. Users can submit text input and instantly see how different models respond, with detailed performance metrics and success/failure tracking.
 
-## ✨ Key Features
+## Key Features
 
-- **🤖 50+ AI Models:** Compare responses from models across multiple providers:
+- **50+ AI Models:** Compare responses from models across multiple providers:
   - **Anthropic:** Claude 3 Haiku, Claude 3.5 Sonnet, Claude 3 Opus
   - **OpenAI:** GPT-4, GPT-4 Turbo, GPT-3.5 Turbo variations
   - **Google:** Gemini Pro, Gemini Flash, Gemini Exp models
@@ -21,15 +21,15 @@
   - **Meta:** Llama 3.1 and 3.2 variants
   - **Many more providers and models**
 
-- **⚡ Real-Time Processing:** Concurrent API calls with intelligent batch processing for optimal performance
-- **📊 Performance Analytics:** Track success rates, response times, and model reliability
-- **🎯 Smart Selection Tools:** Quick select options (Top 5, Popular, by Provider) to streamline testing
-- **🚫 Intelligent Timeout Prevention:** Optimized request handling with user-friendly timeout management
-- **📱 Responsive Design:** Modern, mobile-friendly interface with smooth animations
-- **🔒 Production Security:** SSL/HTTPS support with Let's Encrypt certificates
-- **🐳 Containerized Deployment:** Full Docker support for development and production environments
+- **Real-Time Processing:** Concurrent API calls with intelligent batch processing for optimal performance
+- **Performance Analytics:** Track success rates, response times, and model reliability
+- **Smart Selection Tools:** Quick select options (Top 5, Popular, by Provider) to streamline testing
+- **Intelligent Timeout Prevention:** Optimized request handling with user-friendly timeout management
+- **Responsive Design:** Modern, mobile-friendly interface with smooth animations
+- **Production Security:** SSL/HTTPS support with Let's Encrypt certificates
+- **Containerized Deployment:** Full Docker support for development and production environments
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Modern CSS with CSS Variables
 - **Backend:** FastAPI (Python), OpenAI SDK, OpenRouter Integration
@@ -38,7 +38,7 @@
 - **Deployment:** AWS EC2 with automated SSL setup scripts
 - **Monitoring:** Built-in model performance tracking and analytics
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 CompareIntel/
@@ -65,7 +65,7 @@ CompareIntel/
 └── deploy.sh              # Production deployment script
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -89,7 +89,7 @@ Create a `.env` file in the `backend/` directory:
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```
 
-> **🔑 API Key:** Get your free OpenRouter API key at [openrouter.ai](https://openrouter.ai/)
+**API Key:** Get your free OpenRouter API key at [openrouter.ai](https://openrouter.ai/)
 
 ### 3. Development Setup
 
@@ -119,12 +119,12 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 4. **Click "Compare Models"** to see side-by-side results
 5. **Review responses** with performance metrics and success indicators
 
-**💡 Pro Tips:**
+**Pro Tips:**
 - Use "Top 5" button for quick comparisons
 - Select 15 or fewer models for optimal performance
 - Check the model statistics endpoint for reliability data
 
-## 🌐 Production Deployment
+## Production Deployment
 
 ### AWS EC2 Deployment with SSL
 
@@ -144,11 +144,11 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 ```
 
 The deployment script automatically:
-- ✅ Detects and uses SSL certificates if available
-- ✅ Falls back to HTTP if SSL is not configured
-- ✅ Builds optimized production containers
-- ✅ Configures Nginx reverse proxy
-- ✅ Sets up proper CORS and security headers
+- Detects and uses SSL certificates if available
+- Falls back to HTTP if SSL is not configured
+- Builds optimized production containers
+- Configures Nginx reverse proxy
+- Sets up proper CORS and security headers
 
 ### Environment Options
 
@@ -157,16 +157,16 @@ The deployment script automatically:
 3. **Production (HTTP):** `docker compose -f docker-compose.prod.yml up`
 4. **Production (HTTPS):** `docker compose -f docker-compose.ssl.yml up`
 
-> 📋 **For detailed deployment workflows:** See [DEV_WORKFLOW.md](DEV_WORKFLOW.md)
+**For detailed deployment workflows:** See [DEV_WORKFLOW.md](DEV_WORKFLOW.md)
 
-## 📊 API Endpoints
+## API Endpoints
 
 - `GET /` - Health check
 - `GET /models` - List all available models by provider
 - `POST /compare` - Compare models with input text
 - `GET /model-stats` - Performance statistics for all models
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Performance Tuning
 - **Concurrent Requests:** Adjust `MAX_CONCURRENT_REQUESTS` in `model_runner.py`
@@ -179,13 +179,13 @@ The deployment script automatically:
 - Real-time model availability checking
 - Performance tracking and success rate monitoring
 
-## 📄 Documentation
+## Documentation
 
 - **[DEV_WORKFLOW.md](DEV_WORKFLOW.md)** - Comprehensive development environment setup
 - **[SECURITY_SETUP.md](SECURITY_SETUP.md)** - SSL/HTTPS configuration and security best practices
-- **[TIMEOUT_PREVENTION_CHANGES.md](TIMEOUT_PREVENTION_CHANGES.md)** - Performance optimizations and timeout handling
+- **[CACHE_BUSTING_SETUP.md](CACHE_BUSTING_SETUP.md)** - Cache busting and performance optimizations
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Here's how you can help:
 
@@ -201,16 +201,12 @@ We welcome contributions! Here's how you can help:
 - Test your changes across multiple AI models
 - Update documentation for new features
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **OpenRouter** for providing access to multiple AI model APIs
 - **All AI providers** for their powerful language models
 - **Open source community** for the amazing tools and frameworks
-
----
-
-**🌟 Star this repository if you find it useful!**
