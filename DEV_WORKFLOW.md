@@ -137,10 +137,7 @@ docker compose -f docker-compose.prod.yml down
 
 ```bash
 # SSH into your EC2 instance
-ssh -i CompareAI.pem ubuntu@54.163.207.252
-
-# Navigate to your project directory
-cd /path/to/CompareAI
+ssh -i CompareAI.pem ubuntu@54.163.207.252 && cd CompareAI
 
 # Pull latest changes
 git pull origin master
