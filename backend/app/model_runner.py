@@ -37,7 +37,7 @@ MODELS_BY_PROVIDER = {
         },
         {
             "id": "anthropic/claude-3-opus-20240229",
-            "name": "Claude 3 Opus (Feb 29, 2024)",
+            "name": "Claude 3 Opus",
             "description": "Anthropic's most powerful Claude 3 model with exceptional reasoning capabilities",
             "category": "Language",
             "provider": "Anthropic",
@@ -51,7 +51,7 @@ MODELS_BY_PROVIDER = {
         },
         {
             "id": "anthropic/claude-3.5-haiku-20241022",
-            "name": "Claude 3.5 Haiku (Oct 22, 2024)",
+            "name": "Claude 3.5 Haiku",
             "description": "Anthropic's fastest and most efficient Claude 3.5 model optimized for speed",
             "category": "Language",
             "provider": "Anthropic",
@@ -65,14 +65,14 @@ MODELS_BY_PROVIDER = {
         },
         {
             "id": "anthropic/claude-3.5-sonnet-20240620",
-            "name": "Claude 3.5 Sonnet (Jun 20, 2024)",
+            "name": "Claude 3.5 Sonnet",
             "description": "Anthropic's Claude 3.5 Sonnet model from June 2024 release",
             "category": "Language",
             "provider": "Anthropic",
         },
         {
             "id": "anthropic/claude-3.5-sonnet-20241022",
-            "name": "Claude 3.5 Sonnet (Oct 22, 2024)",
+            "name": "Claude 3.5 Sonnet",
             "description": "Anthropic's most advanced Claude 3.5 Sonnet model with enhanced capabilities",
             "category": "Language",
             "provider": "Anthropic",
@@ -95,21 +95,21 @@ MODELS_BY_PROVIDER = {
     "Cohere": [
         {
             "id": "cohere/command-r7b-12-2024",
-            "name": "Command R7B (Dec 2024)",
+            "name": "Command R7B",
             "description": "Cohere's latest compact model with excellent efficiency and performance",
             "category": "Language",
             "provider": "Cohere",
         },
         {
             "id": "cohere/command-r-08-2024",
-            "name": "Command R (Aug 2024)",
+            "name": "Command R",
             "description": "Cohere's latest command model with enhanced capabilities for general tasks",
             "category": "Language",
             "provider": "Cohere",
         },
         {
             "id": "cohere/command-r-plus-08-2024",
-            "name": "Command R+ (Aug 2024)",
+            "name": "Command R+",
             "description": "Cohere's most powerful model with enhanced reasoning and instruction following",
             "category": "Language/Reasoning",
             "provider": "Cohere",
@@ -118,7 +118,7 @@ MODELS_BY_PROVIDER = {
     "DeepSeek": [
         {
             "id": "deepseek/deepseek-chat",
-            "name": "DeepSeek Chat (Standard)",
+            "name": "DeepSeek Chat",
             "description": "DeepSeek's proven conversational model with strong reasoning capabilities",
             "category": "Language/Reasoning",
             "provider": "DeepSeek",
@@ -174,21 +174,6 @@ MODELS_BY_PROVIDER = {
             "category": "Language",
             "provider": "Google",
         },
-        # Previous models that were commented out - now with correct IDs above
-        # {
-        #     "id": "google/gemini-2.0-flash-experimental",  # OLD - INCORRECT ID
-        #     "name": "Gemini 2.0 Flash Experimental",
-        #     "description": "Google's cutting-edge experimental Gemini 2.0 model with latest capabilities",
-        #     "category": "Language",
-        #     "provider": "Google"
-        # },
-        # {
-        #     "id": "google/gemini-2.0-flash-thinking-experimental",  # OLD - INCORRECT ID
-        #     "name": "Gemini 2.0 Flash Thinking Experimental",
-        #     "description": "Google's experimental Gemini 2.0 with advanced reasoning capabilities",
-        #     "category": "Language",
-        #     "provider": "Google"
-        # },
         {
             "id": "google/gemini-2.5-flash",
             "name": "Gemini 2.5 Flash",
@@ -324,6 +309,13 @@ MODELS_BY_PROVIDER = {
     ],
     "OpenAI": [
         {
+            "id": "openai/o1",
+            "name": "o1",
+            "description": "OpenAI's latest reasoning model designed to think before responding",
+            "category": "Reasoning",
+            "provider": "OpenAI",
+        },
+        {
             "id": "openai/o1-mini",
             "name": "o1-mini",
             "description": "OpenAI's efficient reasoning model for faster complex problem solving",
@@ -331,15 +323,8 @@ MODELS_BY_PROVIDER = {
             "provider": "OpenAI",
         },
         {
-            "id": "openai/o1",
-            "name": "OpenAI o1",
-            "description": "OpenAI's latest reasoning model designed to think before responding",
-            "category": "Reasoning",
-            "provider": "OpenAI",
-        },
-        {
             "id": "openai/gpt-4o-2024-11-20",
-            "name": "GPT-4o (Nov 20, 2024)",
+            "name": "GPT-4o",
             "description": "OpenAI's most advanced GPT-4o model with enhanced capabilities",
             "category": "Language",
             "provider": "OpenAI",
@@ -360,7 +345,7 @@ MODELS_BY_PROVIDER = {
         },
         {
             "id": "openai/gpt-4o",
-            "name": "GPT-4o (Standard)",
+            "name": "GPT-4o",
             "description": "OpenAI's latest multimodal model with enhanced reasoning and code capabilities",
             "category": "Language",
             "provider": "OpenAI",
