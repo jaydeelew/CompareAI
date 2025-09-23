@@ -823,13 +823,13 @@ function App() {
                 if (count === 1) {
                   indicator = "⚡ Very Quick";
                   description = "Single model comparison";
-                } else if (count <= 5) {
+                } else if (count <= 4) {
                   indicator = "🚀 Quick";
                   description = "Small batch processing";
-                } else if (count <= 15) {
+                } else if (count <= 8) {
                   indicator = "⏱️ Moderate";
                   description = "Medium batch processing";
-                } else if (count <= 30) {
+                } else if (count <= 12) {
                   indicator = "⏳ Takes a while";
                   description = "Large batch processing";
                 } else {
