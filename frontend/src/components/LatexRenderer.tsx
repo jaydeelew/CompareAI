@@ -11,31 +11,76 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         try {
             let processedText = text;
 
+            // Preprocess: Clean up common malformed LaTeX patterns
+            // Fix broken \boxed commands with HTML mixed in
+            processedText = processedText.replace(/\\boxed\{[^}]*style="[^"]*"[^}]*\}/g, (match) => {
+                // Extract just the mathematical content, removing HTML styling
+                const mathContent = match
+                    .replace(/\\boxed\{/, '')
+                    .replace(/\}$/, '')
+                    .replace(/<[^>]*>/g, '') // Remove HTML tags
+                    .replace(/style="[^"]*"/g, '') // Remove style attributes
+                    .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
+                    .trim();
+                return `\\boxed{${mathContent}}`;
+            });
+
+            // Fix malformed LaTeX commands that have HTML mixed in
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*<[^>]*>[^}]*\}/g, (match) => {
+                // Extract the command and clean content
+                const commandMatch = match.match(/\\([a-zA-Z]+)\{/);
+                if (commandMatch) {
+                    const command = commandMatch[1];
+                    const content = match
+                        .replace(new RegExp(`\\\\${command}\\{`), '')
+                        .replace(/\}$/, '')
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/style="[^"]*"/g, '') // Remove style attributes
+                        .trim();
+                    return `\\${command}{${content}}`;
+                }
+                return match;
+            });
+
             // First handle explicit display math ($$...$$)
-            processedText = processedText.replace(/\$\$([^$]+?)\$\$/g, (match, math) => {
+            processedText = processedText.replace(/\$\$([^$]+?)\$\$/g, (_, math) => {
                 try {
-                    const rendered = katex.renderToString(math.trim(), {
+                    // Clean up the math content
+                    const cleanMath = math.trim()
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/style="[^"]*"/g, '') // Remove style attributes
+                        .trim();
+
+                    const rendered = katex.renderToString(cleanMath, {
                         displayMode: true,
                         throwOnError: false
                     });
                     return rendered;
                 } catch (error) {
-                    console.warn('Error rendering display math:', error);
-                    return match;
+                    console.warn('Error rendering display math:', error, 'Math:', math);
+                    // Return a fallback that shows the math content
+                    return `<div style="border: 1px solid #ccc; padding: 8px; margin: 4px 0; background: #f9f9f9; font-family: monospace;">${math.trim()}</div>`;
                 }
             });
 
             // Then handle explicit inline math ($...$)
-            processedText = processedText.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (match, math) => {
+            processedText = processedText.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_, math) => {
                 try {
-                    const rendered = katex.renderToString(math.trim(), {
+                    // Clean up the math content
+                    const cleanMath = math.trim()
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/style="[^"]*"/g, '') // Remove style attributes
+                        .trim();
+
+                    const rendered = katex.renderToString(cleanMath, {
                         displayMode: false,
                         throwOnError: false
                     });
                     return rendered;
                 } catch (error) {
-                    console.warn('Error rendering inline math:', error);
-                    return match;
+                    console.warn('Error rendering inline math:', error, 'Math:', math);
+                    // Return a fallback that shows the math content
+                    return `<span style="border: 1px solid #ccc; padding: 2px 4px; background: #f9f9f9; font-family: monospace; font-size: 0.9em;">${math.trim()}</span>`;
                 }
             });
 
@@ -161,16 +206,34 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle \boxed{} for boxed equations
             processedText = processedText.replace(/\\boxed\{([^}]+)\}/g, (_, content) => {
                 try {
-                    // Process any LaTeX delimiters within the boxed content first
-                    const cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    // Clean up the content by removing HTML tags and LaTeX delimiters
+                    let cleanContent = content
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
+                        .replace(/\\left\(/g, '(') // Convert \left( to (
+                        .replace(/\\right\)/g, ')') // Convert \right) to )
+                        .trim();
+
+                    // If content is empty after cleaning, use original
+                    if (!cleanContent) {
+                        cleanContent = content.replace(/<[^>]*>/g, '').trim();
+                    }
+
                     const rendered = katex.renderToString(`\\boxed{${cleanContent}}`, {
                         displayMode: false,
                         throwOnError: false
                     });
                     return rendered;
-                } catch {
+                } catch (error) {
+                    console.warn('Error rendering boxed content:', error, 'Content:', content);
                     // Process LaTeX delimiters in fallback content too
-                    const cleanContent = content.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1');
+                    const cleanContent = content
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
+                        .replace(/\\left\(/g, '(') // Convert \left( to (
+                        .replace(/\\right\)/g, ')') // Convert \right) to )
+                        .trim();
+
                     return `<span style="border: 1px solid currentColor; padding: 2px 6px; border-radius: 3px; display: inline-block;">${cleanContent}</span>`;
                 }
             });
