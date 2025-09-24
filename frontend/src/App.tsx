@@ -974,14 +974,8 @@ function App() {
                   return (
                     <div key={conversation.modelId} className="result-card conversation-card">
                       <div className="result-header">
-                        <h3>{model?.name || conversation.modelId}</h3>
-                        <div className="result-actions">
-                          <div className="result-stats">
-                            <span className="output-length">{latestMessage?.content.length || 0} chars</span>
-                            <span className={`status ${isError ? 'error' : 'success'}`}>
-                              {isError ? 'Failed' : 'Success'}
-                            </span>
-                          </div>
+                        <div className="result-header-top">
+                          <h3>{model?.name || conversation.modelId}</h3>
                           <button
                             className="close-card-btn"
                             onClick={() => closeResultCard(conversation.modelId)}
@@ -990,6 +984,12 @@ function App() {
                           >
                             ✕
                           </button>
+                        </div>
+                        <div className="result-header-bottom">
+                          <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                          <span className={`status ${isError ? 'error' : 'success'}`}>
+                            {isError ? 'Failed' : 'Success'}
+                          </span>
                         </div>
                       </div>
                       <div className="conversation-content">
