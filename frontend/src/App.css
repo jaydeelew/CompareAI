@@ -1775,7 +1775,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--shadow-md);
   transition: all 0.3s ease;
 }
@@ -1787,8 +1787,6 @@ body {
 
 .conversation-content {
   padding: 1rem;
-  max-height: 600px;
-  overflow-y: auto;
   overflow-x: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -1842,7 +1840,7 @@ body {
   border: 1px solid var(--border-color);
   margin-left: 0.5rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
@@ -1885,7 +1883,6 @@ body {
 @media (max-width: 768px) {
   .conversation-content {
     padding: 0.75rem;
-    max-height: 400px;
   }
 
   .message-header {
@@ -2102,7 +2099,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.3s ease;
 }
 
@@ -2331,8 +2328,6 @@ body {
   background: #f8f9fa;
   border-radius: 8px;
   padding: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
   overflow-x: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;

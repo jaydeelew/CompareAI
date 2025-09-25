@@ -11,6 +11,80 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         try {
             let processedText = text;
 
+            // Preprocess: Clean up SVG path data and other unwanted content
+            // Remove specific SVG path data patterns that appear in AI responses
+            processedText = processedText.replace(/c-2\.7,0,-7\.17,-2\.7,-13\.5,-8c-5\.8,-5\.3,-9\.5,-10,-9\.5,-14[^"]*H400000v40H845\.2724[^"]*M834 80h400000v40h-400000z/g, '');
+
+            // Remove other common SVG path patterns
+            processedText = processedText.replace(/[a-zA-Z]\s*[0-9.-]+(?:[,\s][0-9.-]+){20,}/g, '');
+
+            // Remove SVG path data patterns (long sequences of numbers, letters, and special chars)
+            processedText = processedText.replace(/[a-zA-Z0-9\s,.-]{50,}/g, (match) => {
+                // Check if this looks like SVG path data (contains many numbers, letters, commas, periods)
+                const hasManyNumbers = (match.match(/\d/g) || []).length > 10;
+                const hasManyCommas = (match.match(/,/g) || []).length > 5;
+                const hasManyLetters = (match.match(/[a-zA-Z]/g) || []).length > 5;
+
+                if (hasManyNumbers && hasManyCommas && hasManyLetters) {
+                    return ''; // Remove SVG path data
+                }
+                return match; // Keep other long sequences
+            });
+
+            // Remove standalone SVG path elements that might be mixed in
+            processedText = processedText.replace(/<path[^>]*d="[^"]*"[^>]*\/>/g, '');
+            processedText = processedText.replace(/<svg[^>]*>.*?<\/svg>/gs, '');
+
+            // Remove any remaining SVG-related attributes or elements
+            processedText = processedText.replace(/<[^>]*(?:viewBox|xmlns|stroke|fill)[^>]*>/g, '');
+
+            // Clean up any remaining malformed HTML that might contain SVG data
+            processedText = processedText.replace(/<[^>]*style="[^"]*"[^>]*>/g, (match) => {
+                // If it contains SVG-related styles, remove the whole element
+                if (match.includes('svg') || match.includes('path') || match.includes('viewBox')) {
+                    return '';
+                }
+                return match;
+            });
+
+            // Clean up any remaining mixed content that has SVG path data mixed with text
+            processedText = processedText.replace(/([^>])\s*[a-zA-Z0-9\s,.-]{30,}\s*([^<])/g, (match, before, after) => {
+                // Check if the middle part looks like SVG path data
+                const middle = match.slice(before.length, match.length - after.length);
+                const hasManyNumbers = (middle.match(/\d/g) || []).length > 5;
+                const hasManyCommas = (middle.match(/,/g) || []).length > 3;
+
+                if (hasManyNumbers && hasManyCommas) {
+                    return before + ' ' + after; // Remove the SVG data, keep the surrounding text
+                }
+                return match;
+            });
+
+            // Additional cleanup for common AI response patterns that contain SVG data
+            // Remove any lines that are mostly SVG path data
+            processedText = processedText.replace(/^[a-zA-Z0-9\s,.-]{40,}$/gm, (match) => {
+                const hasManyNumbers = (match.match(/\d/g) || []).length > 8;
+                const hasManyCommas = (match.match(/,/g) || []).length > 4;
+                const hasManyLetters = (match.match(/[a-zA-Z]/g) || []).length > 4;
+
+                if (hasManyNumbers && hasManyCommas && hasManyLetters) {
+                    return ''; // Remove the line
+                }
+                return match;
+            });
+
+            // Clean up any remaining malformed content that might have SVG data embedded
+            processedText = processedText.replace(/\s+[a-zA-Z0-9\s,.-]{20,}\s+/g, (match) => {
+                const trimmed = match.trim();
+                const hasManyNumbers = (trimmed.match(/\d/g) || []).length > 6;
+                const hasManyCommas = (trimmed.match(/,/g) || []).length > 3;
+
+                if (hasManyNumbers && hasManyCommas) {
+                    return ' '; // Replace with single space
+                }
+                return match;
+            });
+
             // Preprocess: Clean up common malformed LaTeX patterns
             // Fix broken \boxed commands with HTML mixed in
             processedText = processedText.replace(/\\boxed\{[^}]*style="[^"]*"[^}]*\}/g, (match) => {
