@@ -441,7 +441,12 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        response = client.chat.completions.create(model=model_id, messages=messages, timeout=INDIVIDUAL_MODEL_TIMEOUT)
+        response = client.chat.completions.create(
+            model=model_id, 
+            messages=messages, 
+            timeout=INDIVIDUAL_MODEL_TIMEOUT,
+            max_tokens=4000  # Ensure we get complete responses
+        )
         content = response.choices[0].message.content
         return content if content is not None else "No response generated"
     except Exception as e:
@@ -556,7 +561,10 @@ def test_connection_quality() -> Dict[str, Any]:
 
     try:
         response = client.chat.completions.create(
-            model=test_model, messages=[{"role": "user", "content": test_prompt}], timeout=10  # Short timeout for connection test
+            model=test_model, 
+            messages=[{"role": "user", "content": test_prompt}], 
+            timeout=10,  # Short timeout for connection test
+            max_tokens=100  # Small limit for connection test
         )
 
         end_time = time.time()
