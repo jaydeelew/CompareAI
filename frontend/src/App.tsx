@@ -58,6 +58,7 @@ function App() {
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [, setUserMessageTimestamp] = useState<string>('');
   const userCancelledRef = useRef(false);
+  const followUpJustActivatedRef = useRef(false);
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
@@ -101,6 +102,61 @@ function App() {
       }, 100);
     }
   }, [isLoading]);
+
+  // Scroll to results section when results are loaded
+  useEffect(() => {
+    if (response) {
+      // Longer delay to ensure the results section is fully rendered
+      setTimeout(() => {
+        const resultsSection = document.querySelector('.results-section');
+        if (resultsSection) {
+          // Scroll to the results section header specifically
+          resultsSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 300);
+    }
+  }, [response]);
+
+  // Scroll to input section when follow-up mode is activated
+  useEffect(() => {
+    if (isFollowUpMode && followUpJustActivatedRef.current) {
+      // Scroll to input section when follow-up mode is first activated
+      setTimeout(() => {
+        const inputSection = document.querySelector('.input-section');
+        if (inputSection) {
+          console.log('Follow-up mode: Scrolling to input section:', inputSection);
+          inputSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else {
+          console.log('Follow-up mode: Input section not found');
+        }
+        // Reset the flag after scrolling
+        followUpJustActivatedRef.current = false;
+      }, 100);
+    }
+  }, [isFollowUpMode]);
+
+  // Scroll to results section when conversations are updated (follow-up mode)
+  useEffect(() => {
+    if (conversations.length > 0 && isFollowUpMode && !followUpJustActivatedRef.current) {
+      // Scroll to results section after follow-up is submitted
+      setTimeout(() => {
+        const resultsSection = document.querySelector('.results-section');
+        if (resultsSection) {
+          console.log('Follow-up submitted: Scrolling to results section:', resultsSection);
+          resultsSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 400);
+    }
+  }, [conversations, isFollowUpMode]);
 
   // Fetch available models on component mount
   useEffect(() => {
@@ -231,19 +287,9 @@ function App() {
   };
 
   const handleFollowUp = () => {
+    followUpJustActivatedRef.current = true;
     setIsFollowUpMode(true);
     setInput('');
-
-    // Scroll to input section and bring it to the top of the page
-    setTimeout(() => {
-      const inputSection = document.querySelector('.input-section');
-      if (inputSection) {
-        inputSection.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-      }
-    }, 100);
   };
 
   const handleContinueConversation = () => {
@@ -274,11 +320,16 @@ function App() {
         if (userMessages.length > 0) {
           // Get the last user message
           const lastUserMessage = userMessages[userMessages.length - 1];
-          // Scroll to show the last user message
-          lastUserMessage.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest'
+
+          // Calculate the position of the last user message relative to the conversation content
+          const messageRect = lastUserMessage.getBoundingClientRect();
+          const containerRect = content.getBoundingClientRect();
+          const relativeTop = messageRect.top - containerRect.top + content.scrollTop;
+
+          // Scroll to position the last user message at the top of the conversation container
+          content.scrollTo({
+            top: relativeTop,
+            behavior: 'smooth'
           });
         } else {
           // Fallback to scrolling to bottom if no user message found
@@ -287,6 +338,7 @@ function App() {
       });
     }, 100);
   };
+
 
   const handleSubmit = async () => {
     if (!input.trim()) {
@@ -406,20 +458,20 @@ function App() {
             };
           });
 
-          // Scroll all conversations to bottom after state update
+          // Scroll all conversations to show the last user message after state update
           setTimeout(() => {
             scrollConversationsToBottom();
-          }, 200);
+          }, 600);
 
           return updatedConversations;
         });
       } else {
         // Initialize new conversations
         initializeConversations(data, userTimestamp);
-        // Scroll to bottom for initial conversations too
+        // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
           scrollConversationsToBottom();
-        }, 200);
+        }, 500);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
