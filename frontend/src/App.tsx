@@ -42,6 +42,9 @@ interface ModelsByProvider {
 // Maximum number of models that can be selected
 const MAX_MODELS_LIMIT = 12;
 
+// Freemium usage limits
+const MAX_DAILY_USAGE = 10;
+
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
   const [input, setInput] = useState('');
@@ -60,8 +63,42 @@ function App() {
   const userCancelledRef = useRef(false);
   const followUpJustActivatedRef = useRef(false);
 
+  // Freemium usage tracking state
+  const [usageCount, setUsageCount] = useState(0);
+  const [browserFingerprint, setBrowserFingerprint] = useState('');
+
+  // Developer reset function
+  const resetUsage = () => {
+    setUsageCount(0);
+    localStorage.removeItem('compareai_usage');
+    setError(null);
+  };
+
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
+
+  // Generate browser fingerprint for usage tracking
+  const generateBrowserFingerprint = () => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('Browser fingerprint', 2, 2);
+    }
+
+    const fingerprint = {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      screenResolution: `${screen.width}x${screen.height}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      canvas: canvas.toDataURL(),
+      timestamp: Date.now()
+    };
+
+    return btoa(JSON.stringify(fingerprint));
+  };
 
   // Helper function to create a conversation message
   const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
@@ -158,8 +195,26 @@ function App() {
     }
   }, [conversations, isFollowUpMode]);
 
-  // Fetch available models on component mount
+  // Load usage data and fetch models on component mount
   useEffect(() => {
+    // Load usage data from localStorage
+    const savedUsage = localStorage.getItem('compareai_usage');
+    const today = new Date().toDateString();
+
+    if (savedUsage) {
+      const usage = JSON.parse(savedUsage);
+      if (usage.date === today) {
+        setUsageCount(usage.count || 0);
+      } else {
+        // New day, reset usage
+        setUsageCount(0);
+      }
+    }
+
+    // Generate browser fingerprint
+    const fingerprint = generateBrowserFingerprint();
+    setBrowserFingerprint(fingerprint);
+
     const fetchModels = async () => {
       try {
         console.log('Fetching models from:', `${API_URL}/models`);
@@ -341,6 +396,12 @@ function App() {
 
 
   const handleSubmit = async () => {
+    // Check daily usage limit
+    if (usageCount >= MAX_DAILY_USAGE) {
+      setError('You\'ve reached your daily limit of 10 free comparisons. Upgrade to Pro for unlimited access!');
+      return;
+    }
+
     if (!input.trim()) {
       setError('Please enter some text to compare');
       return;
@@ -434,6 +495,17 @@ function App() {
       };
 
       setResponse(filteredData);
+
+      // Track usage after successful comparison
+      const newUsageCount = usageCount + 1;
+      setUsageCount(newUsageCount);
+
+      // Save to localStorage
+      const today = new Date().toDateString();
+      localStorage.setItem('compareai_usage', JSON.stringify({
+        count: newUsageCount,
+        date: today
+      }));
 
       // Clear input after successful submission
       setInput('');
@@ -871,6 +943,57 @@ function App() {
             rows={6}
           />
         </section>
+
+        {/* Usage tracking display */}
+        {usageCount > 0 && (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            padding: '1rem',
+            borderRadius: '12px',
+            margin: '1rem 0',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+          }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+              {usageCount < MAX_DAILY_USAGE ? (
+                `You've used ${usageCount} of ${MAX_DAILY_USAGE} free comparisons today`
+              ) : (
+                'You\'ve reached your daily limit!'
+              )}
+            </div>
+            {usageCount >= MAX_DAILY_USAGE && (
+              <div style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>
+                Upgrade to Pro for unlimited comparisons
+              </div>
+            )}
+
+            {/* Developer reset button - only show in development */}
+            {import.meta.env.DEV && (
+              <button
+                onClick={resetUsage}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  marginTop: '0.5rem'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                }}
+              >
+                🔄 Reset Usage (Dev Only)
+              </button>
+            )}
+          </div>
+        )}
 
         <section className="action-section">
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
