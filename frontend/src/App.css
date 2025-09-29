@@ -2106,6 +2106,8 @@ body {
 .result-card:hover {
   box-shadow: var(--shadow-lg);
   border-color: var(--primary-color);
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
 }
 
 .result-header {
