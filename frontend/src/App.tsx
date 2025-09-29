@@ -263,6 +263,31 @@ function App() {
     setError(null);
   };
 
+  // Function to scroll all conversation content areas to the last user message
+  const scrollConversationsToBottom = () => {
+    // Use a small delay to ensure DOM has updated
+    setTimeout(() => {
+      const conversationContents = document.querySelectorAll('.conversation-content');
+      conversationContents.forEach((content) => {
+        // Find all user messages in this conversation
+        const userMessages = content.querySelectorAll('.conversation-message.user');
+        if (userMessages.length > 0) {
+          // Get the last user message
+          const lastUserMessage = userMessages[userMessages.length - 1];
+          // Scroll to show the last user message
+          lastUserMessage.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+          });
+        } else {
+          // Fallback to scrolling to bottom if no user message found
+          content.scrollTop = content.scrollHeight;
+        }
+      });
+    }, 100);
+  };
+
   const handleSubmit = async () => {
     if (!input.trim()) {
       setError('Please enter some text to compare');
@@ -372,7 +397,7 @@ function App() {
           // Filter to only keep conversations for selected models, and update them
           const selectedConversations = prevConversations.filter(conv => selectedModels.includes(conv.modelId));
 
-          return selectedConversations.map(conv => {
+          const updatedConversations = selectedConversations.map(conv => {
             const newUserMessage = createMessage('user', input, userTimestamp);
             const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'), aiTimestamp);
             return {
@@ -380,10 +405,21 @@ function App() {
               messages: [...conv.messages, newUserMessage, newAssistantMessage]
             };
           });
+
+          // Scroll all conversations to bottom after state update
+          setTimeout(() => {
+            scrollConversationsToBottom();
+          }, 200);
+
+          return updatedConversations;
         });
       } else {
         // Initialize new conversations
         initializeConversations(data, userTimestamp);
+        // Scroll to bottom for initial conversations too
+        setTimeout(() => {
+          scrollConversationsToBottom();
+        }, 200);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
