@@ -248,3 +248,33 @@ async def get_rate_limit_status(request: Request, fingerprint: Optional[str] = N
         result["fingerprint_limited"] = not fp_allowed
     
     return result
+
+
+@app.post("/dev/reset-rate-limit")
+async def reset_rate_limit_dev(request: Request, fingerprint: Optional[str] = None):
+    """
+    DEV ONLY: Reset rate limits for the current client.
+    This endpoint should be disabled in production!
+    """
+    # Only allow in development mode
+    if os.environ.get('ENVIRONMENT') != 'development':
+        raise HTTPException(status_code=403, detail="This endpoint is only available in development mode")
+    
+    client_ip = get_client_ip(request)
+    
+    # Reset IP-based rate limit
+    ip_key = f"ip:{client_ip}"
+    if ip_key in rate_limit_storage:
+        del rate_limit_storage[ip_key]
+    
+    # Reset fingerprint-based rate limit if provided
+    if fingerprint:
+        fp_key = f"fp:{fingerprint}"
+        if fp_key in rate_limit_storage:
+            del rate_limit_storage[fp_key]
+    
+    return {
+        "message": "Rate limits reset successfully",
+        "ip_address": client_ip,
+        "fingerprint_reset": fingerprint is not None
+    }

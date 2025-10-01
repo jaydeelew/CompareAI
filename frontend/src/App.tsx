@@ -93,10 +93,32 @@ function App() {
   };
 
   // Developer reset function
-  const resetUsage = () => {
-    setUsageCount(0);
-    localStorage.removeItem('compareai_usage');
-    setError(null);
+  const resetUsage = async () => {
+    try {
+      // Reset backend rate limits (dev only)
+      const url = browserFingerprint
+        ? `${API_URL}/dev/reset-rate-limit?fingerprint=${encodeURIComponent(browserFingerprint)}`
+        : `${API_URL}/dev/reset-rate-limit`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        // Reset frontend state
+        setUsageCount(0);
+        localStorage.removeItem('compareai_usage');
+        setError(null);
+        alert('✅ Rate limits reset successfully! You can now make 10 more comparisons.');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(`❌ Failed to reset: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Reset error:', error);
+      alert('❌ Failed to reset rate limits. Make sure the backend is running.');
+    }
   };
 
   // Get all models in a flat array for compatibility
