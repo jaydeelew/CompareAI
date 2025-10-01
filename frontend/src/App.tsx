@@ -67,17 +67,7 @@ function App() {
   const [usageCount, setUsageCount] = useState(0);
   const [browserFingerprint, setBrowserFingerprint] = useState('');
 
-  // Developer reset function
-  const resetUsage = () => {
-    setUsageCount(0);
-    localStorage.removeItem('compareai_usage');
-    setError(null);
-  };
-
-  // Get all models in a flat array for compatibility
-  const allModels = Object.values(modelsByProvider).flat();
-
-  // Generate browser fingerprint for usage tracking
+  // Generate browser fingerprint for usage tracking (anti-abuse measure)
   const generateBrowserFingerprint = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -94,11 +84,23 @@ function App() {
       screenResolution: `${screen.width}x${screen.height}`,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       canvas: canvas.toDataURL(),
+      colorDepth: screen.colorDepth,
+      hardwareConcurrency: navigator.hardwareConcurrency,
       timestamp: Date.now()
     };
 
     return btoa(JSON.stringify(fingerprint));
   };
+
+  // Developer reset function
+  const resetUsage = () => {
+    setUsageCount(0);
+    localStorage.removeItem('compareai_usage');
+    setError(null);
+  };
+
+  // Get all models in a flat array for compatibility
+  const allModels = Object.values(modelsByProvider).flat();
 
   // Helper function to create a conversation message
   const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
@@ -211,7 +213,7 @@ function App() {
       }
     }
 
-    // Generate browser fingerprint
+    // Generate browser fingerprint for anti-abuse tracking
     const fingerprint = generateBrowserFingerprint();
     setBrowserFingerprint(fingerprint);
 
@@ -398,7 +400,7 @@ function App() {
   const handleSubmit = async () => {
     // Check daily usage limit
     if (usageCount >= MAX_DAILY_USAGE) {
-      setError('You\'ve reached your daily limit of 10 free comparisons. Upgrade to Pro for unlimited access!');
+      setError('You\'ve reached your daily limit of 10 free comparisons.');
       return;
     }
 
@@ -460,7 +462,8 @@ function App() {
         body: JSON.stringify({
           input_data: input,
           models: selectedModels,
-          conversation_history: conversationHistory
+          conversation_history: conversationHistory,
+          browser_fingerprint: browserFingerprint  // Send fingerprint for rate limiting
         }),
         signal: controller.signal,
       });
@@ -469,6 +472,12 @@ function App() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+
+        // Special handling for rate limit errors (429)
+        if (res.status === 429) {
+          throw new Error(errorData.detail || 'Daily comparison limit exceeded. Please try again tomorrow.');
+        }
+
         throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
       }
 
@@ -962,11 +971,6 @@ function App() {
                 'You\'ve reached your daily limit!'
               )}
             </div>
-            {usageCount >= MAX_DAILY_USAGE && (
-              <div style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.5rem' }}>
-                Upgrade to Pro for unlimited comparisons
-              </div>
-            )}
 
             {/* Developer reset button - only show in development */}
             {import.meta.env.DEV && (
