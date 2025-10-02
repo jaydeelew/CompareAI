@@ -38,6 +38,44 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Remove any remaining SVG-related attributes or elements
             processedText = processedText.replace(/<[^>]*(?:viewBox|xmlns|stroke|fill)[^>]*>/g, '');
 
+            // Clean up MathML content that models sometimes output
+            // AGGRESSIVE removal of MathML namespace URLs in ALL formats
+            // Remove the URLs whether they have <, //, http://, or appear standalone
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
+            processedText = processedText.replace(/http:\/\/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
+            processedText = processedText.replace(/xmlns="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/g, '');
+            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
+
+            // Even more aggressive - match the full pattern as it appears in responses
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML">([^<\n]*)/g, '$1');
+            processedText = processedText.replace(/http:\/\/www\.w3\.org\/1998\/Math\/MathML">([^<\n]*)/g, '$1');
+
+            // Remove MathML tags while preserving content
+            processedText = processedText.replace(/<\/?math[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mrow[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mi[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mn[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mo[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?msup[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?msub[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mfrac[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mfenced[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mtext[^>]*>/g, '');
+            processedText = processedText.replace(/<mspace[^>]*\/?>/g, '');
+            processedText = processedText.replace(/<\/?msubsup[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?msqrt[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?mroot[^>]*>/g, '');
+
+            // Remove any remaining MathML namespace references in various formats
+            processedText = processedText.replace(/\[Namespace:\s*http:\/\/www\.w3\.org\/1998\/Math\/MathML\]/g, '');
+            processedText = processedText.replace(/xmlns:m="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/g, '');
+            processedText = processedText.replace(/MathML["'>]/g, '');
+
+            // Additional aggressive cleanup - remove any line that looks like a MathML URL
+            processedText = processedText.split('\n').filter(line => {
+                return !line.includes('www.w3.org/1998/Math/MathML');
+            }).join('\n');
+
             // Clean up any remaining malformed HTML that might contain SVG data
             processedText = processedText.replace(/<[^>]*style="[^"]*"[^>]*>/g, (match) => {
                 // If it contains SVG-related styles, remove the whole element
@@ -670,15 +708,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         <div
             className={`latex-content ${className}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
-            style={{
-                whiteSpace: 'normal',
-                fontFamily: 'inherit',
-                lineHeight: 'inherit',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                maxWidth: '100%',
-                overflow: 'hidden'
-            }}
         />
     );
 };

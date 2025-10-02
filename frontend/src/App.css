@@ -1780,7 +1780,6 @@ body {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .conversation-card:hover {
@@ -1791,14 +1790,13 @@ body {
 .conversation-content {
   padding: 1rem;
   overflow-x: hidden;
+  overflow-y: auto;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  max-height: 400px;
-  overflow-y: auto;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  flex: 1;
 }
 
 .conversation-content::-webkit-scrollbar {
@@ -1865,7 +1863,7 @@ body {
 }
 
 .message-content {
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
@@ -1877,8 +1875,7 @@ body {
   hyphens: auto;
   flex: 1;
   min-height: 2.5rem;
-  display: flex;
-  align-items: flex-start;
+  display: block;
 }
 
 .conversation-message.user .message-content {
@@ -1901,6 +1898,7 @@ body {
   max-width: 100%;
   flex: 1;
   width: 100%;
+  overflow: visible;
 }
 
 /* Animation for new messages */
@@ -1920,7 +1918,7 @@ body {
 @media (max-width: 768px) {
   .conversation-content {
     padding: 0.75rem;
-    max-height: 300px;
+    max-height: 400px;
   }
 
   .message-header {
@@ -2271,26 +2269,161 @@ body {
   line-height: 1.6;
   color: var(--text-primary);
   margin: 0;
+}
+
+/* Only apply container styling when latex-content is standalone (not inside message-content) */
+.result-content .latex-content {
   background: var(--bg-secondary);
   padding: 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
 }
 
+/* When inside message-content, latex-content should be minimal */
+.message-content .latex-content {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
 /* Preserve whitespace for specific elements that need it */
 .latex-content pre,
 .latex-content code {
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Better styling for code blocks inside latex content */
+.message-content .latex-content pre {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.message-content .latex-content code {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.85em;
+}
+
+.message-content .latex-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Better paragraph spacing */
+.message-content .latex-content p {
+  margin: 0.75rem 0;
+  line-height: 1.7;
+}
+
+.message-content .latex-content p:first-child {
+  margin-top: 0;
+}
+
+.message-content .latex-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lists styling */
+.message-content .latex-content ul,
+.message-content .latex-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-content .latex-content li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+/* Headings in content */
+.message-content .latex-content h1,
+.message-content .latex-content h2,
+.message-content .latex-content h3,
+.message-content .latex-content h4,
+.message-content .latex-content h5,
+.message-content .latex-content h6 {
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.message-content .latex-content h1:first-child,
+.message-content .latex-content h2:first-child,
+.message-content .latex-content h3:first-child,
+.message-content .latex-content h4:first-child,
+.message-content .latex-content h5:first-child,
+.message-content .latex-content h6:first-child {
+  margin-top: 0;
+}
+
+/* Blockquotes */
+.message-content .latex-content blockquote {
+  margin: 0.75rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-style: italic;
+}
+
+/* Strong and emphasis */
+.message-content .latex-content strong {
+  font-weight: 600;
+}
+
+.message-content .latex-content em {
+  font-style: italic;
+}
+
+/* Tables */
+.message-content .latex-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.message-content .latex-content th,
+.message-content .latex-content td {
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-align: left;
+}
+
+.message-content .latex-content th {
+  background: rgba(255, 255, 255, 0.3);
+  font-weight: 600;
+}
+
+/* Horizontal rules */
+.message-content .latex-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  margin: 1rem 0;
 }
 
 /* KaTeX specific styling */
 .latex-content .katex {
   font-size: 1em;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .latex-content .katex-display {
   margin: 1em 0;
   text-align: center;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .latex-content .katex-display>.katex {
@@ -2866,8 +2999,8 @@ body {
   }
 
   .conversation-content {
-    max-height: 250px;
     padding: 0.5rem;
+    max-height: 350px;
   }
 }
 

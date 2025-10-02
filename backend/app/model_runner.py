@@ -11,7 +11,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # Configuration optimized for 12-model limit
 MAX_CONCURRENT_REQUESTS = 12  # Perfect match for 12-model limit
-INDIVIDUAL_MODEL_TIMEOUT = 30  # Reduced timeout for faster failure detection
+INDIVIDUAL_MODEL_TIMEOUT = 120  # Increased timeout for very long, detailed responses
 BATCH_SIZE = 12  # Process all 12 models in single batch for optimal performance
 
 # Connection quality optimizations
@@ -432,6 +432,14 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
     try:
         # Build messages array - use standard format like official AI providers
         messages = []
+        
+        # Add a minimal system message only to encourage complete thoughts
+        # This doesn't force verbosity, just ensures completion
+        if not conversation_history:
+            messages.append({
+                "role": "system", 
+                "content": "Provide complete responses. Finish your thoughts and explanations fully."
+            })
 
         # Add conversation history if provided (include both user and assistant messages)
         if conversation_history:
@@ -441,13 +449,60 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
+        # Don't set max_tokens - let each model use its natural maximum output length
+        # This allows models to complete their thoughts without artificial truncation
         response = client.chat.completions.create(
             model=model_id, 
             messages=messages, 
-            timeout=INDIVIDUAL_MODEL_TIMEOUT,
-            max_tokens=4000  # Ensure we get complete responses
+            timeout=INDIVIDUAL_MODEL_TIMEOUT
+            # No max_tokens parameter - models will use their default maximum
         )
         content = response.choices[0].message.content
+        finish_reason = response.choices[0].finish_reason
+        
+        # Log finish reason for debugging
+        model_name = model_id.split('/')[-1]
+        print(f"Model {model_name}: finish_reason='{finish_reason}', length={len(content) if content else 0} chars")
+        
+        # Detect incomplete responses heuristically
+        incomplete_indicators = [
+            'Therefore:',
+            'In conclusion:',
+            'Finally:',
+            'Thus:',
+            'So:',
+            'Hence:',
+            'Now,',
+            'Next,',
+            'Then,',
+            'Adding these',
+            'Combining',
+            'Putting it all together',
+        ]
+        
+        is_likely_incomplete = False
+        if content:
+            last_30_chars = content.strip()[-30:] if len(content.strip()) > 30 else content.strip()
+            for indicator in incomplete_indicators:
+                if last_30_chars.endswith(indicator) or last_30_chars.endswith(indicator.lower()):
+                    is_likely_incomplete = True
+                    break
+        
+        # Detect and warn about incomplete responses
+        if finish_reason == "length":
+            # Model hit token limit - response was cut off mid-thought
+            print(f"⚠️ WARNING: {model_name} hit token limit and was truncated!")
+            content = (content or "") + "\n\n⚠️ **Note:** Response truncated - model reached maximum output length."
+        elif is_likely_incomplete:
+            # Response appears to end mid-thought even with finish_reason="stop"
+            print(f"⚠️ WARNING: {model_name} appears to have incomplete ending: '{last_30_chars}'")
+        elif finish_reason == "content_filter":
+            print(f"⚠️ WARNING: {model_name} stopped due to content filter")
+            content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
+        elif finish_reason not in ["stop", "end_turn", None]:
+            # Log any other unexpected finish reasons
+            print(f"⚠️ WARNING: Unexpected finish_reason for {model_name}: '{finish_reason}'")
+        
         return content if content is not None else "No response generated"
     except Exception as e:
         error_str = str(e).lower()
