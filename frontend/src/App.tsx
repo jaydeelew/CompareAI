@@ -542,15 +542,17 @@ function App() {
       } else {
         // All models failed - show a message but don't count it
         console.log('All models failed - not counting towards usage limit');
-        setError('⚠️ All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.');
+        setError('All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.');
         // Clear the error after 8 seconds
         setTimeout(() => {
           setError(null);
         }, 8000);
       }
 
-      // Clear input after successful submission
-      setInput('');
+      // Clear input only when submitting a follow-up message
+      if (isFollowUpMode) {
+        setInput('');
+      }
 
       // Initialize or update conversations
       if (isFollowUpMode) {
