@@ -9,7 +9,45 @@ interface LatexRendererProps {
 const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' }) => {
     const renderLatex = (text: string): string => {
         try {
+            // Debug logging - TEMPORARY for debugging backslash issue
+            console.log('[LatexRenderer] Input length:', text?.length || 0);
+            console.log('[LatexRenderer] First 300 chars:', text?.substring(0, 300) || 'empty');
+            console.log('[LatexRenderer] Has backslash-space patterns:', /\\\s/.test(text || ''));
+
             let processedText = text;
+
+            // CRITICAL FIX: Unescape backslashes that may have been double-escaped
+            // This handles cases where \( becomes \\( in the JSON response
+            // We need to be careful to only unescape LaTeX-related backslashes
+            processedText = processedText.replace(/\\\\([()[\]{}])/g, '\\$1'); // \\( -> \(, \\) -> \), etc.
+            processedText = processedText.replace(/\\\\(frac|boxed|left|right|cdot|times|div|pm|mp|leq|geq|neq|approx|infty|sum|prod|int|sqrt)/g, '\\$1'); // \\frac -> \frac, etc.
+            processedText = processedText.replace(/\\\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)/g, '\\$1'); // Greek letters
+            processedText = processedText.replace(/\\\\(sin|cos|tan|cot|sec|csc|sinh|cosh|tanh|log|ln|exp|lim|max|min|sup|inf)/g, '\\$1'); // Math functions
+
+            // Also handle any generic LaTeX command pattern that might be double-escaped
+            // This catches patterns like \\commandname{ that we might have missed
+            processedText = processedText.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+
+            // CRITICAL: Remove backslash-space patterns (LaTeX spacing that appears as "\ ")
+            // These show up as "\ f(x)" or "\ n" in the text and should just be regular spaces
+            processedText = processedText.replace(/\\\s+/g, ' ');
+
+            // Also remove standalone backslashes that aren't part of LaTeX commands
+            // Match backslash followed by space or at end of word
+            processedText = processedText.replace(/\\(?=\s|$|[^a-zA-Z()[\]{}])/g, '');
+
+            // EARLY MARKDOWN PROCESSING - Do this FIRST before any HTML cleanup that might interfere
+            // Handle markdown headings before other processing
+            processedText = processedText.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+            processedText = processedText.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+            processedText = processedText.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+            processedText = processedText.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            // Handle markdown bold and italic early too
+            processedText = processedText.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+            processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
 
             // Preprocess: Clean up SVG path data and other unwanted content
             // Remove specific SVG path data patterns that appear in AI responses
@@ -144,6 +182,54 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Only remove patterns that are clearly artifacts at the end of text
             processedText = processedText.replace(/\s*[+\-]?\d+\s*[+\-]?\d+[+\-]?\d*\s*$/g, '');
             processedText = processedText.replace(/\s*\d{3,}\s*$/g, '');
+
+            // Clean up malformed LaTeX expressions with incorrect bracket syntax
+            // Handle patterns like \frac{2}{3+1)=+). or (\frac{x³}{2+1)=).
+            processedText = processedText.replace(/\\frac\{[^}]*\}[^}]*\)=.*?\)\./g, '');
+            processedText = processedText.replace(/\\frac\{[^}]*\}[^}]*\)=.*?\)/g, '');
+
+            // Clean up other malformed LaTeX patterns
+            processedText = processedText.replace(/\\frac\{[^}]*\}[^}]*\)=.*?\./g, '');
+            processedText = processedText.replace(/\\frac\{[^}]*\}[^}]*\)=.*?/g, '');
+
+            // Remove any remaining malformed LaTeX that starts with \frac but has syntax errors
+            processedText = processedText.replace(/\\frac\{[^}]*\}[^}]*\)=.*?/g, '');
+
+            // Clean up any remaining stray parentheses or brackets from malformed LaTeX
+            processedText = processedText.replace(/\s*\(\s*\)/g, '');
+            processedText = processedText.replace(/\s*\(\s*$/g, '');
+            processedText = processedText.replace(/\s*\)\s*$/g, '');
+
+            // Clean up stray opening parentheses that are followed by a space
+            processedText = processedText.replace(/\s*\(\s+/g, ' ');
+            processedText = processedText.replace(/\s+\(\s+/g, ' ');
+
+            // Additional cleanup for unrendered mathematical expressions
+            // Remove patterns like unrendered fractions or expressions that start with backslash but aren't properly formatted
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?/g, '');
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?\./g, '');
+
+            // Clean up malformed mathematical expressions that might appear as raw text
+            processedText = processedText.replace(/\s*[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?/g, '');
+            processedText = processedText.replace(/\s*[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?\./g, '');
+
+            // Remove any remaining malformed LaTeX commands that aren't being rendered
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?/g, '');
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?\./g, '');
+
+            // More specific cleanup for patterns like \int{x²}=) or \sum{x}=)
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}=\)/g, '');
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}=\)\./g, '');
+
+            // Clean up any remaining malformed LaTeX with incorrect closing syntax
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?/g, '');
+            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*\}[^}]*\)=.*?\./g, '');
+
+            // Clean up stray periods that might be left behind from malformed expressions
+            // Only remove periods that are clearly artifacts (standalone periods with spaces)
+            processedText = processedText.replace(/\s+\.\s+/g, ' ');
+            processedText = processedText.replace(/^\s*\.\s+/g, '');
+            processedText = processedText.replace(/\s+\.\s*$/g, '');
 
             // Remove MathML tags while preserving content
             processedText = processedText.replace(/<\/?math[^>]*>/gi, '');
@@ -548,13 +634,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
             processedText = processedText.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
 
-            // Handle markdown headings (must come before other markdown processing)
-            processedText = processedText.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-            processedText = processedText.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
-            processedText = processedText.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            processedText = processedText.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            // NOTE: Markdown headings are now processed early (line 35-40) to avoid interference from HTML cleanup
 
             // Handle markdown blockquotes
             processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
@@ -565,11 +645,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Handle markdown strikethrough ~~text~~
             processedText = processedText.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
 
-            // Handle markdown bold syntax **text**
-            processedText = processedText.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-
-            // Handle markdown italic syntax *text*
-            processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+            // NOTE: Bold and italic are now processed early (line 43-44) to avoid interference
 
             // Handle markdown links [text](url) and [text](url "title")
             processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
@@ -855,6 +931,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             if (processedText.includes('</p><p>') && !processedText.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|dl|div)/)) {
                 processedText = '<p>' + processedText + '</p>';
             }
+
+            // Debug logging for output - TEMPORARY for debugging
+            console.log('[LatexRenderer] Output length:', processedText?.length || 0);
+            console.log('[LatexRenderer] First 300 chars of output:', processedText?.substring(0, 300) || 'empty');
+            console.log('[LatexRenderer] Still has backslash-space patterns:', /\\\s/.test(processedText || ''));
+            console.log('[LatexRenderer] Has KaTeX spans:', processedText?.includes('katex') || false);
 
             return processedText;
         } catch (error) {
