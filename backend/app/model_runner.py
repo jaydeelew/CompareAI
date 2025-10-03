@@ -500,6 +500,64 @@ def clean_model_response(text: str) -> str:
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = re.sub(r' {2,}', ' ', text)
     
+    # NUCLEAR OPTION: Complete elimination of unwanted escape sequences
+    # This is a comprehensive overhaul to fix the persistent escape sequence problem
+    
+    # Step 1: Remove ALL backslash-space patterns first
+    text = re.sub(r'\\\s+', ' ', text)
+    
+    # Step 2: Remove backslashes before ANY mathematical content
+    # This catches patterns like \ f(x), \ x³, \ n, \ -x², \ 1, \ f'(x), etc.
+    
+    # Remove backslashes before function calls (with or without spaces)
+    text = re.sub(r'\\(\s*f\()', r'\1', text)  # \ f( -> f(
+    text = re.sub(r'\\(\s*f\'\()', r'\1', text)  # \ f'( -> f'(
+    text = re.sub(r'\\(\s*[a-zA-Z]+\()', r'\1', text)  # \ func( -> func(
+    
+    # Remove backslashes before variables and mathematical terms
+    text = re.sub(r'\\(\s*[a-zA-Z]+)', r'\1', text)  # \ x -> x, \ n -> n, \ a -> a
+    
+    # Remove backslashes before numbers and coefficients
+    text = re.sub(r'\\(\s*[+-]?[0-9]+)', r'\1', text)  # \ 1 -> 1, \ -2 -> -2, \ 3 -> 3
+    
+    # Remove backslashes before mathematical expressions with superscripts
+    text = re.sub(r'\\(\s*[0-9]+[²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ 2³ -> 2³
+    text = re.sub(r'\\(\s*[a-zA-Z]+[²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ x² -> x²
+    
+    # Remove backslashes before coefficients and variables
+    text = re.sub(r'\\(\s*[0-9]+[a-zA-Z])', r'\1', text)  # \ 3x -> 3x
+    text = re.sub(r'\\(\s*[a-zA-Z]+[0-9])', r'\1', text)  # \ ax -> ax
+    
+    # Remove backslashes before mathematical operations
+    text = re.sub(r'\\(\s*[+-])', r'\1', text)  # \ + -> +, \ - -> -
+    text = re.sub(r'\\(\s*[=+\-*/])', r'\1', text)  # \ = -> =, \ * -> *
+    
+    # Step 3: Remove backslashes before complex mathematical expressions
+    # Handle patterns like \ a cdot n cdot xⁿ⁻¹, \ 1 cdot x³, etc.
+    text = re.sub(r'\\(\s*[0-9]+\s*cdot)', r'\1', text)  # \ 1 cdot -> 1 cdot
+    text = re.sub(r'\\(\s*[a-zA-Z]+\s*cdot)', r'\1', text)  # \ a cdot -> a cdot
+    text = re.sub(r'\\(\s*cdot)', r'\1', text)  # \ cdot -> cdot
+    
+    # Handle patterns like \ n cdot xⁿ⁻¹
+    text = re.sub(r'\\(\s*[a-zA-Z]+\s*[a-zA-Z]+\s*[a-zA-Z]+)', r'\1', text)  # \ n cdot x -> n cdot x
+    
+    # Step 4: Remove backslashes before parentheses and brackets
+    text = re.sub(r'\\(\s*[\(\)\[\]])', r'\1', text)  # \ ( -> (, \ ) -> )
+    
+    # Step 5: Remove backslashes before any remaining mathematical symbols
+    text = re.sub(r'\\(\s*[ⁿ⁻¹²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ ⁿ -> ⁿ, \ ⁻¹ -> ⁻¹
+    
+    # Step 6: Final comprehensive cleanup - remove ANY backslash followed by space or common characters
+    text = re.sub(r'\\(\s*[a-zA-Z0-9])', r'\1', text)  # \ char -> char
+    text = re.sub(r'\\(\s*[+-])', r'\1', text)  # \ +/- -> +/-
+    
+    # Step 7: Remove any remaining standalone backslashes that aren't part of LaTeX commands
+    # Only preserve backslashes that are part of legitimate LaTeX commands
+    text = re.sub(r'\\(?=\s|$|[^a-zA-Z()[\]{}])', '', text)
+    
+    # Step 8: Final cleanup for any remaining backslash-space patterns
+    text = re.sub(r'\\\s+', ' ', text)
+    
     # Check if cleaning worked (for debugging)
     has_w3org_after = 'w3.org' in text.lower()
     if has_w3org_before:

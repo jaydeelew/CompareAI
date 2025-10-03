@@ -7,6 +7,53 @@ interface LatexRendererProps {
 }
 
 const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' }) => {
+    const preprocessEscapeSequences = (text: string): string => {
+        // PREPROCESSING LAYER: Aggressive cleanup of escape sequences
+        // This runs before any other processing to catch the specific patterns from the image
+
+        let processed = text;
+
+        // Target the exact patterns seen in the user's example
+        const escapePatterns = [
+            // Function calls
+            { pattern: /\\\s*f\(/g, replacement: 'f(' },
+            { pattern: /\\\s*f'\(/g, replacement: "f'(" },
+            { pattern: /\\\s*([a-zA-Z]+)\(/g, replacement: '$1(' },
+
+            // Variables and terms
+            { pattern: /\\\s*([a-zA-Z]+)/g, replacement: '$1' },
+            { pattern: /\\\s*([0-9]+)/g, replacement: '$1' },
+            { pattern: /\\\s*([+-]?[0-9]+)/g, replacement: '$1' },
+
+            // Mathematical expressions with superscripts
+            { pattern: /\\\s*([0-9]+[²³⁴⁵⁶⁷⁸⁹⁰¹])/g, replacement: '$1' },
+            { pattern: /\\\s*([a-zA-Z]+[²³⁴⁵⁶⁷⁸⁹⁰¹])/g, replacement: '$1' },
+
+            // Complex expressions
+            { pattern: /\\\s*([0-9]+\s*cdot)/g, replacement: '$1' },
+            { pattern: /\\\s*([a-zA-Z]+\s*cdot)/g, replacement: '$1' },
+            { pattern: /\\\s*(cdot)/g, replacement: '$1' },
+
+            // Mathematical symbols
+            { pattern: /\\\s*([ⁿ⁻¹²³⁴⁵⁶⁷⁸⁹⁰¹])/g, replacement: '$1' },
+            { pattern: /\\\s*([=+\-*/])/g, replacement: '$1' },
+            { pattern: /\\\s*([+-])/g, replacement: '$1' },
+
+            // Parentheses and brackets
+            { pattern: /\\\s*([\(\)\[\]])/g, replacement: '$1' },
+
+            // Any remaining backslash-space patterns
+            { pattern: /\\\s+/g, replacement: ' ' },
+        ];
+
+        // Apply all patterns
+        escapePatterns.forEach(({ pattern, replacement }) => {
+            processed = processed.replace(pattern, replacement);
+        });
+
+        return processed;
+    };
+
     const renderLatex = (text: string): string => {
         try {
             // Debug logging - TEMPORARY for debugging backslash issue
@@ -14,27 +61,117 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             console.log('[LatexRenderer] First 300 chars:', text?.substring(0, 300) || 'empty');
             console.log('[LatexRenderer] Has backslash-space patterns:', /\\\s/.test(text || ''));
 
-            let processedText = text;
+            // PREPROCESSING: Apply aggressive escape sequence cleanup first
+            let processedText = preprocessEscapeSequences(text);
 
             // CRITICAL FIX: Unescape backslashes that may have been double-escaped
             // This handles cases where \( becomes \\( in the JSON response
             // We need to be careful to only unescape LaTeX-related backslashes
-            processedText = processedText.replace(/\\\\([()[\]{}])/g, '\\$1'); // \\( -> \(, \\) -> \), etc.
-            processedText = processedText.replace(/\\\\(frac|boxed|left|right|cdot|times|div|pm|mp|leq|geq|neq|approx|infty|sum|prod|int|sqrt)/g, '\\$1'); // \\frac -> \frac, etc.
-            processedText = processedText.replace(/\\\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)/g, '\\$1'); // Greek letters
-            processedText = processedText.replace(/\\\\(sin|cos|tan|cot|sec|csc|sinh|cosh|tanh|log|ln|exp|lim|max|min|sup|inf)/g, '\\$1'); // Math functions
 
-            // Also handle any generic LaTeX command pattern that might be double-escaped
+            // First, handle LaTeX delimiters and brackets
+            processedText = processedText.replace(/\\\\([()[\]{}])/g, '\\$1'); // \\( -> \(, \\) -> \), etc.
+
+            // Handle common LaTeX commands (comprehensive list)
+            const latexCommands = [
+                'frac', 'boxed', 'left', 'right', 'cdot', 'times', 'div', 'pm', 'mp',
+                'leq', 'geq', 'neq', 'approx', 'infty', 'sum', 'prod', 'int', 'sqrt',
+                'lim', 'max', 'min', 'sup', 'inf', 'sin', 'cos', 'tan', 'cot', 'sec', 'csc',
+                'sinh', 'cosh', 'tanh', 'log', 'ln', 'exp', 'arcsin', 'arccos', 'arctan',
+                'partial', 'nabla', 'rightarrow', 'leftarrow', 'leftrightarrow', 'Rightarrow',
+                'Leftarrow', 'Leftrightarrow', 'mapsto', 'to', 'in', 'notin', 'subset',
+                'supset', 'subseteq', 'supseteq', 'cap', 'cup', 'emptyset', 'varnothing',
+                'forall', 'exists', 'land', 'lor', 'neg', 'equiv', 'implies', 'iff',
+                'mathbb', 'mathcal', 'mathfrak', 'mathrm', 'mathbf', 'mathit', 'text',
+                'begin', 'end', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'cases',
+                'align', 'aligned', 'split', 'gather', 'gathered', 'multline', 'eqnarray',
+                'label', 'ref', 'tag', 'nonumber', 'notag', 'intertext', 'shortintertext'
+            ];
+
+            // Handle Greek letters
+            const greekLetters = [
+                'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'varepsilon', 'zeta', 'eta',
+                'theta', 'vartheta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi',
+                'varpi', 'rho', 'varrho', 'sigma', 'varsigma', 'tau', 'upsilon', 'phi',
+                'varphi', 'chi', 'psi', 'omega', 'Gamma', 'Delta', 'Theta', 'Lambda',
+                'Xi', 'Pi', 'Sigma', 'Upsilon', 'Phi', 'Psi', 'Omega'
+            ];
+
+            // Apply double-escape fixes for all LaTeX commands
+            [...latexCommands, ...greekLetters].forEach(cmd => {
+                processedText = processedText.replace(new RegExp(`\\\\\\\\(${cmd})`, 'g'), `\\\\$1`);
+            });
+
+            // Handle any remaining generic LaTeX command pattern that might be double-escaped
             // This catches patterns like \\commandname{ that we might have missed
             processedText = processedText.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
 
-            // CRITICAL: Remove backslash-space patterns (LaTeX spacing that appears as "\ ")
-            // These show up as "\ f(x)" or "\ n" in the text and should just be regular spaces
+            // NUCLEAR OPTION: Complete elimination of unwanted escape sequences
+            // This is a comprehensive overhaul to fix the persistent escape sequence problem
+
+            // Step 1: Remove ALL backslash-space patterns first
             processedText = processedText.replace(/\\\s+/g, ' ');
 
-            // Also remove standalone backslashes that aren't part of LaTeX commands
-            // Match backslash followed by space or at end of word
+            // Step 2: Remove backslashes before ANY mathematical content
+            // This catches patterns like \ f(x), \ x³, \ n, \ -x², \ 1, \ f'(x), etc.
+
+            // Remove backslashes before function calls (with or without spaces)
+            processedText = processedText.replace(/\\\s*f\(/g, 'f(');  // \ f( -> f(
+            processedText = processedText.replace(/\\\s*f'\(/g, "f'(");  // \ f'( -> f'(
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+)\(/g, '$1(');  // \ func( -> func(
+
+            // Remove backslashes before variables and mathematical terms
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+)/g, '$1');  // \ x -> x, \ n -> n, \ a -> a
+
+            // Remove backslashes before numbers and coefficients
+            processedText = processedText.replace(/\\\s*([+-]?[0-9]+)/g, '$1');  // \ 1 -> 1, \ -2 -> -2, \ 3 -> 3
+
+            // Remove backslashes before mathematical expressions with superscripts
+            processedText = processedText.replace(/\\\s*([0-9]+[²³⁴⁵⁶⁷⁸⁹⁰¹])/g, '$1');  // \ 2³ -> 2³
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+[²³⁴⁵⁶⁷⁸⁹⁰¹])/g, '$1');  // \ x² -> x²
+
+            // Remove backslashes before coefficients and variables
+            processedText = processedText.replace(/\\\s*([0-9]+[a-zA-Z])/g, '$1');  // \ 3x -> 3x
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+[0-9])/g, '$1');  // \ ax -> ax
+
+            // Remove backslashes before mathematical operations
+            processedText = processedText.replace(/\\\s*([+-])/g, '$1');  // \ + -> +, \ - -> -
+            processedText = processedText.replace(/\\\s*([=+\-*/])/g, '$1');  // \ = -> =, \ * -> *
+
+            // Step 3: Remove backslashes before complex mathematical expressions
+            // Handle patterns like \ a cdot n cdot xⁿ⁻¹, \ 1 cdot x³, etc.
+            processedText = processedText.replace(/\\\s*([0-9]+\s*cdot)/g, '$1');  // \ 1 cdot -> 1 cdot
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+\s*cdot)/g, '$1');  // \ a cdot -> a cdot
+            processedText = processedText.replace(/\\\s*(cdot)/g, '$1');  // \ cdot -> cdot
+
+            // Handle patterns like \ n cdot xⁿ⁻¹
+            processedText = processedText.replace(/\\\s*([a-zA-Z]+\s*[a-zA-Z]+\s*[a-zA-Z]+)/g, '$1');  // \ n cdot x -> n cdot x
+
+            // Step 4: Remove backslashes before parentheses and brackets
+            processedText = processedText.replace(/\\\s*([\(\)\[\]])/g, '$1');  // \ ( -> (, \ ) -> )
+
+            // Step 5: Remove backslashes before any remaining mathematical symbols
+            processedText = processedText.replace(/\\\s*([ⁿ⁻¹²³⁴⁵⁶⁷⁸⁹⁰¹])/g, '$1');  // \ ⁿ -> ⁿ, \ ⁻¹ -> ⁻¹
+
+            // Step 6: Final comprehensive cleanup - remove ANY backslash followed by space or common characters
+            processedText = processedText.replace(/\\\s*([a-zA-Z0-9])/g, '$1');  // \ char -> char
+            processedText = processedText.replace(/\\\s*([+-])/g, '$1');  // \ +/- -> +/-
+
+            // Step 7: Remove any remaining standalone backslashes that aren't part of LaTeX commands
+            // Only preserve backslashes that are part of legitimate LaTeX commands
             processedText = processedText.replace(/\\(?=\s|$|[^a-zA-Z()[\]{}])/g, '');
+
+            // Step 8: Final cleanup for any remaining backslash-space patterns
+            processedText = processedText.replace(/\\\s+/g, ' ');
+
+            // Clean up malformed LaTeX patterns that might have extra backslashes
+            // Handle patterns like "\\\(" or "\\\)" that should be "\(" or "\)"
+            processedText = processedText.replace(/\\\\\\\(/g, '\\(');
+            processedText = processedText.replace(/\\\\\\\)/g, '\\)');
+            processedText = processedText.replace(/\\\\\\\[/g, '\\[');
+            processedText = processedText.replace(/\\\\\\\]/g, '\\]');
+
+            // Clean up triple-escaped commands (should be rare but can happen)
+            processedText = processedText.replace(/\\\\\\\\([a-zA-Z]+)/g, '\\$1');
 
             // EARLY MARKDOWN PROCESSING - Do this FIRST before any HTML cleanup that might interfere
             // Handle markdown headings before other processing
