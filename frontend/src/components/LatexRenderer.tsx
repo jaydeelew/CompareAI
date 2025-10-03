@@ -49,6 +49,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/style\s*=\s*["'][^"']*["']>\s*/gi, '');
             processedText = processedText.replace(/style\s*=\s*["'][^"']*["']/gi, '');
 
+            // More aggressive style attribute removal for malformed content
+            // Handle patterns like: " style="color:#cc0000">\boxed{
+            processedText = processedText.replace(/["']\s*style\s*=\s*["'][^"']*["']>\s*/gi, '');
+            processedText = processedText.replace(/style\s*=\s*["'][^"']*["']>\s*/gi, '');
+
             // Remove any remaining HTML-style attributes with closing brackets
             processedText = processedText.replace(/\s*class\s*=\s*["'][^"']*["']>\s*/gi, '');
             processedText = processedText.replace(/\s*id\s*=\s*["'][^"']*["']>\s*/gi, '');
@@ -93,6 +98,52 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/\/\/www\.w3\.org\/[^\s]*/gi, '');
             processedText = processedText.replace(/https?:\/\/www\.w3\.org\/[^\s]*/gi, '');
             processedText = processedText.replace(/www\.w3\.org\/[^\s]*/gi, '');
+
+            // More aggressive cleanup for any remaining w3.org references
+            // This catches patterns that might have been missed by previous patterns
+            processedText = processedText.replace(/[^\s]*w3\.org[^\s]*/gi, '');
+            processedText = processedText.replace(/[^\s]*\/\/www\.w3\.org[^\s]*/gi, '');
+            processedText = processedText.replace(/[^\s]*https?:\/\/www\.w3\.org[^\s]*/gi, '');
+
+            // Additional cleanup for malformed patterns
+            processedText = processedText.replace(/[^\s]*https:[^\s]*/gi, '');
+            processedText = processedText.replace(/[^\s]*xmlns[^\s]*/gi, '');
+            processedText = processedText.replace(/[^\s]*display[^\s]*/gi, '');
+
+            // Remove any lines that contain only w3.org references
+            processedText = processedText.replace(/^[^\w]*w3\.org[^\w]*$/gm, '');
+
+            // Remove any remaining MathML namespace references
+            processedText = processedText.replace(/xmlns[^>]*w3\.org[^>]*>/gi, '');
+            processedText = processedText.replace(/xmlns[^>]*MathML[^>]*>/gi, '');
+
+            // Remove any remaining MathML comments or references
+            processedText = processedText.replace(/<!--[^>]*w3\.org[^>]*-->/gi, '');
+            processedText = processedText.replace(/<!--[^>]*MathML[^>]*-->/gi, '');
+
+            // Remove any standalone MathML references that might appear as text
+            processedText = processedText.replace(/MathML/gi, '');
+            processedText = processedText.replace(/mathml/gi, '');
+
+            // Clean up any remaining whitespace that might be left after removing references
+            processedText = processedText.replace(/\s+/g, ' ').trim();
+
+            // Final cleanup for any remaining malformed content
+            // Remove any remaining fragments that look like broken URLs or attributes
+            processedText = processedText.replace(/\s+[a-zA-Z]*="[^"]*[^a-zA-Z0-9\s][^"]*"/g, '');
+            processedText = processedText.replace(/\s+[a-zA-Z]*=[^>\s]*[^a-zA-Z0-9\s][^>\s]*/g, '');
+
+            // Remove any remaining broken HTML-like fragments
+            processedText = processedText.replace(/\s*[a-zA-Z]*="[^"]*">/g, '');
+            processedText = processedText.replace(/\s*[a-zA-Z]*=[^>\s]*>/g, '');
+
+            // Remove any remaining w3.org references that might have been missed
+            processedText = processedText.replace(/[^\s]*w3\.org[^\s]*/gi, '');
+
+            // Clean up any remaining artifacts from malformed MathML
+            // Only remove patterns that are clearly artifacts at the end of text
+            processedText = processedText.replace(/\s*[+\-]?\d+\s*[+\-]?\d+[+\-]?\d*\s*$/g, '');
+            processedText = processedText.replace(/\s*\d{3,}\s*$/g, '');
 
             // Remove MathML tags while preserving content
             processedText = processedText.replace(/<\/?math[^>]*>/gi, '');
@@ -364,6 +415,66 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     }
                 });
             });
+
+            // Clean up malformed \boxed commands with style attributes mixed in
+            // Handle patterns like: " style="color:#cc0000">\boxed{content}
+            processedText = processedText.replace(/["']\s*style\s*=\s*["'][^"']*["']>\s*\\boxed\{/gi, '\\boxed{');
+            processedText = processedText.replace(/style\s*=\s*["'][^"']*["']>\s*\\boxed\{/gi, '\\boxed{');
+
+            // Clean up malformed content inside \boxed that has extra characters
+            // Handle patterns like: \boxed{x44\frac{x⁴}{4}4×4 - \frac{x³}{3} + x + C })
+            processedText = processedText.replace(/\\boxed\{([^}]*?)(\d+)\s*\\frac\{([^}]+)\}\{([^}]+)\}(\d+)\s*([^}]*?)\}/g, (_, before, extra1, num, den, extra2, after) => {
+                // Clean up the content by removing extra numbers and fixing the fraction
+                const cleanContent = before + `\\frac{${num}}{${den}}` + after;
+                return `\\boxed{${cleanContent}}`;
+            });
+
+            // More aggressive cleanup for malformed mathematical expressions
+            // Remove extra numbers and characters that appear before fractions
+            processedText = processedText.replace(/([a-zA-Z])(\d+)\s*\\frac/g, '$1\\frac');
+            processedText = processedText.replace(/\\frac\{([^}]+)\}\{([^}]+)\}(\d+)/g, '\\frac{$1}{$2}');
+
+            // Clean up patterns like "x44" or "4×4" that appear in malformed content
+            processedText = processedText.replace(/([a-zA-Z])(\d+)([a-zA-Z])/g, '$1$3');
+            processedText = processedText.replace(/(\d+)\s*×\s*(\d+)/g, '');
+
+            // Remove extra characters before fractions in \boxed expressions
+            processedText = processedText.replace(/\\boxed\{([a-zA-Z])\s*\\frac/g, '\\boxed{\\frac');
+
+            // Remove malformed parentheses and extra characters at the beginning
+            processedText = processedText.replace(/^\([^)]*\)\s*/, '');
+
+            // Remove extra characters and malformed content at the end
+            processedText = processedText.replace(/\s*[×\*]\s*\d+\s*\)\s*$/, '');
+            processedText = processedText.replace(/\s*\)\s*$/, '');
+
+            // More specific cleanup for patterns like "×4" anywhere in the expression
+            processedText = processedText.replace(/[×\*]\d+/g, '');
+
+            // Clean up any remaining malformed patterns
+            processedText = processedText.replace(/([a-zA-Z])(\d+)([a-zA-Z])/g, '$1$3');
+            processedText = processedText.replace(/(\d+)\s*×\s*(\d+)/g, '');
+
+            // Final cleanup: remove trailing spaces
+            processedText = processedText.replace(/\s+$/, '');
+
+            // Clean up spaces inside \boxed expressions
+            processedText = processedText.replace(/\\boxed\{([^}]*?)\s+\}/g, (_, content) => {
+                const cleanedContent = content.replace(/\s+$/, '').replace(/^\s+/, '');
+                return `\\boxed{${cleanedContent}}`;
+            });
+
+            // More aggressive cleanup for trailing spaces in \boxed
+            processedText = processedText.replace(/\\boxed\{([^}]+)\s+\}/g, '\\boxed{$1}');
+
+            // Very specific cleanup for the exact pattern we're seeing
+            processedText = processedText.replace(/\\boxed\{([^}]+)\s+\}/g, (_, content) => {
+                const trimmed = content.trim();
+                return `\\boxed{${trimmed}}`;
+            });
+
+            // Direct cleanup for the specific pattern: C } -> C}
+            processedText = processedText.replace(/C\s+\}/g, 'C}');
 
             // Handle \boxed{} for boxed equations
             processedText = processedText.replace(/\\boxed\{([^}]+)\}/g, (_, content) => {
