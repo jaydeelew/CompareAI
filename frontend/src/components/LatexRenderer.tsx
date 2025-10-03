@@ -39,42 +39,92 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/<[^>]*(?:viewBox|xmlns|stroke|fill)[^>]*>/g, '');
 
             // Clean up MathML content that models sometimes output
-            // AGGRESSIVE removal of MathML namespace URLs in ALL formats
-            // Remove the URLs whether they have <, //, http://, or appear standalone
-            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
-            processedText = processedText.replace(/http:\/\/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
-            processedText = processedText.replace(/xmlns="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/g, '');
-            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML["'>]*/g, '');
+            // ULTRA-AGGRESSIVE removal of MathML namespace URLs in ALL possible formats
 
-            // Even more aggressive - match the full pattern as it appears in responses
-            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML">([^<\n]*)/g, '$1');
-            processedText = processedText.replace(/http:\/\/www\.w3\.org\/1998\/Math\/MathML">([^<\n]*)/g, '$1');
+            // First, remove complete MathML elements before we process tags
+            processedText = processedText.replace(/<math[^>]*>[\s\S]*?<\/math>/gi, '');
+
+            // Remove inline style attributes that models sometimes add
+            // This catches patterns like: style="color:#cc0000">box
+            processedText = processedText.replace(/style\s*=\s*["'][^"']*["']>\s*/gi, '');
+            processedText = processedText.replace(/style\s*=\s*["'][^"']*["']/gi, '');
+
+            // Remove any remaining HTML-style attributes with closing brackets
+            processedText = processedText.replace(/\s*class\s*=\s*["'][^"']*["']>\s*/gi, '');
+            processedText = processedText.replace(/\s*id\s*=\s*["'][^"']*["']>\s*/gi, '');
+            processedText = processedText.replace(/\s*class\s*=\s*["'][^"']*["']/gi, '');
+            processedText = processedText.replace(/\s*id\s*=\s*["'][^"']*["']/gi, '');
+
+            // NUCLEAR OPTION: Remove the URL and everything that looks like markup/attributes around it
+            // Matches patterns like:
+            // - //www.w3.org/1998/Math/MathML">+1 +1+1
+            // - //www.w3.org/1998/Math/MathML" display="block">000
+            // - //www.w3.org/1998/Math/MathML">x=0x = 0x
+
+            // Remove the URL with any attributes and the closing >
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML[^>]*>/gi, '');
+            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^>]*>/gi, '');
+
+            // Remove any remaining URL fragments with quotes and attributes
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML["'][^>]*>/gi, '');
+            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML["'][^>]*>/gi, '');
+
+            // Remove just the URL itself if it appears standalone
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML/gi, '');
+            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML/gi, '');
+
+            // Remove www.w3.org references without protocol
+            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML[^>]*>/gi, '');
+            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML/gi, '');
+
+            // Remove any xmlns attributes
+            processedText = processedText.replace(/xmlns\s*=\s*["']https?:\/\/www\.w3\.org\/1998\/Math\/MathML["']/gi, '');
+
+            // Remove any display attributes that are left over
+            processedText = processedText.replace(/display\s*=\s*["']block["']\s*>/gi, '');
+            processedText = processedText.replace(/display\s*=\s*["']inline["']\s*>/gi, '');
+
+            // FINAL PASS: Catch any remaining w3.org references as a failsafe
+            // This will remove any text that matches the pattern from the start up to the first closing angle bracket
+            processedText = processedText.replace(/[^a-zA-Z]*\/\/www\.w3\.org\/1998\/Math\/MathML[^>]*>/gi, '');
+            processedText = processedText.replace(/[^a-zA-Z]*https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^>]*>/gi, '');
+
+            // Remove any standalone www.w3.org fragments that might remain
+            processedText = processedText.replace(/\/\/www\.w3\.org\/[^\s]*/gi, '');
+            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/[^\s]*/gi, '');
+            processedText = processedText.replace(/www\.w3\.org\/[^\s]*/gi, '');
 
             // Remove MathML tags while preserving content
-            processedText = processedText.replace(/<\/?math[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mrow[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mi[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mn[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mo[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?msup[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?msub[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mfrac[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mfenced[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mtext[^>]*>/g, '');
-            processedText = processedText.replace(/<mspace[^>]*\/?>/g, '');
-            processedText = processedText.replace(/<\/?msubsup[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?msqrt[^>]*>/g, '');
-            processedText = processedText.replace(/<\/?mroot[^>]*>/g, '');
+            processedText = processedText.replace(/<\/?math[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mrow[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mi[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mn[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mo[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?msup[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?msub[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mfrac[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mfenced[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mtext[^>]*>/gi, '');
+            processedText = processedText.replace(/<mspace[^>]*\/?>/gi, '');
+            processedText = processedText.replace(/<\/?msubsup[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?msqrt[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mroot[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mstyle[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mtable[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mtr[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mtd[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?mover[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?munder[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?munderover[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?semantics[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/?annotation[^>]*>/gi, '');
 
-            // Remove any remaining MathML namespace references in various formats
-            processedText = processedText.replace(/\[Namespace:\s*http:\/\/www\.w3\.org\/1998\/Math\/MathML\]/g, '');
-            processedText = processedText.replace(/xmlns:m="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/g, '');
-            processedText = processedText.replace(/MathML["'>]/g, '');
+            // Remove any remaining namespace or MathML references
+            processedText = processedText.replace(/\[Namespace:\s*https?:\/\/www\.w3\.org\/1998\/Math\/MathML\]/gi, '');
+            processedText = processedText.replace(/xmlns:m\s*=\s*["']https?:\/\/www\.w3\.org\/1998\/Math\/MathML["']/gi, '');
 
-            // Additional aggressive cleanup - remove any line that looks like a MathML URL
-            processedText = processedText.split('\n').filter(line => {
-                return !line.includes('www.w3.org/1998/Math/MathML');
-            }).join('\n');
+            // Don't filter out entire lines - that removes valid content
+            // Instead, rely on the regex replacements above to remove just the MathML URLs
 
             // Clean up any remaining malformed HTML that might contain SVG data
             processedText = processedText.replace(/<[^>]*style="[^"]*"[^>]*>/g, (match) => {

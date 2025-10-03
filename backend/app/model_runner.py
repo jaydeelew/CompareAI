@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import concurrent.futures
 from typing import Dict, List, Any
 import time
+import re
 
 load_dotenv()
 
@@ -428,6 +429,89 @@ for provider, models in MODELS_BY_PROVIDER.items():
 client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/v1")
 
 
+def clean_model_response(text: str) -> str:
+    """
+    Clean up model responses by removing MathML tags, namespace references,
+    and other unwanted markup that shouldn't be displayed to users.
+    """
+    if not text:
+        return text
+    
+    # Check if text contains w3.org before cleaning (for debugging)
+    has_w3org_before = 'w3.org' in text.lower()
+    
+    # Remove complete MathML elements
+    text = re.sub(r'<math[^>]*>[\s\S]*?</math>', '', text, flags=re.IGNORECASE)
+    
+    # Remove inline style attributes that models sometimes add
+    # This catches patterns like: style="color:#cc0000">box
+    text = re.sub(r'style\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'style\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
+    
+    # Remove any remaining HTML-style attributes with closing brackets
+    text = re.sub(r'\s*class\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*id\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*class\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*id\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
+    
+    # NUCLEAR OPTION: Remove the URL and everything that looks like markup/attributes around it
+    # Matches patterns like:
+    # - //www.w3.org/1998/Math/MathML">+1 +1+1
+    # - //www.w3.org/1998/Math/MathML" display="block">000
+    # - //www.w3.org/1998/Math/MathML">x=0x = 0x
+    
+    # Remove the URL with any attributes and the closing >
+    text = re.sub(r'//www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove any remaining URL fragments with quotes and attributes
+    text = re.sub(r'//www\.w3\.org/1998/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove just the URL itself if it appears standalone
+    text = re.sub(r'//www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
+    
+    # Remove www.w3.org references without protocol
+    text = re.sub(r'www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
+    
+    # Remove any xmlns attributes
+    text = re.sub(r'xmlns\s*=\s*["\']https?://www\.w3\.org/1998/Math/MathML["\']', '', text, flags=re.IGNORECASE)
+    
+    # Remove any display attributes that are left over
+    text = re.sub(r'display\s*=\s*["\']block["\']\s*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'display\s*=\s*["\']inline["\']\s*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove all MathML tags while preserving content
+    mathml_tags = [
+        'math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac', 
+        'mfenced', 'mtext', 'mspace', 'msubsup', 'msqrt', 'mroot',
+        'mstyle', 'mtable', 'mtr', 'mtd', 'mover', 'munder', 
+        'munderover', 'semantics', 'annotation'
+    ]
+    for tag in mathml_tags:
+        text = re.sub(f'</?{tag}[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Don't filter out entire lines - that removes valid content
+    # Instead, rely on the regex replacements above to remove just the MathML URLs
+    
+    # Clean up extra whitespace that may have been left behind
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r' {2,}', ' ', text)
+    
+    # Check if cleaning worked (for debugging)
+    has_w3org_after = 'w3.org' in text.lower()
+    if has_w3org_before:
+        if has_w3org_after:
+            print(f"⚠️ WARNING: MathML cleanup failed - w3.org still present in response")
+            print(f"Sample: {text[:200]}...")
+        else:
+            print(f"✅ Successfully cleaned MathML references from response")
+    
+    return text.strip()
+
+
 def call_openrouter(prompt: str, model_id: str, conversation_history: list = None) -> str:
     try:
         # Build messages array - use standard format like official AI providers
@@ -503,7 +587,9 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
             # Log any other unexpected finish reasons
             print(f"⚠️ WARNING: Unexpected finish_reason for {model_name}: '{finish_reason}'")
         
-        return content if content is not None else "No response generated"
+        # Clean up MathML and other unwanted markup before returning
+        cleaned_content = clean_model_response(content) if content is not None else "No response generated"
+        return cleaned_content
     except Exception as e:
         error_str = str(e).lower()
         # More descriptive error messages for faster debugging

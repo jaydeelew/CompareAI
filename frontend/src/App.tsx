@@ -527,16 +527,27 @@ function App() {
 
       setResponse(filteredData);
 
-      // Track usage after successful comparison
-      const newUsageCount = usageCount + 1;
-      setUsageCount(newUsageCount);
+      // Track usage only if at least one model succeeded
+      // Don't count failed comparisons where all models had errors
+      if (filteredData.metadata.models_successful > 0) {
+        const newUsageCount = usageCount + 1;
+        setUsageCount(newUsageCount);
 
-      // Save to localStorage
-      const today = new Date().toDateString();
-      localStorage.setItem('compareai_usage', JSON.stringify({
-        count: newUsageCount,
-        date: today
-      }));
+        // Save to localStorage
+        const today = new Date().toDateString();
+        localStorage.setItem('compareai_usage', JSON.stringify({
+          count: newUsageCount,
+          date: today
+        }));
+      } else {
+        // All models failed - show a message but don't count it
+        console.log('All models failed - not counting towards usage limit');
+        setError('⚠️ All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.');
+        // Clear the error after 8 seconds
+        setTimeout(() => {
+          setError(null);
+        }, 8000);
+      }
 
       // Clear input after successful submission
       setInput('');
