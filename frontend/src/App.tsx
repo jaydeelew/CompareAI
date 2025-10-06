@@ -221,23 +221,57 @@ function App() {
 
   // Load usage data and fetch models on component mount
   useEffect(() => {
-    // Load usage data from localStorage
-    const savedUsage = localStorage.getItem('compareai_usage');
-    const today = new Date().toDateString();
-
-    if (savedUsage) {
-      const usage = JSON.parse(savedUsage);
-      if (usage.date === today) {
-        setUsageCount(usage.count || 0);
-      } else {
-        // New day, reset usage
-        setUsageCount(0);
-      }
-    }
-
     // Generate browser fingerprint for anti-abuse tracking
     const fingerprint = generateBrowserFingerprint();
     setBrowserFingerprint(fingerprint);
+
+    // Sync usage count with backend
+    const syncUsageCount = async () => {
+      try {
+        const response = await fetch(`${API_URL}/usage-count?fingerprint=${encodeURIComponent(fingerprint)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUsageCount(data.usage_count || 0);
+
+          // Update localStorage to match backend
+          const today = new Date().toDateString();
+          localStorage.setItem('compareai_usage', JSON.stringify({
+            count: data.usage_count || 0,
+            date: today
+          }));
+        } else {
+          // Fallback to localStorage if backend is unavailable
+          const savedUsage = localStorage.getItem('compareai_usage');
+          const today = new Date().toDateString();
+
+          if (savedUsage) {
+            const usage = JSON.parse(savedUsage);
+            if (usage.date === today) {
+              setUsageCount(usage.count || 0);
+            } else {
+              // New day, reset usage
+              setUsageCount(0);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync usage count with backend:', error);
+        // Fallback to localStorage
+        const savedUsage = localStorage.getItem('compareai_usage');
+        const today = new Date().toDateString();
+
+        if (savedUsage) {
+          const usage = JSON.parse(savedUsage);
+          if (usage.date === today) {
+            setUsageCount(usage.count || 0);
+          } else {
+            setUsageCount(0);
+          }
+        }
+      }
+    };
+
+    syncUsageCount();
 
     const fetchModels = async () => {
       try {
@@ -530,15 +564,40 @@ function App() {
       // Track usage only if at least one model succeeded
       // Don't count failed comparisons where all models had errors
       if (filteredData.metadata.models_successful > 0) {
-        const newUsageCount = usageCount + 1;
-        setUsageCount(newUsageCount);
+        // Sync with backend to get the actual count (backend now counts after success)
+        try {
+          const response = await fetch(`${API_URL}/usage-count?fingerprint=${encodeURIComponent(browserFingerprint)}`);
+          if (response.ok) {
+            const data = await response.json();
+            setUsageCount(data.usage_count || 0);
 
-        // Save to localStorage
-        const today = new Date().toDateString();
-        localStorage.setItem('compareai_usage', JSON.stringify({
-          count: newUsageCount,
-          date: today
-        }));
+            // Update localStorage to match backend
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_usage', JSON.stringify({
+              count: data.usage_count || 0,
+              date: today
+            }));
+          } else {
+            // Fallback to local increment if backend sync fails
+            const newUsageCount = usageCount + 1;
+            setUsageCount(newUsageCount);
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_usage', JSON.stringify({
+              count: newUsageCount,
+              date: today
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to sync usage count after comparison:', error);
+          // Fallback to local increment
+          const newUsageCount = usageCount + 1;
+          setUsageCount(newUsageCount);
+          const today = new Date().toDateString();
+          localStorage.setItem('compareai_usage', JSON.stringify({
+            count: newUsageCount,
+            date: today
+          }));
+        }
       } else {
         // All models failed - show a message but don't count it
         console.log('All models failed - not counting towards usage limit');
