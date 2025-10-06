@@ -509,32 +509,6 @@ def clean_model_response(text: str) -> str:
     # Step 2: Remove backslashes before ANY mathematical content
     # This catches patterns like \ f(x), \ x³, \ n, \ -x², \ 1, \ f'(x), etc.
     
-    # First, protect LaTeX commands that should be preserved
-    latex_commands = [
-        r'\\frac', r'\\left', r'\\right', r'\\cdot', r'\\times', r'\\div', r'\\pm', r'\\mp',
-        r'\\sqrt', r'\\sum', r'\\int', r'\\lim', r'\\sin', r'\\cos', r'\\tan', r'\\log',
-        r'\\ln', r'\\exp', r'\\pi', r'\\alpha', r'\\beta', r'\\gamma', r'\\delta', r'\\epsilon',
-        r'\\theta', r'\\lambda', r'\\mu', r'\\sigma', r'\\tau', r'\\phi', r'\\omega',
-        r'\\infty', r'\\partial', r'\\nabla', r'\\Delta', r'\\Gamma', r'\\Lambda', r'\\Sigma',
-        r'\\Phi', r'\\Omega', r'\\rightarrow', r'\\leftarrow', r'\\leftrightarrow',
-        r'\\leq', r'\\geq', r'\\neq', r'\\approx', r'\\equiv', r'\\propto', r'\\in', r'\\notin',
-        r'\\subset', r'\\supset', r'\\subseteq', r'\\supseteq', r'\\cup', r'\\cap', r'\\emptyset',
-        r'\\forall', r'\\exists', r'\\neg', r'\\land', r'\\lor', r'\\Rightarrow', r'\\Leftarrow',
-        r'\\Leftrightarrow', r'\\iff', r'\\therefore', r'\\because', r'\\sim', r'\\simeq',
-        r'\\cong', r'\\asymp', r'\\doteq', r'\\models', r'\\vdash', r'\\dashv'
-    ]
-    
-    # Create a map to temporarily replace LaTeX commands
-    latex_map = {}
-    counter = 0
-    
-    # Protect LaTeX commands by replacing them with placeholders
-    for cmd in latex_commands:
-        placeholder = f'__LATEX_CMD_{counter}__'
-        latex_map[placeholder] = cmd
-        text = re.sub(cmd, placeholder, text)
-        counter += 1
-    
     # Remove backslashes before function calls (with or without spaces)
     text = re.sub(r'\\(\s*f\()', r'\1', text)  # \ f( -> f(
     text = re.sub(r'\\(\s*f\'\()', r'\1', text)  # \ f'( -> f'(
@@ -583,10 +557,6 @@ def clean_model_response(text: str) -> str:
     
     # Step 8: Final cleanup for any remaining backslash-space patterns
     text = re.sub(r'\\\s+', ' ', text)
-    
-    # Step 9: Restore LaTeX commands
-    for placeholder, cmd in latex_map.items():
-        text = text.replace(placeholder, cmd)
     
     # Check if cleaning worked (for debugging)
     has_w3org_after = 'w3.org' in text.lower()
