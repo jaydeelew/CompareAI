@@ -596,13 +596,14 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        # Don't set max_tokens - let each model use its natural maximum output length
-        # This allows models to complete their thoughts without artificial truncation
+        # Set a high max_tokens to ensure complete responses
+        # This prevents models (especially faster ones like Claude Haiku) from truncating mid-response
+        # Most models default to lower limits (1024-2048), so we explicitly set a higher limit
         response = client.chat.completions.create(
             model=model_id, 
             messages=messages, 
-            timeout=INDIVIDUAL_MODEL_TIMEOUT
-            # No max_tokens parameter - models will use their default maximum
+            timeout=INDIVIDUAL_MODEL_TIMEOUT,
+            max_tokens=8192  # High limit to allow complete, detailed responses
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
