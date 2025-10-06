@@ -43,7 +43,7 @@ interface ModelsByProvider {
 const MAX_MODELS_LIMIT = 12;
 
 // Freemium usage limits
-const MAX_DAILY_USAGE = 10;
+const MAX_DAILY_USAGE = 2;
 
 function App() {
   const [response, setResponse] = useState<CompareResponse | null>(null);
@@ -85,8 +85,8 @@ function App() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       canvas: canvas.toDataURL(),
       colorDepth: screen.colorDepth,
-      hardwareConcurrency: navigator.hardwareConcurrency,
-      timestamp: Date.now()
+      hardwareConcurrency: navigator.hardwareConcurrency
+      // Removed timestamp to keep fingerprint consistent across page refreshes
     };
 
     return btoa(JSON.stringify(fingerprint));
