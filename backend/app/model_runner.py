@@ -639,6 +639,94 @@ def clean_model_response(text: str) -> str:
     return text.strip()
 
 
+def get_model_max_tokens(model_id: str) -> int:
+    """
+    Get the appropriate max_tokens limit for each model based on their capabilities.
+    This prevents setting max_tokens higher than the model's maximum output capacity.
+    """
+    # Model-specific token limits based on their actual capabilities
+    model_limits = {
+        # Claude models - Opus has 4096 max output, others can handle more
+        "anthropic/claude-3-opus": 4096,
+        "anthropic/claude-3-opus-20240229": 4096,
+        "anthropic/claude-3-haiku": 8192,
+        "anthropic/claude-3.5-haiku": 8192,
+        "anthropic/claude-3.5-haiku-20241022": 8192,
+        "anthropic/claude-3.5-sonnet": 8192,
+        "anthropic/claude-3.5-sonnet-20240620": 8192,
+        "anthropic/claude-3.5-sonnet-20241022": 8192,
+        "anthropic/claude-3.7-sonnet": 8192,
+        "anthropic/claude-sonnet-4": 8192,
+        
+        # Other models - use higher limits for most modern models
+        "openai/gpt-4o": 8192,
+        "openai/gpt-4o-2024-11-20": 8192,
+        "openai/gpt-4o-mini": 8192,
+        "openai/gpt-4-turbo": 8192,
+        "openai/gpt-5": 8192,
+        "openai/gpt-5-mini": 8192,
+        "openai/o1": 4096,  # o1 models have lower limits
+        "openai/o1-mini": 4096,
+        
+        # Google models
+        "google/gemini-2.5-pro": 8192,
+        "google/gemini-2.5-flash": 8192,
+        "google/gemini-2.0-flash-001": 8192,
+        "google/gemini-2.0-flash-lite-001": 8192,
+        "google/gemini-pro-1.5": 8192,
+        "google/gemini-flash-1.5": 8192,
+        "google/gemini-flash-1.5-8b": 8192,
+        "google/gemma-3-27b-it": 8192,
+        
+        # Meta models
+        "meta-llama/llama-3.1-70b-instruct": 8192,
+        "meta-llama/llama-3.1-405b-instruct": 8192,
+        "meta-llama/llama-3.2-3b-instruct": 8192,
+        "meta-llama/llama-3.3-70b-instruct": 8192,
+        "meta-llama/llama-4-maverick": 8192,
+        "meta-llama/llama-4-scout": 8192,
+        
+        # Microsoft models
+        "microsoft/phi-3.5-mini-128k-instruct": 8192,
+        "microsoft/phi-4": 8192,
+        "microsoft/phi-4-reasoning-plus": 8192,
+        "microsoft/wizardlm-2-8x22b": 8192,
+        
+        # Mistral models
+        "mistralai/devstral-small-2505": 8192,
+        "mistralai/mistral-large": 8192,
+        "mistralai/mistral-nemo": 8192,
+        "mistralai/mistral-small-3.2-24b-instruct": 8192,
+        "mistralai/mixtral-8x7b-instruct": 8192,
+        
+        # Cohere models
+        "cohere/command-r7b-12-2024": 8192,
+        "cohere/command-r-08-2024": 8192,
+        "cohere/command-r-plus-08-2024": 8192,
+        
+        # DeepSeek models
+        "deepseek/deepseek-chat": 8192,
+        "deepseek/deepseek-chat-v3.1": 8192,
+        "deepseek/deepseek-r1": 8192,
+        
+        # Qwen models
+        "qwen/qwen3-14b": 8192,
+        "qwen/qwen3-235b-a22b": 8192,
+        "qwen/qwen3-coder": 8192,
+        "qwen/qwq-32b": 8192,
+        
+        # xAI models
+        "x-ai/grok-3": 8192,
+        "x-ai/grok-4": 8192,
+        "x-ai/grok-code-fast-1": 8192,
+        
+        # Other providers - use 8192 as default for most modern models
+    }
+    
+    # Return model-specific limit or default to 8192 for unknown models
+    return model_limits.get(model_id, 8192)
+
+
 def call_openrouter(prompt: str, model_id: str, conversation_history: list = None) -> str:
     try:
         # Build messages array - use standard format like official AI providers
@@ -660,21 +748,21 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        # Set a high max_tokens to ensure complete responses
-        # This prevents models (especially faster ones like Claude Haiku) from truncating mid-response
-        # Most models default to lower limits (1024-2048), so we explicitly set a higher limit
+        # Get model-specific max_tokens limit to prevent truncation issues
+        max_tokens = get_model_max_tokens(model_id)
+        
         response = client.chat.completions.create(
             model=model_id, 
             messages=messages, 
             timeout=INDIVIDUAL_MODEL_TIMEOUT,
-            max_tokens=8192  # High limit to allow complete, detailed responses
+            max_tokens=max_tokens  # Use model-specific limit
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
         
         # Log finish reason for debugging
         model_name = model_id.split('/')[-1]
-        print(f"Model {model_name}: finish_reason='{finish_reason}', length={len(content) if content else 0} chars")
+        print(f"Model {model_name}: finish_reason='{finish_reason}', length={len(content) if content else 0} chars, max_tokens={max_tokens}")
         
         # Detect incomplete responses heuristically
         incomplete_indicators = [
