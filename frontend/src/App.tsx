@@ -228,15 +228,15 @@ function App() {
     // Sync usage count with backend
     const syncUsageCount = async () => {
       try {
-        const response = await fetch(`${API_URL}/usage-count?fingerprint=${encodeURIComponent(fingerprint)}`);
+        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
         if (response.ok) {
           const data = await response.json();
-          setUsageCount(data.usage_count || 0);
+          setUsageCount(data.fingerprint_usage_count || data.ip_usage_count || 0);
 
           // Update localStorage to match backend
           const today = new Date().toDateString();
           localStorage.setItem('compareai_usage', JSON.stringify({
-            count: data.usage_count || 0,
+            count: data.fingerprint_usage_count || data.ip_usage_count || 0,
             date: today
           }));
         } else {
@@ -566,15 +566,15 @@ function App() {
       if (filteredData.metadata.models_successful > 0) {
         // Sync with backend to get the actual count (backend now counts after success)
         try {
-          const response = await fetch(`${API_URL}/usage-count?fingerprint=${encodeURIComponent(browserFingerprint)}`);
+          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
           if (response.ok) {
             const data = await response.json();
-            setUsageCount(data.usage_count || 0);
+            setUsageCount(data.fingerprint_usage_count || data.ip_usage_count || 0);
 
             // Update localStorage to match backend
             const today = new Date().toDateString();
             localStorage.setItem('compareai_usage', JSON.stringify({
-              count: data.usage_count || 0,
+              count: data.fingerprint_usage_count || data.ip_usage_count || 0,
               date: today
             }));
           } else {
@@ -915,14 +915,13 @@ function App() {
                           (isFollowUpMode && !hasAnySelected);
 
                         return (
-                          <button
+                          <div
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!isDisabled) {
                                 toggleAllForProvider(provider);
                               }
                             }}
-                            disabled={isDisabled}
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.7rem',
@@ -939,7 +938,7 @@ function App() {
                                 `Select all ${provider} models`}
                           >
                             {allProviderModelsSelected ? 'Deselect All' : 'Select All'}
-                          </button>
+                          </div>
                         );
                       })()}
                       <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
