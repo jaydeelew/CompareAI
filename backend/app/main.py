@@ -157,12 +157,7 @@ async def compare(req: CompareRequest, request: Request) -> CompareResponse:
             detail=f"Daily limit of {MAX_DAILY_COMPARISONS} comparisons exceeded. You've used {max_count} today. Resets at midnight UTC."
         )
     
-    # Increment usage counters for both identifiers
-    increment_usage(f"ip:{client_ip}")
-    if req.browser_fingerprint:
-        increment_usage(f"fp:{req.browser_fingerprint}")
-    
-    print(f"Rate limit check passed - IP: {client_ip} ({ip_count + 1}/{MAX_DAILY_COMPARISONS}), Fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'} ({fingerprint_count + 1 if req.browser_fingerprint else 0}/{MAX_DAILY_COMPARISONS})")
+    print(f"Rate limit check passed - IP: {client_ip} ({ip_count}/{MAX_DAILY_COMPARISONS}), Fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'} ({fingerprint_count}/{MAX_DAILY_COMPARISONS})")
     # --- END RATE LIMITING ---
 
     try:
@@ -183,6 +178,15 @@ async def compare(req: CompareRequest, request: Request) -> CompareResponse:
                 successful_models += 1
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
+
+        # Only count usage if at least one model succeeded (matches frontend logic)
+        if successful_models > 0:
+            increment_usage(f"ip:{client_ip}")
+            if req.browser_fingerprint:
+                increment_usage(f"fp:{req.browser_fingerprint}")
+            print(f"Usage counted - IP: {client_ip}, Fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'} (Success: {successful_models}/{len(req.models)})")
+        else:
+            print(f"Usage NOT counted - All models failed - IP: {client_ip}, Fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'}")
 
         # Add metadata
         metadata = {
@@ -248,6 +252,22 @@ async def get_rate_limit_status(request: Request, fingerprint: Optional[str] = N
         result["fingerprint_limited"] = not fp_allowed
     
     return result
+
+
+@app.get("/usage-count")
+async def get_usage_count(request: Request, fingerprint: Optional[str] = None):
+    """Get the current usage count for the client (for frontend sync)"""
+    client_ip = get_client_ip(request)
+    
+    # Get IP-based usage count
+    _, ip_count = check_rate_limit(f"ip:{client_ip}")
+    
+    # Use fingerprint count if provided, otherwise use IP count
+    if fingerprint:
+        _, fp_count = check_rate_limit(f"fp:{fingerprint}")
+        return {"usage_count": fp_count, "identifier": "fingerprint"}
+    else:
+        return {"usage_count": ip_count, "identifier": "ip"}
 
 
 @app.post("/dev/reset-rate-limit")
