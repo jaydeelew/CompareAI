@@ -11,6 +11,114 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         try {
             let processedText = text;
 
+            // Debug logging
+            if (processedText.includes('MathML') || processedText.includes('www.w3.org')) {
+                console.log('LatexRenderer received MathML content:', processedText.substring(0, 200));
+            }
+
+            // Preprocess: Clean up MathML content - AGGRESSIVE CLEANUP
+            // Remove entire MathML blocks including namespace declarations
+            processedText = processedText.replace(/<math[^>]*xmlns[^>]*>[\s\S]*?<\/math>/gi, '');
+
+            // Remove MathML namespace declarations anywhere they appear
+            processedText = processedText.replace(/xmlns:?[^=]*="[^"]*w3\.org\/1998\/Math\/MathML[^"]*"/gi, '');
+            processedText = processedText.replace(/xmlns="[^"]*Math\/MathML[^"]*"/gi, '');
+
+            // Remove the standalone MathML namespace URL patterns that appear in text (with or without http/https)
+            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^<>\s]*/gi, '');
+            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML[^<>\s"'`]*/gi, '');
+            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML[^<>\s"'`]*/gi, '');
+
+            // Remove any remaining references to MathML namespace
+            processedText = processedText.replace(/"[^"]*MathML[^"]*"/gi, '');
+            processedText = processedText.replace(/'[^']*MathML[^']*'/gi, '');
+
+            // Remove MathML tags while preserving their text content
+            // Handle <math> tags (with any attributes)
+            processedText = processedText.replace(/<math[^>]*>/gi, '');
+            processedText = processedText.replace(/<\/math>/gi, '');
+
+            // Handle <mrow> (math row) tags
+            processedText = processedText.replace(/<\/?mrow>/g, '');
+
+            // Handle <mi> (math identifier) tags - extract content
+            processedText = processedText.replace(/<mi[^>]*>([^<]*)<\/mi>/g, '$1');
+
+            // Handle <mn> (math number) tags - extract content
+            processedText = processedText.replace(/<mn[^>]*>([^<]*)<\/mn>/g, '$1');
+
+            // Handle <mo> (math operator) tags - extract content
+            processedText = processedText.replace(/<mo[^>]*>([^<]*)<\/mo>/g, '$1');
+
+            // Handle <msup> (superscript) tags - convert to caret notation
+            processedText = processedText.replace(/<msup[^>]*>(.*?)<\/msup>/g, (_match, content) => {
+                // Extract base and superscript from nested tags
+                const baseMatch = content.match(/<mi[^>]*>([^<]*)<\/mi>|<mn[^>]*>([^<]*)<\/mn>/);
+                const supMatch = content.match(/.*?<mi[^>]*>([^<]*)<\/mi>|.*?<mn[^>]*>([^<]*)<\/mn>/);
+                if (baseMatch && supMatch) {
+                    const base = baseMatch[1] || baseMatch[2] || '';
+                    // Get the second match (superscript)
+                    const matches = content.match(/<mi[^>]*>([^<]*)<\/mi>|<mn[^>]*>([^<]*)<\/mn>/g);
+                    if (matches && matches.length >= 2) {
+                        const supText = matches[1].replace(/<\/?m[ion]>/g, '');
+                        return `${base}^${supText}`;
+                    }
+                }
+                return content.replace(/<\/?m[ion]>/g, '');
+            });
+
+            // Handle <msub> (subscript) tags
+            processedText = processedText.replace(/<msub[^>]*>(.*?)<\/msub>/g, (_match, content) => {
+                return content.replace(/<\/?m[ion]>/g, '');
+            });
+
+            // Handle <mfrac> (fraction) tags - convert to \frac notation
+            processedText = processedText.replace(/<mfrac[^>]*>(.*?)<\/mfrac>/g, (_match, content) => {
+                const parts = content.split(/<\/m[ion]><m[ion][^>]*>/);
+                if (parts.length >= 2) {
+                    const numerator = parts[0].replace(/<\/?m[ion][^>]*>/g, '').trim();
+                    const denominator = parts[1].replace(/<\/?m[ion][^>]*>/g, '').trim();
+                    return `\\frac{${numerator}}{${denominator}}`;
+                }
+                return content.replace(/<\/?m[ion][^>]*>/g, '');
+            });
+
+            // Handle <mtext> (math text) tags
+            processedText = processedText.replace(/<mtext[^>]*>([^<]*)<\/mtext>/g, '$1');
+
+            // Handle <mspace> tags
+            processedText = processedText.replace(/<mspace[^>]*\/>/g, ' ');
+
+            // Remove any remaining MathML tags
+            processedText = processedText.replace(/<\/?m[a-z]+[^>]*>/g, '');
+
+            // Clean up any malformed MathML fragments
+            processedText = processedText.replace(/[<>]"[^"]*MathML[^"]*"/g, '');
+
+            // Remove any text that looks like a MathML URL with surrounding characters
+            processedText = processedText.replace(/[^\s]*www\.w3\.org\/\d+\/Math\/MathML[^\s]*/gi, '');
+            processedText = processedText.replace(/[^\s]*\/\/www\.w3\.org\/\d+\/Math\/MathML[^\s]*/gi, '');
+
+            // Remove standalone > or < characters that might be left from tag cleanup
+            processedText = processedText.replace(/^[<>]\s*/gm, '');
+            processedText = processedText.replace(/\s*[<>]$/gm, '');
+
+            // Fix malformed derivative notation like "fracdx[xⁿ]" or "fracdx(x^n)"
+            processedText = processedText.replace(/fracdx\[([^\]]+)\]/g, (_, content) => {
+                return `\\frac{d}{dx}[${content}]`;
+            });
+            processedText = processedText.replace(/fracd([a-z])\[([^\]]+)\]/g, (_, variable, content) => {
+                return `\\frac{d}{d${variable}}[${content}]`;
+            });
+
+            // Additional final cleanup for any remaining MathML artifacts at end of processing
+            if (processedText.includes('MathML') || processedText.includes('www.w3.org')) {
+                console.warn('MathML artifacts still present after cleanup:', processedText.substring(0, 300));
+                // One more aggressive pass
+                processedText = processedText.split(/MathML/i).join('');
+                processedText = processedText.split(/www\.w3\.org\/\d+\/Math\//gi).join('');
+            }
+
             // Preprocess: Clean up SVG path data and other unwanted content
             // Remove specific SVG path data patterns that appear in AI responses
             processedText = processedText.replace(/c-2\.7,0,-7\.17,-2\.7,-13\.5,-8c-5\.8,-5\.3,-9\.5,-10,-9\.5,-14[^"]*H400000v40H845\.2724[^"]*M834 80h400000v40h-400000z/g, '');

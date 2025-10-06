@@ -460,24 +460,29 @@ def clean_model_response(text: str) -> str:
     # - //www.w3.org/1998/Math/MathML" display="block">000
     # - //www.w3.org/1998/Math/MathML">x=0x = 0x
     
-    # Remove the URL with any attributes and the closing >
-    text = re.sub(r'//www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
+    # Remove the URL with any attributes and the closing > (AGGRESSIVE)
+    # Match patterns like: //www.w3.org/1998/Math/MathML">
+    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML[^>]*"?\s*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML[^>]*"?\s*>', '', text, flags=re.IGNORECASE)
     
     # Remove any remaining URL fragments with quotes and attributes
-    text = re.sub(r'//www\.w3\.org/1998/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove just the URL itself with any trailing characters up to and including >
+    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML[^>\s]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML[^>\s]*>', '', text, flags=re.IGNORECASE)
     
     # Remove just the URL itself if it appears standalone
-    text = re.sub(r'//www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
     
     # Remove www.w3.org references without protocol
-    text = re.sub(r'www\.w3\.org/1998/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'www\.w3\.org/1998/Math/MathML', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'www\.w3\.org/\d+/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
     
     # Remove any xmlns attributes
-    text = re.sub(r'xmlns\s*=\s*["\']https?://www\.w3\.org/1998/Math/MathML["\']', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'xmlns\s*=\s*["\']https?://www\.w3\.org/\d+/Math/MathML["\']', '', text, flags=re.IGNORECASE)
     
     # Remove any display attributes that are left over
     text = re.sub(r'display\s*=\s*["\']block["\']\s*>', '', text, flags=re.IGNORECASE)
