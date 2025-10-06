@@ -12,9 +12,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             let processedText = text;
 
             // Debug logging
-            if (processedText.includes('MathML') || processedText.includes('www.w3.org')) {
-                console.log('LatexRenderer received MathML content:', processedText.substring(0, 200));
+            if (processedText.includes('MathML') || processedText.includes('www.w3.org') || processedText.includes('spanclass') || processedText.includes('katex')) {
+                console.log('⚠️ LatexRenderer received problematic content:', processedText.substring(0, 300));
             }
+
+            // CRITICAL: Remove malformed KaTeX/MathML markup that shouldn't be in responses
+            // This is a safety net in case backend cleanup fails
+            processedText = processedText.replace(/<\s*spanclass\s*=\s*["']katex[^"']*["'][^>]*>/gi, '');
+            processedText = processedText.replace(/<\s*spanclass\s*=\s*["'][^"']*["'][^>]*>/gi, '');
+            processedText = processedText.replace(/spanclass/gi, '');
+            processedText = processedText.replace(/mathxmlns/gi, '');
+            processedText = processedText.replace(/annotationencoding/gi, '');
 
             // Preprocess: Clean up MathML content - AGGRESSIVE CLEANUP
             // Remove entire MathML blocks including namespace declarations

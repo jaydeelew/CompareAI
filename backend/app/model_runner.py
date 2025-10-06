@@ -432,14 +432,73 @@ client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/
 def clean_model_response(text: str) -> str:
     """
     Clean up model responses by removing MathML tags, namespace references,
-    and other unwanted markup that shouldn't be displayed to users.
+    KaTeX markup, and other unwanted markup that shouldn't be displayed to users.
     """
     if not text:
         return text
     
-    # Check if text contains w3.org before cleaning (for debugging)
-    has_w3org_before = 'w3.org' in text.lower()
+    # ALWAYS show first part of response for debugging
+    print(f"🔍 DEBUG: Raw response (first 300 chars): {text[:300]}")
     
+    # Check if text contains w3.org or katex before cleaning (for debugging)
+    has_w3org_before = 'w3.org' in text.lower()
+    has_katex_before = 'katex' in text.lower()
+    has_spanclass_before = 'spanclass' in text.lower()
+    has_angle_brackets = '<' in text and '>' in text
+    
+    if has_katex_before or has_spanclass_before or has_w3org_before or has_angle_brackets:
+        print(f"⚠️ Found problematic content - katex: {has_katex_before}, spanclass: {has_spanclass_before}, w3.org: {has_w3org_before}, brackets: {has_angle_brackets}")
+    
+    # ===== KATEX CLEANUP =====
+    # Remove KaTeX span elements (both properly formatted and severely malformed)
+    # Claude 3 Opus sometimes outputs malformed HTML like: < spanclass="katex" >
+    
+    # AGGRESSIVE: Remove any pattern that looks like malformed katex markup
+    # This catches: < spanclass="katex" >, <spanclass="katex">, <span class="katex">, etc.
+    # Step 1: Remove patterns with "katex" in them (malformed tags)
+    text = re.sub(r'<\s*spanclass\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<\s*span\s*class\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<\s*span[^>]*class\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Step 2: Remove malformed math tags (mathxmlns, mathxml, etc.)
+    text = re.sub(r'<\s*mathxmlns\s*=\s*[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<\s*mathxml[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Step 3: Remove any remaining span tags (opening and closing)
+    text = re.sub(r'<\s*/?span[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Step 4: Remove semantics and annotation tags
+    text = re.sub(r'<\s*/?semantics[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<\s*/?annotation[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Step 5: Remove any quoted text containing "katex" or "mathml"
+    text = re.sub(r'["\'][^"\']*(?:katex|mathml)[^"\']*["\']', '', text, flags=re.IGNORECASE)
+    
+    # Step 6: Targeted removal of malformed HTML-like content
+    # Be surgical to avoid breaking legitimate mathematical content
+    
+    # Remove opening HTML/XML tags that contain common markup words
+    # This catches: <span...>, <math...>, <annotation...>, <semantics...>, etc.
+    # But preserves mathematical comparisons like "x < y" or "a > b"
+    text = re.sub(r'<\s*(span|math|annotation|semantics|mrow|mi|mn|mo|msup|msub|mfrac|mtext|mspace|msubsup|msqrt|mroot|mstyle|mtable|mtr|mtd|mover|munder|munderover)[^>]*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove closing tags for the above
+    text = re.sub(r'</\s*(span|math|annotation|semantics|mrow|mi|mn|mo|msup|msub|mfrac|mtext|mspace|msubsup|msqrt|mroot|mstyle|mtable|mtr|mtd|mover|munder|munderover)\s*>', '', text, flags=re.IGNORECASE)
+    
+    # Remove incomplete opening tags (at start or after space): < span, < math, < annotation
+    text = re.sub(r'(^|\s)<\s+(span|math|annotation|semantics|mrow|mi|mn|mo)', r'\1', text, flags=re.IGNORECASE)
+    
+    # Step 7: Remove concatenated tag/attribute words that shouldn't exist
+    text = re.sub(r'\b(spanclass|mathxmlns|mathxml|annotationencoding)\w*', '', text, flags=re.IGNORECASE)
+    
+    # Step 8: Remove any remaining standalone markup words when they appear with special chars
+    text = re.sub(r'(?:katex|mathml)(?:[_-]\w+)?["\s]', ' ', text, flags=re.IGNORECASE)
+    
+    # Step 9: Remove attribute patterns that look like: ="text" or ="url"
+    # Only when they contain markup-related words
+    text = re.sub(r'=\s*["\'][^"\']*(?:katex|mathml|w3\.org|xmlns)[^"\']*["\']', '', text, flags=re.IGNORECASE)
+    
+    # ===== MATHML CLEANUP =====
     # Remove complete MathML elements
     text = re.sub(r'<math[^>]*>[\s\S]*?</math>', '', text, flags=re.IGNORECASE)
     
@@ -563,14 +622,19 @@ def clean_model_response(text: str) -> str:
     # Step 8: Final cleanup for any remaining backslash-space patterns
     text = re.sub(r'\\\s+', ' ', text)
     
-    # Check if cleaning worked (for debugging)
+    # ALWAYS show result for debugging
+    print(f"✅ DEBUG: After cleanup (first 300 chars): {text[:300]}")
+    
+    # Check if cleaning worked
     has_w3org_after = 'w3.org' in text.lower()
-    if has_w3org_before:
-        if has_w3org_after:
-            print(f"⚠️ WARNING: MathML cleanup failed - w3.org still present in response")
-            print(f"Sample: {text[:200]}...")
-        else:
-            print(f"✅ Successfully cleaned MathML references from response")
+    has_katex_after = 'katex' in text.lower()
+    has_spanclass_after = 'spanclass' in text.lower()
+    has_angle_brackets_after = '<' in text and '>' in text
+    
+    if has_w3org_after or has_katex_after or has_spanclass_after:
+        print(f"⚠️ WARNING: Cleanup incomplete - katex: {has_katex_after}, spanclass: {has_spanclass_after}, w3.org: {has_w3org_after}, brackets: {has_angle_brackets_after}")
+    elif has_w3org_before or has_katex_before or has_spanclass_before or has_angle_brackets:
+        print(f"✅ Successfully cleaned all problematic markup")
     
     return text.strip()
 
