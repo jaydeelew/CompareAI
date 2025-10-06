@@ -62,6 +62,7 @@ function App() {
   const [, setUserMessageTimestamp] = useState<string>('');
   const userCancelledRef = useRef(false);
   const followUpJustActivatedRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Freemium usage tracking state
   const [usageCount, setUsageCount] = useState(0);
@@ -166,7 +167,7 @@ function App() {
 
   // Scroll to results section when results are loaded
   useEffect(() => {
-    if (response) {
+    if (response && !isFollowUpMode) {
       // Longer delay to ensure the results section is fully rendered
       setTimeout(() => {
         const resultsSection = document.querySelector('.results-section');
@@ -179,28 +180,9 @@ function App() {
         }
       }, 300);
     }
-  }, [response]);
+  }, [response, isFollowUpMode]);
 
-  // Scroll to input section when follow-up mode is activated
-  useEffect(() => {
-    if (isFollowUpMode && followUpJustActivatedRef.current) {
-      // Scroll to input section when follow-up mode is first activated
-      setTimeout(() => {
-        const inputSection = document.querySelector('.input-section');
-        if (inputSection) {
-          console.log('Follow-up mode: Scrolling to input section:', inputSection);
-          inputSection.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
-        } else {
-          console.log('Follow-up mode: Input section not found');
-        }
-        // Reset the flag after scrolling
-        followUpJustActivatedRef.current = false;
-      }, 100);
-    }
-  }, [isFollowUpMode]);
+  // Note: Scroll handling moved to handleFollowUp function for better control
 
   // Scroll to results section when conversations are updated (follow-up mode)
   useEffect(() => {
@@ -403,6 +385,40 @@ function App() {
     followUpJustActivatedRef.current = true;
     setIsFollowUpMode(true);
     setInput('');
+
+    // Wait for state to update, then scroll to the input section
+    setTimeout(() => {
+      const inputSection = document.querySelector('.input-section');
+      if (inputSection) {
+        console.log('Follow-up mode: Scrolling to input section:', inputSection);
+        // Get the h2 heading inside the input section
+        const heading = inputSection.querySelector('h2');
+        if (heading) {
+          console.log('Follow-up mode: Scrolling to heading inside input section');
+          heading.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else {
+          // Fallback to scrolling to the section itself
+          inputSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      } else {
+        console.log('Follow-up mode: Input section not found');
+      }
+      // Reset the flag after scrolling
+      followUpJustActivatedRef.current = false;
+    }, 250); // Increased delay to ensure DOM updates
+
+    // Focus the textarea after scroll completes
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 650); // Wait for scroll to complete
   };
 
   const handleContinueConversation = () => {
@@ -1035,6 +1051,7 @@ function App() {
         <section className="input-section">
           <h2>{isFollowUpMode ? 'Follow Up' : 'Input Text'}</h2>
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isFollowUpMode
