@@ -1,3 +1,4 @@
+import html2canvas from 'html2canvas';
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
@@ -46,6 +47,81 @@ const MAX_MODELS_LIMIT = 12;
 const MAX_DAILY_USAGE = 2;
 
 function App() {
+  // Screenshot handler for message area only
+  const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
+    const notif = document.createElement('div');
+    notif.textContent = msg;
+    notif.style.position = 'fixed';
+    notif.style.top = '32px';
+    notif.style.right = '32px';
+    notif.style.zIndex = '9999';
+    notif.style.padding = '16px 28px';
+    notif.style.borderRadius = '12px';
+    notif.style.background = type === 'success' ? '#22c55e' : '#ef4444';
+    notif.style.color = 'white';
+    notif.style.fontWeight = 'bold';
+    notif.style.fontSize = '1.25rem';
+    notif.style.boxShadow = '0 4px 16px rgba(0,0,0,0.18)';
+    notif.style.border = '2px solid #fff';
+    notif.style.pointerEvents = 'none';
+    notif.style.transition = 'opacity 0.3s';
+    notif.style.opacity = '1';
+    document.body.appendChild(notif);
+    setTimeout(() => {
+      notif.style.opacity = '0';
+      setTimeout(() => notif.remove(), 400);
+    }, 2200);
+  };
+
+  // Sanitize modelId for HTML id and selector
+  const getSafeId = (modelId: string) => modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+  const handleScreenshot = async (modelId: string) => {
+    const safeId = getSafeId(modelId);
+    console.log('Screenshot button clicked for model:', modelId, 'Safe ID:', safeId);
+    const content = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement | null;
+    if (!content) {
+      showNotification('Screenshot target not found.', 'error');
+      return;
+    }
+    // Temporarily expand scroll area to show all content
+    const prevOverflow = content.style.overflow;
+    const prevMaxHeight = content.style.maxHeight;
+    content.style.overflow = 'visible';
+    content.style.maxHeight = 'none';
+    try {
+      const canvas = await html2canvas(content, { useCORS: true });
+      canvas.toBlob(async (blob) => {
+        if (blob && navigator.clipboard && window.ClipboardItem) {
+          try {
+            await navigator.clipboard.write([
+              new window.ClipboardItem({ 'image/png': blob })
+            ]);
+            showNotification('Image copied to clipboard!', 'success');
+          } catch (err) {
+            showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
+            const link = document.createElement('a');
+            link.download = `model_${safeId}_messages.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+          }
+        } else if (blob) {
+          showNotification('Clipboard not supported. Image downloaded.', 'error');
+          const link = document.createElement('a');
+          link.download = `model_${safeId}_messages.png`;
+          link.href = canvas.toDataURL();
+          link.click();
+        } else {
+          showNotification('Could not create image blob.', 'error');
+        }
+      }, 'image/png');
+    } catch (err) {
+      showNotification('Screenshot failed: ' + (err as Error).message, 'error');
+    } finally {
+      content.style.overflow = prevOverflow;
+      content.style.maxHeight = prevMaxHeight;
+    }
+  };
   const [response, setResponse] = useState<CompareResponse | null>(null);
   const [input, setInput] = useState('');
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -1295,6 +1371,7 @@ function App() {
                   const model = allModels.find(m => m.id === conversation.modelId);
                   const latestMessage = conversation.messages[conversation.messages.length - 1];
                   const isError = latestMessage?.content.startsWith('Error');
+                  const safeId = getSafeId(conversation.modelId);
 
                   return (
                     <div key={conversation.modelId} className="result-card conversation-card">
@@ -1309,6 +1386,21 @@ function App() {
                           >
                             ✕
                           </button>
+                          <button
+                            className="screenshot-card-btn"
+                            onClick={() => handleScreenshot(conversation.modelId)}
+                            title="Screenshot message area"
+                            aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
+                            style={{
+                              marginLeft: '0.5rem',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '1.2rem'
+                            }}
+                          >
+                            📸
+                          </button>
                         </div>
                         <div className="result-header-bottom">
                           <span className="output-length">{latestMessage?.content.length || 0} chars</span>
@@ -1317,7 +1409,7 @@ function App() {
                           </span>
                         </div>
                       </div>
-                      <div className="conversation-content">
+                      <div className="conversation-content" id={`conversation-content-${safeId}`}>
                         {conversation.messages.map((message) => (
                           <div key={message.id} className={`conversation-message ${message.type}`}>
                             <div className="message-header">
