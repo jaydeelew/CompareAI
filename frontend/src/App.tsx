@@ -1377,36 +1377,36 @@ function App() {
                     <div key={conversation.modelId} className="result-card conversation-card">
                       <div className="result-header">
                         <div className="result-header-top">
-                          <h3>{model?.name || conversation.modelId}</h3>
-                          <button
-                            className="close-card-btn"
-                            onClick={() => closeResultCard(conversation.modelId)}
-                            title="Hide this result"
-                            aria-label={`Hide result for ${model?.name || conversation.modelId}`}
-                          >
-                            ✕
-                          </button>
-                          <button
-                            className="screenshot-card-btn"
-                            onClick={() => handleScreenshot(conversation.modelId)}
-                            title="Screenshot message area"
-                            aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
-                            style={{
-                              marginLeft: '0.5rem',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontSize: '1.2rem'
-                            }}
-                          >
-                            📸
-                          </button>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                            <h3 style={{ marginRight: '1rem' }}>{model?.name || conversation.modelId}</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                              <button
+                                className="close-card-btn"
+                                onClick={() => closeResultCard(conversation.modelId)}
+                                title="Hide this result"
+                                aria-label={`Hide result for ${model?.name || conversation.modelId}`}
+                              >
+                                ✕
+                              </button>
+                              <button
+                                className="screenshot-card-btn"
+                                onClick={() => handleScreenshot(conversation.modelId)}
+                                title="Screenshot message area"
+                                aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
+                                style={{ marginTop: '0.8125rem' }}
+                              >
+                                📸
+                              </button>
+                            </div>
+                          </div>
                         </div>
                         <div className="result-header-bottom">
-                          <span className="output-length">{latestMessage?.content.length || 0} chars</span>
-                          <span className={`status ${isError ? 'error' : 'success'}`}>
-                            {isError ? 'Failed' : 'Success'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                            <span className={`status ${isError ? 'error' : 'success'}`}>
+                              {isError ? 'Failed' : 'Success'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="conversation-content" id={`conversation-content-${safeId}`}>
