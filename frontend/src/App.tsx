@@ -189,7 +189,6 @@ function App() {
         setUsageCount(0);
         localStorage.removeItem('compareai_usage');
         setError(null);
-        alert('✅ Rate limits reset successfully! You can now make 10 more comparisons.');
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert(`❌ Failed to reset: ${errorData.detail || 'Unknown error'}`);
@@ -469,10 +468,10 @@ function App() {
     if (originalSelectedModels.length === 0) {
       return false; // No original comparison yet, so follow-up is not applicable
     }
-    
+
     // Check if any new models have been added (models in selectedModels that weren't in originalSelectedModels)
     const hasNewModels = selectedModels.some(model => !originalSelectedModels.includes(model));
-    
+
     // If new models were added, disable follow-up
     // If only models were deselected (subset of original), allow follow-up
     return hasNewModels;
@@ -482,6 +481,7 @@ function App() {
     followUpJustActivatedRef.current = true;
     setIsFollowUpMode(true);
     setInput('');
+    setIsModelsHidden(true); // Collapse the models section when entering follow-up mode
 
     // Wait for state to update, then scroll to the input section
     setTimeout(() => {
