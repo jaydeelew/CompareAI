@@ -396,6 +396,10 @@ body {
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
+.textarea-icon-button:focus {
+  outline: none;
+}
+
 .textarea-icon-button:disabled {
   background: rgba(100, 116, 139, 0.5);
   cursor: not-allowed;
@@ -1221,7 +1225,7 @@ body {
 }
 
 /* Reduce spacing when error message is above models section */
-.error-message + .models-section {
+.error-message+.models-section {
   margin-top: -1rem;
 }
 
