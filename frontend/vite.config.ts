@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  cacheDir: '/tmp/vite-cache',
   server: {
     allowedHosts: ['compareintel.com', 'frontend', 'localhost'],
     proxy: {
