@@ -143,6 +143,7 @@ function App() {
   // Freemium usage tracking state
   const [usageCount, setUsageCount] = useState(0);
   const [browserFingerprint, setBrowserFingerprint] = useState('');
+  const [isModelsHidden, setIsModelsHidden] = useState(false);
 
   // Generate browser fingerprint for usage tracking (anti-abuse measure)
   const generateBrowserFingerprint = () => {
@@ -512,6 +513,7 @@ function App() {
     setResponse(null);
     setClosedCards(new Set());
     setError(null);
+    setIsModelsHidden(false); // Show models section again for new comparison
   };
 
   // Function to scroll all conversation content areas to the last user message
@@ -564,6 +566,7 @@ function App() {
 
     setIsLoading(true);
     setError(null);
+    setIsModelsHidden(true); // Hide models section after clicking Compare
 
     // Capture user timestamp when they actually submit
     const userTimestamp = new Date().toISOString();
@@ -948,6 +951,26 @@ function App() {
               }}>
                 {selectedModels.length} of {MAX_MODELS_LIMIT} selected
               </div>
+              <button
+                onClick={() => setIsModelsHidden(!isModelsHidden)}
+                style={{
+                  padding: '0.5rem',
+                  fontSize: '0.875rem',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--primary-color)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px'
+                }}
+                title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+              >
+                {isModelsHidden ? '▼' : '▲'}
+              </button>
             </div>
           </div>
 
@@ -971,7 +994,8 @@ function App() {
             </div>
           )}
 
-
+          {!isModelsHidden && (
+          <>
           {isLoadingModels ? (
             <div className="loading-message">Loading available models...</div>
           ) : Object.keys(modelsByProvider).length === 0 ? (
@@ -1121,6 +1145,8 @@ function App() {
                 })}
               </div>
             </div>
+          )}
+          </>
           )}
         </section>
 
