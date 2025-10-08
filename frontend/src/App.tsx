@@ -937,7 +937,7 @@ function App() {
                   }}
                   placeholder={isFollowUpMode
                     ? "Enter your follow-up question or request here..."
-                    : "Ask anything - compare responses, generate code, solve math problems..."
+                    : "Let's get started..."
                   }
                   className="hero-input-textarea"
                   rows={4}
