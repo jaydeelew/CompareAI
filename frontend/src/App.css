@@ -1214,10 +1214,15 @@ body {
   color: #dc2626;
   padding: 1rem;
   border-radius: var(--radius-lg);
-  margin: 1rem 0;
+  margin: 8px 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Reduce spacing when error message is above models section */
+.error-message + .models-section {
+  margin-top: -1rem;
 }
 
 .loading-message {

@@ -1011,6 +1011,12 @@ function App() {
       </header>
 
       <main className="app-main">
+        {error && (
+          <div className="error-message">
+            <span>⚠️ {error}</span>
+          </div>
+        )}
+
         <section className="models-section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <div>
@@ -1317,12 +1323,6 @@ function App() {
                 🔄 Reset Usage (Dev Only)
               </button>
             )}
-          </div>
-        )}
-
-        {error && (
-          <div className="error-message">
-            <span>⚠️ {error}</span>
           </div>
         )}
 
