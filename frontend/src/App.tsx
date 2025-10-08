@@ -957,6 +957,8 @@ function App() {
                   padding: '0.5rem',
                   fontSize: '0.875rem',
                   border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
                   background: 'transparent',
                   color: 'var(--primary-color)',
                   borderRadius: '6px',
