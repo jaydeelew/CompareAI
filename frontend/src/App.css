@@ -253,11 +253,11 @@ body {
   height: 20px;
 }
 
-/* Hero Section */
+/* Hero Section - Modern 2025 Design */
 .hero-section {
-  padding: 3rem 1rem 4rem;
+  padding: 4rem 1rem 5rem;
   text-align: center;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 20%, #0ea5e9 50%, #1e40af 80%, #0f172a 100%);
   color: var(--text-inverse);
   position: relative;
   overflow: hidden;
@@ -270,54 +270,131 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.05"><circle cx="30" cy="30" r="2"/></g></svg>');
-  opacity: 0.5;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+    url('data:image/svg+xml,<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="%23ffffff" stroke-width="0.5" opacity="0.1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+  opacity: 0.6;
+  animation: patternFloat 20s ease-in-out infinite;
+}
+
+@keyframes patternFloat {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255, 255, 255, 0.03) 60deg, transparent 120deg, rgba(255, 255, 255, 0.02) 180deg, transparent 240deg, rgba(255, 255, 255, 0.03) 300deg, transparent 360deg);
+  animation: conicRotate 30s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes conicRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .hero-content {
   max-width: 1400px;
   margin: 0 auto;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
+  animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hero-title {
-  font-size: 2.75rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  line-height: 1.2;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 30%, #ffffff 60%, #f1f5f9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  letter-spacing: -0.02em;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+  padding-bottom: 0.25rem;
+}
+
+@keyframes titleGlow {
+  0% {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+  }
 }
 
 .hero-description {
-  font-size: 1.125rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 2.5rem;
-  line-height: 1.6;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 3rem;
+  line-height: 1.7;
   font-weight: 400;
-  max-width: 800px;
+  max-width: 900px;
   margin-left: auto;
   margin-right: auto;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: fadeInUp 1s ease-out 0.2s both;
 }
 
-/* Hero Input Section - Modern 2025 Design */
+/* Hero Input Section - Enhanced Modern Design */
 .hero-input-section {
-  margin-top: 3rem;
-  max-width: 600px;
+  margin-top: 3.5rem;
+  max-width: 700px;
   margin-left: auto;
   margin-right: auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
+  animation: fadeInUp 1s ease-out 0.4s both;
 }
 
 .hero-input-section h2 {
-  font-size: 1.375rem;
-  font-weight: 600;
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 700;
   color: var(--text-inverse);
   text-align: center;
   margin: 0;
   letter-spacing: -0.025em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .textarea-container {
@@ -325,143 +402,221 @@ body {
   display: flex;
   align-items: stretch;
   width: 100%;
+  filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.15));
 }
 
 .hero-input-textarea {
   width: 100%;
-  padding: 1.25rem 4rem 1.25rem 1.5rem;
-  /* Add right padding for buttons */
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  font-size: 1rem;
+  padding: 1.75rem 5rem 1.75rem 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1.5rem;
+  font-size: 1.1rem;
   font-family: inherit;
   line-height: 1.6;
   resize: vertical;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
   color: var(--text-primary);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
-  min-height: 120px;
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  min-height: 140px;
+  font-weight: 500;
 }
 
 .hero-input-textarea:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    0 0 0 4px rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
+    0 16px 48px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 6px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-4px) scale(1.01);
 }
 
 .hero-input-textarea::placeholder {
   color: var(--text-muted);
   font-weight: 400;
+  opacity: 0.8;
 }
 
 .textarea-actions {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  right: 16px;
+  bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   z-index: 10;
 }
 
 .textarea-icon-button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
-  /* Make it circular like Copilot */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--primary-color);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  box-shadow:
+    0 4px 16px rgba(37, 99, 235, 0.4),
+    0 2px 8px rgba(37, 99, 235, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.textarea-icon-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .textarea-icon-button:hover:not(:disabled) {
-  background: var(--primary-hover);
-  transform: translateY(-1px) scale(1.05);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, var(--primary-hover) 0%, #1e40af 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 8px 24px rgba(37, 99, 235, 0.5),
+    0 4px 16px rgba(37, 99, 235, 0.3);
+}
+
+.textarea-icon-button:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .textarea-icon-button:active:not(:disabled) {
-  transform: translateY(0) scale(1);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow:
+    0 4px 16px rgba(37, 99, 235, 0.4),
+    0 2px 8px rgba(37, 99, 235, 0.2);
 }
 
 .textarea-icon-button:focus {
   outline: none;
+  box-shadow:
+    0 4px 16px rgba(37, 99, 235, 0.4),
+    0 2px 8px rgba(37, 99, 235, 0.2),
+    0 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .textarea-icon-button:disabled {
-  background: rgba(100, 116, 139, 0.5);
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.6) 0%, rgba(100, 116, 139, 0.4) 100%);
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2);
 }
 
 .textarea-icon-button.not-ready {
-  background: rgba(100, 116, 139, 0.6);
-  color: rgba(255, 255, 255, 0.7);
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.7) 0%, rgba(100, 116, 139, 0.5) 100%);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .textarea-icon-button.not-ready:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.8) 0%, rgba(100, 116, 139, 0.6) 100%);
   transform: none;
   box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);
 }
 
 .textarea-icon-button svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
 .new-inquiry-button {
-  background: var(--warning-color);
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, var(--warning-color) 0%, #d97706 100%);
+  box-shadow:
+    0 4px 16px rgba(245, 158, 11, 0.4),
+    0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 .new-inquiry-button:hover:not(:disabled) {
-  background: #d97706;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow:
+    0 8px 24px rgba(245, 158, 11, 0.5),
+    0 4px 16px rgba(245, 158, 11, 0.3);
 }
 
 .processing-time-message {
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.95rem;
+  margin-top: 1rem;
+  padding: 1.25rem 2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: slideInUp 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.processing-time-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 .note-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
 .note-content span {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--text-inverse);
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.4;
   letter-spacing: 0.025em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Responsive Design */
@@ -497,52 +652,59 @@ body {
   }
 
   .hero-section {
-    padding: 2rem 1rem 3rem;
+    padding: 3rem 1rem 4rem;
   }
 
   .hero-title {
-    font-size: 2.25rem;
+    font-size: clamp(2rem, 8vw, 2.5rem);
+    margin-bottom: 1.25rem;
+    line-height: 1.3;
+    padding-bottom: 0.2rem;
   }
 
   .hero-description {
-    font-size: 1rem;
+    font-size: clamp(0.95rem, 4vw, 1.1rem);
+    margin-bottom: 2.5rem;
   }
 
   .hero-input-section {
-    margin-top: 2rem;
-    padding: 0 1rem;
+    margin-top: 2.5rem;
+    padding: 0 0.5rem;
+    gap: 1.25rem;
   }
 
   .hero-input-section h2 {
-    font-size: 1.25rem;
+    font-size: clamp(1.125rem, 5vw, 1.375rem);
   }
 
   .hero-input-textarea {
-    padding: 1rem 3.5rem 1rem 1.25rem;
-    /* Adjusted for smaller icons */
-    font-size: 0.9rem;
-    min-height: 100px;
+    padding: 1.5rem 4rem 1.5rem 1.5rem;
+    font-size: 1rem;
+    min-height: 120px;
+    border-radius: 1.25rem;
   }
 
   .textarea-actions {
-    right: 8px;
-    bottom: 8px;
-    gap: 6px;
+    right: 12px;
+    bottom: 12px;
+    gap: 10px;
   }
 
   .textarea-icon-button {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
   }
 
   .textarea-icon-button svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
   }
 
   .processing-time-message {
-    font-size: 0.8rem;
-    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    padding: 1rem 1.5rem;
+    margin-top: 1rem;
+    border-radius: 1rem;
   }
 
   .note-content {
