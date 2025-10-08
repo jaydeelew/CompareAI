@@ -1879,6 +1879,20 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.follow-up-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.follow-up-button:disabled:hover {
+  background: #94a3b8;
+  transform: none;
+  box-shadow: none;
+}
+
 .new-comparison-button {
   background: linear-gradient(135deg, var(--secondary-color) 0%, #475569 100%);
   color: white;

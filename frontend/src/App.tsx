@@ -136,6 +136,7 @@ function App() {
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [, setUserMessageTimestamp] = useState<string>('');
+  const [originalSelectedModels, setOriginalSelectedModels] = useState<string[]>([]);
   const userCancelledRef = useRef(false);
   const followUpJustActivatedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -463,6 +464,20 @@ function App() {
     setClosedCards(new Set());
   };
 
+  // Helper function to check if follow-up should be disabled based on model selection changes
+  const isFollowUpDisabled = () => {
+    if (originalSelectedModels.length === 0) {
+      return false; // No original comparison yet, so follow-up is not applicable
+    }
+    
+    // Check if any new models have been added (models in selectedModels that weren't in originalSelectedModels)
+    const hasNewModels = selectedModels.some(model => !originalSelectedModels.includes(model));
+    
+    // If new models were added, disable follow-up
+    // If only models were deselected (subset of original), allow follow-up
+    return hasNewModels;
+  };
+
   const handleFollowUp = () => {
     followUpJustActivatedRef.current = true;
     setIsFollowUpMode(true);
@@ -518,6 +533,7 @@ function App() {
     setResponse(null);
     setClosedCards(new Set());
     setError(null);
+    setOriginalSelectedModels([]); // Reset original models for new comparison
     setIsModelsHidden(false); // Show models section again for new comparison
   };
 
@@ -591,6 +607,11 @@ function App() {
     if (selectedModels.length === 0) {
       setError('Please select at least one model');
       return;
+    }
+
+    // Store original selected models for follow-up comparison logic (only for new comparisons, not follow-ups)
+    if (!isFollowUpMode) {
+      setOriginalSelectedModels([...selectedModels]);
     }
 
     setIsLoading(true);
@@ -899,7 +920,7 @@ function App() {
                     <button
                       onClick={handleNewComparison}
                       className="textarea-icon-button new-inquiry-button"
-                      title="Start a new comparison"
+                      title="Exit follow up mode"
                       disabled={isLoading}
                     >
                       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1304,7 +1325,8 @@ function App() {
                   <button
                     onClick={handleFollowUp}
                     className="follow-up-button"
-                    title="Ask a follow-up question"
+                    title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
+                    disabled={isFollowUpDisabled()}
                   >
                     Follow up
                   </button>
