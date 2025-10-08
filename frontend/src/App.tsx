@@ -546,6 +546,30 @@ function App() {
     }, 100);
   };
 
+  // Handler for submit button that provides helpful validation messages
+  const handleSubmitClick = () => {
+    if (selectedModels.length === 0) {
+      setError('Please select at least one model below to compare responses');
+      // Scroll to the models section to help the user
+      setTimeout(() => {
+        const modelsSection = document.querySelector('.models-section');
+        if (modelsSection) {
+          modelsSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 100);
+      return;
+    }
+
+    if (!input.trim()) {
+      setError('Please enter some text to compare');
+      return;
+    }
+
+    handleSubmit();
+  };
 
   const handleSubmit = async () => {
     // Check daily usage limit
@@ -854,7 +878,7 @@ function App() {
                       if (isFollowUpMode) {
                         handleContinueConversation();
                       } else {
-                        handleSubmit();
+                        handleSubmitClick();
                       }
                     }
                   }}
@@ -879,9 +903,9 @@ function App() {
                     </button>
                   )}
                   <button
-                    onClick={isFollowUpMode ? handleContinueConversation : handleSubmit}
-                    disabled={isLoading || selectedModels.length === 0 || !input.trim()}
-                    className="textarea-icon-button submit-button"
+                    onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
+                    disabled={isLoading}
+                    className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''}`}
                     title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
                   >
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
