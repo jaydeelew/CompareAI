@@ -1,5 +1,10 @@
 /* Screenshot button styling to match close-card-btn */
+
 .screenshot-card-btn {
+  outline: none !important;
+  outline: none !important;
+  border: none !important;
+  border: none !important;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -18,6 +23,26 @@
 }
 
 .screenshot-card-btn:hover {
+  border: none !important;
+  background: var(--primary-color);
+  color: white;
+  transform: scale(1.1);
+}
+
+.screenshot-card-btn:active {
+  border: none !important;
+  transform: scale(0.95);
+}
+
+.screenshot-card-btn img,
+.screenshot-card-btn svg {
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.screenshot-card-btn:hover {
   background: var(--primary-color);
   color: white;
   transform: scale(1.1);
@@ -26,6 +51,7 @@
 .screenshot-card-btn:active {
   transform: scale(0.95);
 }
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* CSS Custom Properties for consistent theming */
@@ -2172,8 +2198,6 @@ body {
 .result-card:hover {
   box-shadow: var(--shadow-lg);
   border-color: var(--primary-color);
-  outline: 2px solid var(--primary-color);
-  outline-offset: -2px;
 }
 
 .result-header {
