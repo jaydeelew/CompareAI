@@ -843,17 +843,91 @@ function App() {
 
             <div className="hero-input-section">
               <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={isFollowUpMode
-                  ? "Enter your follow-up question or request here..."
-                  : "Ask anything - compare responses, generate code, solve math problems..."
-                }
-                className="hero-input-textarea"
-                rows={4}
-              />
+              <div className="textarea-container">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (isFollowUpMode) {
+                        handleContinueConversation();
+                      } else {
+                        handleSubmit();
+                      }
+                    }
+                  }}
+                  placeholder={isFollowUpMode
+                    ? "Enter your follow-up question or request here..."
+                    : "Ask anything - compare responses, generate code, solve math problems..."
+                  }
+                  className="hero-input-textarea"
+                  rows={4}
+                />
+                <div className="textarea-actions">
+                  {isFollowUpMode && (
+                    <button
+                      onClick={handleNewComparison}
+                      className="textarea-icon-button new-inquiry-button"
+                      title="Start a new comparison"
+                      disabled={isLoading}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={isFollowUpMode ? handleContinueConversation : handleSubmit}
+                    disabled={isLoading || selectedModels.length === 0 || !input.trim()}
+                    className="textarea-icon-button submit-button"
+                    title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Processing time message moved here */}
+              {selectedModels.length > 0 && (
+                <div className="processing-time-message">
+                  {(() => {
+                    const count = selectedModels.length;
+
+                    let indicator, description;
+
+                    if (count === 1) {
+                      indicator = "⚡ Very Quick";
+                      description = "Single model comparison";
+                    } else if (count <= 4) {
+                      indicator = "🚀 Quick";
+                      description = "Small batch processing";
+                    } else if (count <= 8) {
+                      indicator = "⏱️ Moderate";
+                      description = "Medium batch processing";
+                    } else if (count <= 12) {
+                      indicator = "⏳ Takes a while";
+                      description = "Large batch processing";
+                    } else {
+                      indicator = "🕐 Be patient";
+                      description = "Very large batch - grab a coffee!";
+                    }
+
+                    return (
+                      <>
+                        <strong>{indicator}</strong> - {description}
+                        <br />
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                          {count} model{count !== 1 ? 's' : ''} selected • Processing time depends on your Internet connection
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1168,73 +1242,6 @@ function App() {
             )}
           </div>
         )}
-
-        <section className="action-section">
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={isFollowUpMode ? handleContinueConversation : handleSubmit}
-              disabled={isLoading || selectedModels.length === 0}
-              className="compare-button"
-            >
-              {isLoading
-                ? `Comparing ${selectedModels.length} models...`
-                : isFollowUpMode
-                  ? 'Continue Conversation'
-                  : `Compare ${selectedModels.length || ''} Model${selectedModels.length !== 1 ? 's' : ''}`
-              }
-            </button>
-            {isFollowUpMode && (
-              <button
-                onClick={handleNewComparison}
-                className="new-comparison-button"
-                title="Start a new comparison"
-              >
-                New Inquiry
-              </button>
-            )}
-          </div>
-          {selectedModels.length > 0 && (
-            <p style={{
-              fontSize: '0.875rem',
-              color: '#666',
-              margin: '0.5rem 0 0 0',
-              textAlign: 'center'
-            }}>
-              {(() => {
-                const count = selectedModels.length;
-
-                let indicator, description;
-
-                if (count === 1) {
-                  indicator = "⚡ Very Quick";
-                  description = "Single model comparison";
-                } else if (count <= 4) {
-                  indicator = "🚀 Quick";
-                  description = "Small batch processing";
-                } else if (count <= 8) {
-                  indicator = "⏱️ Moderate";
-                  description = "Medium batch processing";
-                } else if (count <= 12) {
-                  indicator = "⏳ Takes a while";
-                  description = "Large batch processing";
-                } else {
-                  indicator = "🕐 Be patient";
-                  description = "Very large batch - grab a coffee!";
-                }
-
-                return (
-                  <>
-                    <strong>{indicator}</strong> - {description}
-                    <br />
-                    <span style={{ fontSize: '0.75rem', color: '#888' }}>
-                      {count} model{count !== 1 ? 's' : ''} selected • Processing time depends on your Internet connection
-                    </span>
-                  </>
-                );
-              })()}
-            </p>
-          )}
-        </section>
 
         {error && (
           <div className="error-message">
