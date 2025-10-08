@@ -404,6 +404,11 @@ function App() {
 
       return Array.from(newSelection);
     });
+
+    // Clear any previous error when successfully adding models (only when selecting, not deselecting)
+    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Please select at least one model'))) {
+      setError(null);
+    }
   };
 
 
@@ -434,7 +439,7 @@ function App() {
 
       setSelectedModels(prev => [...prev, modelId]);
       // Clear any previous error when successfully adding a model
-      if (error && error.includes('Maximum')) {
+      if (error && (error.includes('Maximum') || error.includes('Please select at least one model'))) {
         setError(null);
       }
     }
