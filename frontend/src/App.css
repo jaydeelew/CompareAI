@@ -3020,7 +3020,8 @@ body {
   margin-top: 0;
 }
 
-/* Blockquotes */
+/* Blockquotes - DISABLED */
+/*
 .message-content .latex-content blockquote {
   margin: 0.75rem 0;
   padding: 0.5rem 1rem;
@@ -3030,6 +3031,7 @@ body {
   color: var(--text-primary);
   font-style: italic;
 }
+*/
 
 /* Strong and emphasis */
 .message-content .latex-content strong {
@@ -3331,7 +3333,8 @@ body {
   border-radius: 1px;
 }
 
-/* Markdown blockquote styling */
+/* Markdown blockquote styling - DISABLED */
+/*
 .latex-content .markdown-blockquote {
   background: #f8f9fa;
   border-left: 4px solid #3498db;
@@ -3342,6 +3345,7 @@ body {
   color: #555;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+*/
 
 /* Markdown strikethrough styling */
 .latex-content .markdown-strikethrough {
@@ -3390,13 +3394,13 @@ body {
   flex-shrink: 0;
 }
 
-/* Definition list styling */
+/* Definition list styling - DISABLED border */
 .latex-content dl {
   margin: 1rem 0;
   padding: 1rem;
   background: #f8f9fa;
   border-radius: 6px;
-  border-left: 4px solid #2563eb;
+  /* border-left: 4px solid #2563eb; */
 }
 
 .latex-content dt {
@@ -3440,12 +3444,13 @@ body {
   font-size: 0.9rem;
 }
 
+/* Footnote styling - DISABLED border */
 .latex-content .footnote-def {
   margin: 0.5rem 0;
   padding: 0.5rem;
   background: #f8f9fa;
   border-radius: 4px;
-  border-left: 3px solid #2563eb;
+  /* border-left: 3px solid #2563eb; */
 }
 
 .latex-content .footnote-backref {

@@ -357,11 +357,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
             processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-            // Handle markdown blockquotes
-            processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
+            // Handle markdown blockquotes - DISABLED to prevent false positives with bullet points
+            // processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
 
             // Merge consecutive blockquotes
-            processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
+            // processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
 
             // Handle markdown strikethrough ~~text~~
             processedText = processedText.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');

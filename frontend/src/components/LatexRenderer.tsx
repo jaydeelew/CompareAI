@@ -547,11 +547,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
             processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-            // Handle markdown blockquotes
-            processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
+            // Handle markdown blockquotes - DISABLED to prevent false positives with bullet points
+            // processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
 
             // Merge consecutive blockquotes
-            processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
+            // processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
 
             // Handle markdown strikethrough ~~text~~
             processedText = processedText.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
@@ -630,7 +630,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return '<ol>' + items + '</ol>';
             });
 
-            // Handle definition lists
+            // Handle definition lists - DISABLED to prevent false positives
+            /*
             // First, collect definition list items
             // Only match lines that look like definitions (not Bible references or other colon usage)
             const definitionMap: { [key: string]: string[] } = {};
@@ -662,6 +663,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 const definitionHTML = definitions.map(def => `<dd>${def}</dd>`).join('');
                 processedText += `<dl><dt>${term}</dt>${definitionHTML}</dl>`;
             });
+            */
 
             // Handle footnotes [^1] and [^1]: content
             const footnoteMap: { [key: string]: string } = {};
