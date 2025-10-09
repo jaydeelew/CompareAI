@@ -2536,14 +2536,15 @@ body {
 }
 
 .result-header {
-  padding: 0.75rem 1.5rem 0.5rem 1.5rem;
+  padding: 0.75rem 1.5rem 0rem 1.5rem;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  height: 100px;
+  height: auto;
+  min-height: 130px;
 }
 
 .result-header-top {
@@ -3556,4 +3557,61 @@ body {
   font-size: 0.75rem;
   backdrop-filter: blur(5px);
   z-index: 1000;
+}
+
+/* Result tabs styling */
+.result-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.tab-button.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+  background: none;
+}
+
+.tab-button.active:hover {
+  color: var(--primary-color);
+  background: var(--bg-hover);
+}
+
+/* Raw output styling */
+.raw-output {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-x: auto;
+  color: var(--text-primary);
+  margin: 0;
 }

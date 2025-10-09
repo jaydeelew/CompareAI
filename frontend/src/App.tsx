@@ -219,6 +219,9 @@ function App() {
   const [browserFingerprint, setBrowserFingerprint] = useState('');
   const [isModelsHidden, setIsModelsHidden] = useState(false);
 
+  // Tab switching state - tracks active tab for each conversation
+  const [activeResultTabs, setActiveResultTabs] = useState<{ [modelId: string]: 'formatted' | 'raw' }>({});
+
   // Generate browser fingerprint for usage tracking (anti-abuse measure)
   const generateBrowserFingerprint = () => {
     const canvas = document.createElement('canvas');
@@ -297,6 +300,21 @@ function App() {
       ]
     }));
     setConversations(newConversations);
+
+    // Initialize tabs to default 'formatted' view for all new conversations
+    const initialTabs: { [modelId: string]: 'formatted' | 'raw' } = {};
+    Object.keys(response.results).forEach(modelId => {
+      initialTabs[modelId] = 'formatted';
+    });
+    setActiveResultTabs(initialTabs);
+  };
+
+  // Helper function to switch tabs for a specific conversation
+  const switchResultTab = (modelId: string, tab: 'formatted' | 'raw') => {
+    setActiveResultTabs(prev => ({
+      ...prev,
+      [modelId]: tab
+    }));
   };
 
   // Scroll to loading section when loading starts
@@ -1539,6 +1557,22 @@ function App() {
                             </span>
                           </div>
                         </div>
+
+                        {/* Result view tabs */}
+                        <div className="result-tabs">
+                          <button
+                            className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
+                            onClick={() => switchResultTab(conversation.modelId, 'formatted')}
+                          >
+                            Formatted
+                          </button>
+                          <button
+                            className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
+                            onClick={() => switchResultTab(conversation.modelId, 'raw')}
+                          >
+                            Raw
+                          </button>
+                        </div>
                       </div>
                       <div className="conversation-content" id={`conversation-content-${safeId}`}>
                         {conversation.messages.map((message) => (
@@ -1552,9 +1586,15 @@ function App() {
                               </span>
                             </div>
                             <div className="message-content">
-                              <LatexRenderer className="result-output">
-                                {message.content}
-                              </LatexRenderer>
+                              {(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? (
+                                <LatexRenderer className="result-output">
+                                  {message.content}
+                                </LatexRenderer>
+                              ) : (
+                                <pre className="result-output raw-output">
+                                  {message.content}
+                                </pre>
+                              )}
                             </div>
                           </div>
                         ))}
