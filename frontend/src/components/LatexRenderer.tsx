@@ -466,8 +466,36 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             const codeBlockPlaceholders: string[] = [];
             processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
                 const lang = language || 'text';
-                let highlightedCode = code.trim();
+                // Preserve all whitespace including indentation - only trim trailing newline
+                let highlightedCode = code.replace(/\n$/, '');
+
+                // For Python, normalize single-space indentation to 4 spaces (standard)
                 if (lang.toLowerCase() === 'python') {
+                    // Detect if using single-space indentation and convert to 4-space
+                    const lines = highlightedCode.split('\n');
+                    let minIndent = Infinity;
+
+                    // Find the minimum non-zero indentation
+                    lines.forEach((line: string) => {
+                        const match = line.match(/^( +)/);
+                        if (match && match[1].length > 0 && match[1].length < minIndent) {
+                            minIndent = match[1].length;
+                        }
+                    });
+
+                    // If minimum indent is 1, it's likely single-space indentation - convert to 4-space
+                    if (minIndent === 1) {
+                        highlightedCode = lines.map((line: string) => {
+                            const match = line.match(/^( +)/);
+                            if (match) {
+                                const spaces = match[1].length;
+                                const normalizedSpaces = ' '.repeat(spaces * 4);
+                                return normalizedSpaces + line.slice(spaces);
+                            }
+                            return line;
+                        }).join('\n');
+                    }
+
                     highlightedCode = highlightedCode
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
