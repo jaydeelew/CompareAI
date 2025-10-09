@@ -1510,52 +1510,48 @@ function App() {
                     <div key={conversation.modelId} className="result-card conversation-card">
                       <div className="result-header">
                         <div className="result-header-top">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                            <h3 style={{ marginRight: '1rem' }}>{model?.name || conversation.modelId}</h3>
-                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-                              <button
-                                className="screenshot-card-btn"
-                                onClick={() => handleScreenshot(conversation.modelId)}
-                                title="Screenshot message area"
-                                aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v10z" />
-                                  <circle cx="12" cy="12" r="3" />
-                                </svg>
-                              </button>
-                              <button
-                                className="copy-response-btn"
-                                onClick={() => handleCopyResponse(conversation.modelId)}
-                                title="Copy raw model response"
-                                aria-label={`Copy raw response from ${model?.name || conversation.modelId}`}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                                  <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                                </svg>
-                              </button>
-                              <button
-                                className="close-card-btn"
-                                onClick={() => closeResultCard(conversation.modelId)}
-                                title="Hide this result"
-                                aria-label={`Hide result for ${model?.name || conversation.modelId}`}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M18 6L6 18" />
-                                  <path d="M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
+                          <h3>{model?.name || conversation.modelId}</h3>
+                          <div className="header-buttons-container">
+                            <button
+                              className="screenshot-card-btn"
+                              onClick={() => handleScreenshot(conversation.modelId)}
+                              title="Screenshot message area"
+                              aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v10z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </button>
+                            <button
+                              className="copy-response-btn"
+                              onClick={() => handleCopyResponse(conversation.modelId)}
+                              title="Copy raw model response"
+                              aria-label={`Copy raw response from ${model?.name || conversation.modelId}`}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                                <path d="m4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                              </svg>
+                            </button>
+                            <button
+                              className="close-card-btn"
+                              onClick={() => closeResultCard(conversation.modelId)}
+                              title="Hide this result"
+                              aria-label={`Hide result for ${model?.name || conversation.modelId}`}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 6L6 18" />
+                                <path d="M6 6l12 12" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                         <div className="result-header-bottom">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span className="output-length">{latestMessage?.content.length || 0} chars</span>
-                            <span className={`status ${isError ? 'error' : 'success'}`}>
-                              {isError ? 'Failed' : 'Success'}
-                            </span>
-                          </div>
+                          <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                          <span className={`status ${isError ? 'error' : 'success'}`}>
+                            {isError ? 'Failed' : 'Success'}
+                          </span>
                         </div>
 
                         {/* Result view tabs */}

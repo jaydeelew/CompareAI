@@ -2557,6 +2557,14 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.header-buttons-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: -0.5rem;
+}
+
 .result-header-bottom {
   display: flex;
   align-items: center;
