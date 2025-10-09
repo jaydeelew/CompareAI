@@ -1287,6 +1287,11 @@ body {
   width: 100%;
 }
 
+/* Specific padding adjustment for models section */
+.models-section {
+  padding: 2rem 1rem 1rem 1rem;
+}
+
 .input-section:hover,
 .models-section:hover,
 .results-section:hover {
@@ -1842,7 +1847,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .provider-dropdown {
