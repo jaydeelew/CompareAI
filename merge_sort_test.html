@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Sort Test - Port 8080</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        .message-content .latex-content .code-block {
+            background: #0d1117 !important;
+            color: #e6edf3 !important;
+            padding: 1.5rem !important;
+            border-radius: 6px !important;
+            margin: 1.5rem 0 !important;
+            overflow-x: auto !important;
+            border: 1px solid #30363d !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+            position: relative !important;
+            white-space: pre !important;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace !important;
+            font-size: 14px !important;
+            line-height: 1.45 !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            display: block !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            tab-size: 4 !important;
+        }
+
+        .message-content .latex-content .code-block::before {
+            content: attr(data-language);
+            position: absolute;
+            top: 0.75rem;
+            right: 1rem;
+            font-size: 11px;
+            color: #7d8590;
+            text-transform: uppercase;
+            font-weight: 600;
+            background: rgba(125, 133, 144, 0.15);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .message-content .latex-content .code-block code {
+            background: transparent !important;
+            padding: 0 !important;
+            font-family: inherit !important;
+            font-size: inherit !important;
+            line-height: inherit !important;
+            color: inherit !important;
+            white-space: pre !important;
+            word-wrap: normal !important;
+            overflow-wrap: normal !important;
+            display: block !important;
+            text-indent: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Syntax highlighting */
+        .keyword {
+            color: #ff7b72;
+        }
+
+        .string {
+            color: #a5d6ff;
+        }
+
+        .number {
+            color: #79c0ff;
+        }
+
+        .comment {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .function {
+            color: #d2a8ff;
+        }
+
+        .class {
+            color: #ffa657;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #0f172a;
+        }
+
+        p {
+            margin: 1rem 0;
+        }
+
+        strong {
+            font-weight: 600;
+        }
+
+        ul,
+        ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="message-content">
+        <div class="latex-content">
+            <p>Here's a clean Python implementation of merge sort:</p>
+
+            <pre class="code-block" data-language="PYTHON"><code><span class="keyword">def</span> <span class="function">merge_sort</span>(arr):
+    <span class="string">"""
+    Sorts an array using the merge sort algorithm.
+    
+    Args:
+        arr: List of comparable elements
+    
+    Returns:
+        Sorted list
+    """</span>
+    <span class="comment"># Base case: arrays with 0 or 1 element are already sorted</span>
+    <span class="keyword">if</span> <span class="function">len</span>(arr) &lt;= <span class="number">1</span>:
+        <span class="keyword">return</span> arr
+    
+    <span class="comment"># Divide the array into two halves</span>
+    mid = <span class="function">len</span>(arr) // <span class="number">2</span>
+    left_half = arr[:mid]
+    right_half = arr[mid:]
+    
+    <span class="comment"># Recursively sort both halves</span>
+    left_sorted = <span class="function">merge_sort</span>(left_half)
+    right_sorted = <span class="function">merge_sort</span>(right_half)
+    
+    <span class="comment"># Merge the sorted halves</span>
+    <span class="keyword">return</span> <span class="function">merge</span>(left_sorted, right_sorted)
+
+<span class="keyword">def</span> <span class="function">merge</span>(left, right):
+    <span class="string">"""
+    Merges two sorted arrays into one sorted array.
+    
+    Args:
+        left: Sorted list
+        right: Sorted list
+    
+    Returns:
+        Merged sorted list
+    """</span>
+    result = []
+    i = j = <span class="number">0</span>
+    
+    <span class="comment"># Compare elements from left and right arrays</span>
+    <span class="keyword">while</span> i &lt; <span class="function">len</span>(left) <span class="keyword">and</span> j &lt; <span class="function">len</span>(right):
+        <span class="keyword">if</span> left[i] &lt;= right[j]:
+            result.<span class="function">append</span>(left[i])
+            i += <span class="number">1</span>
+        <span class="keyword">else</span>:
+            result.<span class="function">append</span>(right[j])
+            j += <span class="number">1</span>
+    
+    <span class="comment"># Add remaining elements from left array (if any)</span>
+    result.<span class="function">extend</span>(left[i:])
+    
+    <span class="comment"># Add remaining elements from right array (if any)</span>
+    result.<span class="function">extend</span>(right[j:])
+    
+    <span class="keyword">return</span> result
+
+<span class="comment"># Example usage</span>
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    <span class="comment"># Test with different arrays</span>
+    test_arrays = [
+        [<span class="number">64</span>, <span class="number">34</span>, <span class="number">25</span>, <span class="number">12</span>, <span class="number">22</span>, <span class="number">11</span>, <span class="number">90</span>],
+        [<span class="number">5</span>, <span class="number">2</span>, <span class="number">8</span>, <span class="number">1</span>, <span class="number">9</span>],
+        [<span class="number">1</span>],
+        [],
+        [<span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">2</span>]
+    ]
+    
+    <span class="keyword">for</span> arr <span class="keyword">in</span> test_arrays:
+        <span class="function">print</span>(<span class="string">f"Original: {arr}"</span>)
+        <span class="function">print</span>(<span class="string">f"Sorted: {merge_sort(arr)}"</span>)
+        <span class="function">print</span>()</code></pre>
+
+            <p><strong>Alternative: In-place version (more space efficient)</strong></p>
+
+            <pre class="code-block" data-language="PYTHON"><code><span class="keyword">def</span> <span class="function">merge_sort_inplace</span>(arr):
+    <span class="string">"""In-place merge sort implementation."""</span>
+    <span class="keyword">if</span> <span class="function">len</span>(arr) &lt;= <span class="number">1</span>:
+        <span class="keyword">return</span> arr
+    
+    <span class="function">_merge_sort_helper</span>(arr, <span class="number">0</span>, <span class="function">len</span>(arr) - <span class="number">1</span>)
+    <span class="keyword">return</span> arr
+
+<span class="keyword">def</span> <span class="function">_merge_sort_helper</span>(arr, left, right):
+    <span class="string">"""Helper function for in-place merge sort."""</span>
+    <span class="keyword">if</span> left &lt; right:
+        mid = (left + right) // <span class="number">2</span>
+        
+        <span class="comment"># Sort first and second halves</span>
+        <span class="function">_merge_sort_helper</span>(arr, left, mid)
+        <span class="function">_merge_sort_helper</span>(arr, mid + <span class="number">1</span>, right)
+        
+        <span class="comment"># Merge the sorted halves</span>
+        <span class="function">_merge_inplace</span>(arr, left, mid, right)
+
+<span class="keyword">def</span> <span class="function">_merge_inplace</span>(arr, left, mid, right):
+    <span class="string">"""Merge function for in-place merge sort."""</span>
+    <span class="comment"># Create temp arrays</span>
+    left_arr = arr[left:mid + <span class="number">1</span>]
+    right_arr = arr[mid + <span class="number">1</span>:right + <span class="number">1</span>]
+    
+    i = j = <span class="number">0</span>
+    k = left
+    
+    <span class="comment"># Merge back into original array</span>
+    <span class="keyword">while</span> i &lt; <span class="function">len</span>(left_arr) <span class="keyword">and</span> j &lt; <span class="function">len</span>(right_arr):
+        <span class="keyword">if</span> left_arr[i] &lt;= right_arr[j]:
+            arr[k] = left_arr[i]
+            i += <span class="number">1</span>
+        <span class="keyword">else</span>:
+            arr[k] = right_arr[j]
+            j += <span class="number">1</span>
+        k += <span class="number">1</span>
+    
+    <span class="comment"># Copy remaining elements</span>
+    <span class="keyword">while</span> i &lt; <span class="function">len</span>(left_arr):
+        arr[k] = left_arr[i]
+        i += <span class="number">1</span>
+        k += <span class="number">1</span>
+    
+    <span class="keyword">while</span> j &lt; <span class="function">len</span>(right_arr):
+        arr[k] = right_arr[j]
+        j += <span class="number">1</span>
+        k += <span class="number">1</span></code></pre>
+
+            <p><strong>Complexity Analysis:</strong></p>
+            <ul>
+                <li><strong>Time Complexity:</strong> O(n log n) in all cases (best, average, worst)</li>
+                <li><strong>Space Complexity:</strong> O(n) for the standard version, O(n) auxiliary space for in-place
+                    version</li>
+                <li><strong>Stable:</strong> Yes (maintains relative order of equal elements)</li>
+            </ul>
+
+            <p><strong>Key Points:</strong></p>
+            <ol>
+                <li>Merge sort uses a divide-and-conquer strategy</li>
+                <li>It divides the array in half recursively until single elements remain</li>
+                <li>Then merges sorted subarrays back together</li>
+                <li>Very predictable performance - always O(n log n)</li>
+                <li>Great for sorting linked lists and external sorting</li>
+            </ol>
+        </div>
+    </div>
+</body>
+
+</html>

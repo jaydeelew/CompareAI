@@ -469,37 +469,78 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 // Preserve all whitespace including indentation - only trim trailing newline
                 let highlightedCode = code.replace(/\n$/, '');
 
-                // For Python, normalize single-space indentation to 4 spaces (standard)
+                // For Python, add proper indentation if missing
                 if (lang.toLowerCase() === 'python') {
-                    // Detect if using single-space indentation and convert to 4-space
+                    console.log('=== PYTHON INDENTATION DEBUG ===');
+                    
                     const lines = highlightedCode.split('\n');
-                    let minIndent = Infinity;
-
-                    // Find the minimum non-zero indentation
-                    lines.forEach((line: string) => {
-                        const match = line.match(/^( +)/);
-                        if (match && match[1].length > 0 && match[1].length < minIndent) {
-                            minIndent = match[1].length;
+                    let indentLevel = 0;
+                    const INDENT_SIZE = 4;
+                    
+                    highlightedCode = lines.map((line: string, index: number) => {
+                        const trimmedLine = line.trim();
+                        
+                        // Skip empty lines
+                        if (!trimmedLine) return line;
+                        
+                        // Debug logging
+                        if (index < 15) {
+                            console.log(`Line ${index}: "${trimmedLine}" - indentLevel before: ${indentLevel}`);
                         }
-                    });
-
-                    // If minimum indent is 1, it's likely single-space indentation - convert to 4-space
-                    if (minIndent === 1) {
-                        highlightedCode = lines.map((line: string) => {
-                            const match = line.match(/^( +)/);
-                            if (match) {
-                                const spaces = match[1].length;
-                                const normalizedSpaces = ' '.repeat(spaces * 4);
-                                return normalizedSpaces + line.slice(spaces);
+                        
+                        // Decrease indent for lines that end blocks (like 'else:', 'elif:', 'except:', 'finally:')
+                        if (/^(else|elif|except|finally|case)/.test(trimmedLine)) {
+                            indentLevel = Math.max(0, indentLevel - 1);
+                        }
+                        // Detect new function/class definitions - always at base level
+                        else if (/^(def |class )/.test(trimmedLine)) {
+                            indentLevel = 0;
+                        }
+                        // Detect module-level imports and main blocks
+                        else if (/^(import |from |if __name__)/.test(trimmedLine) && indentLevel > 0) {
+                            indentLevel = 0;
+                        }
+                        // Detect function-level comments that should reset to function indentation
+                        else if (/^#/.test(trimmedLine) && indentLevel > 1) {
+                            // Comments often indicate new sections within a function - reset to function level (1)
+                            indentLevel = 1;
+                        }
+                        
+                        // Apply current indentation
+                        const indentedLine = ' '.repeat(indentLevel * INDENT_SIZE) + trimmedLine;
+                        
+                        // Debug logging
+                        if (index < 15) {
+                            console.log(`Line ${index}: Applied ${indentLevel * INDENT_SIZE} spaces: "${indentedLine.substring(0, 30)}..."`);
+                        }
+                        
+                        // Increase indent for lines that start blocks (end with ':')
+                        if (trimmedLine.endsWith(':') && 
+                            !/^#/.test(trimmedLine) && // Skip comments
+                            !trimmedLine.includes('"""') && // Skip docstrings
+                            !trimmedLine.includes("'''") && // Skip docstrings
+                            !/^(Args|Arguments|Parameters|Param|Returns|Return|Yields|Yield|Raises|Note|Notes|Example|Examples|See Also|References):/i.test(trimmedLine)) { // Skip docstring sections
+                            indentLevel++;
+                            if (index < 15) {
+                                console.log(`Line ${index}: Increased indentLevel to ${indentLevel} because line ends with ':'`);
                             }
-                            return line;
-                        }).join('\n');
-                    }
+                        }
+                        
+                        return indentedLine;
+                    }).join('\n');
+                    
+                    console.log('Added Python indentation structure');
 
                     highlightedCode = highlightedCode
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;');
+                    
+                    // Convert leading spaces to non-breaking spaces to preserve indentation
+                    highlightedCode = highlightedCode.replace(/^( +)/gm, (match) => {
+                        return '&nbsp;'.repeat(match.length);
+                    });
+                    
                     highlightedCode = highlightedCode.replace(
                         /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,
                         '<span class="string">$1</span>'
