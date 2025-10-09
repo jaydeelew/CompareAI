@@ -518,15 +518,30 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
 
+            // Step 1: Extract and protect code blocks from further processing
+            const codeBlocks: string[] = [];
+            const inlineCodeBlocks: string[] = [];
+
+            // Extract fenced code blocks first
+            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
+                const lang = language || 'text';
+                const trimmedCode = code.trim();
+                const htmlBlock = `<pre class="code-block" data-language="${lang}"><code>${trimmedCode}</code></pre>`;
+                codeBlocks.push(htmlBlock);
+                return `___CODE_BLOCK_${codeBlocks.length - 1}___`;
+            });
+
+            // Extract inline code blocks
+            processedText = processedText.replace(/`([^`\n]+?)`/g, (_, code) => {
+                const htmlBlock = `<code class="inline-code">${code}</code>`;
+                inlineCodeBlocks.push(htmlBlock);
+                return `___INLINE_CODE_${inlineCodeBlocks.length - 1}___`;
+            });
+
+            // Step 2: Process markdown elements (now safe from code block interference)
             // Handle markdown line breaks (double spaces or double newlines)
             processedText = processedText.replace(/ {2}\n/g, '<br>');
             processedText = processedText.replace(/\n\n/g, '</p><p>');
-
-            // Handle markdown code blocks ```
-            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
-
-            // Handle inline code `text`
-            processedText = processedText.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
 
             // Handle markdown task lists - [x] and [ ]
             processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
@@ -772,6 +787,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             if (processedText.includes('</p><p>') && !processedText.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|dl|div)/)) {
                 processedText = '<p>' + processedText + '</p>';
             }
+
+            // Step 3: Restore code blocks after all other processing is complete
+            // Restore fenced code blocks
+            codeBlocks.forEach((block, index) => {
+                processedText = processedText.replace(`___CODE_BLOCK_${index}___`, block);
+            });
+
+            // Restore inline code blocks
+            inlineCodeBlocks.forEach((block, index) => {
+                processedText = processedText.replace(`___INLINE_CODE_${index}___`, block);
+            });
 
             return processedText;
         } catch (error) {
