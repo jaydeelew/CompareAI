@@ -2742,28 +2742,30 @@ body {
   word-break: break-word;
 }
 
-/* Enhanced styling for code blocks inside latex content */
+/* Enhanced styling for code blocks inside latex content - EXACT PORT 8080 REPLICATION */
 .message-content .latex-content .code-block {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin: 1.5rem 0;
-  overflow-x: auto;
-  border: 1px solid #333;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  position: relative;
+  background: #0d1117 !important;
+  color: #e6edf3 !important;
+  padding: 1.5rem !important;
+  border-radius: 6px !important;
+  margin: 1.5rem 0 !important;
+  overflow-x: auto !important;
+  border: 1px solid #30363d !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  position: relative !important;
   white-space: pre !important;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace !important;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
   /* Prevent fragmentation across elements */
-  break-inside: avoid;
-  page-break-inside: avoid;
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
   /* Ensure proper display */
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  /* GitHub-like styling */
+  tab-size: 4 !important;
 }
 
 .message-content .latex-content .code-block::before {
@@ -2771,14 +2773,14 @@ body {
   position: absolute;
   top: 0.75rem;
   right: 1rem;
-  font-size: 0.75rem;
-  color: #888;
+  font-size: 11px;
+  color: #7d8590;
   text-transform: uppercase;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(125, 133, 144, 0.15);
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
+  border-radius: 3px;
+  letter-spacing: 0.5px;
 }
 
 .message-content .latex-content .code-block code {
@@ -2802,14 +2804,14 @@ body {
 
 /* Inline code styling */
 .message-content .latex-content .inline-code {
-  background: #f4f4f4;
-  color: #d73a49;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  background: rgba(110, 118, 129, 0.4);
+  color: #e6edf3;
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
-  font-size: 0.85em;
-  font-weight: 500;
-  border: 1px solid #e1e4e8;
+  font-size: 85%;
+  font-weight: normal;
+  border: 1px solid rgba(110, 118, 129, 0.2);
   white-space: nowrap;
   /* Prevent breaking inline code inappropriately */
   display: inline;
@@ -2818,17 +2820,17 @@ body {
 
 /* Fallback for old pre/code styling */
 .message-content .latex-content pre:not(.code-block) {
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: #0d1117;
+  color: #e6edf3;
   padding: 1.5rem;
-  border-radius: 8px;
+  border-radius: 6px;
   margin: 1.5rem 0;
   overflow-x: auto;
-  border: 1px solid #333;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #30363d;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.45;
   white-space: pre-wrap;
   /* Prevent fragmentation */
   break-inside: avoid;
@@ -2836,17 +2838,18 @@ body {
   display: block;
   width: 100%;
   box-sizing: border-box;
+  tab-size: 4;
 }
 
 .message-content .latex-content code:not(.inline-code):not(.code-block code) {
-  background: #f4f4f4;
-  color: #d73a49;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  background: rgba(110, 118, 129, 0.4);
+  color: #e6edf3;
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
-  font-size: 0.85em;
-  font-weight: 500;
-  border: 1px solid #e1e4e8;
+  font-size: 85%;
+  font-weight: normal;
+  border: 1px solid rgba(110, 118, 129, 0.2);
   white-space: nowrap;
   display: inline;
 }
@@ -2858,18 +2861,81 @@ body {
   border: none;
 }
 
-/* Syntax highlighting styles */
+/* Syntax highlighting styles - EXACT PORT 8080 COLORS */
+.message-content .latex-content .code-block .keyword,
 .message-content .latex-content .code-block .keyword {
-  color: #f92672 !important;
-  font-weight: bold;
+  color: #ff7b72 !important;
+  font-weight: normal !important;
 }
 
+.message-content .latex-content .code-block .string,
 .message-content .latex-content .code-block .string {
-  color: #e6db74 !important;
+  color: #a5d6ff !important;
 }
 
+.message-content .latex-content .code-block .number,
 .message-content .latex-content .code-block .number {
-  color: #ae81ff !important;
+  color: #79c0ff !important;
+}
+
+.message-content .latex-content .code-block .comment,
+.message-content .latex-content .code-block .comment {
+  color: #8b949e !important;
+  font-style: italic !important;
+}
+
+.message-content .latex-content .code-block .function,
+.message-content .latex-content .code-block .function {
+  color: #d2a8ff !important;
+}
+
+.message-content .latex-content .code-block .class,
+.message-content .latex-content .code-block .class {
+  color: #ffa657 !important;
+}
+
+.message-content .latex-content .code-block .variable,
+.message-content .latex-content .code-block .variable {
+  color: #ffa657 !important;
+}
+
+.message-content .latex-content .code-block .operator,
+.message-content .latex-content .code-block .operator {
+  color: #ff7b72 !important;
+}
+
+/* Enhanced Python-specific syntax highlighting using CSS */
+.message-content .latex-content .code-block[data-language="python"] code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit !important;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  display: block !important;
+  text-indent: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* CSS-based syntax highlighting patterns for Python */
+.message-content .latex-content .code-block[data-language="python"] code::before {
+  content: "";
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Apply syntax highlighting using CSS text processing */
+.message-content .latex-content .code-block[data-language="python"] {
+  /* Enhanced color scheme matching the port 8080 test */
+  background: #0d1117;
+  color: #e6edf3;
 }
 
 .message-content .latex-content .code-block .comment {

@@ -460,6 +460,52 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return tableHTML;
             });
 
+            // Handle markdown code blocks ``` (MUST come before line breaks and other processing)
+            // Isolate code blocks before further markdown processing
+            // Pure HTML/CSS code block rendering, no KaTeX or LaTeX processing
+            const codeBlockPlaceholders: string[] = [];
+            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
+                const lang = language || 'text';
+                let highlightedCode = code.trim();
+                if (lang.toLowerCase() === 'python') {
+                    highlightedCode = highlightedCode
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    highlightedCode = highlightedCode.replace(
+                        /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,
+                        '<span class="string">$1</span>'
+                    );
+                    highlightedCode = highlightedCode.replace(
+                        /(#.*$)/gm,
+                        '<span class="comment">$1</span>'
+                    );
+                    highlightedCode = highlightedCode.replace(
+                        /\b(def|class|if|elif|else|for|while|try|except|finally|with|as|import|from|return|yield|break|continue|pass|raise|assert|lambda|and|or|not|in|is|True|False|None)\b(?![^<]*<\/span>)/g,
+                        '<span class="keyword">$1</span>'
+                    );
+                    highlightedCode = highlightedCode.replace(
+                        /\b(\d+\.?\d*|\.\d+)\b(?![^<]*<\/span>)/g,
+                        '<span class="number">$1</span>'
+                    );
+                    highlightedCode = highlightedCode.replace(
+                        /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()(?![^<]*<\/span>)/g,
+                        '<span class="function">$1</span>'
+                    );
+                } else {
+                    highlightedCode = highlightedCode
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                }
+                const placeholder = `___CODE_BLOCK_${codeBlockPlaceholders.length}___`;
+                codeBlockPlaceholders.push(`<pre class="code-block" data-language="${lang.toUpperCase()}"><code>${highlightedCode}</code></pre>`);
+                return placeholder;
+            });
+
+            // Handle inline code `text` (before other processing)
+            processedText = processedText.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+
             // Handle markdown horizontal rules (must come before other processing)
             processedText = processedText.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
             processedText = processedText.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
@@ -518,27 +564,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
 
-            // Step 1: Extract and protect code blocks from further processing
-            const codeBlocks: string[] = [];
-            const inlineCodeBlocks: string[] = [];
-
-            // Extract fenced code blocks first
-            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
-                const lang = language || 'text';
-                const trimmedCode = code.trim();
-                const htmlBlock = `<pre class="code-block" data-language="${lang}"><code>${trimmedCode}</code></pre>`;
-                codeBlocks.push(htmlBlock);
-                return `___CODE_BLOCK_${codeBlocks.length - 1}___`;
-            });
-
-            // Extract inline code blocks
-            processedText = processedText.replace(/`([^`\n]+?)`/g, (_, code) => {
-                const htmlBlock = `<code class="inline-code">${code}</code>`;
-                inlineCodeBlocks.push(htmlBlock);
-                return `___INLINE_CODE_${inlineCodeBlocks.length - 1}___`;
-            });
-
-            // Step 2: Process markdown elements (now safe from code block interference)
             // Handle markdown line breaks (double spaces or double newlines)
             processedText = processedText.replace(/ {2}\n/g, '<br>');
             processedText = processedText.replace(/\n\n/g, '</p><p>');
@@ -775,6 +800,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
+            // Restore code blocks from placeholders AFTER all markdown processing
+            if (codeBlockPlaceholders.length > 0) {
+                codeBlockPlaceholders.forEach((block, i) => {
+                    const placeholder = `___CODE_BLOCK_${i}___`;
+                    processedText = processedText.replace(new RegExp(placeholder, 'g'), block);
+                });
+            }
+
             // Handle escaped characters (must be last before final cleanup)
             processedText = processedText.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1');
 
@@ -787,17 +820,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             if (processedText.includes('</p><p>') && !processedText.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|dl|div)/)) {
                 processedText = '<p>' + processedText + '</p>';
             }
-
-            // Step 3: Restore code blocks after all other processing is complete
-            // Restore fenced code blocks
-            codeBlocks.forEach((block, index) => {
-                processedText = processedText.replace(`___CODE_BLOCK_${index}___`, block);
-            });
-
-            // Restore inline code blocks
-            inlineCodeBlocks.forEach((block, index) => {
-                processedText = processedText.replace(`___INLINE_CODE_${index}___`, block);
-            });
 
             return processedText;
         } catch (error) {
