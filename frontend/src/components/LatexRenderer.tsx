@@ -592,17 +592,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
 
-            // Handle markdown line breaks (double spaces or double newlines)
-            processedText = processedText.replace(/ {2}\n/g, '<br>');
-            processedText = processedText.replace(/\n\n/g, '</p><p>');
-
-            // Handle markdown task lists - [x] and [ ]
+            // Handle markdown task lists - [x] and [ ] (BEFORE line breaks)
             processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
                 const isChecked = checked === 'x';
                 return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
             });
 
-            // Handle markdown lists more carefully
+            // Handle markdown lists more carefully (BEFORE line breaks)
             // First, handle unordered lists (but not task lists)
             processedText = processedText.replace(/^- (?!\[[ x]\])(.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
 
@@ -618,17 +614,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return '<ul class="task-list">' + items + '</ul>';
             });
 
-            // Convert consecutive unordered list items to proper HTML
-            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___)+/g, (match) => {
+            // Convert consecutive unordered list items to proper HTML (allow whitespace between items)
+            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:\s*___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
                 const items = match.replace(/___UL_ITEM___(.*?)___\/UL_ITEM___/g, '<li>$1</li>');
                 return '<ul>' + items + '</ul>';
             });
 
-            // Convert consecutive ordered list items to proper HTML
-            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___)+/g, (match) => {
+            // Convert consecutive ordered list items to proper HTML (allow whitespace between items)
+            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:\s*___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
                 const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
                 return '<ol>' + items + '</ol>';
             });
+
+            // Handle markdown line breaks (double spaces or double newlines) - AFTER list processing
+            processedText = processedText.replace(/ {2}\n/g, '<br>');
+            processedText = processedText.replace(/\n\n/g, '</p><p>');
 
             // Handle definition lists - DISABLED to prevent false positives
             /*
