@@ -1549,25 +1549,23 @@ function App() {
                         </div>
                         <div className="result-header-bottom">
                           <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                          <div className="result-tabs">
+                            <button
+                              className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
+                              onClick={() => switchResultTab(conversation.modelId, 'formatted')}
+                            >
+                              Formatted
+                            </button>
+                            <button
+                              className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
+                              onClick={() => switchResultTab(conversation.modelId, 'raw')}
+                            >
+                              Raw
+                            </button>
+                          </div>
                           <span className={`status ${isError ? 'error' : 'success'}`}>
                             {isError ? 'Failed' : 'Success'}
                           </span>
-                        </div>
-
-                        {/* Result view tabs */}
-                        <div className="result-tabs">
-                          <button
-                            className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
-                            onClick={() => switchResultTab(conversation.modelId, 'formatted')}
-                          >
-                            Formatted
-                          </button>
-                          <button
-                            className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
-                            onClick={() => switchResultTab(conversation.modelId, 'raw')}
-                          >
-                            Raw
-                          </button>
                         </div>
                       </div>
                       <div className="conversation-content" id={`conversation-content-${safeId}`}>
