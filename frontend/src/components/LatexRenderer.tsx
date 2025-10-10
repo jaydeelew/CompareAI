@@ -469,78 +469,80 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 // Preserve all whitespace including indentation - only trim trailing newline
                 let highlightedCode = code.replace(/\n$/, '');
 
-                // For Python, add proper indentation if missing
+                // For Python, add proper indentation based on syntax structure
                 if (lang.toLowerCase() === 'python') {
                     console.log('=== PYTHON INDENTATION DEBUG ===');
-                    
+
                     const lines = highlightedCode.split('\n');
                     let indentLevel = 0;
                     const INDENT_SIZE = 4;
-                    
+
                     highlightedCode = lines.map((line: string, index: number) => {
                         const trimmedLine = line.trim();
-                        
+
                         // Skip empty lines
-                        if (!trimmedLine) return line;
-                        
-                        // Debug logging
-                        if (index < 15) {
+                        if (!trimmedLine) return '';
+
+                        // Debug logging for key lines
+                        if (index < 60 && (/^# Example/.test(trimmedLine) || /^if __name__/.test(trimmedLine) || /^while/.test(trimmedLine) || /^def/.test(trimmedLine))) {
                             console.log(`Line ${index}: "${trimmedLine}" - indentLevel before: ${indentLevel}`);
                         }
-                        
-                        // Decrease indent for lines that end blocks (like 'else:', 'elif:', 'except:', 'finally:')
-                        if (/^(else|elif|except|finally|case)/.test(trimmedLine)) {
+
+                        // Decrease indent BEFORE applying indentation for certain keywords
+                        if (/^(else|elif|except|finally)/.test(trimmedLine)) {
                             indentLevel = Math.max(0, indentLevel - 1);
                         }
-                        // Detect new function/class definitions - always at base level
-                        else if (/^(def |class )/.test(trimmedLine)) {
+
+                        // Reset to base level for new function/class definitions
+                        if (/^(def|class)\s/.test(trimmedLine)) {
                             indentLevel = 0;
                         }
-                        // Detect module-level imports and main blocks
-                        else if (/^(import |from |if __name__)/.test(trimmedLine) && indentLevel > 0) {
+
+                        // Reset to base level for module-level constructs  
+                        if (/^(import|from|if __name__)/i.test(trimmedLine)) {
                             indentLevel = 0;
                         }
-                        // Detect function-level comments that should reset to function indentation
-                        else if (/^#/.test(trimmedLine) && indentLevel > 1) {
-                            // Comments often indicate new sections within a function - reset to function level (1)
-                            indentLevel = 1;
+
+                        // Reset specific comments to appropriate levels
+                        if (/^# Example usage$/i.test(trimmedLine)) {
+                            indentLevel = 0; // Module level
                         }
-                        
+
                         // Apply current indentation
                         const indentedLine = ' '.repeat(indentLevel * INDENT_SIZE) + trimmedLine;
-                        
-                        // Debug logging
-                        if (index < 15) {
+
+                        // Debug logging for key lines
+                        if (index < 60 && (/^# Example/.test(trimmedLine) || /^if __name__/.test(trimmedLine) || /^while/.test(trimmedLine) || /^def/.test(trimmedLine))) {
                             console.log(`Line ${index}: Applied ${indentLevel * INDENT_SIZE} spaces: "${indentedLine.substring(0, 30)}..."`);
                         }
-                        
-                        // Increase indent for lines that start blocks (end with ':')
+
+                        // INCREASE indent AFTER applying indentation for lines that start new blocks
                         if (trimmedLine.endsWith(':') && 
                             !/^#/.test(trimmedLine) && // Skip comments
                             !trimmedLine.includes('"""') && // Skip docstrings
                             !trimmedLine.includes("'''") && // Skip docstrings
-                            !/^(Args|Arguments|Parameters|Param|Returns|Return|Yields|Yield|Raises|Note|Notes|Example|Examples|See Also|References):/i.test(trimmedLine)) { // Skip docstring sections
+                            !/^(Args|Arguments|Parameters|Param|Returns|Return|Yields|Yield|Raises|Note|Notes|Example|Examples|See Also|References):/i.test(trimmedLine)) {
                             indentLevel++;
-                            if (index < 15) {
+                            if (index < 60) {
                                 console.log(`Line ${index}: Increased indentLevel to ${indentLevel} because line ends with ':'`);
                             }
                         }
-                        
+
                         return indentedLine;
                     }).join('\n');
-                    
+
                     console.log('Added Python indentation structure');
 
                     highlightedCode = highlightedCode
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;');
-                    
+
                     // Convert leading spaces to non-breaking spaces to preserve indentation
                     highlightedCode = highlightedCode.replace(/^( +)/gm, (match) => {
                         return '&nbsp;'.repeat(match.length);
                     });
-                    
+
                     highlightedCode = highlightedCode.replace(
                         /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,
                         '<span class="string">$1</span>'
