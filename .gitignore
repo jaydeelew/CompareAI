@@ -200,6 +200,7 @@ cython_debug/
 # Local development
 .local/
 local/
+.envrc
 
 # Vite
 .vite/
