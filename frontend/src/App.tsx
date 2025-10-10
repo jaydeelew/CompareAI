@@ -1,4 +1,3 @@
-import html2canvas from 'html2canvas';
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
@@ -136,15 +135,18 @@ function App() {
     content.style.overflow = 'visible';
     content.style.maxHeight = 'none';
     try {
+      // Import html2canvas dynamically
+      const html2canvas = (await import("html2canvas")).default;
+
       const canvas = await html2canvas(content, { useCORS: true });
-      canvas.toBlob(async (blob) => {
+      canvas.toBlob(async (blob: Blob | null) => {
         if (blob && navigator.clipboard && window.ClipboardItem) {
           try {
             await navigator.clipboard.write([
               new window.ClipboardItem({ 'image/png': blob })
             ]);
             showNotification('Image copied to clipboard!', 'success');
-          } catch (err) {
+          } catch {
             showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
             const link = document.createElement('a');
             link.download = `model_${safeId}_messages.png`;
