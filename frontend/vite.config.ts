@@ -9,7 +9,6 @@ export default defineConfig({
       name: 'custom-server-urls',
       configureServer(server) {
         const printUrls = () => {
-          const address = server.config.server.host || 'localhost'
           console.log('\n  \x1b[32m➜\x1b[0m  \x1b[1mLocal\x1b[0m:   \x1b[36mhttp://localhost/\x1b[0m')
         }
         
