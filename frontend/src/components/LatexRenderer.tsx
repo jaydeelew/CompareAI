@@ -365,10 +365,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return `__UL_${level}__${processedContent}__/UL__`;
         });
 
-        // Ordered lists
+        // Ordered lists - preserve item on same line with special marker
         processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
             const processedContent = processListContent(content);
-            return `__OL__${processedContent}__/OL__`;
+            return `__OL_ITEM__${processedContent}__/OL_ITEM__`;
         });
 
         return processed;
@@ -657,9 +657,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return html;
         });
 
-        // Ordered lists
-        converted = converted.replace(/(__OL__[\s\S]*?__\/OL__)+/g, (match) => {
-            const items = match.replace(/__OL__([\s\S]*?)__\/OL__/g, (_, content) => {
+        // Ordered lists - group consecutive items together (allowing whitespace between items)
+        converted = converted.replace(/(__OL_ITEM__[\s\S]*?__\/OL_ITEM__(?:\s*__OL_ITEM__[\s\S]*?__\/OL_ITEM__)*)/g, (match) => {
+            const items = match.replace(/__OL_ITEM__([\s\S]*?)__\/OL_ITEM__/g, (_, content) => {
                 return `<li>${content.trim()}</li>`;
             });
             return `<ol>${items}</ol>`;
