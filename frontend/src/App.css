@@ -2768,6 +2768,44 @@ body {
   tab-size: 4 !important;
 }
 
+/* Direct HTML code blocks - bypass LaTeX processing */
+.code-block-direct {
+  background: #0d1117 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  margin: 20px 0 !important;
+  overflow-x: auto !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+}
+
+.code-block-direct pre {
+  margin: 0 !important;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.code-block-direct code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: #e6edf3 !important;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  display: block !important;
+  text-indent: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .message-content .latex-content .code-block::before {
   content: attr(data-language);
   position: absolute;

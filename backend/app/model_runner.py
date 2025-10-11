@@ -562,7 +562,33 @@ def clean_model_response(text: str) -> str:
     
     # Clean up extra whitespace that may have been left behind
     text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r' {2,}', ' ', text)
+    
+    # Preserve indentation in code blocks - only clean up whitespace outside code blocks
+    # Split text into code blocks and non-code content
+    parts = []
+    current_pos = 0
+    
+    # Find all code blocks (```...```)
+    for match in re.finditer(r'```([a-zA-Z]*)\n(.*?)\n```', text, re.DOTALL):
+        # Add non-code content before this code block
+        if match.start() > current_pos:
+            non_code = text[current_pos:match.start()]
+            # Clean up whitespace in non-code content
+            non_code = re.sub(r' {2,}', ' ', non_code)
+            parts.append(non_code)
+        
+        # Add the code block unchanged (preserve indentation)
+        parts.append(match.group(0))
+        current_pos = match.end()
+    
+    # Add remaining non-code content
+    if current_pos < len(text):
+        non_code = text[current_pos:]
+        non_code = re.sub(r' {2,}', ' ', non_code)
+        parts.append(non_code)
+    
+    # Reconstruct text
+    text = ''.join(parts)
     
     # NUCLEAR OPTION: Complete elimination of unwanted escape sequences
     # This is a comprehensive overhaul to fix the persistent escape sequence problem
