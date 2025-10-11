@@ -1158,7 +1158,7 @@ function App() {
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                 {isFollowUpMode
                   ? 'You can deselect models but cannot add new ones during follow-up'
-                  : `Choose up to ${MAX_MODELS_LIMIT} models for optimal performance`
+                  : `Choose up to ${MAX_MODELS_LIMIT} models`
                 }
               </p>
             </div>
