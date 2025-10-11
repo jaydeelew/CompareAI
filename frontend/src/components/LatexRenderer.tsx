@@ -269,12 +269,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Handle ordered lists  
-            processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
-
-            // Debug: Log if we have list items
-            if (processedText.includes('___OL_ITEM___') || processedText.includes('___UL_ITEM___')) {
-                console.log('📋 List items detected BEFORE LaTeX processing');
-            }
+            processedText = processedText.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
+                return `___OL_ITEM___${content}___/OL_ITEM___`;
+            });
 
             // Preprocess: Handle LaTeX-like content wrapped in square brackets with spaces: [ ... ]
             // This is common in AI model outputs for displaying mathematical results
@@ -734,18 +731,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
 
-            // Debug: Check list items after LaTeX processing
-            if (processedText.includes('___UL_ITEM___')) {
-                console.log('📋 After LaTeX processing, checking UL items...');
-                const ulItems = processedText.match(/___UL_ITEM___[\s\S]{0,200}?___\/UL_ITEM___/g);
-                if (ulItems) {
-                    console.log('📋 Found', ulItems.length, 'UL items after LaTeX');
-                    ulItems.forEach((item, i) => {
-                        console.log(`📋 Item ${i + 1}:`, item.substring(0, 150));
-                    });
-                }
-            }
-
             // Handle markdown line breaks (double spaces or double newlines) - BEFORE converting list placeholders to HTML
             // This must happen before list conversion to prevent paragraph breaks from splitting list items
             processedText = processedText.replace(/ {2}\n/g, '<br>');
@@ -764,53 +749,116 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Convert consecutive unordered list items to proper HTML with nested structure
-            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:\s*___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
-                console.log('🔍 Converting UL items to HTML, match length:', match.length);
+            // Note: We now group items even if there's content between them, but we need to preserve that content
+            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:[\s\S]*?___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
+                // Extract all list items and the content between them
+                type ListItem = {level: number, content: string};
+                type Part = {type: 'item', data: ListItem} | {type: 'content', data: string};
+                const parts: Part[] = [];
+                let lastIndex = 0;
+                const itemRegex = /___UL_ITEM___(\d+)___([\s\S]*?)___\/UL_ITEM___/g;
+                let itemMatch;
                 
-                // Parse all items with their indentation levels
-                const items: Array<{level: number, content: string}> = [];
-                // Fixed: Use [\s\S]*? instead of .*? to match content that may contain newlines (from KaTeX HTML)
-                match.replace(/___UL_ITEM___(\d+)___([\s\S]*?)___\/UL_ITEM___/g, (_, indentLevel, content) => {
-                    items.push({
-                        level: parseInt(indentLevel),
-                        content: content.trim()
+                while ((itemMatch = itemRegex.exec(match)) !== null) {
+                    // Add content before this item (if any)
+                    const contentBefore = match.substring(lastIndex, itemMatch.index);
+                    if (contentBefore.trim()) {
+                        parts.push({type: 'content', data: contentBefore});
+                    }
+                    
+                    // Add the list item
+                    parts.push({
+                        type: 'item',
+                        data: {
+                            level: parseInt(itemMatch[1]),
+                            content: itemMatch[2].trim()
+                        }
                     });
-                    return '';
-                });
+                    
+                    lastIndex = itemRegex.lastIndex;
+                }
+                
+                // Add content after last item (if any)
+                const contentAfter = match.substring(lastIndex);
+                if (contentAfter.trim()) {
+                    parts.push({type: 'content', data: contentAfter});
+                }
 
-                console.log('🔍 Parsed', items.length, 'UL items');
-                items.forEach((item, i) => {
-                    console.log(`  Item ${i + 1}:`, item.content.substring(0, 100));
-                });
+                const items = parts.filter((p): p is {type: 'item', data: ListItem} => p.type === 'item').map(p => p.data);
+                
+                // CRITICAL FIX: Normalize indentation levels
+                // Find the minimum indentation level (excluding truly nested items > 2 spaces)
+                const levels = items.map(item => item.level);
+                const minLevel = Math.min(...levels);
+                
+                // If items vary by only 0-1 spaces, treat them all as the same level
+                // This handles inconsistent AI formatting like " - item" vs "- item"
+                const maxLevel = Math.max(...levels);
+                if (maxLevel - minLevel <= 1 && maxLevel <= 1) {
+                    // Normalize all to level 0
+                    items.forEach(item => item.level = 0);
+                    parts.forEach(part => {
+                        if (part.type === 'item') {
+                            part.data.level = 0;
+                        }
+                    });
+                } else {
+                    // Adjust all levels relative to minimum
+                    items.forEach(item => item.level -= minLevel);
+                    parts.forEach(part => {
+                        if (part.type === 'item') {
+                            part.data.level -= minLevel;
+                        }
+                    });
+                }
 
                 if (items.length === 0) {
                     console.warn('⚠️ No items parsed from UL match!');
                     return match;
                 }
 
-                // Build nested HTML structure
+                // Build nested HTML structure with intermediate content preserved
                 // CRITICAL FIX: Always start with a <ul> wrapper for level 0 items
                 let html = '<ul>';
                 let currentLevel = 0;
                 const openTags: string[] = ['</ul>'];
+                let partIndex = 0;
 
-                for (const item of items) {
-                    // Close tags if we're going to a lower level
-                    while (currentLevel > item.level) {
-                        html += '</ul>';
-                        openTags.pop();
-                        currentLevel--;
+                for (const part of parts) {
+                    if (part.type === 'content') {
+                        // Append intermediate content to the last list item (if any)
+                        // This keeps all items in the same list
+                        if (partIndex > 0) {
+                            // Need to insert before the last </li>
+                            const lastLiClose = html.lastIndexOf('</li>');
+                            if (lastLiClose !== -1) {
+                                html = html.substring(0, lastLiClose) + part.data + html.substring(lastLiClose);
+                            } else {
+                                html += part.data;
+                            }
+                        }
+                    } else {
+                        // It's a list item
+                        const item = part.data;
+                        
+                        // Close tags if we're going to a lower level
+                        while (currentLevel > item.level) {
+                            html += '</ul>';
+                            openTags.pop();
+                            currentLevel--;
+                        }
+
+                        // Open new ul tags if we're going to a higher level
+                        while (currentLevel < item.level) {
+                            html += '<ul>';
+                            openTags.push('</ul>');
+                            currentLevel++;
+                        }
+
+                        // Add the list item
+                        html += `<li>${item.content}</li>`;
                     }
-
-                    // Open new ul tags if we're going to a higher level
-                    while (currentLevel < item.level) {
-                        html += '<ul>';
-                        openTags.push('</ul>');
-                        currentLevel++;
-                    }
-
-                    // Add the list item
-                    html += `<li>${item.content}</li>`;
+                    partIndex++;
                 }
 
                 // Close any remaining open tags
@@ -818,59 +866,76 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     html += openTags.pop();
                 }
 
-                console.log('✅ Generated UL HTML:', html.substring(0, 200));
                 return html;
             });
 
             // Convert consecutive ordered list items to proper HTML
-            // Group items that are close together (separated by paragraph breaks or content)
-            let olCount = 0;
-            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:(?:<\/p><p>)?[\s\S]*?(?:<\/p><p>)?___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
-                // Extract all OL_ITEM markers from this match
-                const items = match.match(/___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/g);
+            // Group items together even if there's content between them (like display math, nested bullets, etc.)
+            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:[\s\S]*?___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
+                // Extract all list items and content between them
+                type OLItem = {content: string};
+                type OLPart = {type: 'item', data: OLItem} | {type: 'content', data: string};
+                const parts: OLPart[] = [];
+                let lastIndex = 0;
+                const itemRegex = /___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/g;
+                let itemMatch;
                 
-                if (!items || items.length === 0) {
+                while ((itemMatch = itemRegex.exec(match)) !== null) {
+                    // Add content before this item (if any)
+                    const contentBefore = match.substring(lastIndex, itemMatch.index);
+                    if (contentBefore.trim() && lastIndex > 0) {
+                        parts.push({type: 'content', data: contentBefore});
+                    }
+                    
+                    // Add the list item
+                    parts.push({
+                        type: 'item',
+                        data: {
+                            content: itemMatch[1].trim()
+                        }
+                    });
+                    
+                    lastIndex = itemRegex.lastIndex;
+                }
+                
+                // Add content after last item (if any)
+                const contentAfter = match.substring(lastIndex);
+                if (contentAfter.trim()) {
+                    parts.push({type: 'content', data: contentAfter});
+                }
+                
+                const items = parts.filter((p): p is {type: 'item', data: OLItem} => p.type === 'item').map(p => p.data);
+                
+                if (items.length === 0) {
+                    console.warn('⚠️ No OL items parsed from match!');
                     return match;
                 }
                 
-                olCount++;
-                const listItems: string[] = [];
-                let remainingText = match;
+                // Build HTML with intermediate content preserved
+                let html = '<ol>';
+                let partIndex = 0;
                 
-                items.forEach((item, index) => {
-                    // Extract the title from the item
-                    const titleMatch = item.match(/___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/);
-                    if (titleMatch) {
-                        const title = titleMatch[1];
-                        
-                        // Find the position of this item in the remaining text
-                        const itemPos = remainingText.indexOf(item);
-                        if (itemPos !== -1) {
-                            // Get content after this item until the next item or end
-                            const afterItem = remainingText.substring(itemPos + item.length);
-                            const nextItemPos = afterItem.search(/___OL_ITEM___/);
-                            
-                            let content = '';
-                            if (nextItemPos !== -1) {
-                                content = afterItem.substring(0, nextItemPos);
-                            } else if (index === items.length - 1) {
-                                // Last item - take remaining content
-                                content = afterItem;
+                for (const part of parts) {
+                    if (part.type === 'content') {
+                        // Append intermediate content to the last list item
+                        if (partIndex > 0) {
+                            const lastLiClose = html.lastIndexOf('</li>');
+                            if (lastLiClose !== -1) {
+                                html = html.substring(0, lastLiClose) + part.data + html.substring(lastLiClose);
+                            } else {
+                                html += part.data;
                             }
-                            
-                            listItems.push(`<li>${title}${content}</li>`);
-                            remainingText = afterItem;
                         }
+                    } else {
+                        // It's a list item
+                        html += `<li>${part.data.content}</li>`;
                     }
-                });
+                    partIndex++;
+                }
                 
-                console.log(`📋 Creating ordered list #${olCount} with ${listItems.length} item(s)`);
-                return '<ol>' + listItems.join('') + '</ol>';
+                html += '</ol>';
+                return html;
             });
-            
-            if (olCount > 0) {
-                console.log(`📋 Total: Created ${olCount} ordered list(s)`);
-            }
 
             // Handle definition lists - DISABLED to prevent false positives
             /*
