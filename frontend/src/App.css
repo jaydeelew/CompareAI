@@ -3037,6 +3037,15 @@ body {
   line-height: 1.6;
 }
 
+/* Content inside list items should flow naturally */
+.message-content .latex-content li p:first-child {
+  margin-top: 0.25rem;
+}
+
+.message-content .latex-content li p:last-child {
+  margin-bottom: 0.25rem;
+}
+
 /* Headings in content */
 .message-content .latex-content h1,
 .message-content .latex-content h2,
@@ -3298,6 +3307,24 @@ body {
 .latex-content li {
   margin: 0.25rem 0;
   line-height: 1.5;
+}
+
+/* Ensure content within list items is properly indented */
+.latex-content li > * {
+  margin-left: 0;
+}
+
+.latex-content li p {
+  margin: 0.25rem 0;
+}
+
+/* Content inside list items should flow naturally */
+.latex-content li p:first-child {
+  margin-top: 0.25rem;
+}
+
+.latex-content li p:last-child {
+  margin-bottom: 0.25rem;
 }
 
 .latex-content code {

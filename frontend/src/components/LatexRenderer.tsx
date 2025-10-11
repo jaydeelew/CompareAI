@@ -216,7 +216,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             
             // Debug: check if we have boxed content
             if (processedText.includes('boxed{')) {
-                console.log('🔍 Found boxed content before cleanup:', processedText.match(/[(\[]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
+                console.log('🔍 Found boxed content before cleanup:', processedText.match(/[([]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
             }
             
             // Handle ( boxed{...} ) or ( \boxed{...} ) - parentheses around boxed content (with optional period)
@@ -245,7 +245,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             
             // Debug: check what we have after cleanup
             if (processedText.includes('boxed{')) {
-                console.log('🔍 Boxed content after cleanup:', processedText.match(/[(\[]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
+                console.log('🔍 Boxed content after cleanup:', processedText.match(/[([]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
             }
 
             // Preprocess: Handle double parentheses (( ... )) - often used for emphasis
@@ -735,27 +735,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // This must happen before list conversion to prevent paragraph breaks from splitting list items
             processedText = processedText.replace(/ {2}\n/g, '<br>');
             
-            // Temporarily protect list item boundaries from paragraph breaks
-            // Replace newlines between list items with a special marker
-            // Use a loop to handle all consecutive items (since regex doesn't match overlapping patterns)
-            let prevText;
-            let iterations = 0;
-            do {
-                prevText = processedText;
-                processedText = processedText.replace(/(___(?:UL|OL|TASK)_ITEM___[^\n]*___\/(?:UL|OL|TASK)_ITEM___)\n+(___(?:UL|OL|TASK)_ITEM___)/g, '$1___LISTBREAK___$2');
-                iterations++;
-            } while (prevText !== processedText && iterations < 100); // Safety limit
-            
-            const breakCount = (processedText.match(/___LISTBREAK___/g) || []).length;
-            if (breakCount > 0) {
-                console.log(`📋 Protected ${breakCount} list item boundaries`);
-            }
-            
-            // Now apply paragraph breaks to double newlines
+            // Apply paragraph breaks to double newlines FIRST, before processing lists
             processedText = processedText.replace(/\n\n/g, '</p><p>');
-            
-            // Restore list item separators
-            processedText = processedText.replace(/___LISTBREAK___/g, '\n');
 
             // Convert task list items to proper HTML
             processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
@@ -812,15 +793,52 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return html;
             });
 
-            // Convert consecutive ordered list items to proper HTML (allow whitespace between items)
+            // Convert consecutive ordered list items to proper HTML
+            // Group items that are close together (separated by paragraph breaks or content)
             let olCount = 0;
-            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:\s*___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
+            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:(?:<\/p><p>)?[\s\S]*?(?:<\/p><p>)?___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
+                // Extract all OL_ITEM markers from this match
+                const items = match.match(/___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/g);
+                
+                if (!items || items.length === 0) {
+                    return match;
+                }
+                
                 olCount++;
-                const itemCount = (match.match(/___OL_ITEM___/g) || []).length;
-                console.log(`📋 Creating ordered list #${olCount} with ${itemCount} item(s)`);
-                const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
-                return '<ol>' + items + '</ol>';
+                const listItems: string[] = [];
+                let remainingText = match;
+                
+                items.forEach((item, index) => {
+                    // Extract the title from the item
+                    const titleMatch = item.match(/___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/);
+                    if (titleMatch) {
+                        const title = titleMatch[1];
+                        
+                        // Find the position of this item in the remaining text
+                        const itemPos = remainingText.indexOf(item);
+                        if (itemPos !== -1) {
+                            // Get content after this item until the next item or end
+                            const afterItem = remainingText.substring(itemPos + item.length);
+                            const nextItemPos = afterItem.search(/___OL_ITEM___/);
+                            
+                            let content = '';
+                            if (nextItemPos !== -1) {
+                                content = afterItem.substring(0, nextItemPos);
+                            } else if (index === items.length - 1) {
+                                // Last item - take remaining content
+                                content = afterItem;
+                            }
+                            
+                            listItems.push(`<li>${title}${content}</li>`);
+                            remainingText = afterItem;
+                        }
+                    }
+                });
+                
+                console.log(`📋 Creating ordered list #${olCount} with ${listItems.length} item(s)`);
+                return '<ol>' + listItems.join('') + '</ol>';
             });
+            
             if (olCount > 0) {
                 console.log(`📋 Total: Created ${olCount} ordered list(s)`);
             }
