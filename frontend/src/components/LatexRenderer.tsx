@@ -344,8 +344,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
      * Stage 5: Process markdown lists
      */
     const processMarkdownLists = (text: string): string => {
-        console.log('🔍 Raw text before list processing:', text.substring(0, 500));
-        console.log('🔍 Text includes "First version"?', text.includes('First version'));
+        console.log('🔍 Raw text before list processing (first 1000 chars):', text.substring(0, 1000));
         let processed = text;
 
         // Helper function to process parentheses in list content
@@ -368,10 +367,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return `__UL_${level}__${processedContent}__/UL__`;
         });
 
-        // Ordered lists - preserve item on same line with special marker
-        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
+        // Ordered lists - capture indent level for nesting
+        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (match, indent, num, content) => {
+            const level = indent.length;
+            console.log(`🔢 OL match: indent="${indent}", level=${level}, num=${num}, content="${content.substring(0, 50)}"`);
             const processedContent = processListContent(content);
-            return `__OL_ITEM__${processedContent}__/OL_ITEM__`;
+            return `__OL_${level}__${processedContent}__/OL__`;
         });
 
         return processed;
@@ -621,7 +622,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Unordered lists
-        converted = converted.replace(/(__UL_[\s\S]*?__\/UL__)+/g, (match) => {
+        converted = converted.replace(/(__UL_[\s\S]*?__\/UL__\s*)+/g, (match) => {
             const items: { level: number; content: string }[] = [];
             const regex = /__UL_(\d+)__([\s\S]*?)__\/UL__/g;
             let m;
@@ -649,6 +650,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 while (currentLevel > item.level) {
                     html += '</ul>';
                     if (openListItems.length > 0) {
+                        html += '</li>';  // Close the parent <li> that contained the nested <ul>
                         openListItems.pop();
                     }
                     currentLevel--;
@@ -684,12 +686,88 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return html;
         });
 
-        // Ordered lists - group consecutive items together (allowing whitespace between items)
-        converted = converted.replace(/(__OL_ITEM__[\s\S]*?__\/OL_ITEM__(?:\s*__OL_ITEM__[\s\S]*?__\/OL_ITEM__)*)/g, (match) => {
-            const items = match.replace(/__OL_ITEM__([\s\S]*?)__\/OL_ITEM__/g, (_, content) => {
-                return `<li>${content.trim()}</li>`;
+        // Ordered lists - handle nesting like unordered lists
+        // Match consecutive OL items including whitespace between them
+        converted = converted.replace(/(?:__OL_\d+__[\s\S]*?__\/OL__\s*)+/g, (match) => {
+            console.log('📋 Full OL match (first 500 chars):', match.substring(0, 500));
+            const items: { level: number; content: string }[] = [];
+            const regex = /__OL_(\d+)__([\s\S]*?)__\/OL__/g;
+            let m;
+            
+            while ((m = regex.exec(match)) !== null) {
+                items.push({ level: parseInt(m[1]), content: m[2].trim() });
+            }
+
+            if (items.length === 0) return match;
+
+            console.log('📋 Ordered list items detected (BEFORE normalization):', items);
+
+            // Normalize levels
+            const minLevel = Math.min(...items.map(i => i.level));
+            items.forEach(i => i.level -= minLevel);
+            
+            console.log('📋 Ordered list items (AFTER normalization, minLevel was', minLevel + '):', items);
+            
+            // Fallback: If all items are at the same level, try to infer nesting from bold markers
+            const allSameLevel = items.every(i => i.level === 0);
+            if (allSameLevel && items.length > 4) {
+                console.log('⚠️ All items at same level - attempting to infer nesting from bold text');
+                items.forEach(item => {
+                    // Items with bold text (**text** or <strong>) are main items (level 0)
+                    // Items without bold are sub-items (level 1)
+                    const hasBold = /\*\*|\<strong\>/.test(item.content);
+                    if (!hasBold) {
+                        item.level = 1;
+                    }
+                });
+                console.log('📋 After bold-based inference:', items);
+            }
+
+            let html = '<ol>';
+            let currentLevel = 0;
+            const openListItems: boolean[] = []; // Track open <li> tags
+
+            items.forEach((item, index) => {
+                const nextLevel = index < items.length - 1 ? items[index + 1].level : 0;
+                
+                // Close deeper levels
+                while (currentLevel > item.level) {
+                    html += '</ol>';
+                    if (openListItems.length > 0) {
+                        html += '</li>';  // Close the parent <li> that contained the nested <ol>
+                        openListItems.pop();
+                    }
+                    currentLevel--;
+                }
+                
+                // Open new item at current level
+                html += `<li>${item.content}`;
+                
+                // If next item is nested deeper, start a nested list
+                if (nextLevel > item.level) {
+                    html += '<ol>';
+                    currentLevel++;
+                    openListItems.push(true);
+                } else {
+                    // Close the current list item
+                    html += '</li>';
+                }
             });
-            return `<ol>${items}</ol>`;
+
+            // Close any remaining open tags
+            while (currentLevel > 0) {
+                html += '</ol>';
+                if (openListItems.length > 0) {
+                    html += '</li>';
+                    openListItems.pop();
+                }
+                currentLevel--;
+            }
+            html += '</ol>';
+
+            console.log('📋 Generated ordered list HTML:', html);
+
+            return html;
         });
 
         return converted;
