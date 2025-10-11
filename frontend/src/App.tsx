@@ -663,6 +663,12 @@ function App() {
     setInput('');
     setIsModelsHidden(true); // Collapse the models section when entering follow-up mode
 
+    // Scroll to top of page smoothly
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+
     // Wait for state to update, then scroll to the input section
     setTimeout(() => {
       const inputSection = document.querySelector('.input-section');
