@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Mergesort - Correct Indentation Test</title>
+    <style>
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: #0d1117;
+            color: #e6edf3;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #58a6ff;
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 10px;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .code-block pre {
+            margin: 0;
+            white-space: pre;
+            word-wrap: normal;
+            overflow-wrap: normal;
+        }
+
+        .code-block code {
+            background: transparent;
+            padding: 0;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            color: inherit;
+            white-space: pre;
+            word-wrap: normal;
+            overflow-wrap: normal;
+            display: block;
+            text-indent: 0;
+            margin: 0;
+            border: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Python syntax highlighting */
+        .python-code .keyword {
+            color: #ff7b72;
+        }
+
+        .python-code .string {
+            color: #a5d6ff;
+        }
+
+        .python-code .comment {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .python-code .function {
+            color: #d2a8ff;
+        }
+
+        .python-code .number {
+            color: #79c0ff;
+        }
+
+        .python-code .operator {
+            color: #ff7b72;
+        }
+
+        .python-code .variable {
+            color: #ffa657;
+        }
+
+        .comparison-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-section h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .incorrect {
+            border-left: 4px solid #f85149;
+        }
+
+        .correct {
+            border-left: 4px solid #3fb950;
+        }
+
+        .incorrect h4 {
+            color: #f85149;
+        }
+
+        .correct h4 {
+            color: #3fb950;
+        }
+
+        .info-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .info-section h3 {
+            color: #58a6ff;
+            margin-top: 0;
+        }
+
+        .info-section ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .info-section li {
+            margin: 5px 0;
+        }
+
+        /* Preserve indentation with non-breaking spaces */
+        .preserve-indent {
+            white-space: pre;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Python Mergesort - Correct vs Incorrect Indentation</h1>
+        
+        <p>This page demonstrates the difference between correct and incorrect Python indentation in mergesort implementations.</p>
+
+        <div class="comparison-section incorrect">
+            <h4>❌ INCORRECT Indentation (What the AI model generates)</h4>
+            <div class="code-block python-code">
+                <pre><code>def mergesort_inplace(arr):
+    """In-place mergesort implementation."""
+    if len(arr) <= 1:
+        return arr
+    
+    mergesort_helper(arr, 0, len(arr) - 1)  # ← WRONG: Should be at base level
+    return arr                               # ← WRONG: Should be at base level
+
+def mergesort_helper(arr, left, right):
+    if left < right:
+        mid = (left + right) // 2
+        mergesort_helper(arr, left, mid)
+        mergesort_helper(arr, mid + 1, right)
+        merge_inplace(arr, left, mid, right)
+
+def merge_inplace(arr, left, mid, right):
+    # Create temporary arrays
+    left_arr = arr[left:mid + 1]
+    right_arr = arr[mid + 1:right + 1]
+    i = j = 0
+    k = left
+    
+    while i < len(left_arr) and j < len(right_arr):
+        if left_arr[i] <= right_arr[j]:
+            arr[k] = left_arr[i]
+            i += 1
+        else:
+            arr[k] = right_arr[j]
+            j += 1
+        k += 1
+    
+    while i < len(left_arr):                # ← WRONG: Should be at same level as first while
+        arr[k] = left_arr[i]               # ← WRONG: Should be at same level as first while
+        i += 1                             # ← WRONG: Should be at same level as first while
+        k += 1                             # ← WRONG: Should be at same level as first while
+    
+    while j < len(right_arr):              # ← WRONG: Should be at same level as first while
+        arr[k] = right_arr[j]              # ← WRONG: Should be at same level as first while
+        j += 1                             # ← WRONG: Should be at same level as first while
+        k += 1                             # ← WRONG: Should be at same level as first while</code></pre>
+            </div>
+        </div>
+
+        <div class="comparison-section correct">
+            <h4>✅ CORRECT Indentation (How it should be)</h4>
+            <div class="code-block python-code">
+                <pre><code>def mergesort_inplace(arr):
+    """In-place mergesort implementation."""
+    if len(arr) <= 1:
+        return arr
+    
+mergesort_helper(arr, 0, len(arr) - 1)  # ← CORRECT: At base level
+return arr                               # ← CORRECT: At base level
+
+def mergesort_helper(arr, left, right):
+    if left < right:
+        mid = (left + right) // 2
+        mergesort_helper(arr, left, mid)
+        mergesort_helper(arr, mid + 1, right)
+        merge_inplace(arr, left, mid, right)
+
+def merge_inplace(arr, left, mid, right):
+    # Create temporary arrays
+    left_arr = arr[left:mid + 1]
+    right_arr = arr[mid + 1:right + 1]
+    i = j = 0
+    k = left
+    
+    while i < len(left_arr) and j < len(right_arr):
+        if left_arr[i] <= right_arr[j]:
+            arr[k] = left_arr[i]
+            i += 1
+        else:
+            arr[k] = right_arr[j]
+            j += 1
+        k += 1
+    
+    while i < len(left_arr):                # ← CORRECT: At same level as first while
+        arr[k] = left_arr[i]               # ← CORRECT: At same level as first while
+        i += 1                             # ← CORRECT: At same level as first while
+        k += 1                             # ← CORRECT: At same level as first while
+    
+    while j < len(right_arr):              # ← CORRECT: At same level as first while
+        arr[k] = right_arr[j]              # ← CORRECT: At same level as first while
+        j += 1                             # ← CORRECT: At same level as first while
+        k += 1                             # ← CORRECT: At same level as first while</code></pre>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>Key Differences</h3>
+            <ul>
+                <li><strong>Function body indentation:</strong> After the <code>if</code> block ends, subsequent statements should be at the base level (no indentation)</li>
+                <li><strong>Loop continuation:</strong> Multiple <code>while</code> loops at the same level should have the same indentation</li>
+                <li><strong>Block structure:</strong> Python uses indentation to define code blocks - incorrect indentation breaks the logical structure</li>
+            </ul>
+        </div>
+
+        <div class="info-section">
+            <h3>How Our Rendering Works</h3>
+            <p>Our rendering system:</p>
+            <ul>
+                <li><strong>Preserves exact indentation</strong> from the raw model response</li>
+                <li><strong>Converts spaces to &nbsp; entities</strong> to ensure proper HTML rendering</li>
+                <li><strong>Uses direct HTML/CSS</strong> instead of LaTeX processing for code blocks</li>
+                <li><strong>Bypasses LaTeX entirely</strong> for code formatting</li>
+            </ul>
+            <p><strong>The issue:</strong> The AI model itself is generating incorrectly indented code. Our rendering is working perfectly - it's preserving the model's output exactly as provided.</p>
+        </div>
+
+        <div class="info-section">
+            <h3>Solution Options</h3>
+            <ol>
+                <li><strong>Fix the AI model's prompt</strong> to generate properly indented code</li>
+                <li><strong>Add post-processing</strong> to correct indentation after receiving the response</li>
+                <li><strong>Use a Python code formatter</strong> like <code>black</code> or <code>autopep8</code> to fix indentation</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

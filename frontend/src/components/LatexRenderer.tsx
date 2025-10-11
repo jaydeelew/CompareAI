@@ -470,8 +470,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 let highlightedCode = code.replace(/\n$/, '');
 
                 // Create direct HTML/CSS code block (bypass LaTeX entirely)
-                const codeBlockId = `code-block-${Math.random().toString(36).substr(2, 9)}`;
-                
                 // Always preserve original indentation - just escape HTML
                 highlightedCode = highlightedCode
                     .replace(/&/g, '&amp;')
@@ -479,7 +477,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     .replace(/>/g, '&gt;');
 
                 // Convert leading spaces to non-breaking spaces to preserve indentation
-                highlightedCode = highlightedCode.replace(/^( +)/gm, (match) => {
+                highlightedCode = highlightedCode.replace(/^( +)/gm, (match: string) => {
                     return '&nbsp;'.repeat(match.length);
                 });
 
@@ -591,8 +589,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Handle markdown lists more carefully (BEFORE line breaks)
-            // First, handle unordered lists (but not task lists)
-            processedText = processedText.replace(/^- (?!\[[ x]\])(.+)$/gm, '___UL_ITEM___$1___/UL_ITEM___');
+            // First, handle unordered lists (but not task lists) - including indented ones
+            processedText = processedText.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
+                const indentLevel = indent.length;
+                return `___UL_ITEM___${indentLevel}___${content}___/UL_ITEM___`;
+            });
 
             // Then handle ordered lists  
             processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
@@ -606,10 +607,50 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return '<ul class="task-list">' + items + '</ul>';
             });
 
-            // Convert consecutive unordered list items to proper HTML (allow whitespace between items)
+            // Convert consecutive unordered list items to proper HTML with nested structure
             processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:\s*___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
-                const items = match.replace(/___UL_ITEM___(.*?)___\/UL_ITEM___/g, '<li>$1</li>');
-                return '<ul>' + items + '</ul>';
+                // Parse all items with their indentation levels
+                const items: Array<{level: number, content: string}> = [];
+                match.replace(/___UL_ITEM___(\d+)___(.*?)___\/UL_ITEM___/g, (_, indentLevel, content) => {
+                    items.push({
+                        level: parseInt(indentLevel),
+                        content: content.trim()
+                    });
+                    return '';
+                });
+
+                if (items.length === 0) return match;
+
+                // Build nested HTML structure
+                let html = '';
+                let currentLevel = 0;
+                const openTags: string[] = [];
+
+                for (const item of items) {
+                    // Close tags if we're going to a lower level
+                    while (currentLevel > item.level) {
+                        html += '</ul>';
+                        openTags.pop();
+                        currentLevel--;
+                    }
+
+                    // Open new ul tags if we're going to a higher level
+                    while (currentLevel < item.level) {
+                        html += '<ul>';
+                        openTags.push('</ul>');
+                        currentLevel++;
+                    }
+
+                    // Add the list item
+                    html += `<li>${item.content}</li>`;
+                }
+
+                // Close any remaining open tags
+                while (openTags.length > 0) {
+                    html += openTags.pop();
+                }
+
+                return html;
             });
 
             // Convert consecutive ordered list items to proper HTML (allow whitespace between items)
