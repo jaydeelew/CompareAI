@@ -205,9 +205,25 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Fix common LaTeX commands that are missing the backslash
             const latexCommands = ['frac', 'boxed', 'sqrt', 'sum', 'prod', 'int', 'lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp'];
             latexCommands.forEach(cmd => {
-                // Match word boundary + command + {
-                const pattern = new RegExp(`\\b${cmd}\\{`, 'g');
-                processedText = processedText.replace(pattern, `\\${cmd}{`);
+                // Match word boundary + command + { (e.g., frac{)
+                const pattern1 = new RegExp(`\\b${cmd}\\{`, 'g');
+                processedText = processedText.replace(pattern1, `\\${cmd}{`);
+                
+                // Match word boundary + command + _ (e.g., int_)
+                const pattern2 = new RegExp(`\\b${cmd}_`, 'g');
+                processedText = processedText.replace(pattern2, `\\${cmd}_`);
+                
+                // Match word boundary + command + ^ (e.g., int^)
+                const pattern3 = new RegExp(`\\b${cmd}\\^`, 'g');
+                processedText = processedText.replace(pattern3, `\\${cmd}^`);
+            });
+            
+            // Fix missing backslashes in LaTeX operators/relations (not followed by {, _, ^)
+            const latexOperators = ['neq', 'leq', 'geq', 'cdot', 'times', 'div', 'pm', 'mp', 'approx', 'equiv', 'sim', 'left', 'right'];
+            latexOperators.forEach(cmd => {
+                // Match word boundary + command + space or non-word character
+                const pattern = new RegExp(`\\b${cmd}\\b`, 'g');
+                processedText = processedText.replace(pattern, `\\${cmd}`);
             });
 
             // Preprocess: Remove parentheses around or inside boxed{} commands
@@ -256,21 +272,76 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // This must happen early because LaTeX rendering produces multi-line HTML
             // that breaks the list detection regex patterns
             
+            // Helper function to process parentheses in list item content
+            const processParentheses = (text: string): string => {
+                // Handle ( content ) with spaces - mathematical notation
+                let result = text.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (match, content) => {
+                    const hasMath = 
+                        content.includes('\\frac') || content.includes('frac') || 
+                        content.includes('\\int') || content.includes('\\sum') ||
+                        content.includes('\\sqrt') || content.includes('\\cdot') ||
+                        content.includes('\\neq') || content.includes('\\times') ||
+                        content.match(/[a-z]\^/) || content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) ||
+                        content.match(/^\w$/) || content.match(/^[A-Z]$/) ||
+                        content.match(/^[+-]\s*[A-Z]$/) || // like +C or -C
+                        (content.match(/[=+\-×·]/) && content.match(/[a-z0-9]/));
+
+                    // Treat multi-word plain text without math symbols as prose
+                    const wordCount = content.trim().split(/\s+/).length;
+                    const containsDigits = /\d/.test(content);
+                    const containsMathOps = /[=+\-^_×·]/.test(content);
+                    const prosePhrases = /(derivative\s+of\s+a\s+constant\s+is\s+zero|a\s+constant\s+is\s+zero|derivative\s+of\s+a\s+constant)/i;
+                    const isNotMath =
+                        /^(where\s+[A-Z]\s+is\s+an?\s+|antiderivative|a\s+constant)/i.test(content) ||
+                        prosePhrases.test(content) ||
+                        (!hasMath && wordCount >= 3 && !containsDigits && !containsMathOps);
+                    
+                    if (hasMath && !isNotMath) {
+                        return `\\(${content.trim()}\\)`;
+                    }
+                    return match;
+                });
+                
+                // Handle (content) without spaces but with math (signed lowercase variables, powers, numbers)
+                result = result.replace(/\(([+-]?\s*[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]|\w+\^\d+|[xyzn]|[A-Z]|[+-]?\s*[A-Z]|[+-]?\d+)\)/g, (_match, content) => {
+                    return `\\(${content}\\)`;
+                });
+
+                // Catch-all: convert other parentheses if they look mathematical (and not function calls)
+                result = result.replace(/(^|[^a-zA-Z])\(([^()]+)\)/g, (m, pre, inner) => {
+                    const content = inner;
+                    const hasMath =
+                        /\\(frac|int|sum|sqrt|neq|leq|geq|times|cdot)/.test(content) ||
+                        /[=+\-^_×·]/.test(content) || /\d/.test(content) || /[a-z]\^/.test(content) || /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content);
+                    const words = content.trim().split(/\s+/).length;
+                    const looksProse = /(derivative\s+of\s+a\s+constant\s+is\s+zero)/i.test(content) || (words >= 4 && !hasMath);
+                    if (hasMath && !looksProse) {
+                        return pre + `\\(${content.trim()}\\)`;
+                    }
+                    return m;
+                });
+                
+                return result;
+            };
+            
             // Handle markdown task lists - [x] and [ ]
             processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
                 const isChecked = checked === 'x';
-                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
+                const processedTaskText = processParentheses(text);
+                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${processedTaskText}___/TASK_ITEM___`;
             });
-
+            
             // Handle unordered lists (but not task lists) - including indented ones
             processedText = processedText.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
                 const indentLevel = indent.length;
-                return `___UL_ITEM___${indentLevel}___${content}___/UL_ITEM___`;
+                const processedContent = processParentheses(content);
+                return `___UL_ITEM___${indentLevel}___${processedContent}___/UL_ITEM___`;
             });
 
             // Handle ordered lists  
             processedText = processedText.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
-                return `___OL_ITEM___${content}___/OL_ITEM___`;
+                const processedContent = processParentheses(content);
+                return `___OL_ITEM___${processedContent}___/OL_ITEM___`;
             });
 
             // Preprocess: Handle LaTeX-like content wrapped in square brackets with spaces: [ ... ]
@@ -324,17 +395,25 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
                 
                 // Check if content looks like it contains LaTeX or mathematical notation
+                // Check for both with and without backslashes since backslashes are added earlier
                 const hasMath = 
-                    content.includes('frac') || 
-                    content.includes('boxed') || 
-                    content.includes('sqrt') || 
-                    content.includes('cdot') || 
-                    content.includes('times') ||
+                    content.includes('\\frac') || content.includes('frac') || 
+                    content.includes('\\boxed') || content.includes('boxed') || 
+                    content.includes('\\sqrt') || content.includes('sqrt') || 
+                    content.includes('\\cdot') || content.includes('cdot') || 
+                    content.includes('\\times') || content.includes('times') ||
+                    content.includes('\\neq') || content.includes('neq') ||
+                    content.includes('\\leq') || content.includes('leq') ||
+                    content.includes('\\geq') || content.includes('geq') ||
+                    content.includes('\\int') || content.includes('int_') ||
+                    content.includes('\\sum') || content.includes('sum_') ||
                     content.match(/[a-z]\^/) || // variables with exponents using caret
                     content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // variables with Unicode superscripts
                     content.match(/[a-z]'/) || // derivatives like f'(x)
                     content.match(/[a-z]\([a-z]\)\s*=/) || // function definitions like f(x) =
                     content.match(/^\d+$/) || // single number like 0, 1, etc.
+                    content.match(/^[A-Z]$/) || // single capital letter like (C)
+                    content.match(/^[+-]\s*[A-Z]$/) || // like ( +C ) or ( -C )
                     (content.match(/[=+-]/) && content.match(/[a-z0-9]/)) || // equations with operators
                     content.match(/\d+[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]?/); // coefficients with variables like 3x², 2x
                 
@@ -342,6 +421,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 const isNotMath = 
                     content.includes('http') || 
                     content.includes('://') ||
+                    content.match(/^(where\s+[A-Z]\s+is\s+an?\s+|antiderivative)/i) || // explanatory text
                     (content.match(/[a-zA-Z]{10,}/) && !content.match(/[=+^-]/)); // long words without math symbols
                 
                 if (hasMath && !isNotMath) {
@@ -349,6 +429,68 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
                 return match;
             });
+            
+            // Handle parentheses around mathematical content more carefully
+            // Use negative lookbehind to avoid matching function calls like f(x)
+            processedText = processedText.replace(/(?<![a-zA-Z])\(([^()]+)\)/g, (match, content) => {
+                // Skip if already processed (contains LaTeX delimiters)
+                if (match.includes('\\(') || match.includes('\\)')) {
+                    return match;
+                }
+                
+                // Skip if content contains \boxed
+                if (content.includes('\\boxed')) {
+                    return match;
+                }
+                
+                // Skip if this looks like it's part of a sentence (starts with "a " or "an ")
+                if (content.match(/^(a|an)\s+/i)) {
+                    return match;
+                }
+                
+                // Check if content looks mathematical
+                const hasMath = 
+                    content.includes('\\frac') || // LaTeX fractions
+                    content.includes('\\int') || // LaTeX integrals  
+                    content.includes('\\sum') || // LaTeX summations
+                    content.includes('\\sqrt') ||
+                    content.includes('\\cdot') ||
+                    content.includes('\\neq') ||
+                    content.includes('\\leq') ||
+                    content.includes('\\geq') ||
+                    content.includes('\\times') ||
+                    content.match(/[a-z]\^[0-9{]/) || // variables with exponents like x^2 or x^{3}
+                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // Unicode superscripts
+                    content.match(/^\w$/) || // single letter/number like C, x, 1
+                    content.match(/^[+-]\s*[A-Z]$/) || // like +C or -C
+                    content.match(/^[nab]\s*\\neq/) || // patterns like "n≠-1" at start
+                    (content.match(/^\d+$/) && content.length <= 3) || // short numbers
+                    content.match(/,\s*d[a-z]/) || // integral patterns like ", dx"
+                    content.match(/\s+d[a-z]\s*=/) || // differential like " dx ="
+                    content.match(/\[[^\]]+\]_[a-z]/i) || // evaluation brackets like [...]_a
+                    content.match(/^[n][²³⁴⁵⁶⁷⁸⁹⁰¹]?$/) || // just (n)
+                    content.match(/[xyznabc][²³⁴⁵⁶⁷⁸⁹⁰¹]\s*[-+−]/) || // expressions like x³ - x²
+                    (content.match(/[=+-−×·]/) && content.match(/[a-z0-9²³⁴⁵⁶⁷⁸⁹⁰¹]/) && content.length < 70); // equations with math symbols
+                
+                const isNotMath = 
+                    content.includes('http') || 
+                    content.includes('://') ||
+                    content.length > 100 || // Too long, probably prose (increased from 80)
+                    content.match(/^(e\.g\.|i\.e\.|etc\.|vs\.|note|see|for example|over a specific interval)/i) ||
+                    content.match(/^(antiderivative|where\s+[A-Z]\s+is\s+an?\s+)/i) || // explanatory text
+                    content.match(/^a\s+(constant|specific|definite)/i) || // "(a constant)", "(a specific point)"
+                    (content.split(' ').length > 15 && !content.includes('\\int') && !content.includes('\\frac')) || // Too many words unless it has math
+                    content.match(/^[A-Z][a-z]+(\s+[a-z]+)+$/); // Capitalized phrase like "Note to self"
+                
+                if (hasMath && !isNotMath) {
+                    return `\\(${content.trim()}\\)`;
+                }
+                return match;
+            });
+            
+            // Clean up any duplicate closing parentheses that might have been created
+            processedText = processedText.replace(/\)\)+/g, ')');
+            processedText = processedText.replace(/\\\)\)+/g, '\\)');
 
             // Preprocess: Clean up common malformed LaTeX patterns
             // Fix broken \boxed commands with HTML mixed in
@@ -423,6 +565,18 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
+            // Guard: revert prose accidentally wrapped in \( ... \) back to plain text before KaTeX rendering
+            processedText = processedText.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, (match, inner) => {
+                const text = inner.trim();
+                const hasMathTokens = /\\(frac|int|sum|sqrt|neq|leq|geq|times|cdot|alpha|beta|gamma|pi)/.test(text)
+                    || /[=+\-^_×·]/.test(text) || /\d/.test(text) || /[a-z][\^]/.test(text) || /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(text);
+                const wordCount = text.split(/\s+/).filter(Boolean).length;
+                if (!hasMathTokens && wordCount >= 3) {
+                    return `(${text})`;
+                }
+                return match;
+            });
+
             // Handle LaTeX inline math delimiters \(...\)
             processedText = processedText.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, (match, math) => {
                 try {
@@ -468,9 +622,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
-            // Handle \left( and \right) parentheses
+            // Handle \left( and \right) parentheses - just convert to plain parens
+            // KaTeX will handle these when they're in math mode
             processedText = processedText.replace(/\\left\(/g, '(');
             processedText = processedText.replace(/\\right\)/g, ')');
+            
+            // Handle \left[ and \right] brackets - just convert to plain brackets
+            // KaTeX will handle these when they're in math mode
+            processedText = processedText.replace(/\\left\[/g, '[');
+            processedText = processedText.replace(/\\right\]/g, ']');
 
             // Handle \cdot multiplication
             processedText = processedText.replace(/\\cdot/g, () => {
