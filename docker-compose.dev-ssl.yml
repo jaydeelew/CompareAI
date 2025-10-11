@@ -11,6 +11,8 @@ services:
       - ./backend:/app
     environment:
       - PYTHONPATH=/app
+      - ENVIRONMENT=development  # Enable dev features like rate limit reset
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     env_file:
       - ./backend/.env
     networks:

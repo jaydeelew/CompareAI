@@ -134,11 +134,27 @@ function App() {
     const prevMaxHeight = content.style.maxHeight;
     content.style.overflow = 'visible';
     content.style.maxHeight = 'none';
+    
+    // Force a repaint to ensure all styles are applied
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
       // Import html2canvas dynamically
       const html2canvas = (await import("html2canvas")).default;
 
-      const canvas = await html2canvas(content, { useCORS: true });
+      const options = {
+        useCORS: true,
+        scale: 2, // Higher quality rendering
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: content.scrollWidth,
+        height: content.scrollHeight,
+        x: 0,
+        y: 0,
+      };
+      const canvas = await html2canvas(content, options);
+      
+      // Convert to blob with maximum quality to preserve colors
       canvas.toBlob(async (blob: Blob | null) => {
         if (blob && navigator.clipboard && window.ClipboardItem) {
           try {
@@ -150,19 +166,19 @@ function App() {
             showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
             const link = document.createElement('a');
             link.download = `model_${safeId}_messages.png`;
-            link.href = canvas.toDataURL();
+            link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
           }
         } else if (blob) {
           showNotification('Clipboard not supported. Image downloaded.', 'error');
           const link = document.createElement('a');
           link.download = `model_${safeId}_messages.png`;
-          link.href = canvas.toDataURL();
+          link.href = canvas.toDataURL('image/png', 1.0);
           link.click();
         } else {
           showNotification('Could not create image blob.', 'error');
         }
-      }, 'image/png');
+      }, 'image/png', 1.0);
     } catch (err) {
       showNotification('Screenshot failed: ' + (err as Error).message, 'error');
     } finally {
