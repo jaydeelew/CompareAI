@@ -515,7 +515,7 @@ body {
 
 .textarea-icon-button:disabled {
   background: linear-gradient(135deg, rgba(100, 116, 139, 0.6) 0%, rgba(100, 116, 139, 0.4) 100%);
-  cursor: not-allowed;
+  cursor: default;
   transform: none;
   box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2);
 }
@@ -523,6 +523,7 @@ body {
 .textarea-icon-button.not-ready {
   background: linear-gradient(135deg, rgba(100, 116, 139, 0.7) 0%, rgba(100, 116, 139, 0.5) 100%);
   color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
 }
 
 .textarea-icon-button.not-ready:hover {
