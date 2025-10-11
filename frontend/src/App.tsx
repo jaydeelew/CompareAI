@@ -1000,9 +1000,55 @@ function App() {
         <div className="hero-section">
           <div className="hero-content">
             <h2 className="hero-title">Compare AI Models Side by Side</h2>
-            <p className="hero-description">
-              Get responses from multiple AI models to find the best solution for your needs. Compare natural language responses, code generation capabilities, and formatted math results using concurrent processing of multiple AI models.
-            </p>
+            <p className="hero-subtitle">Get responses from multiple AI models to find the best solution for your needs</p>
+            
+            <div className="hero-capabilities">
+              <div className="capability-tile">
+                <div className="capability-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </div>
+                <h3 className="capability-title">Natural Language</h3>
+                <p className="capability-description">Compare conversational responses</p>
+              </div>
+
+              <div className="capability-tile">
+                <div className="capability-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                  </svg>
+                </div>
+                <h3 className="capability-title">Code Generation</h3>
+                <p className="capability-description">Evaluate programming capabilities</p>
+              </div>
+
+              <div className="capability-tile">
+                <div className="capability-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                    <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                    <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
+                </div>
+                <h3 className="capability-title">Formatted Math</h3>
+                <p className="capability-description">Render LaTeX equations beautifully</p>
+              </div>
+
+              <div className="capability-tile">
+                <div className="capability-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </div>
+                <h3 className="capability-title">Concurrent Processing</h3>
+                <p className="capability-description">Get all responses simultaneously</p>
+              </div>
+            </div>
 
             <div className="hero-input-section">
               <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
@@ -1026,7 +1072,7 @@ function App() {
                     : "Let's get started..."
                   }
                   className="hero-input-textarea"
-                  rows={4}
+                  rows={1}
                 />
                 <div className="textarea-actions">
                   {isFollowUpMode && (
