@@ -2399,6 +2399,7 @@ body {
   flex: 1;
   min-height: 2.5rem;
   display: block;
+  font-size: 1.125rem;
 }
 
 .conversation-message.user .message-content {
@@ -2422,6 +2423,7 @@ body {
   flex: 1;
   width: 100%;
   overflow: visible;
+  font-size: 1.125rem;
 }
 
 /* Animation for new messages */
