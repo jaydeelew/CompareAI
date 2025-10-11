@@ -43,7 +43,7 @@ interface ModelsByProvider {
 const MAX_MODELS_LIMIT = 12;
 
 // Freemium usage limits
-const MAX_DAILY_USAGE = 2;
+const MAX_DAILY_USAGE = 10;
 
 function App() {
   // Screenshot handler for message area only
