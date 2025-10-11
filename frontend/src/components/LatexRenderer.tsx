@@ -469,109 +469,58 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 // Preserve all whitespace including indentation - only trim trailing newline
                 let highlightedCode = code.replace(/\n$/, '');
 
-                // For Python, add proper indentation based on syntax structure
-                if (lang.toLowerCase() === 'python') {
-                    console.log('=== PYTHON INDENTATION DEBUG ===');
+                // Create direct HTML/CSS code block (bypass LaTeX entirely)
+                const codeBlockId = `code-block-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Always preserve original indentation - just escape HTML
+                highlightedCode = highlightedCode
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
 
-                    const lines = highlightedCode.split('\n');
-                    let indentLevel = 0;
-                    const INDENT_SIZE = 4;
+                // Convert leading spaces to non-breaking spaces to preserve indentation
+                highlightedCode = highlightedCode.replace(/^( +)/gm, (match) => {
+                    return '&nbsp;'.repeat(match.length);
+                });
 
-                    highlightedCode = lines.map((line: string, index: number) => {
-                        const trimmedLine = line.trim();
+                // Create complete HTML structure that bypasses LaTeX
+                const codeBlockHTML = `
+                    <div class="code-block-direct" data-language="${lang}" style="
+                        background: #0d1117;
+                        border: 1px solid #30363d;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 20px 0;
+                        overflow-x: auto;
+                        font-size: 14px;
+                        line-height: 1.5;
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                    ">
+                        <pre style="margin: 0; white-space: pre; word-wrap: normal; overflow-wrap: normal;">
+                            <code style="
+                                background: transparent;
+                                padding: 0;
+                                font-family: inherit;
+                                font-size: inherit;
+                                line-height: inherit;
+                                color: #e6edf3;
+                                white-space: pre;
+                                word-wrap: normal;
+                                overflow-wrap: normal;
+                                display: block;
+                                text-indent: 0;
+                                margin: 0;
+                                border: none;
+                                width: 100%;
+                                box-sizing: border-box;
+                            ">${highlightedCode}</code>
+                        </pre>
+                    </div>
+                `;
 
-                        // Skip empty lines
-                        if (!trimmedLine) return '';
-
-                        // Debug logging for key lines
-                        if (index < 60 && (/^# Example/.test(trimmedLine) || /^if __name__/.test(trimmedLine) || /^while/.test(trimmedLine) || /^def/.test(trimmedLine))) {
-                            console.log(`Line ${index}: "${trimmedLine}" - indentLevel before: ${indentLevel}`);
-                        }
-
-                        // Decrease indent BEFORE applying indentation for certain keywords
-                        if (/^(else|elif|except|finally)/.test(trimmedLine)) {
-                            indentLevel = Math.max(0, indentLevel - 1);
-                        }
-
-                        // Reset to base level for new function/class definitions
-                        if (/^(def|class)\s/.test(trimmedLine)) {
-                            indentLevel = 0;
-                        }
-
-                        // Reset to base level for module-level constructs  
-                        if (/^(import|from|if __name__)/i.test(trimmedLine)) {
-                            indentLevel = 0;
-                        }
-
-                        // Reset specific comments to appropriate levels
-                        if (/^# Example usage$/i.test(trimmedLine)) {
-                            indentLevel = 0; // Module level
-                        }
-
-                        // Apply current indentation
-                        const indentedLine = ' '.repeat(indentLevel * INDENT_SIZE) + trimmedLine;
-
-                        // Debug logging for key lines
-                        if (index < 60 && (/^# Example/.test(trimmedLine) || /^if __name__/.test(trimmedLine) || /^while/.test(trimmedLine) || /^def/.test(trimmedLine))) {
-                            console.log(`Line ${index}: Applied ${indentLevel * INDENT_SIZE} spaces: "${indentedLine.substring(0, 30)}..."`);
-                        }
-
-                        // INCREASE indent AFTER applying indentation for lines that start new blocks
-                        if (trimmedLine.endsWith(':') && 
-                            !/^#/.test(trimmedLine) && // Skip comments
-                            !trimmedLine.includes('"""') && // Skip docstrings
-                            !trimmedLine.includes("'''") && // Skip docstrings
-                            !/^(Args|Arguments|Parameters|Param|Returns|Return|Yields|Yield|Raises|Note|Notes|Example|Examples|See Also|References):/i.test(trimmedLine)) {
-                            indentLevel++;
-                            if (index < 60) {
-                                console.log(`Line ${index}: Increased indentLevel to ${indentLevel} because line ends with ':'`);
-                            }
-                        }
-
-                        return indentedLine;
-                    }).join('\n');
-
-                    console.log('Added Python indentation structure');
-
-                    highlightedCode = highlightedCode
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-
-                    // Convert leading spaces to non-breaking spaces to preserve indentation
-                    highlightedCode = highlightedCode.replace(/^( +)/gm, (match) => {
-                        return '&nbsp;'.repeat(match.length);
-                    });
-
-                    highlightedCode = highlightedCode.replace(
-                        /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,
-                        '<span class="string">$1</span>'
-                    );
-                    highlightedCode = highlightedCode.replace(
-                        /(#.*$)/gm,
-                        '<span class="comment">$1</span>'
-                    );
-                    highlightedCode = highlightedCode.replace(
-                        /\b(def|class|if|elif|else|for|while|try|except|finally|with|as|import|from|return|yield|break|continue|pass|raise|assert|lambda|and|or|not|in|is|True|False|None)\b(?![^<]*<\/span>)/g,
-                        '<span class="keyword">$1</span>'
-                    );
-                    highlightedCode = highlightedCode.replace(
-                        /\b(\d+\.?\d*|\.\d+)\b(?![^<]*<\/span>)/g,
-                        '<span class="number">$1</span>'
-                    );
-                    highlightedCode = highlightedCode.replace(
-                        /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()(?![^<]*<\/span>)/g,
-                        '<span class="function">$1</span>'
-                    );
-                } else {
-                    highlightedCode = highlightedCode
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-                }
-                const placeholder = `___CODE_BLOCK_${codeBlockPlaceholders.length}___`;
-                codeBlockPlaceholders.push(`<pre class="code-block" data-language="${lang.toUpperCase()}"><code>${highlightedCode}</code></pre>`);
-                return placeholder;
+                // Store the HTML and return a placeholder
+                codeBlockPlaceholders.push(codeBlockHTML);
+                return `__CODE_BLOCK_PLACEHOLDER_${codeBlockPlaceholders.length - 1}__`;
             });
 
             // Handle inline code `text` (before other processing)
@@ -876,7 +825,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Restore code blocks from placeholders AFTER all markdown processing
             if (codeBlockPlaceholders.length > 0) {
                 codeBlockPlaceholders.forEach((block, i) => {
-                    const placeholder = `___CODE_BLOCK_${i}___`;
+                    const placeholder = `__CODE_BLOCK_PLACEHOLDER_${i}__`;
                     processedText = processedText.replace(new RegExp(placeholder, 'g'), block);
                 });
             }
