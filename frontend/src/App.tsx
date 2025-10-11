@@ -1400,7 +1400,7 @@ function App() {
           <div className="loading-section">
             <div className="loading-content">
               <div className="modern-spinner"></div>
-              <p>Analyzing responses from {selectedModels.length} AI models...</p>
+              <p>Processing responses from {selectedModels.length} AI models...</p>
             </div>
             <button
               onClick={handleCancel}
