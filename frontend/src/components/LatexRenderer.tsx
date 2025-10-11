@@ -253,6 +253,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     const convertImplicitMath = (text: string): string => {
         let converted = text;
 
+        // FIRST: Handle d/dx(...) and d/dx[...] patterns before general conversion
+        // Replace d/dx with the fraction, keep the argument as-is (will be processed later)
+        converted = converted.replace(/\bd\/d([a-zA-Z])\(([^)]+)\)/g, (_match, variable, expression) => {
+            // Don't wrap in \(...\), just replace d/dx with the placeholder
+            return `__DERIVATIVE_${variable}__(${expression})`;
+        });
+        
+        converted = converted.replace(/\bd\/d([a-zA-Z])\[([^\]]+)\]/g, (_match, variable, expression) => {
+            return `__DERIVATIVE_${variable}__[${expression}]`;
+        });
+
         // Handle content in parentheses with spaces: ( math content )
         converted = converted.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (_match, content) => {
             if (looksMathematical(content) && !looksProse(content)) {
@@ -262,8 +273,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Handle content in square brackets with spaces: [ math content ]
+        // Note: Only convert if it looks like math notation WITH spaces, to avoid
+        // interfering with d/dx[expr] notation which should keep its brackets
         converted = converted.replace(/\[\s+((?:[^[\]]|\[[^\]]*\])+?)\s+\]/g, (_match, content) => {
             if (content.includes('\\boxed')) return _match; // Already handled
+            // Don't convert if preceded by d/dx pattern
             if (looksMathematical(content) && !looksProse(content)) {
                 return `\\(${content.trim()}\\)`;
             }
@@ -487,8 +501,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             rendered = rendered.replace(pattern, () => safeRenderKatex(latex, false));
         });
 
-        // Handle derivative notation d/dx
-        rendered = rendered.replace(/\bd\/d([a-zA-Z])/g, (_match, variable) => {
+        // Convert derivative placeholders from Stage 3 to actual fractions
+        rendered = rendered.replace(/__DERIVATIVE_([a-zA-Z])__/g, (_match, variable) => {
+            return safeRenderKatex(`\\frac{d}{d${variable}}`, false);
+        });
+
+        // Handle standalone d/dx (for any remaining cases not caught by Stage 3)
+        rendered = rendered.replace(/\bd\/d([a-zA-Z])\b/g, (_match, variable) => {
             return safeRenderKatex(`\\frac{d}{d${variable}}`, false);
         });
 
