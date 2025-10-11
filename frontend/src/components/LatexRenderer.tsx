@@ -201,6 +201,134 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return match;
             });
 
+            // Preprocess: Fix missing backslashes in LaTeX commands
+            // Fix common LaTeX commands that are missing the backslash
+            const latexCommands = ['frac', 'boxed', 'sqrt', 'sum', 'prod', 'int', 'lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp'];
+            latexCommands.forEach(cmd => {
+                // Match word boundary + command + {
+                const pattern = new RegExp(`\\b${cmd}\\{`, 'g');
+                processedText = processedText.replace(pattern, `\\${cmd}{`);
+            });
+
+            // Preprocess: Remove parentheses around or inside boxed{} commands
+            // Do this after fixing missing backslashes, but before parentheses/bracket detection
+            // Be very aggressive - handle multiple variations
+            
+            // Debug: check if we have boxed content
+            if (processedText.includes('boxed{')) {
+                console.log('🔍 Found boxed content before cleanup:', processedText.match(/[(\[]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
+            }
+            
+            // Handle ( boxed{...} ) or ( \boxed{...} ) - parentheses around boxed content (with optional period)
+            processedText = processedText.replace(/\(\s*\\boxed\{([^}]+)\}\s*\)\.?/g, (match, content) => {
+                console.log('✅ Removing parens around boxed:', match, '→', `\\boxed{${content}}`);
+                return `\\boxed{${content}}`;
+            });
+            
+            // Handle [ boxed{...} ] or [ \boxed{...} ] - brackets around boxed content
+            processedText = processedText.replace(/\[\s*\\boxed\{([^}]+)\}\s*\]\.?/g, (match, content) => {
+                console.log('✅ Removing brackets around boxed:', match, '→', `\\boxed{${content}}`);
+                return `\\boxed{${content}}`;
+            });
+            
+            // Handle boxed{( ... )} or \boxed{( ... )} - parentheses inside boxed content
+            processedText = processedText.replace(/\\boxed\{\s*\(\s*([^)]+)\s*\)\s*\}/g, (match, content) => {
+                console.log('✅ Removing parens inside boxed:', match, '→', `\\boxed{${content}}`);
+                return `\\boxed{${content}}`;
+            });
+            
+            // Handle boxed{[ ... ]} or \boxed{[ ... ]} - brackets inside boxed content
+            processedText = processedText.replace(/\\boxed\{\s*\[\s*([^\]]+)\s*\]\s*\}/g, (match, content) => {
+                console.log('✅ Removing brackets inside boxed:', match, '→', `\\boxed{${content}}`);
+                return `\\boxed{${content}}`;
+            });
+            
+            // Debug: check what we have after cleanup
+            if (processedText.includes('boxed{')) {
+                console.log('🔍 Boxed content after cleanup:', processedText.match(/[(\[]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
+            }
+
+            // Preprocess: Handle double parentheses (( ... )) - often used for emphasis
+            // Convert (( content )) to ( content ) first, which will be processed in the next step
+            processedText = processedText.replace(/\(\(\s*([^()]+)\s*\)\)/g, '( $1 )');
+            
+            // Preprocess: Handle LaTeX-like content wrapped in square brackets with spaces: [ ... ]
+            // This is common in AI model outputs for displaying mathematical results
+            // Match [ <math content> ] where there are spaces after [ and before ]
+            processedText = processedText.replace(/\[\s+((?:[^[\]]|\[[^\]]*\])+?)\s+\]/g, (match, content) => {
+                // Skip if content contains \boxed (should have been handled earlier)
+                if (content.includes('\\boxed')) {
+                    return match;
+                }
+                
+                // Similar logic to parentheses - check if content looks mathematical
+                const hasMath = 
+                    content.includes('frac') || 
+                    content.includes('boxed') || 
+                    content.includes('sqrt') || 
+                    content.includes('cdot') || 
+                    content.includes('times') ||
+                    content.match(/[a-z]\^/) || // variables with exponents using caret
+                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // variables with Unicode superscripts
+                    content.match(/[a-z]'/) || // derivatives like f'(x)
+                    content.match(/[a-z]\([a-z]\)\s*=/) || // function definitions like f(x) =
+                    content.match(/^\d+$/) || // single number like 0, 1, etc.
+                    (content.match(/[=+-]/) && content.match(/[a-z0-9]/)) || // equations with operators
+                    content.match(/\d+[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]?/); // coefficients with variables like 3x², 2x
+                
+                const isNotMath = 
+                    content.includes('http') || 
+                    content.includes('://') ||
+                    (content.match(/[a-zA-Z]{10,}/) && !content.match(/[=+^-]/));
+                
+                if (hasMath && !isNotMath) {
+                    // Use inline math instead of display math to keep left-aligned
+                    return `\\(${content.trim()}\\)`;
+                }
+                return match;
+            });
+            
+            // Preprocess: Handle LaTeX-like content wrapped in parentheses with spaces: ( ... )
+            // This is a common pattern in some AI model outputs
+            // Match ( <math content> ) where there are spaces after ( and before )
+            // Strategy: Match balanced content by being more specific about what we allow
+            processedText = processedText.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (match, content) => {
+                // The pattern (?:[^()]|\([^()]*\))+ allows either:
+                // - non-paren characters, or
+                // - a single level of nested parens like f(x)
+                
+                // Skip if content contains \boxed (should have been handled earlier)
+                if (content.includes('\\boxed')) {
+                    return match;
+                }
+                
+                // Check if content looks like it contains LaTeX or mathematical notation
+                const hasMath = 
+                    content.includes('frac') || 
+                    content.includes('boxed') || 
+                    content.includes('sqrt') || 
+                    content.includes('cdot') || 
+                    content.includes('times') ||
+                    content.match(/[a-z]\^/) || // variables with exponents using caret
+                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // variables with Unicode superscripts
+                    content.match(/[a-z]'/) || // derivatives like f'(x)
+                    content.match(/[a-z]\([a-z]\)\s*=/) || // function definitions like f(x) =
+                    content.match(/^\d+$/) || // single number like 0, 1, etc.
+                    (content.match(/[=+-]/) && content.match(/[a-z0-9]/)) || // equations with operators
+                    content.match(/\d+[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]?/); // coefficients with variables like 3x², 2x
+                
+                // Avoid false positives for URLs, regular text in parens, etc.
+                const isNotMath = 
+                    content.includes('http') || 
+                    content.includes('://') ||
+                    (content.match(/[a-zA-Z]{10,}/) && !content.match(/[=+^-]/)); // long words without math symbols
+                
+                if (hasMath && !isNotMath) {
+                    return `\\(${content.trim()}\\)`;
+                }
+                return match;
+            });
+
             // Preprocess: Clean up common malformed LaTeX patterns
             // Fix broken \boxed commands with HTML mixed in
             processedText = processedText.replace(/\\boxed\{[^}]*style="[^"]*"[^}]*\}/g, (match) => {
