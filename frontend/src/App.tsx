@@ -179,19 +179,23 @@ function App() {
       return;
     }
 
-    // Get the latest assistant message (raw model response)
-    const latestAssistantMessage = conversation.messages
-      .filter(msg => msg.type === 'assistant')
-      .pop();
-
-    if (!latestAssistantMessage) {
-      showNotification('No model response to copy.', 'error');
+    if (conversation.messages.length === 0) {
+      showNotification('No messages to copy.', 'error');
       return;
     }
 
+    // Format the entire conversation history
+    const formattedHistory = conversation.messages
+      .map((msg) => {
+        const label = msg.type === 'user' ? 'You' : 'AI';
+        const timestamp = new Date(msg.timestamp).toLocaleTimeString();
+        return `[${label}] ${timestamp}\n${msg.content}`;
+      })
+      .join('\n\n---\n\n');
+
     try {
-      await navigator.clipboard.writeText(latestAssistantMessage.content);
-      showNotification('Model response copied to clipboard!', 'success');
+      await navigator.clipboard.writeText(formattedHistory);
+      showNotification('Entire chat history copied to clipboard!', 'success');
     } catch (err) {
       showNotification('Failed to copy to clipboard.', 'error');
       console.error('Copy failed:', err);
@@ -1529,8 +1533,8 @@ function App() {
                             <button
                               className="copy-response-btn"
                               onClick={() => handleCopyResponse(conversation.modelId)}
-                              title="Copy raw model response"
-                              aria-label={`Copy raw response from ${model?.name || conversation.modelId}`}
+                              title="Copy entire chat history"
+                              aria-label={`Copy entire chat history from ${model?.name || conversation.modelId}`}
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
