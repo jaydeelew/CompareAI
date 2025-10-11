@@ -1576,7 +1576,31 @@ function App() {
                           <div key={message.id} className={`conversation-message ${message.type}`}>
                             <div className="message-header">
                               <span className="message-type">
-                                {message.type === 'user' ? '👤 You' : '🤖 AI'}
+                                {message.type === 'user' ? (
+                                  <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '1px', verticalAlign: 'middle' }}>
+                                      <circle cx="12" cy="8" r="4"/>
+                                      <path d="M20 21a8 8 0 1 0-16 0"/>
+                                    </svg>
+                                    You
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '1px', verticalAlign: 'middle' }}>
+                                      <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                      <rect x="9" y="9" width="6" height="6"/>
+                                      <line x1="9" y1="2" x2="9" y2="4"/>
+                                      <line x1="15" y1="2" x2="15" y2="4"/>
+                                      <line x1="9" y1="20" x2="9" y2="22"/>
+                                      <line x1="15" y1="20" x2="15" y2="22"/>
+                                      <line x1="20" y1="9" x2="22" y2="9"/>
+                                      <line x1="20" y1="15" x2="22" y2="15"/>
+                                      <line x1="2" y1="9" x2="4" y2="9"/>
+                                      <line x1="2" y1="15" x2="4" y2="15"/>
+                                    </svg>
+                                    AI
+                                  </>
+                                )}
                               </span>
                               <span className="message-time">
                                 {new Date(message.timestamp).toLocaleTimeString()}
