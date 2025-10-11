@@ -235,6 +235,12 @@ function App() {
   const userCancelledRef = useRef(false);
   const followUpJustActivatedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
+  const modelsSectionRef = useRef<HTMLDivElement>(null);
+  const compareButtonRef = useRef<HTMLButtonElement>(null);
+  const [isAnimatingButton, setIsAnimatingButton] = useState(false);
+  const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
+  const animationTimeoutRef = useRef<number | null>(null);
 
   // Freemium usage tracking state
   const [usageCount, setUsageCount] = useState(0);
@@ -390,6 +396,67 @@ function App() {
       }, 400);
     }
   }, [conversations, isFollowUpMode]);
+
+  // Track mouse position over models section
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!modelsSectionRef.current) return;
+
+      const rect = modelsSectionRef.current.getBoundingClientRect();
+
+      // Check if mouse is over the section
+      const isOver = e.clientY >= rect.top && e.clientY <= rect.bottom &&
+                     e.clientX >= rect.left && e.clientX <= rect.right;
+
+      // Show card if over models section, at least one model is selected, 
+      // AND models section is not collapsed
+      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden;
+      setShowDoneSelectingCard(shouldShow);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [selectedModels.length, isModelsHidden]);
+
+  // Handle scroll tracking to stop animations
+  useEffect(() => {
+    const handleScroll = () => {
+      if (animationTimeoutRef.current !== null) {
+        window.clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+      setIsAnimatingButton(false);
+      setIsAnimatingTextarea(false);
+      
+      // Check if user is scrolling down to models section
+      if (modelsSectionRef.current) {
+        const rect = modelsSectionRef.current.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          // User is scrolling to models section, stop animations
+          setIsAnimatingButton(false);
+          setIsAnimatingTextarea(false);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Handle input change to stop animations
+  useEffect(() => {
+    if (input.length > 0 && (isAnimatingButton || isAnimatingTextarea)) {
+      if (animationTimeoutRef.current !== null) {
+        window.clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+      setIsAnimatingButton(false);
+      setIsAnimatingTextarea(false);
+    }
+  }, [input, isAnimatingButton, isAnimatingTextarea]);
 
   // Load usage data and fetch models on component mount
   useEffect(() => {
@@ -680,12 +747,39 @@ function App() {
     }, 100);
   };
 
+  // Handler for "Done Selecting" button click
+  const handleDoneSelecting = () => {
+    // Hide the card
+    setShowDoneSelectingCard(false);
+    
+    // Scroll to the very top
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+
+    // Wait for scroll to complete, then focus
+    window.setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 800); // Wait for scroll animation to complete
+  };
+
   // Handler for submit button that provides helpful validation messages
   const handleSubmitClick = () => {
+    // Clear animations when submitting
+    if (animationTimeoutRef.current !== null) {
+      window.clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+    setIsAnimatingButton(false);
+    setIsAnimatingTextarea(false);
+
     if (selectedModels.length === 0) {
       setError('Please select at least one model below to compare responses');
       // Scroll to the models section to help the user
-      setTimeout(() => {
+      window.setTimeout(() => {
         const modelsSection = document.querySelector('.models-section');
         if (modelsSection) {
           modelsSection.scrollIntoView({
@@ -933,6 +1027,24 @@ function App() {
 
   return (
     <div className="app">
+      {/* Done Selecting? Floating Card - Fixed position at screen center */}
+      {showDoneSelectingCard && (
+        <div className="done-selecting-card">
+          <div className="done-selecting-content">
+            <h3>Done Selecting?</h3>
+            <button
+              onClick={handleDoneSelecting}
+              className="done-selecting-button"
+              aria-label="Done selecting models"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="app-header">
         <nav className="navbar">
           <div className="nav-brand">
@@ -1052,7 +1164,7 @@ function App() {
 
             <div className="hero-input-section">
               <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
-              <div className="textarea-container">
+              <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -1088,9 +1200,10 @@ function App() {
                     </button>
                   )}
                   <button
+                    ref={compareButtonRef}
                     onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
                     disabled={isLoading}
-                    className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''}`}
+                    className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
                     title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
                   >
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1149,7 +1262,7 @@ function App() {
           </div>
         )}
 
-        <section className="models-section">
+        <section className="models-section" ref={modelsSectionRef}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <div>
               <h2 style={{ margin: 0 }}>
