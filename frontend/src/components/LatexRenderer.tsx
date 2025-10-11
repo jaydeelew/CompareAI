@@ -360,7 +360,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Unordered lists
-        processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (match, indent, content) => {
+        processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
             const level = indent.length;
             console.log(`📌 List item: level=${level}, indent="${indent}", content="${content.substring(0, 50)}..."`);
             const processedContent = processListContent(content);
@@ -368,7 +368,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Ordered lists - capture indent level for nesting
-        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (match, indent, num, content) => {
+        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, indent, num, content) => {
             const level = indent.length;
             console.log(`🔢 OL match: indent="${indent}", level=${level}, num=${num}, content="${content.substring(0, 50)}"`);
             const processedContent = processListContent(content);
