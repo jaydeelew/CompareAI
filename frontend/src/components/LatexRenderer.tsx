@@ -252,6 +252,30 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Convert (( content )) to ( content ) first, which will be processed in the next step
             processedText = processedText.replace(/\(\(\s*([^()]+)\s*\)\)/g, '( $1 )');
             
+            // ===== CRITICAL: Detect markdown lists BEFORE LaTeX rendering =====
+            // This must happen early because LaTeX rendering produces multi-line HTML
+            // that breaks the list detection regex patterns
+            
+            // Handle markdown task lists - [x] and [ ]
+            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
+                const isChecked = checked === 'x';
+                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
+            });
+
+            // Handle unordered lists (but not task lists) - including indented ones
+            processedText = processedText.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
+                const indentLevel = indent.length;
+                return `___UL_ITEM___${indentLevel}___${content}___/UL_ITEM___`;
+            });
+
+            // Handle ordered lists  
+            processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
+
+            // Debug: Log if we have list items
+            if (processedText.includes('___OL_ITEM___') || processedText.includes('___UL_ITEM___')) {
+                console.log('📋 List items detected BEFORE LaTeX processing');
+            }
+
             // Preprocess: Handle LaTeX-like content wrapped in square brackets with spaces: [ ... ]
             // This is common in AI model outputs for displaying mathematical results
             // Match [ <math content> ] where there are spaces after [ and before ]
@@ -710,25 +734,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
             });
 
-            // Handle markdown task lists - [x] and [ ] (BEFORE line breaks)
-            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
-                const isChecked = checked === 'x';
-                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${text}___/TASK_ITEM___`;
-            });
-
-            // Handle markdown lists more carefully (BEFORE line breaks)
-            // First, handle unordered lists (but not task lists) - including indented ones
-            processedText = processedText.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
-                const indentLevel = indent.length;
-                return `___UL_ITEM___${indentLevel}___${content}___/UL_ITEM___`;
-            });
-
-            // Then handle ordered lists  
-            processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
-
-            // Debug: Log if we have list items
-            if (processedText.includes('___OL_ITEM___') || processedText.includes('___UL_ITEM___')) {
-                console.log('📋 List items detected before paragraph processing');
+            // Debug: Check list items after LaTeX processing
+            if (processedText.includes('___UL_ITEM___')) {
+                console.log('📋 After LaTeX processing, checking UL items...');
+                const ulItems = processedText.match(/___UL_ITEM___[\s\S]{0,200}?___\/UL_ITEM___/g);
+                if (ulItems) {
+                    console.log('📋 Found', ulItems.length, 'UL items after LaTeX');
+                    ulItems.forEach((item, i) => {
+                        console.log(`📋 Item ${i + 1}:`, item.substring(0, 150));
+                    });
+                }
             }
 
             // Handle markdown line breaks (double spaces or double newlines) - BEFORE converting list placeholders to HTML
@@ -740,7 +755,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Convert task list items to proper HTML
             processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
-                const items = match.replace(/___TASK_ITEM___(checked|unchecked)___(.*?)___\/TASK_ITEM___/g, (_, checked, text) => {
+                // Fixed: Use [\s\S]*? instead of .*? to match content that may contain newlines (from KaTeX HTML)
+                const items = match.replace(/___TASK_ITEM___(checked|unchecked)___([\s\S]*?)___\/TASK_ITEM___/g, (_, checked, text) => {
                     const checkedAttr = checked === 'checked' ? 'checked' : '';
                     return `<li class="task-list-item"><input type="checkbox" ${checkedAttr} disabled> ${text}</li>`;
                 });
@@ -749,9 +765,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Convert consecutive unordered list items to proper HTML with nested structure
             processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:\s*___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
+                console.log('🔍 Converting UL items to HTML, match length:', match.length);
+                
                 // Parse all items with their indentation levels
                 const items: Array<{level: number, content: string}> = [];
-                match.replace(/___UL_ITEM___(\d+)___(.*?)___\/UL_ITEM___/g, (_, indentLevel, content) => {
+                // Fixed: Use [\s\S]*? instead of .*? to match content that may contain newlines (from KaTeX HTML)
+                match.replace(/___UL_ITEM___(\d+)___([\s\S]*?)___\/UL_ITEM___/g, (_, indentLevel, content) => {
                     items.push({
                         level: parseInt(indentLevel),
                         content: content.trim()
@@ -759,12 +778,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     return '';
                 });
 
-                if (items.length === 0) return match;
+                console.log('🔍 Parsed', items.length, 'UL items');
+                items.forEach((item, i) => {
+                    console.log(`  Item ${i + 1}:`, item.content.substring(0, 100));
+                });
+
+                if (items.length === 0) {
+                    console.warn('⚠️ No items parsed from UL match!');
+                    return match;
+                }
 
                 // Build nested HTML structure
-                let html = '';
+                // CRITICAL FIX: Always start with a <ul> wrapper for level 0 items
+                let html = '<ul>';
                 let currentLevel = 0;
-                const openTags: string[] = [];
+                const openTags: string[] = ['</ul>'];
 
                 for (const item of items) {
                     // Close tags if we're going to a lower level
@@ -790,6 +818,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     html += openTags.pop();
                 }
 
+                console.log('✅ Generated UL HTML:', html.substring(0, 200));
                 return html;
             });
 
