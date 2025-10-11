@@ -3046,6 +3046,21 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* Nested list styling */
+.message-content .latex-content li > ul,
+.message-content .latex-content li > ol {
+  margin: 0.25rem 0 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-content .latex-content ul ul {
+  list-style-type: circle;
+}
+
+.message-content .latex-content ul ul ul {
+  list-style-type: square;
+}
+
 /* Headings in content */
 .message-content .latex-content h1,
 .message-content .latex-content h2,
@@ -3325,6 +3340,22 @@ body {
 
 .latex-content li p:last-child {
   margin-bottom: 0.25rem;
+}
+
+/* Nested list styling - ensure proper indentation and spacing */
+.latex-content li > ul,
+.latex-content li > ol {
+  margin: 0.25rem 0 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+/* Ensure nested lists use different bullet styles */
+.latex-content ul ul {
+  list-style-type: circle;
+}
+
+.latex-content ul ul ul {
+  list-style-type: square;
 }
 
 .latex-content code {

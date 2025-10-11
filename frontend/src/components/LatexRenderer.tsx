@@ -344,6 +344,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
      * Stage 5: Process markdown lists
      */
     const processMarkdownLists = (text: string): string => {
+        console.log('🔍 Raw text before list processing:', text.substring(0, 500));
+        console.log('🔍 Text includes "First version"?', text.includes('First version'));
         let processed = text;
 
         // Helper function to process parentheses in list content
@@ -359,8 +361,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Unordered lists
-        processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
+        processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (match, indent, content) => {
             const level = indent.length;
+            console.log(`📌 List item: level=${level}, indent="${indent}", content="${content.substring(0, 50)}..."`);
             const processedContent = processListContent(content);
             return `__UL_${level}__${processedContent}__/UL__`;
         });
@@ -629,30 +632,54 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             if (items.length === 0) return match;
 
+            console.log('📋 List items detected:', items);
+
             // Normalize levels
             const minLevel = Math.min(...items.map(i => i.level));
             items.forEach(i => i.level -= minLevel);
 
             let html = '<ul>';
             let currentLevel = 0;
+            const openListItems: boolean[] = []; // Track open <li> tags
 
-            items.forEach(item => {
+            items.forEach((item, index) => {
+                const nextLevel = index < items.length - 1 ? items[index + 1].level : 0;
+                
+                // Close deeper levels
                 while (currentLevel > item.level) {
                     html += '</ul>';
+                    if (openListItems.length > 0) {
+                        openListItems.pop();
+                    }
                     currentLevel--;
                 }
-                while (currentLevel < item.level) {
+                
+                // Open new item at current level
+                html += `<li>${item.content}`;
+                
+                // If next item is nested deeper, start a nested list
+                if (nextLevel > item.level) {
                     html += '<ul>';
                     currentLevel++;
+                    openListItems.push(true);
+                } else {
+                    // Close the current list item
+                    html += '</li>';
                 }
-                html += `<li>${item.content}</li>`;
             });
 
+            // Close any remaining open tags
             while (currentLevel > 0) {
                 html += '</ul>';
+                if (openListItems.length > 0) {
+                    html += '</li>';
+                    openListItems.pop();
+                }
                 currentLevel--;
             }
             html += '</ul>';
+
+            console.log('📋 Generated HTML:', html);
 
             return html;
         });
