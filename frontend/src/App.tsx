@@ -1575,18 +1575,18 @@ function App() {
                         {conversation.messages.map((message) => (
                           <div key={message.id} className={`conversation-message ${message.type}`}>
                             <div className="message-header">
-                              <span className="message-type">
+                              <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 {message.type === 'user' ? (
                                   <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '1px', verticalAlign: 'middle' }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <circle cx="12" cy="8" r="4"/>
                                       <path d="M20 21a8 8 0 1 0-16 0"/>
                                     </svg>
-                                    You
+                                    <span>You</span>
                                   </>
                                 ) : (
                                   <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '1px', verticalAlign: 'middle' }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <rect x="4" y="4" width="16" height="16" rx="2"/>
                                       <rect x="9" y="9" width="6" height="6"/>
                                       <line x1="9" y1="2" x2="9" y2="4"/>
@@ -1598,7 +1598,7 @@ function App() {
                                       <line x1="2" y1="9" x2="4" y2="9"/>
                                       <line x1="2" y1="15" x2="4" y2="15"/>
                                     </svg>
-                                    AI
+                                    <span>AI</span>
                                   </>
                                 )}
                               </span>
