@@ -1,3 +1,31 @@
+/**
+ * LatexRenderer - Comprehensive LaTeX/Markdown Renderer
+ * 
+ * A unified parser that handles AI model responses from multiple providers.
+ * 
+ * Key Features:
+ * - Unified delimiter detection ($$, $, \[\], \(\))
+ * - Automatic normalization to KaTeX format
+ * - Permissive KaTeX configuration with trust mode
+ * - Graceful error handling with visual fallbacks
+ * - Multi-stage preprocessing pipeline
+ * - Handles malformed content (MathML, SVG, KaTeX artifacts)
+ * - Implicit math detection (parentheses/brackets with math content)
+ * - Full markdown support (lists, code blocks, formatting)
+ * 
+ * Processing Pipeline:
+ * 1. Clean malformed content (MathML, SVG, HTML artifacts)
+ * 2. Fix common LaTeX issues (missing backslashes, malformed commands)
+ * 3. Convert implicit math notation to explicit delimiters
+ * 4. Preserve code blocks (bypass LaTeX processing)
+ * 5. Process markdown lists with math content
+ * 6. Normalize and render all math delimiters
+ * 7. Process markdown formatting (bold, italic, links, etc.)
+ * 8. Convert list placeholders to HTML
+ * 9. Apply paragraph breaks
+ * 10. Restore code blocks and final cleanup
+ */
+
 import React from 'react';
 import katex from 'katex';
 
@@ -6,1324 +34,719 @@ interface LatexRendererProps {
     className?: string;
 }
 
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+// KaTeX configuration with permissive options for handling various AI model outputs
+const KATEX_OPTIONS = {
+    throwOnError: false,
+    strict: false,
+    trust: (context: { command?: string }) => ['\\url', '\\href', '\\includegraphics'].includes(context.command || ''),
+    macros: {
+        '\\eqref': '\\href{###1}{(\\text{#1})}',
+    },
+    maxSize: 500,
+    maxExpand: 1000,
+};
+
+// Unified delimiter patterns for math expressions
+const MATH_DELIMITERS = {
+    display: [
+        // eslint-disable-next-line no-useless-escape
+        { pattern: /\$\$([^\$]+?)\$\$/gs, name: 'double-dollar' },
+        { pattern: /\\\[\s*([\s\S]*?)\s*\\\]/g, name: 'bracket' },
+    ],
+    inline: [
+        // eslint-disable-next-line no-useless-escape
+        { pattern: /(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, name: 'single-dollar' },
+        { pattern: /\\\(\s*([^\\]*?)\s*\\\)/g, name: 'paren' },
+    ],
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Safely render LaTeX with KaTeX with error handling
+ */
+const safeRenderKatex = (latex: string, displayMode: boolean): string => {
+    try {
+        const cleanLatex = latex.trim()
+            .replace(/<[^>]*>/g, '') // Remove HTML tags
+            .replace(/style="[^"]*"/g, ''); // Remove style attributes
+        
+        if (!cleanLatex) return '';
+        
+        return katex.renderToString(cleanLatex, {
+            ...KATEX_OPTIONS,
+            displayMode,
+        });
+    } catch (error) {
+        console.warn('KaTeX rendering error:', error, 'Input:', latex.substring(0, 100));
+        // Return formatted fallback
+        const style = displayMode 
+            ? 'display: block; border: 1px solid #ccc; padding: 8px; margin: 8px 0; background: #f9f9f9;'
+            : 'border: 1px solid #ccc; padding: 2px 4px; background: #f9f9f9;';
+        return `<span style="${style} font-family: monospace; font-size: 0.9em;">${latex.trim()}</span>`;
+    }
+};
+
+/**
+ * Check if content looks like mathematical notation
+ */
+const looksMathematical = (content: string): boolean => {
+    // LaTeX commands
+    if (/\\(frac|int|sum|sqrt|cdot|times|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)\b/.test(content)) {
+        return true;
+    }
+    
+    // Mathematical operators and symbols
+    if (/[=+\-×·÷±≠≤≥≈∞∑∏∫√²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content)) {
+        return true;
+    }
+    
+    // Variables with exponents
+    if (/[a-z]\^[0-9{]/.test(content) || /[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content)) {
+        return true;
+    }
+    
+    // Derivatives
+    if (/[a-z]'/.test(content) || /d[a-z]/.test(content)) {
+        return true;
+    }
+    
+    return false;
+};
+
+/**
+ * Check if content looks like prose (not math)
+ */
+const looksProse = (content: string): boolean => {
+    // URLs
+    if (/https?:\/\//.test(content)) return true;
+    
+    // Long words without math
+    if (content.match(/[a-zA-Z]{15,}/) && !looksMathematical(content)) return true;
+    
+    // Common prose patterns
+    if (/^(where|note|for example|i\.e\.|e\.g\.|etc\.|see|vs\.|antiderivative|a constant)/i.test(content)) {
+        return true;
+    }
+    
+    // Many words without math
+    const wordCount = content.trim().split(/\s+/).length;
+    if (wordCount > 15 && !looksMathematical(content)) return true;
+    
+    return false;
+};
+
 const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' }) => {
+    
+    // ============================================================================
+    // PREPROCESSING PIPELINE
+    // ============================================================================
+    
+    /**
+     * Stage 1: Clean malformed content (MathML, SVG, KaTeX artifacts)
+     */
+    const cleanMalformedContent = (text: string): string => {
+        let cleaned = text;
+
+        // Remove malformed KaTeX/MathML markup
+        cleaned = cleaned.replace(/<\s*spanclass\s*=\s*["']katex[^"']*["'][^>]*>/gi, '');
+        cleaned = cleaned.replace(/spanclass/gi, '');
+        cleaned = cleaned.replace(/mathxmlns/gi, '');
+        cleaned = cleaned.replace(/annotationencoding/gi, '');
+
+        // Remove MathML blocks
+        cleaned = cleaned.replace(/<math[^>]*xmlns[^>]*>[\s\S]*?<\/math>/gi, '');
+        cleaned = cleaned.replace(/xmlns:?[^=]*="[^"]*w3\.org\/1998\/Math\/MathML[^"]*"/gi, '');
+        cleaned = cleaned.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
+        cleaned = cleaned.replace(/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
+
+        // Remove MathML tags while preserving content
+        const mathmlTags = ['math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac', 'mtext', 'mspace'];
+        mathmlTags.forEach(tag => {
+            // eslint-disable-next-line no-useless-escape
+            cleaned = cleaned.replace(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`, 'gi'), '$1');
+            // eslint-disable-next-line no-useless-escape
+            cleaned = cleaned.replace(new RegExp(`<\/?${tag}[^>]*>`, 'gi'), '');
+        });
+
+        // Remove SVG content
+        cleaned = cleaned.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '');
+        cleaned = cleaned.replace(/<path[^>]*\/>/gi, '');
+        
+        // Remove long sequences that look like SVG path data
+        cleaned = cleaned.replace(/[a-zA-Z0-9\s,.-]{50,}/g, (match) => {
+            const hasMany = (pattern: RegExp, threshold: number) => (match.match(pattern) || []).length > threshold;
+            if (hasMany(/\d/g, 10) && hasMany(/,/g, 5) && hasMany(/[a-zA-Z]/g, 5)) {
+                return ''; // Remove SVG path data
+            }
+            return match;
+        });
+
+        return cleaned;
+    };
+
+    /**
+     * Stage 2: Fix common LaTeX issues
+     */
+    const fixLatexIssues = (text: string): string => {
+        let fixed = text;
+
+        // Remove standalone delimiter lines (common in AI outputs)
+        fixed = fixed.replace(/^\\\[\s*$/gm, '');
+        fixed = fixed.replace(/^\\\]\s*$/gm, '');
+        fixed = fixed.replace(/^\$\$\s*$/gm, '');
+
+        // Fix missing backslashes in common LaTeX commands
+        const commands = ['frac', 'boxed', 'sqrt', 'sum', 'prod', 'int', 'lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp'];
+        commands.forEach(cmd => {
+            fixed = fixed.replace(new RegExp(`\\b${cmd}\\{`, 'g'), `\\${cmd}{`);
+            fixed = fixed.replace(new RegExp(`\\b${cmd}([_^])`, 'g'), `\\${cmd}$1`);
+        });
+
+        // Fix missing backslashes in operators
+        const operators = ['neq', 'leq', 'geq', 'cdot', 'times', 'div', 'pm', 'mp', 'approx', 'equiv', 'sim', 'infty'];
+        operators.forEach(op => {
+            fixed = fixed.replace(new RegExp(`\\b${op}\\b`, 'g'), `\\${op}`);
+        });
+
+        // Fix \left and \right (KaTeX handles these automatically in most cases)
+        fixed = fixed.replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+        fixed = fixed.replace(/\\left\[/g, '[').replace(/\\right\]/g, ']');
+        fixed = fixed.replace(/\\left\\\{/g, '\\{').replace(/\\right\\\}/g, '\\}');
+
+        // Clean up boxed commands (remove redundant wrappers)
+        fixed = fixed.replace(/\(\s*\\boxed\{([^}]+)\}\s*\)\.?/g, '\\boxed{$1}');
+        fixed = fixed.replace(/\[\s*\\boxed\{([^}]+)\}\s*\]\.?/g, '\\boxed{$1}');
+        fixed = fixed.replace(/\\boxed\{\s*\(\s*([^)]+)\s*\)\s*\}/g, '\\boxed{$1}');
+        fixed = fixed.replace(/\\boxed\{\s*\[\s*([^\]]+)\s*\]\s*\}/g, '\\boxed{$1}');
+
+        // Fix double parentheses (( ... )) - often used for emphasis
+        fixed = fixed.replace(/\(\(\s*([^()]+)\s*\)\)/g, '( $1 )');
+
+        // Fix derivative notation
+        fixed = fixed.replace(/fracdx\[([^\]]+)\]/g, '\\frac{d}{dx}[$1]');
+        fixed = fixed.replace(/fracd([a-z])\[([^\]]+)\]/g, '\\frac{d}{d$1}[$2]');
+
+        // Fix common malformed LaTeX mixed with HTML
+        fixed = fixed.replace(/\\boxed\{[^}]*style="[^"]*"[^}]*\}/g, (match) => {
+            const content = match
+                .replace(/\\boxed\{/, '')
+                .replace(/\}$/, '')
+                .replace(/<[^>]*>/g, '')
+                .replace(/style="[^"]*"/g, '')
+                .trim();
+            return `\\boxed{${content}}`;
+        });
+
+        return fixed;
+    };
+
+    /**
+     * Stage 3: Detect and convert implicit math notation
+     */
+    const convertImplicitMath = (text: string): string => {
+        let converted = text;
+
+        // Handle content in parentheses with spaces: ( math content )
+        converted = converted.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (_match, content) => {
+            if (looksMathematical(content) && !looksProse(content)) {
+                return `\\(${content.trim()}\\)`;
+            }
+            return _match;
+        });
+
+        // Handle content in square brackets with spaces: [ math content ]
+        converted = converted.replace(/\[\s+((?:[^[\]]|\[[^\]]*\])+?)\s+\]/g, (_match, content) => {
+            if (content.includes('\\boxed')) return _match; // Already handled
+            if (looksMathematical(content) && !looksProse(content)) {
+                return `\\(${content.trim()}\\)`;
+            }
+            return _match;
+        });
+
+        // Handle simple parentheses (not function calls)
+        converted = converted.replace(/(?<![a-zA-Z])\(([^()]+)\)/g, (_match, content) => {
+            if (_match.includes('\\(') || content.includes('\\boxed')) return _match;
+            if (content.match(/^(a|an)\s+/i)) return _match; // Prose
+            
+            const trimmed = content.trim();
+            
+            // Single letter/number or simple math expressions
+            if (/^[a-zA-Z0-9]$/.test(trimmed) || 
+                /^[+-]?\s*[A-Z]$/.test(trimmed) ||
+                (looksMathematical(content) && !looksProse(content) && content.length < 100)) {
+                return `\\(${trimmed}\\)`;
+            }
+            
+            return _match;
+        });
+
+        return converted;
+    };
+
+    /**
+     * Stage 4: Preserve code blocks
+     */
+    const preserveCodeBlocks = (text: string): { text: string; blocks: string[] } => {
+        const blocks: string[] = [];
+        
+        const processed = text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
+            const lang = language || 'text';
+            const highlightedCode = code.replace(/\n$/, '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/^( +)/gm, (_match: string) => '&nbsp;'.repeat(_match.length));
+
+            const codeBlockHTML = `
+                <div class="code-block-direct" data-language="${lang}" style="
+                    background: #0d1117;
+                    border: 1px solid #30363d;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                    overflow-x: auto;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                ">
+                    <pre style="margin: 0; white-space: pre; word-wrap: normal; overflow-wrap: normal;">
+                        <code style="
+                            background: transparent;
+                            padding: 0;
+                            font-family: inherit;
+                            font-size: inherit;
+                            line-height: inherit;
+                            color: #e6edf3;
+                            white-space: pre;
+                            word-wrap: normal;
+                            overflow-wrap: normal;
+                            display: block;
+                        ">${highlightedCode}</code>
+                    </pre>
+                </div>
+            `;
+
+            blocks.push(codeBlockHTML);
+            return `__CODE_BLOCK_${blocks.length - 1}__`;
+        });
+
+        return { text: processed, blocks };
+    };
+
+    /**
+     * Stage 5: Process markdown lists
+     */
+    const processMarkdownLists = (text: string): string => {
+        let processed = text;
+
+        // Helper function to process parentheses in list content
+        const processListContent = (content: string): string => {
+            return convertImplicitMath(content);
+        };
+
+        // Task lists
+        processed = processed.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
+            const isChecked = checked === 'x';
+            const processedText = processListContent(text);
+            return `__TASK_${isChecked ? 'checked' : 'unchecked'}__${processedText}__/TASK__`;
+        });
+
+        // Unordered lists
+        processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
+            const level = indent.length;
+            const processedContent = processListContent(content);
+            return `__UL_${level}__${processedContent}__/UL__`;
+        });
+
+        // Ordered lists
+        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
+            const processedContent = processListContent(content);
+            return `__OL__${processedContent}__/OL__`;
+        });
+
+        return processed;
+    };
+
+    /**
+     * Stage 6: Normalize and render math delimiters
+     */
+    const renderMathContent = (text: string): string => {
+        let rendered = text;
+
+        // First, handle explicit display math ($$...$$)
+        MATH_DELIMITERS.display.forEach(({ pattern }) => {
+            rendered = rendered.replace(pattern, (_match, math) => {
+                return safeRenderKatex(math, true);
+            });
+        });
+
+        // Then, handle explicit inline math ($...$)
+        MATH_DELIMITERS.inline.forEach(({ pattern }) => {
+            rendered = rendered.replace(pattern, (_match, math) => {
+                return safeRenderKatex(math, false);
+            });
+        });
+
+        // Handle standalone LaTeX commands
+        rendered = rendered.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (_match, num, den) => {
+            return safeRenderKatex(`\\frac{${num}}{${den}}`, false);
+        });
+
+        rendered = rendered.replace(/\\boxed\{([^}]+)\}/g, (_match, content) => {
+            const cleanContent = content
+                .replace(/<[^>]*>/g, '')
+                .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1')
+                .trim();
+            return safeRenderKatex(`\\boxed{${cleanContent}}`, false);
+        });
+
+        // Math symbols and Greek letters
+        const symbols = [
+            // Operators
+            { pattern: /\\cdot/g, latex: '\\cdot' },
+            { pattern: /\\times/g, latex: '\\times' },
+            { pattern: /\\div/g, latex: '\\div' },
+            { pattern: /\\pm/g, latex: '\\pm' },
+            { pattern: /\\mp/g, latex: '\\mp' },
+            
+            // Relations
+            { pattern: /\\leq/g, latex: '\\leq' },
+            { pattern: /\\geq/g, latex: '\\geq' },
+            { pattern: /\\neq/g, latex: '\\neq' },
+            { pattern: /\\approx/g, latex: '\\approx' },
+            { pattern: /\\equiv/g, latex: '\\equiv' },
+            { pattern: /\\sim/g, latex: '\\sim' },
+            
+            // Special symbols
+            { pattern: /\\infty/g, latex: '\\infty' },
+            { pattern: /\\partial/g, latex: '\\partial' },
+            { pattern: /\\nabla/g, latex: '\\nabla' },
+            { pattern: /\\emptyset/g, latex: '\\emptyset' },
+            { pattern: /\\in/g, latex: '\\in' },
+            { pattern: /\\notin/g, latex: '\\notin' },
+            { pattern: /\\subset/g, latex: '\\subset' },
+            { pattern: /\\supset/g, latex: '\\supset' },
+            { pattern: /\\cup/g, latex: '\\cup' },
+            { pattern: /\\cap/g, latex: '\\cap' },
+            { pattern: /\\rightarrow/g, latex: '\\rightarrow' },
+            { pattern: /\\leftarrow/g, latex: '\\leftarrow' },
+            { pattern: /\\Rightarrow/g, latex: '\\Rightarrow' },
+            { pattern: /\\Leftarrow/g, latex: '\\Leftarrow' },
+            
+            // Greek letters (lowercase)
+            { pattern: /\\alpha/g, latex: '\\alpha' },
+            { pattern: /\\beta/g, latex: '\\beta' },
+            { pattern: /\\gamma/g, latex: '\\gamma' },
+            { pattern: /\\delta/g, latex: '\\delta' },
+            { pattern: /\\epsilon/g, latex: '\\epsilon' },
+            { pattern: /\\zeta/g, latex: '\\zeta' },
+            { pattern: /\\eta/g, latex: '\\eta' },
+            { pattern: /\\theta/g, latex: '\\theta' },
+            { pattern: /\\iota/g, latex: '\\iota' },
+            { pattern: /\\kappa/g, latex: '\\kappa' },
+            { pattern: /\\lambda/g, latex: '\\lambda' },
+            { pattern: /\\mu/g, latex: '\\mu' },
+            { pattern: /\\nu/g, latex: '\\nu' },
+            { pattern: /\\xi/g, latex: '\\xi' },
+            { pattern: /\\pi/g, latex: '\\pi' },
+            { pattern: /\\rho/g, latex: '\\rho' },
+            { pattern: /\\sigma/g, latex: '\\sigma' },
+            { pattern: /\\tau/g, latex: '\\tau' },
+            { pattern: /\\upsilon/g, latex: '\\upsilon' },
+            { pattern: /\\phi/g, latex: '\\phi' },
+            { pattern: /\\chi/g, latex: '\\chi' },
+            { pattern: /\\psi/g, latex: '\\psi' },
+            { pattern: /\\omega/g, latex: '\\omega' },
+            
+            // Greek letters (uppercase)
+            { pattern: /\\Gamma/g, latex: '\\Gamma' },
+            { pattern: /\\Delta/g, latex: '\\Delta' },
+            { pattern: /\\Theta/g, latex: '\\Theta' },
+            { pattern: /\\Lambda/g, latex: '\\Lambda' },
+            { pattern: /\\Xi/g, latex: '\\Xi' },
+            { pattern: /\\Pi/g, latex: '\\Pi' },
+            { pattern: /\\Sigma/g, latex: '\\Sigma' },
+            { pattern: /\\Upsilon/g, latex: '\\Upsilon' },
+            { pattern: /\\Phi/g, latex: '\\Phi' },
+            { pattern: /\\Psi/g, latex: '\\Psi' },
+            { pattern: /\\Omega/g, latex: '\\Omega' },
+        ];
+
+        symbols.forEach(({ pattern, latex }) => {
+            rendered = rendered.replace(pattern, () => safeRenderKatex(latex, false));
+        });
+
+        // Handle derivative notation d/dx
+        rendered = rendered.replace(/\bd\/d([a-zA-Z])/g, (_match, variable) => {
+            return safeRenderKatex(`\\frac{d}{d${variable}}`, false);
+        });
+
+        // Handle Unicode superscripts
+        rendered = rendered.replace(/([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g, (_match, base, sup) => {
+            const supMap: { [key: string]: string } = {
+                '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6',
+                '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '¹': '1'
+            };
+            return safeRenderKatex(`${base}^{${supMap[sup]}}`, false);
+        });
+
+        // Handle caret notation
+        rendered = rendered.replace(/([a-zA-Z0-9]+)\^\{([^}]+)\}/g, (_match, base, exp) => {
+            return safeRenderKatex(`${base}^{${exp}}`, false);
+        });
+
+        rendered = rendered.replace(/([a-zA-Z])\^(\d+|[a-zA-Z])/g, (_match, base, exp) => {
+            return safeRenderKatex(`${base}^{${exp}}`, false);
+        });
+
+        return rendered;
+    };
+
+    /**
+     * Stage 7: Process markdown formatting
+     */
+    const processMarkdown = (text: string): string => {
+        let processed = text;
+
+        // Tables - must come first
+        processed = processed.replace(/^\|(.+)\|$/gm, (_match, content) => {
+            return '__TABLE_ROW__' + content + '__/TABLE_ROW__';
+        });
+
+        // Process table rows and convert to HTML
+        processed = processed.replace(/(__TABLE_ROW__[\s\S]*?__\/TABLE_ROW__)+/g, (match) => {
+            const rows = match.split('__/TABLE_ROW__').filter(row => row.trim());
+            let tableHTML = '<table class="markdown-table">';
+            let isHeader = true;
+
+            rows.forEach((row, index) => {
+                const cleanRow = row.replace('__TABLE_ROW__', '').trim();
+                // Skip separator rows (like |----|----|)
+                if (cleanRow.match(/^[-|\s:]+$/)) {
+                    isHeader = false;
+                    return;
+                }
+
+                const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
+                if (cells.length > 0) {
+                    const tag = isHeader ? 'th' : 'td';
+                    const rowHTML = '<tr>' + cells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
+                    tableHTML += rowHTML;
+                    if (index === 0) isHeader = false;
+                }
+            });
+
+            tableHTML += '</table>';
+            return tableHTML;
+        });
+
+        // Inline code
+        processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+
+        // Horizontal rules
+        processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
+        processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
+        processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
+
+        // Headings (longest first to avoid partial matches)
+        processed = processed.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+        processed = processed.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+        processed = processed.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+        processed = processed.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+        // Bold and italic
+        processed = processed.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+        processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+
+        // Strikethrough
+        processed = processed.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
+
+        // Reference-style links
+        const referenceMap: { [key: string]: string } = {};
+        processed = processed.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (_, ref, url) => {
+            referenceMap[ref.toLowerCase()] = url.trim();
+            return '';
+        });
+
+        // Links (both inline and reference-style)
+        processed = processed.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
+            const titleAttr = title ? ` title="${title}"` : '';
+            return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+        });
+
+        // Reference-style links
+        processed = processed.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
+            const reference = ref || text.toLowerCase();
+            const url = referenceMap[reference];
+            if (url) {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+            }
+            return match;
+        });
+
+        // Images
+        processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) => {
+            const titleAttr = title ? ` title="${title}"` : '';
+            return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
+        });
+
+        return processed;
+    };
+
+    /**
+     * Stage 8: Convert markdown list placeholders to HTML
+     */
+    const convertListsToHTML = (text: string): string => {
+        let converted = text;
+
+        // Task lists
+        converted = converted.replace(/(__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)+/g, (match) => {
+            const items = match.replace(/__TASK_(checked|unchecked)__([\s\S]*?)__\/TASK__/g, (_, checked, text) => {
+                const checkedAttr = checked === 'checked' ? 'checked' : '';
+                return `<li class="task-list-item"><input type="checkbox" ${checkedAttr} disabled> ${text}</li>`;
+            });
+            return `<ul class="task-list">${items}</ul>`;
+        });
+
+        // Unordered lists
+        converted = converted.replace(/(__UL_[\s\S]*?__\/UL__)+/g, (match) => {
+            const items: { level: number; content: string }[] = [];
+            const regex = /__UL_(\d+)__([\s\S]*?)__\/UL__/g;
+            let m;
+            
+            while ((m = regex.exec(match)) !== null) {
+                items.push({ level: parseInt(m[1]), content: m[2].trim() });
+            }
+
+            if (items.length === 0) return match;
+
+            // Normalize levels
+            const minLevel = Math.min(...items.map(i => i.level));
+            items.forEach(i => i.level -= minLevel);
+
+            let html = '<ul>';
+            let currentLevel = 0;
+
+            items.forEach(item => {
+                while (currentLevel > item.level) {
+                    html += '</ul>';
+                    currentLevel--;
+                }
+                while (currentLevel < item.level) {
+                    html += '<ul>';
+                    currentLevel++;
+                }
+                html += `<li>${item.content}</li>`;
+            });
+
+            while (currentLevel > 0) {
+                html += '</ul>';
+                currentLevel--;
+            }
+            html += '</ul>';
+
+            return html;
+        });
+
+        // Ordered lists
+        converted = converted.replace(/(__OL__[\s\S]*?__\/OL__)+/g, (match) => {
+            const items = match.replace(/__OL__([\s\S]*?)__\/OL__/g, (_, content) => {
+                return `<li>${content.trim()}</li>`;
+            });
+            return `<ol>${items}</ol>`;
+        });
+
+        return converted;
+    };
+
+    /**
+     * Stage 9: Apply paragraph breaks
+     */
+    const applyParagraphBreaks = (text: string): string => {
+        let processed = text;
+
+        // Line breaks
+        processed = processed.replace(/ {2}\n/g, '<br>');
+        
+        // Paragraph breaks
+        processed = processed.replace(/\n\n/g, '</p><p>');
+
+        // Wrap in paragraphs if needed
+        if (processed.includes('</p><p>') && !processed.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|div)/)) {
+            processed = `<p>${processed}</p>`;
+        }
+
+        return processed;
+    };
+
+    /**
+     * Main rendering pipeline
+     */
     const renderLatex = (text: string): string => {
         try {
-            let processedText = text;
+            let processed = text;
 
-            // Debug logging
-            if (processedText.includes('MathML') || processedText.includes('www.w3.org') || processedText.includes('spanclass') || processedText.includes('katex')) {
-                console.log('⚠️ LatexRenderer received problematic content:', processedText.substring(0, 300));
-            }
+            // Stage 1: Clean malformed content
+            processed = cleanMalformedContent(processed);
 
-            // CRITICAL: Remove malformed KaTeX/MathML markup that shouldn't be in responses
-            // This is a safety net in case backend cleanup fails
-            processedText = processedText.replace(/<\s*spanclass\s*=\s*["']katex[^"']*["'][^>]*>/gi, '');
-            processedText = processedText.replace(/<\s*spanclass\s*=\s*["'][^"']*["'][^>]*>/gi, '');
-            processedText = processedText.replace(/spanclass/gi, '');
-            processedText = processedText.replace(/mathxmlns/gi, '');
-            processedText = processedText.replace(/annotationencoding/gi, '');
+            // Stage 2: Fix LaTeX issues
+            processed = fixLatexIssues(processed);
 
-            // Preprocess: Clean up MathML content - AGGRESSIVE CLEANUP
-            // Remove entire MathML blocks including namespace declarations
-            processedText = processedText.replace(/<math[^>]*xmlns[^>]*>[\s\S]*?<\/math>/gi, '');
+            // Stage 3: Convert implicit math notation
+            processed = convertImplicitMath(processed);
 
-            // Remove MathML namespace declarations anywhere they appear
-            processedText = processedText.replace(/xmlns:?[^=]*="[^"]*w3\.org\/1998\/Math\/MathML[^"]*"/gi, '');
-            processedText = processedText.replace(/xmlns="[^"]*Math\/MathML[^"]*"/gi, '');
+            // Stage 4: Preserve code blocks
+            const { text: withoutCode, blocks: codeBlocks } = preserveCodeBlocks(processed);
+            processed = withoutCode;
 
-            // Remove the standalone MathML namespace URL patterns that appear in text (with or without http/https)
-            processedText = processedText.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^<>\s]*/gi, '');
-            processedText = processedText.replace(/\/\/www\.w3\.org\/1998\/Math\/MathML[^<>\s"'`]*/gi, '');
-            processedText = processedText.replace(/www\.w3\.org\/1998\/Math\/MathML[^<>\s"'`]*/gi, '');
+            // Stage 5: Process markdown lists
+            processed = processMarkdownLists(processed);
 
-            // Remove any remaining references to MathML namespace
-            processedText = processedText.replace(/"[^"]*MathML[^"]*"/gi, '');
-            processedText = processedText.replace(/'[^']*MathML[^']*'/gi, '');
+            // Stage 6: Render math content
+            processed = renderMathContent(processed);
 
-            // Remove MathML tags while preserving their text content
-            // Handle <math> tags (with any attributes)
-            processedText = processedText.replace(/<math[^>]*>/gi, '');
-            processedText = processedText.replace(/<\/math>/gi, '');
+            // Stage 7: Process markdown formatting
+            processed = processMarkdown(processed);
 
-            // Handle <mrow> (math row) tags
-            processedText = processedText.replace(/<\/?mrow>/g, '');
+            // Stage 8: Convert lists to HTML
+            processed = convertListsToHTML(processed);
 
-            // Handle <mi> (math identifier) tags - extract content
-            processedText = processedText.replace(/<mi[^>]*>([^<]*)<\/mi>/g, '$1');
+            // Stage 9: Apply paragraph breaks
+            processed = applyParagraphBreaks(processed);
 
-            // Handle <mn> (math number) tags - extract content
-            processedText = processedText.replace(/<mn[^>]*>([^<]*)<\/mn>/g, '$1');
-
-            // Handle <mo> (math operator) tags - extract content
-            processedText = processedText.replace(/<mo[^>]*>([^<]*)<\/mo>/g, '$1');
-
-            // Handle <msup> (superscript) tags - convert to caret notation
-            processedText = processedText.replace(/<msup[^>]*>(.*?)<\/msup>/g, (_match, content) => {
-                // Extract base and superscript from nested tags
-                const baseMatch = content.match(/<mi[^>]*>([^<]*)<\/mi>|<mn[^>]*>([^<]*)<\/mn>/);
-                const supMatch = content.match(/.*?<mi[^>]*>([^<]*)<\/mi>|.*?<mn[^>]*>([^<]*)<\/mn>/);
-                if (baseMatch && supMatch) {
-                    const base = baseMatch[1] || baseMatch[2] || '';
-                    // Get the second match (superscript)
-                    const matches = content.match(/<mi[^>]*>([^<]*)<\/mi>|<mn[^>]*>([^<]*)<\/mn>/g);
-                    if (matches && matches.length >= 2) {
-                        const supText = matches[1].replace(/<\/?m[ion]>/g, '');
-                        return `${base}^${supText}`;
-                    }
-                }
-                return content.replace(/<\/?m[ion]>/g, '');
+            // Stage 10: Restore code blocks
+            codeBlocks.forEach((block, i) => {
+                processed = processed.replace(`__CODE_BLOCK_${i}__`, block);
             });
 
-            // Handle <msub> (subscript) tags
-            processedText = processedText.replace(/<msub[^>]*>(.*?)<\/msub>/g, (_match, content) => {
-                return content.replace(/<\/?m[ion]>/g, '');
-            });
+            // Final cleanup
+            processed = processed.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1');
+            processed = processed.replace(/\\\(/g, '');
+            processed = processed.replace(/\\\)/g, '');
 
-            // Handle <mfrac> (fraction) tags - convert to \frac notation
-            processedText = processedText.replace(/<mfrac[^>]*>(.*?)<\/mfrac>/g, (_match, content) => {
-                const parts = content.split(/<\/m[ion]><m[ion][^>]*>/);
-                if (parts.length >= 2) {
-                    const numerator = parts[0].replace(/<\/?m[ion][^>]*>/g, '').trim();
-                    const denominator = parts[1].replace(/<\/?m[ion][^>]*>/g, '').trim();
-                    return `\\frac{${numerator}}{${denominator}}`;
-                }
-                return content.replace(/<\/?m[ion][^>]*>/g, '');
-            });
+            return processed;
 
-            // Handle <mtext> (math text) tags
-            processedText = processedText.replace(/<mtext[^>]*>([^<]*)<\/mtext>/g, '$1');
-
-            // Handle <mspace> tags
-            processedText = processedText.replace(/<mspace[^>]*\/>/g, ' ');
-
-            // Remove any remaining MathML tags
-            processedText = processedText.replace(/<\/?m[a-z]+[^>]*>/g, '');
-
-            // Clean up any malformed MathML fragments
-            processedText = processedText.replace(/[<>]"[^"]*MathML[^"]*"/g, '');
-
-            // Remove any text that looks like a MathML URL with surrounding characters
-            processedText = processedText.replace(/[^\s]*www\.w3\.org\/\d+\/Math\/MathML[^\s]*/gi, '');
-            processedText = processedText.replace(/[^\s]*\/\/www\.w3\.org\/\d+\/Math\/MathML[^\s]*/gi, '');
-
-            // Remove standalone > or < characters that might be left from tag cleanup
-            processedText = processedText.replace(/^[<>]\s*/gm, '');
-            processedText = processedText.replace(/\s*[<>]$/gm, '');
-
-            // Fix malformed derivative notation like "fracdx[xⁿ]" or "fracdx(x^n)"
-            processedText = processedText.replace(/fracdx\[([^\]]+)\]/g, (_, content) => {
-                return `\\frac{d}{dx}[${content}]`;
-            });
-            processedText = processedText.replace(/fracd([a-z])\[([^\]]+)\]/g, (_, variable, content) => {
-                return `\\frac{d}{d${variable}}[${content}]`;
-            });
-
-            // Additional final cleanup for any remaining MathML artifacts at end of processing
-            if (processedText.includes('MathML') || processedText.includes('www.w3.org')) {
-                console.warn('MathML artifacts still present after cleanup:', processedText.substring(0, 300));
-                // One more aggressive pass
-                processedText = processedText.split(/MathML/i).join('');
-                processedText = processedText.split(/www\.w3\.org\/\d+\/Math\//gi).join('');
-            }
-
-            // Preprocess: Clean up SVG path data and other unwanted content
-            // Remove specific SVG path data patterns that appear in AI responses
-            processedText = processedText.replace(/c-2\.7,0,-7\.17,-2\.7,-13\.5,-8c-5\.8,-5\.3,-9\.5,-10,-9\.5,-14[^"]*H400000v40H845\.2724[^"]*M834 80h400000v40h-400000z/g, '');
-
-            // Remove other common SVG path patterns
-            processedText = processedText.replace(/[a-zA-Z]\s*[0-9.-]+(?:[,\s][0-9.-]+){20,}/g, '');
-
-            // Remove SVG path data patterns (long sequences of numbers, letters, and special chars)
-            processedText = processedText.replace(/[a-zA-Z0-9\s,.-]{50,}/g, (match) => {
-                // Check if this looks like SVG path data (contains many numbers, letters, commas, periods)
-                const hasManyNumbers = (match.match(/\d/g) || []).length > 10;
-                const hasManyCommas = (match.match(/,/g) || []).length > 5;
-                const hasManyLetters = (match.match(/[a-zA-Z]/g) || []).length > 5;
-
-                if (hasManyNumbers && hasManyCommas && hasManyLetters) {
-                    return ''; // Remove SVG path data
-                }
-                return match; // Keep other long sequences
-            });
-
-            // Remove standalone SVG path elements that might be mixed in
-            processedText = processedText.replace(/<path[^>]*d="[^"]*"[^>]*\/>/g, '');
-            processedText = processedText.replace(/<svg[^>]*>.*?<\/svg>/gs, '');
-
-            // Remove any remaining SVG-related attributes or elements
-            processedText = processedText.replace(/<[^>]*(?:viewBox|xmlns|stroke|fill)[^>]*>/g, '');
-
-            // Clean up any remaining malformed HTML that might contain SVG data
-            processedText = processedText.replace(/<[^>]*style="[^"]*"[^>]*>/g, (match) => {
-                // If it contains SVG-related styles, remove the whole element
-                if (match.includes('svg') || match.includes('path') || match.includes('viewBox')) {
-                    return '';
-                }
-                return match;
-            });
-
-            // Clean up any remaining mixed content that has SVG path data mixed with text
-            processedText = processedText.replace(/([^>])\s*[a-zA-Z0-9\s,.-]{30,}\s*([^<])/g, (match, before, after) => {
-                // Check if the middle part looks like SVG path data
-                const middle = match.slice(before.length, match.length - after.length);
-                const hasManyNumbers = (middle.match(/\d/g) || []).length > 5;
-                const hasManyCommas = (middle.match(/,/g) || []).length > 3;
-
-                if (hasManyNumbers && hasManyCommas) {
-                    return before + ' ' + after; // Remove the SVG data, keep the surrounding text
-                }
-                return match;
-            });
-
-            // Additional cleanup for common AI response patterns that contain SVG data
-            // Remove any lines that are mostly SVG path data
-            processedText = processedText.replace(/^[a-zA-Z0-9\s,.-]{40,}$/gm, (match) => {
-                const hasManyNumbers = (match.match(/\d/g) || []).length > 8;
-                const hasManyCommas = (match.match(/,/g) || []).length > 4;
-                const hasManyLetters = (match.match(/[a-zA-Z]/g) || []).length > 4;
-
-                if (hasManyNumbers && hasManyCommas && hasManyLetters) {
-                    return ''; // Remove the line
-                }
-                return match;
-            });
-
-            // Clean up any remaining malformed content that might have SVG data embedded
-            processedText = processedText.replace(/\s+[a-zA-Z0-9\s,.-]{20,}\s+/g, (match) => {
-                const trimmed = match.trim();
-                const hasManyNumbers = (trimmed.match(/\d/g) || []).length > 6;
-                const hasManyCommas = (trimmed.match(/,/g) || []).length > 3;
-
-                if (hasManyNumbers && hasManyCommas) {
-                    return ' '; // Replace with single space
-                }
-                return match;
-            });
-
-            // Preprocess: Fix missing backslashes in LaTeX commands
-            // Fix common LaTeX commands that are missing the backslash
-            const latexCommands = ['frac', 'boxed', 'sqrt', 'sum', 'prod', 'int', 'lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp'];
-            latexCommands.forEach(cmd => {
-                // Match word boundary + command + { (e.g., frac{)
-                const pattern1 = new RegExp(`\\b${cmd}\\{`, 'g');
-                processedText = processedText.replace(pattern1, `\\${cmd}{`);
-                
-                // Match word boundary + command + _ (e.g., int_)
-                const pattern2 = new RegExp(`\\b${cmd}_`, 'g');
-                processedText = processedText.replace(pattern2, `\\${cmd}_`);
-                
-                // Match word boundary + command + ^ (e.g., int^)
-                const pattern3 = new RegExp(`\\b${cmd}\\^`, 'g');
-                processedText = processedText.replace(pattern3, `\\${cmd}^`);
-            });
-            
-            // Fix missing backslashes in LaTeX operators/relations (not followed by {, _, ^)
-            const latexOperators = ['neq', 'leq', 'geq', 'cdot', 'times', 'div', 'pm', 'mp', 'approx', 'equiv', 'sim', 'left', 'right'];
-            latexOperators.forEach(cmd => {
-                // Match word boundary + command + space or non-word character
-                const pattern = new RegExp(`\\b${cmd}\\b`, 'g');
-                processedText = processedText.replace(pattern, `\\${cmd}`);
-            });
-
-            // Preprocess: Remove parentheses around or inside boxed{} commands
-            // Do this after fixing missing backslashes, but before parentheses/bracket detection
-            // Be very aggressive - handle multiple variations
-            
-            // Debug: check if we have boxed content
-            if (processedText.includes('boxed{')) {
-                console.log('🔍 Found boxed content before cleanup:', processedText.match(/[([]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
-            }
-            
-            // Handle ( boxed{...} ) or ( \boxed{...} ) - parentheses around boxed content (with optional period)
-            processedText = processedText.replace(/\(\s*\\boxed\{([^}]+)\}\s*\)\.?/g, (match, content) => {
-                console.log('✅ Removing parens around boxed:', match, '→', `\\boxed{${content}}`);
-                return `\\boxed{${content}}`;
-            });
-            
-            // Handle [ boxed{...} ] or [ \boxed{...} ] - brackets around boxed content
-            processedText = processedText.replace(/\[\s*\\boxed\{([^}]+)\}\s*\]\.?/g, (match, content) => {
-                console.log('✅ Removing brackets around boxed:', match, '→', `\\boxed{${content}}`);
-                return `\\boxed{${content}}`;
-            });
-            
-            // Handle boxed{( ... )} or \boxed{( ... )} - parentheses inside boxed content
-            processedText = processedText.replace(/\\boxed\{\s*\(\s*([^)]+)\s*\)\s*\}/g, (match, content) => {
-                console.log('✅ Removing parens inside boxed:', match, '→', `\\boxed{${content}}`);
-                return `\\boxed{${content}}`;
-            });
-            
-            // Handle boxed{[ ... ]} or \boxed{[ ... ]} - brackets inside boxed content
-            processedText = processedText.replace(/\\boxed\{\s*\[\s*([^\]]+)\s*\]\s*\}/g, (match, content) => {
-                console.log('✅ Removing brackets inside boxed:', match, '→', `\\boxed{${content}}`);
-                return `\\boxed{${content}}`;
-            });
-            
-            // Debug: check what we have after cleanup
-            if (processedText.includes('boxed{')) {
-                console.log('🔍 Boxed content after cleanup:', processedText.match(/[([]?\s*\\?boxed\{[^}]+\}\s*[)\]]?/g));
-            }
-
-            // Preprocess: Handle double parentheses (( ... )) - often used for emphasis
-            // Convert (( content )) to ( content ) first, which will be processed in the next step
-            processedText = processedText.replace(/\(\(\s*([^()]+)\s*\)\)/g, '( $1 )');
-            
-            // ===== CRITICAL: Detect markdown lists BEFORE LaTeX rendering =====
-            // This must happen early because LaTeX rendering produces multi-line HTML
-            // that breaks the list detection regex patterns
-            
-            // Helper function to process parentheses in list item content
-            const processParentheses = (text: string): string => {
-                // Handle ( content ) with spaces - mathematical notation
-                let result = text.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (match, content) => {
-                    const hasMath = 
-                        content.includes('\\frac') || content.includes('frac') || 
-                        content.includes('\\int') || content.includes('\\sum') ||
-                        content.includes('\\sqrt') || content.includes('\\cdot') ||
-                        content.includes('\\neq') || content.includes('\\times') ||
-                        content.match(/[a-z]\^/) || content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) ||
-                        content.match(/^\w$/) || content.match(/^[A-Z]$/) ||
-                        content.match(/^[+-]\s*[A-Z]$/) || // like +C or -C
-                        (content.match(/[=+\-×·]/) && content.match(/[a-z0-9]/));
-
-                    // Treat multi-word plain text without math symbols as prose
-                    const wordCount = content.trim().split(/\s+/).length;
-                    const containsDigits = /\d/.test(content);
-                    const containsMathOps = /[=+\-^_×·]/.test(content);
-                    const prosePhrases = /(derivative\s+of\s+a\s+constant\s+is\s+zero|a\s+constant\s+is\s+zero|derivative\s+of\s+a\s+constant)/i;
-                    const isNotMath =
-                        /^(where\s+[A-Z]\s+is\s+an?\s+|antiderivative|a\s+constant)/i.test(content) ||
-                        prosePhrases.test(content) ||
-                        (!hasMath && wordCount >= 3 && !containsDigits && !containsMathOps);
-                    
-                    if (hasMath && !isNotMath) {
-                        return `\\(${content.trim()}\\)`;
-                    }
-                    return match;
-                });
-                
-                // Handle (content) without spaces but with math (signed lowercase variables, powers, numbers)
-                result = result.replace(/\(([+-]?\s*[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]|\w+\^\d+|[xyzn]|[A-Z]|[+-]?\s*[A-Z]|[+-]?\d+)\)/g, (_match, content) => {
-                    return `\\(${content}\\)`;
-                });
-
-                // Catch-all: convert other parentheses if they look mathematical (and not function calls)
-                result = result.replace(/(^|[^a-zA-Z])\(([^()]+)\)/g, (m, pre, inner) => {
-                    const content = inner;
-                    const hasMath =
-                        /\\(frac|int|sum|sqrt|neq|leq|geq|times|cdot)/.test(content) ||
-                        /[=+\-^_×·]/.test(content) || /\d/.test(content) || /[a-z]\^/.test(content) || /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content);
-                    const words = content.trim().split(/\s+/).length;
-                    const looksProse = /(derivative\s+of\s+a\s+constant\s+is\s+zero)/i.test(content) || (words >= 4 && !hasMath);
-                    if (hasMath && !looksProse) {
-                        return pre + `\\(${content.trim()}\\)`;
-                    }
-                    return m;
-                });
-                
-                return result;
-            };
-            
-            // Handle markdown task lists - [x] and [ ]
-            processedText = processedText.replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
-                const isChecked = checked === 'x';
-                const processedTaskText = processParentheses(text);
-                return `___TASK_ITEM___${isChecked ? 'checked' : 'unchecked'}___${processedTaskText}___/TASK_ITEM___`;
-            });
-            
-            // Handle unordered lists (but not task lists) - including indented ones
-            processedText = processedText.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
-                const indentLevel = indent.length;
-                const processedContent = processParentheses(content);
-                return `___UL_ITEM___${indentLevel}___${processedContent}___/UL_ITEM___`;
-            });
-
-            // Handle ordered lists  
-            processedText = processedText.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, _indent, _num, content) => {
-                const processedContent = processParentheses(content);
-                return `___OL_ITEM___${processedContent}___/OL_ITEM___`;
-            });
-
-            // Preprocess: Handle LaTeX-like content wrapped in square brackets with spaces: [ ... ]
-            // This is common in AI model outputs for displaying mathematical results
-            // Match [ <math content> ] where there are spaces after [ and before ]
-            processedText = processedText.replace(/\[\s+((?:[^[\]]|\[[^\]]*\])+?)\s+\]/g, (match, content) => {
-                // Skip if content contains \boxed (should have been handled earlier)
-                if (content.includes('\\boxed')) {
-                    return match;
-                }
-                
-                // Similar logic to parentheses - check if content looks mathematical
-                const hasMath = 
-                    content.includes('frac') || 
-                    content.includes('boxed') || 
-                    content.includes('sqrt') || 
-                    content.includes('cdot') || 
-                    content.includes('times') ||
-                    content.match(/[a-z]\^/) || // variables with exponents using caret
-                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // variables with Unicode superscripts
-                    content.match(/[a-z]'/) || // derivatives like f'(x)
-                    content.match(/[a-z]\([a-z]\)\s*=/) || // function definitions like f(x) =
-                    content.match(/^\d+$/) || // single number like 0, 1, etc.
-                    (content.match(/[=+-]/) && content.match(/[a-z0-9]/)) || // equations with operators
-                    content.match(/\d+[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]?/); // coefficients with variables like 3x², 2x
-                
-                const isNotMath = 
-                    content.includes('http') || 
-                    content.includes('://') ||
-                    (content.match(/[a-zA-Z]{10,}/) && !content.match(/[=+^-]/));
-                
-                if (hasMath && !isNotMath) {
-                    // Use inline math instead of display math to keep left-aligned
-                    return `\\(${content.trim()}\\)`;
-                }
-                return match;
-            });
-            
-            // Preprocess: Handle LaTeX-like content wrapped in parentheses with spaces: ( ... )
-            // This is a common pattern in some AI model outputs
-            // Match ( <math content> ) where there are spaces after ( and before )
-            // Strategy: Match balanced content by being more specific about what we allow
-            processedText = processedText.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (match, content) => {
-                // The pattern (?:[^()]|\([^()]*\))+ allows either:
-                // - non-paren characters, or
-                // - a single level of nested parens like f(x)
-                
-                // Skip if content contains \boxed (should have been handled earlier)
-                if (content.includes('\\boxed')) {
-                    return match;
-                }
-                
-                // Check if content looks like it contains LaTeX or mathematical notation
-                // Check for both with and without backslashes since backslashes are added earlier
-                const hasMath = 
-                    content.includes('\\frac') || content.includes('frac') || 
-                    content.includes('\\boxed') || content.includes('boxed') || 
-                    content.includes('\\sqrt') || content.includes('sqrt') || 
-                    content.includes('\\cdot') || content.includes('cdot') || 
-                    content.includes('\\times') || content.includes('times') ||
-                    content.includes('\\neq') || content.includes('neq') ||
-                    content.includes('\\leq') || content.includes('leq') ||
-                    content.includes('\\geq') || content.includes('geq') ||
-                    content.includes('\\int') || content.includes('int_') ||
-                    content.includes('\\sum') || content.includes('sum_') ||
-                    content.match(/[a-z]\^/) || // variables with exponents using caret
-                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // variables with Unicode superscripts
-                    content.match(/[a-z]'/) || // derivatives like f'(x)
-                    content.match(/[a-z]\([a-z]\)\s*=/) || // function definitions like f(x) =
-                    content.match(/^\d+$/) || // single number like 0, 1, etc.
-                    content.match(/^[A-Z]$/) || // single capital letter like (C)
-                    content.match(/^[+-]\s*[A-Z]$/) || // like ( +C ) or ( -C )
-                    (content.match(/[=+-]/) && content.match(/[a-z0-9]/)) || // equations with operators
-                    content.match(/\d+[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]?/); // coefficients with variables like 3x², 2x
-                
-                // Avoid false positives for URLs, regular text in parens, etc.
-                const isNotMath = 
-                    content.includes('http') || 
-                    content.includes('://') ||
-                    content.match(/^(where\s+[A-Z]\s+is\s+an?\s+|antiderivative)/i) || // explanatory text
-                    (content.match(/[a-zA-Z]{10,}/) && !content.match(/[=+^-]/)); // long words without math symbols
-                
-                if (hasMath && !isNotMath) {
-                    return `\\(${content.trim()}\\)`;
-                }
-                return match;
-            });
-            
-            // Handle parentheses around mathematical content more carefully
-            // Use negative lookbehind to avoid matching function calls like f(x)
-            processedText = processedText.replace(/(?<![a-zA-Z])\(([^()]+)\)/g, (match, content) => {
-                // Skip if already processed (contains LaTeX delimiters)
-                if (match.includes('\\(') || match.includes('\\)')) {
-                    return match;
-                }
-                
-                // Skip if content contains \boxed
-                if (content.includes('\\boxed')) {
-                    return match;
-                }
-                
-                // Skip if this looks like it's part of a sentence (starts with "a " or "an ")
-                if (content.match(/^(a|an)\s+/i)) {
-                    return match;
-                }
-                
-                // Check if content looks mathematical
-                const hasMath = 
-                    content.includes('\\frac') || // LaTeX fractions
-                    content.includes('\\int') || // LaTeX integrals  
-                    content.includes('\\sum') || // LaTeX summations
-                    content.includes('\\sqrt') ||
-                    content.includes('\\cdot') ||
-                    content.includes('\\neq') ||
-                    content.includes('\\leq') ||
-                    content.includes('\\geq') ||
-                    content.includes('\\times') ||
-                    content.match(/[a-z]\^[0-9{]/) || // variables with exponents like x^2 or x^{3}
-                    content.match(/[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/) || // Unicode superscripts
-                    content.match(/^\w$/) || // single letter/number like C, x, 1
-                    content.match(/^[+-]\s*[A-Z]$/) || // like +C or -C
-                    content.match(/^[nab]\s*\\neq/) || // patterns like "n≠-1" at start
-                    (content.match(/^\d+$/) && content.length <= 3) || // short numbers
-                    content.match(/,\s*d[a-z]/) || // integral patterns like ", dx"
-                    content.match(/\s+d[a-z]\s*=/) || // differential like " dx ="
-                    content.match(/\[[^\]]+\]_[a-z]/i) || // evaluation brackets like [...]_a
-                    content.match(/^[n][²³⁴⁵⁶⁷⁸⁹⁰¹]?$/) || // just (n)
-                    content.match(/[xyznabc][²³⁴⁵⁶⁷⁸⁹⁰¹]\s*[-+−]/) || // expressions like x³ - x²
-                    (content.match(/[=+-−×·]/) && content.match(/[a-z0-9²³⁴⁵⁶⁷⁸⁹⁰¹]/) && content.length < 70); // equations with math symbols
-                
-                const isNotMath = 
-                    content.includes('http') || 
-                    content.includes('://') ||
-                    content.length > 100 || // Too long, probably prose (increased from 80)
-                    content.match(/^(e\.g\.|i\.e\.|etc\.|vs\.|note|see|for example|over a specific interval)/i) ||
-                    content.match(/^(antiderivative|where\s+[A-Z]\s+is\s+an?\s+)/i) || // explanatory text
-                    content.match(/^a\s+(constant|specific|definite)/i) || // "(a constant)", "(a specific point)"
-                    (content.split(' ').length > 15 && !content.includes('\\int') && !content.includes('\\frac')) || // Too many words unless it has math
-                    content.match(/^[A-Z][a-z]+(\s+[a-z]+)+$/); // Capitalized phrase like "Note to self"
-                
-                if (hasMath && !isNotMath) {
-                    return `\\(${content.trim()}\\)`;
-                }
-                return match;
-            });
-            
-            // Clean up any duplicate closing parentheses that might have been created
-            processedText = processedText.replace(/\)\)+/g, ')');
-            processedText = processedText.replace(/\\\)\)+/g, '\\)');
-
-            // Preprocess: Clean up common malformed LaTeX patterns
-            // Fix broken \boxed commands with HTML mixed in
-            processedText = processedText.replace(/\\boxed\{[^}]*style="[^"]*"[^}]*\}/g, (match) => {
-                // Extract just the mathematical content, removing HTML styling
-                const mathContent = match
-                    .replace(/\\boxed\{/, '')
-                    .replace(/\}$/, '')
-                    .replace(/<[^>]*>/g, '') // Remove HTML tags
-                    .replace(/style="[^"]*"/g, '') // Remove style attributes
-                    .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
-                    .trim();
-                return `\\boxed{${mathContent}}`;
-            });
-
-            // Fix malformed LaTeX commands that have HTML mixed in
-            processedText = processedText.replace(/\\[a-zA-Z]+\{[^}]*<[^>]*>[^}]*\}/g, (match) => {
-                // Extract the command and clean content
-                const commandMatch = match.match(/\\([a-zA-Z]+)\{/);
-                if (commandMatch) {
-                    const command = commandMatch[1];
-                    const content = match
-                        .replace(new RegExp(`\\\\${command}\\{`), '')
-                        .replace(/\}$/, '')
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/style="[^"]*"/g, '') // Remove style attributes
-                        .trim();
-                    return `\\${command}{${content}}`;
-                }
-                return match;
-            });
-
-            // First handle explicit display math ($$...$$)
-            processedText = processedText.replace(/\$\$([^$]+?)\$\$/g, (_, math) => {
-                try {
-                    // Clean up the math content
-                    const cleanMath = math.trim()
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/style="[^"]*"/g, '') // Remove style attributes
-                        .trim();
-
-                    const rendered = katex.renderToString(cleanMath, {
-                        displayMode: true,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    console.warn('Error rendering display math:', error, 'Math:', math);
-                    // Return a fallback that shows the math content
-                    return `<div style="border: 1px solid #ccc; padding: 8px; margin: 4px 0; background: #f9f9f9; font-family: monospace;">${math.trim()}</div>`;
-                }
-            });
-
-            // Then handle explicit inline math ($...$)
-            processedText = processedText.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_, math) => {
-                try {
-                    // Clean up the math content
-                    const cleanMath = math.trim()
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/style="[^"]*"/g, '') // Remove style attributes
-                        .trim();
-
-                    const rendered = katex.renderToString(cleanMath, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    console.warn('Error rendering inline math:', error, 'Math:', math);
-                    // Return a fallback that shows the math content
-                    return `<span style="border: 1px solid #ccc; padding: 2px 4px; background: #f9f9f9; font-family: monospace; font-size: 0.9em;">${math.trim()}</span>`;
-                }
-            });
-
-            // Guard: revert prose accidentally wrapped in \( ... \) back to plain text before KaTeX rendering
-            processedText = processedText.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, (match, inner) => {
-                const text = inner.trim();
-                const hasMathTokens = /\\(frac|int|sum|sqrt|neq|leq|geq|times|cdot|alpha|beta|gamma|pi)/.test(text)
-                    || /[=+\-^_×·]/.test(text) || /\d/.test(text) || /[a-z][\^]/.test(text) || /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(text);
-                const wordCount = text.split(/\s+/).filter(Boolean).length;
-                if (!hasMathTokens && wordCount >= 3) {
-                    return `(${text})`;
-                }
-                return match;
-            });
-
-            // Handle LaTeX inline math delimiters \(...\)
-            processedText = processedText.replace(/\\\(\s*([^\\]+?)\s*\\\)/g, (match, math) => {
-                try {
-                    const rendered = katex.renderToString(math.trim(), {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    console.warn('Error rendering LaTeX inline math:', error);
-                    return match;
-                }
-            });
-
-            // Handle LaTeX display math delimiters \[...\] 
-            processedText = processedText.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (match, math) => {
-                try {
-                    const rendered = katex.renderToString(math.trim(), {
-                        displayMode: true,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    console.warn('Error rendering LaTeX display math:', error);
-                    return match;
-                }
-            });
-
-            // Handle single \[ and \] on separate lines (common in AI responses)
-            processedText = processedText.replace(/^\\\[\s*$/gm, '');
-            processedText = processedText.replace(/^\\\]\s*$/gm, '');
-
-            // Handle LaTeX commands that appear as plain text
-            processedText = processedText.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (match, num, den) => {
-                try {
-                    const rendered = katex.renderToString(`\\frac{${num}}{${den}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle \left( and \right) parentheses - just convert to plain parens
-            // KaTeX will handle these when they're in math mode
-            processedText = processedText.replace(/\\left\(/g, '(');
-            processedText = processedText.replace(/\\right\)/g, ')');
-            
-            // Handle \left[ and \right] brackets - just convert to plain brackets
-            // KaTeX will handle these when they're in math mode
-            processedText = processedText.replace(/\\left\[/g, '[');
-            processedText = processedText.replace(/\\right\]/g, ']');
-
-            // Handle \cdot multiplication
-            processedText = processedText.replace(/\\cdot/g, () => {
-                try {
-                    const rendered = katex.renderToString('\\cdot', {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return '·';
-                }
-            });
-
-            // Handle \times multiplication
-            processedText = processedText.replace(/\\times/g, () => {
-                try {
-                    const rendered = katex.renderToString('\\times', {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return '×';
-                }
-            });
-
-            // Handle other common LaTeX math symbols
-            const mathSymbols = [
-                { pattern: /\\div/g, fallback: '÷' },
-                { pattern: /\\pm/g, fallback: '±' },
-                { pattern: /\\mp/g, fallback: '∓' },
-                { pattern: /\\leq/g, fallback: '≤' },
-                { pattern: /\\geq/g, fallback: '≥' },
-                { pattern: /\\neq/g, fallback: '≠' },
-                { pattern: /\\approx/g, fallback: '≈' },
-                { pattern: /\\infty/g, fallback: '∞' },
-                { pattern: /\\sum/g, fallback: '∑' },
-                { pattern: /\\prod/g, fallback: '∏' },
-                { pattern: /\\int/g, fallback: '∫' },
-                { pattern: /\\sqrt/g, fallback: '√' },
-                { pattern: /\\alpha/g, fallback: 'α' },
-                { pattern: /\\beta/g, fallback: 'β' },
-                { pattern: /\\gamma/g, fallback: 'γ' },
-                { pattern: /\\delta/g, fallback: 'δ' },
-                { pattern: /\\epsilon/g, fallback: 'ε' },
-                { pattern: /\\theta/g, fallback: 'θ' },
-                { pattern: /\\lambda/g, fallback: 'λ' },
-                { pattern: /\\mu/g, fallback: 'μ' },
-                { pattern: /\\pi/g, fallback: 'π' },
-                { pattern: /\\sigma/g, fallback: 'σ' },
-                { pattern: /\\tau/g, fallback: 'τ' },
-                { pattern: /\\phi/g, fallback: 'φ' },
-                { pattern: /\\omega/g, fallback: 'ω' }
-            ];
-
-            mathSymbols.forEach(({ pattern, fallback }) => {
-                processedText = processedText.replace(pattern, () => {
-                    try {
-                        const symbol = pattern.source.replace(/\\/g, '\\').replace(/g$/, '');
-                        const rendered = katex.renderToString(symbol, {
-                            displayMode: false,
-                            throwOnError: false
-                        });
-                        return rendered;
-                    } catch {
-                        return fallback;
-                    }
-                });
-            });
-
-            // Handle \boxed{} for boxed equations
-            processedText = processedText.replace(/\\boxed\{([^}]+)\}/g, (_, content) => {
-                try {
-                    // Clean up the content by removing HTML tags and LaTeX delimiters
-                    let cleanContent = content
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
-                        .replace(/\\left\(/g, '(') // Convert \left( to (
-                        .replace(/\\right\)/g, ')') // Convert \right) to )
-                        .trim();
-
-                    // If content is empty after cleaning, use original
-                    if (!cleanContent) {
-                        cleanContent = content.replace(/<[^>]*>/g, '').trim();
-                    }
-
-                    const rendered = katex.renderToString(`\\boxed{${cleanContent}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch (error) {
-                    console.warn('Error rendering boxed content:', error, 'Content:', content);
-                    // Process LaTeX delimiters in fallback content too
-                    const cleanContent = content
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1') // Remove LaTeX delimiters
-                        .replace(/\\left\(/g, '(') // Convert \left( to (
-                        .replace(/\\right\)/g, ')') // Convert \right) to )
-                        .trim();
-
-                    return `<span style="border: 1px solid currentColor; padding: 2px 6px; border-radius: 3px; display: inline-block;">${cleanContent}</span>`;
-                }
-            });
-
-            // Handle markdown tables (must come before other markdown processing)
-            processedText = processedText.replace(/^\|(.+)\|$/gm, (_, content) => {
-                return '___TABLE_ROW___' + content + '___/TABLE_ROW___';
-            });
-
-            // Process table rows and convert to HTML table
-            processedText = processedText.replace(/(___TABLE_ROW___[\s\S]*?___\/TABLE_ROW___)+/g, (match) => {
-                const rows = match.split('___/TABLE_ROW___').filter(row => row.trim());
-                let tableHTML = '<table class="markdown-table">';
-                let isHeader = true;
-
-                rows.forEach((row, index) => {
-                    const cleanRow = row.replace('___TABLE_ROW___', '').trim();
-                    if (cleanRow.match(/^[-|\s:]+$/)) {
-                        // Skip separator rows (like |----|----|)
-                        isHeader = false;
-                        return;
-                    }
-
-                    const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
-                    if (cells.length > 0) {
-                        const tag = isHeader ? 'th' : 'td';
-                        const rowHTML = '<tr>' + cells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
-                        tableHTML += rowHTML;
-                        if (index === 0) isHeader = false; // Only first row is header
-                    }
-                });
-
-                tableHTML += '</table>';
-                return tableHTML;
-            });
-
-            // Handle markdown code blocks ``` (MUST come before line breaks and other processing)
-            // Isolate code blocks before further markdown processing
-            // Pure HTML/CSS code block rendering, no KaTeX or LaTeX processing
-            const codeBlockPlaceholders: string[] = [];
-            processedText = processedText.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
-                const lang = language || 'text';
-                // Preserve all whitespace including indentation - only trim trailing newline
-                let highlightedCode = code.replace(/\n$/, '');
-
-                // Create direct HTML/CSS code block (bypass LaTeX entirely)
-                // Always preserve original indentation - just escape HTML
-                highlightedCode = highlightedCode
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
-
-                // Convert leading spaces to non-breaking spaces to preserve indentation
-                highlightedCode = highlightedCode.replace(/^( +)/gm, (match: string) => {
-                    return '&nbsp;'.repeat(match.length);
-                });
-
-                // Create complete HTML structure that bypasses LaTeX
-                const codeBlockHTML = `
-                    <div class="code-block-direct" data-language="${lang}" style="
-                        background: #0d1117;
-                        border: 1px solid #30363d;
-                        border-radius: 8px;
-                        padding: 20px;
-                        margin: 20px 0;
-                        overflow-x: auto;
-                        font-size: 14px;
-                        line-height: 1.5;
-                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-                    ">
-                        <pre style="margin: 0; white-space: pre; word-wrap: normal; overflow-wrap: normal;">
-                            <code style="
-                                background: transparent;
-                                padding: 0;
-                                font-family: inherit;
-                                font-size: inherit;
-                                line-height: inherit;
-                                color: #e6edf3;
-                                white-space: pre;
-                                word-wrap: normal;
-                                overflow-wrap: normal;
-                                display: block;
-                                text-indent: 0;
-                                margin: 0;
-                                border: none;
-                                width: 100%;
-                                box-sizing: border-box;
-                            ">${highlightedCode}</code>
-                        </pre>
-                    </div>
-                `;
-
-                // Store the HTML and return a placeholder
-                codeBlockPlaceholders.push(codeBlockHTML);
-                return `__CODE_BLOCK_PLACEHOLDER_${codeBlockPlaceholders.length - 1}__`;
-            });
-
-            // Handle inline code `text` (before other processing)
-            processedText = processedText.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
-
-            // Handle markdown horizontal rules (must come before other processing)
-            processedText = processedText.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
-            processedText = processedText.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
-            processedText = processedText.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
-
-            // Handle markdown headings (must come before other markdown processing)
-            processedText = processedText.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-            processedText = processedText.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
-            processedText = processedText.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            processedText = processedText.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            processedText = processedText.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            processedText = processedText.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-
-            // Handle markdown blockquotes - DISABLED to prevent false positives with bullet points
-            // processedText = processedText.replace(/^> (.+)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
-
-            // Merge consecutive blockquotes
-            // processedText = processedText.replace(/(<\/blockquote>\s*<blockquote class="markdown-blockquote">)/g, '<br>');
-
-            // Handle markdown strikethrough ~~text~~
-            processedText = processedText.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
-
-            // Handle markdown bold syntax **text**
-            processedText = processedText.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-
-            // Handle markdown italic syntax *text*
-            processedText = processedText.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
-
-            // Handle markdown links [text](url) and [text](url "title")
-            processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
-                const titleAttr = title ? ` title="${title}"` : '';
-                return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
-            });
-
-            // Handle reference-style links [text][ref] and [ref]: url
-            // First, collect all reference definitions
-            const referenceMap: { [key: string]: string } = {};
-            processedText = processedText.replace(/^\[([^\]]+)\]:\s*(.+)$/gm, (_, ref, url) => {
-                referenceMap[ref.toLowerCase()] = url.trim();
-                return ''; // Remove the definition line
-            });
-
-            // Then replace reference-style links
-            processedText = processedText.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
-                const reference = ref || text.toLowerCase();
-                const url = referenceMap[reference];
-                if (url) {
-                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-                }
-                return match; // Return original if reference not found
-            });
-
-            // Handle markdown images ![alt](url) and ![alt](url "title")
-            processedText = processedText.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) => {
-                const titleAttr = title ? ` title="${title}"` : '';
-                return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
-            });
-
-            // Handle markdown line breaks (double spaces or double newlines) - BEFORE converting list placeholders to HTML
-            // This must happen before list conversion to prevent paragraph breaks from splitting list items
-            processedText = processedText.replace(/ {2}\n/g, '<br>');
-            
-            // Apply paragraph breaks to double newlines FIRST, before processing lists
-            processedText = processedText.replace(/\n\n/g, '</p><p>');
-
-            // Convert task list items to proper HTML
-            processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
-                // Fixed: Use [\s\S]*? instead of .*? to match content that may contain newlines (from KaTeX HTML)
-                const items = match.replace(/___TASK_ITEM___(checked|unchecked)___([\s\S]*?)___\/TASK_ITEM___/g, (_, checked, text) => {
-                    const checkedAttr = checked === 'checked' ? 'checked' : '';
-                    return `<li class="task-list-item"><input type="checkbox" ${checkedAttr} disabled> ${text}</li>`;
-                });
-                return '<ul class="task-list">' + items + '</ul>';
-            });
-
-            // Convert consecutive unordered list items to proper HTML with nested structure
-            // Note: We now group items even if there's content between them, but we need to preserve that content
-            processedText = processedText.replace(/(___UL_ITEM___[\s\S]*?___\/UL_ITEM___(?:[\s\S]*?___UL_ITEM___[\s\S]*?___\/UL_ITEM___)*)/g, (match) => {
-                // Extract all list items and the content between them
-                type ListItem = {level: number, content: string};
-                type Part = {type: 'item', data: ListItem} | {type: 'content', data: string};
-                const parts: Part[] = [];
-                let lastIndex = 0;
-                const itemRegex = /___UL_ITEM___(\d+)___([\s\S]*?)___\/UL_ITEM___/g;
-                let itemMatch;
-                
-                while ((itemMatch = itemRegex.exec(match)) !== null) {
-                    // Add content before this item (if any)
-                    const contentBefore = match.substring(lastIndex, itemMatch.index);
-                    if (contentBefore.trim()) {
-                        parts.push({type: 'content', data: contentBefore});
-                    }
-                    
-                    // Add the list item
-                    parts.push({
-                        type: 'item',
-                        data: {
-                            level: parseInt(itemMatch[1]),
-                            content: itemMatch[2].trim()
-                        }
-                    });
-                    
-                    lastIndex = itemRegex.lastIndex;
-                }
-                
-                // Add content after last item (if any)
-                const contentAfter = match.substring(lastIndex);
-                if (contentAfter.trim()) {
-                    parts.push({type: 'content', data: contentAfter});
-                }
-
-                const items = parts.filter((p): p is {type: 'item', data: ListItem} => p.type === 'item').map(p => p.data);
-                
-                // CRITICAL FIX: Normalize indentation levels
-                // Find the minimum indentation level (excluding truly nested items > 2 spaces)
-                const levels = items.map(item => item.level);
-                const minLevel = Math.min(...levels);
-                
-                // If items vary by only 0-1 spaces, treat them all as the same level
-                // This handles inconsistent AI formatting like " - item" vs "- item"
-                const maxLevel = Math.max(...levels);
-                if (maxLevel - minLevel <= 1 && maxLevel <= 1) {
-                    // Normalize all to level 0
-                    items.forEach(item => item.level = 0);
-                    parts.forEach(part => {
-                        if (part.type === 'item') {
-                            part.data.level = 0;
-                        }
-                    });
-                } else {
-                    // Adjust all levels relative to minimum
-                    items.forEach(item => item.level -= minLevel);
-                    parts.forEach(part => {
-                        if (part.type === 'item') {
-                            part.data.level -= minLevel;
-                        }
-                    });
-                }
-
-                if (items.length === 0) {
-                    console.warn('⚠️ No items parsed from UL match!');
-                    return match;
-                }
-
-                // Build nested HTML structure with intermediate content preserved
-                // CRITICAL FIX: Always start with a <ul> wrapper for level 0 items
-                let html = '<ul>';
-                let currentLevel = 0;
-                const openTags: string[] = ['</ul>'];
-                let partIndex = 0;
-
-                for (const part of parts) {
-                    if (part.type === 'content') {
-                        // Append intermediate content to the last list item (if any)
-                        // This keeps all items in the same list
-                        if (partIndex > 0) {
-                            // Need to insert before the last </li>
-                            const lastLiClose = html.lastIndexOf('</li>');
-                            if (lastLiClose !== -1) {
-                                html = html.substring(0, lastLiClose) + part.data + html.substring(lastLiClose);
-                            } else {
-                                html += part.data;
-                            }
-                        }
-                    } else {
-                        // It's a list item
-                        const item = part.data;
-                        
-                        // Close tags if we're going to a lower level
-                        while (currentLevel > item.level) {
-                            html += '</ul>';
-                            openTags.pop();
-                            currentLevel--;
-                        }
-
-                        // Open new ul tags if we're going to a higher level
-                        while (currentLevel < item.level) {
-                            html += '<ul>';
-                            openTags.push('</ul>');
-                            currentLevel++;
-                        }
-
-                        // Add the list item
-                        html += `<li>${item.content}</li>`;
-                    }
-                    partIndex++;
-                }
-
-                // Close any remaining open tags
-                while (openTags.length > 0) {
-                    html += openTags.pop();
-                }
-
-                return html;
-            });
-
-            // Convert consecutive ordered list items to proper HTML
-            // Group items together even if there's content between them (like display math, nested bullets, etc.)
-            processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:[\s\S]*?___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
-                // Extract all list items and content between them
-                type OLItem = {content: string};
-                type OLPart = {type: 'item', data: OLItem} | {type: 'content', data: string};
-                const parts: OLPart[] = [];
-                let lastIndex = 0;
-                const itemRegex = /___OL_ITEM___([\s\S]*?)___\/OL_ITEM___/g;
-                let itemMatch;
-                
-                while ((itemMatch = itemRegex.exec(match)) !== null) {
-                    // Add content before this item (if any)
-                    const contentBefore = match.substring(lastIndex, itemMatch.index);
-                    if (contentBefore.trim() && lastIndex > 0) {
-                        parts.push({type: 'content', data: contentBefore});
-                    }
-                    
-                    // Add the list item
-                    parts.push({
-                        type: 'item',
-                        data: {
-                            content: itemMatch[1].trim()
-                        }
-                    });
-                    
-                    lastIndex = itemRegex.lastIndex;
-                }
-                
-                // Add content after last item (if any)
-                const contentAfter = match.substring(lastIndex);
-                if (contentAfter.trim()) {
-                    parts.push({type: 'content', data: contentAfter});
-                }
-                
-                const items = parts.filter((p): p is {type: 'item', data: OLItem} => p.type === 'item').map(p => p.data);
-                
-                if (items.length === 0) {
-                    console.warn('⚠️ No OL items parsed from match!');
-                    return match;
-                }
-                
-                // Build HTML with intermediate content preserved
-                let html = '<ol>';
-                let partIndex = 0;
-                
-                for (const part of parts) {
-                    if (part.type === 'content') {
-                        // Append intermediate content to the last list item
-                        if (partIndex > 0) {
-                            const lastLiClose = html.lastIndexOf('</li>');
-                            if (lastLiClose !== -1) {
-                                html = html.substring(0, lastLiClose) + part.data + html.substring(lastLiClose);
-                            } else {
-                                html += part.data;
-                            }
-                        }
-                    } else {
-                        // It's a list item
-                        html += `<li>${part.data.content}</li>`;
-                    }
-                    partIndex++;
-                }
-                
-                html += '</ol>';
-                return html;
-            });
-
-            // Handle definition lists - DISABLED to prevent false positives
-            /*
-            // First, collect definition list items
-            // Only match lines that look like definitions (not Bible references or other colon usage)
-            const definitionMap: { [key: string]: string[] } = {};
-            processedText = processedText.replace(/^([^:\n\d]+)\s*:\s*(.+)$/gm, (match, term, definition) => {
-                // Skip if it looks like a Bible reference (contains numbers and colon)
-                if (/\d+:\d+/.test(match)) {
-                    return match;
-                }
-                // Skip if it looks like a time reference (HH:MM format)
-                if (/^\d{1,2}:\d{2}/.test(match)) {
-                    return match;
-                }
-                // Skip if it's very short (likely not a definition)
-                if (term.trim().length < 3) {
-                    return match;
-                }
-
-                const cleanTerm = term.trim();
-                if (!definitionMap[cleanTerm]) {
-                    definitionMap[cleanTerm] = [];
-                }
-                definitionMap[cleanTerm].push(definition.trim());
-                return ''; // Remove the definition line
-            });
-
-            // Convert definition lists to HTML
-            Object.keys(definitionMap).forEach(term => {
-                const definitions = definitionMap[term];
-                const definitionHTML = definitions.map(def => `<dd>${def}</dd>`).join('');
-                processedText += `<dl><dt>${term}</dt>${definitionHTML}</dl>`;
-            });
-            */
-
-            // Handle footnotes [^1] and [^1]: content
-            const footnoteMap: { [key: string]: string } = {};
-            processedText = processedText.replace(/^\[\^([^\]]+)\]:\s*(.+)$/gm, (_, ref, content) => {
-                footnoteMap[ref] = content.trim();
-                return ''; // Remove the footnote definition line
-            });
-
-            // Replace footnote references with links
-            processedText = processedText.replace(/\[\^([^\]]+)\]/g, (match, ref) => {
-                if (footnoteMap[ref]) {
-                    return `<sup><a href="#footnote-${ref}" id="footnote-ref-${ref}" class="footnote-ref">${ref}</a></sup>`;
-                }
-                return match;
-            });
-
-            // Add footnote definitions at the end
-            const footnotes = Object.keys(footnoteMap).map(ref =>
-                `<div id="footnote-${ref}" class="footnote-def"><sup>${ref}</sup> ${footnoteMap[ref]} <a href="#footnote-ref-${ref}" class="footnote-backref">↩</a></div>`
-            ).join('');
-            if (footnotes) {
-                processedText += `<div class="footnotes">${footnotes}</div>`;
-            }
-
-            // Handle derivative notation d/dx
-            processedText = processedText.replace(/\bd\/d([a-zA-Z])/g, (match, variable) => {
-                try {
-                    const rendered = katex.renderToString(`\\frac{d}{d${variable}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle Unicode superscripts (x², x³, etc.)
-            processedText = processedText.replace(/([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g, (match, base, superscript) => {
-                const superscriptMap: { [key: string]: string } = {
-                    '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6',
-                    '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '¹': '1'
-                };
-                try {
-                    const exp = superscriptMap[superscript] || superscript;
-                    const rendered = katex.renderToString(`${base}^{${exp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle curly brace exponents x^{3-1}, x^{n-1}
-            processedText = processedText.replace(/([a-zA-Z0-9]+)\^\{([^}]+)\}/g, (match, base, exp) => {
-                try {
-                    const rendered = katex.renderToString(`${base}^{${exp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle caret notation (x^2, x^n, etc.) - removed word boundary for better matching
-            processedText = processedText.replace(/([a-zA-Z])\^(\d+|[a-zA-Z]|\([^)]+\))/g, (match, base, exp) => {
-                try {
-                    // Clean up parentheses in exponent
-                    const cleanExp = exp.replace(/^\(|\)$/g, '');
-                    const rendered = katex.renderToString(`${base}^{${cleanExp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle expressions with coefficients like 5x^1, 3x^2, etc.
-            processedText = processedText.replace(/(\d+)([a-zA-Z])\^(\d+|[a-zA-Z]|\([^)]+\))/g, (match, coeff, base, exp) => {
-                try {
-                    const cleanExp = exp.replace(/^\(|\)$/g, '');
-                    const rendered = katex.renderToString(`${coeff}${base}^{${cleanExp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle more complex expressions like nx^(n-1), 2x^(2-1)
-            processedText = processedText.replace(/(\d*[a-zA-Z]*)\^(\([^)]+\))/g, (match, base, exp) => {
-                try {
-                    // Remove outer parentheses from exponent
-                    const cleanExp = exp.replace(/^\(|\)$/g, '');
-                    const rendered = katex.renderToString(`${base}^{${cleanExp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle expressions with coefficients like nx^(n-1), 2x^(2-1) with coefficient
-            processedText = processedText.replace(/(\d*)([a-zA-Z])\^(\([^)]+\))/g, (match, coeff, base, exp) => {
-                try {
-                    const cleanExp = exp.replace(/^\(|\)$/g, '');
-                    const fullBase = coeff ? `${coeff}${base}` : base;
-                    const rendered = katex.renderToString(`${fullBase}^{${cleanExp}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle function notation with primes f'(x), f''(x)
-            processedText = processedText.replace(/\b([a-zA-Z])('+)(\([^)]*\))/g, (match, func, primes, args) => {
-                try {
-                    const rendered = katex.renderToString(`${func}${primes}${args}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle multiplication symbols (* to \cdot)
-            processedText = processedText.replace(/(\d+|\w+)\s*\*\s*(\w+|\d+)/g, (match, left, right) => {
-                try {
-                    const rendered = katex.renderToString(`${left} \\cdot ${right}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Handle simple fractions in parentheses like (n-1)
-            processedText = processedText.replace(/\(([^)]+)\)\/\(([^)]+)\)/g, (match, num, den) => {
-                try {
-                    const rendered = katex.renderToString(`\\frac{${num}}{${den}}`, {
-                        displayMode: false,
-                        throwOnError: false
-                    });
-                    return rendered;
-                } catch {
-                    return match;
-                }
-            });
-
-            // Restore code blocks from placeholders AFTER all markdown processing
-            if (codeBlockPlaceholders.length > 0) {
-                codeBlockPlaceholders.forEach((block, i) => {
-                    const placeholder = `__CODE_BLOCK_PLACEHOLDER_${i}__`;
-                    processedText = processedText.replace(new RegExp(placeholder, 'g'), block);
-                });
-            }
-
-            // Handle escaped characters (must be last before final cleanup)
-            processedText = processedText.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1');
-
-            // Final cleanup: remove any remaining \( and \) delimiters
-            processedText = processedText.replace(/\\\(/g, '');
-            processedText = processedText.replace(/\\\)/g, '');
-
-            // Wrap content in paragraphs if we added paragraph breaks
-            // Only wrap if the content doesn't already start with a block element
-            if (processedText.includes('</p><p>') && !processedText.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|dl|div)/)) {
-                processedText = '<p>' + processedText + '</p>';
-            }
-
-            return processedText;
         } catch (error) {
-            console.warn('Error processing LaTeX:', error);
-            return text;
+            console.error('❌ Critical error in renderLatex:', error);
+            return `<div style="color: red; padding: 10px; border: 1px solid red;">
+                <strong>Rendering Error:</strong> ${error instanceof Error ? error.message : String(error)}
+                <pre style="margin-top: 10px; padding: 10px; background: #f5f5f5;">${text.substring(0, 500)}</pre>
+            </div>`;
         }
     };
+
+    // ============================================================================
+    // RENDER
+    // ============================================================================
 
     const processedContent = renderLatex(children);
 
