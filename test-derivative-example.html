@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Rendering Test - Derivative Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-input {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+        .test-output {
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .issue {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .fixed {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        li {
+            margin: 5px 0;
+        }
+        strong {
+            font-weight: bold;
+        }
+        .expected {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+        }
+        .problem {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>LaTeX Rendering Test - Derivative Example</h1>
+    
+    <div class="test-section problem">
+        <div class="test-title">❌ Issues to Fix</div>
+        <div class="test-output">
+            <p><strong>Issue 1:</strong> The "+1" in "x³ - x² + 1" becomes bold incorrectly</p>
+            <p><strong>Issue 2:</strong> Only the first list item shows a bullet point</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Raw Input Text</div>
+        <div class="test-input">To find the derivative of **x³ - x² + 1**, I'll differentiate each term separately using the power rule.
+
+The power rule states: d/dx(xⁿ) = n·xⁿ⁻¹
+
+**Step by step:**
+
+- d/dx(x³) = 3x²
+- d/dx(-x²) = -2x
+- d/dx(1) = 0
+
+**Answer: 3x² - 2x**</div>
+    </div>
+
+    <div class="test-section expected">
+        <div class="test-title">✅ Expected Output (After Fixes)</div>
+        <div class="test-output">
+            <p>To find the derivative of <strong>x³ - x² + 1</strong>, I'll differentiate each term separately using the power rule.</p>
+            <p>The power rule states: d/dx(xⁿ) = n·xⁿ⁻¹</p>
+            <p><strong>Step by step:</strong></p>
+            <ul>
+                <li>d/dx(x³) = 3x²</li>
+                <li>d/dx(-x²) = -2x</li>
+                <li>d/dx(1) = 0</li>
+            </ul>
+            <p><strong>Answer: 3x² - 2x</strong></p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">🧪 Test Instructions</div>
+        <div class="test-output">
+            <p>1. Open the CompareAI application at <a href="http://localhost:5174" target="_blank">http://localhost:5174</a></p>
+            <p>2. Send a message with the raw input text above</p>
+            <p>3. Check the "Formatted" tab to verify:</p>
+            <ul>
+                <li>✅ "x³ - x² + 1" is bold as a complete expression (not individual parts)</li>
+                <li>✅ All three derivative steps have bullet points</li>
+                <li>✅ "Step by step:" and "Answer: 3x² - 2x" are properly bold</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">🔧 Fixes Applied</div>
+        <div class="test-output">
+            <p><strong>Mathematical Expression Protection:</strong></p>
+            <ul>
+                <li>Detects expressions with operators, variables, and numbers</li>
+                <li>Temporarily protects them during markdown processing</li>
+                <li>Restores them as properly formatted bold text</li>
+            </ul>
+            
+            <p><strong>List Processing Enhancement:</strong></p>
+            <ul>
+                <li>Improved regex patterns for list detection</li>
+                <li>Better handling of consecutive list items</li>
+                <li>Ensures all list items get proper bullet points</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

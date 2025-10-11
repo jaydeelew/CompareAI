@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ordered List Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+        .step { margin: 20px 0; border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Testing Ordered List Rendering</h1>
+    
+    <h2>Raw Input (with blank lines between items):</h2>
+    <pre id="raw-input"></pre>
+    
+    <div id="output"></div>
+    
+    <script>
+        let text = `1. d/dx[x³] = 3x²
+
+2. d/dx[-x²] = -2x
+
+3. d/dx[1] = 0 (derivative of a constant is zero)`;
+
+        document.getElementById('raw-input').textContent = text;
+        let output = document.getElementById('output');
+        let processedText = text;
+        
+        // Step 1: Convert ordered lists to placeholders
+        processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
+        output.innerHTML += `<div class="step"><h3>Step 1 - Convert to placeholders:</h3><pre>${processedText}</pre></div>`;
+        
+        // Step 2: Protect list boundaries (with loop to handle all items)
+        let prevText;
+        let iterations = 0;
+        let iterationLog = '';
+        do {
+            prevText = processedText;
+            processedText = processedText.replace(/(___(?:UL|OL|TASK)_ITEM___[^\n]*___\/(?:UL|OL|TASK)_ITEM___)\n+(___(?:UL|OL|TASK)_ITEM___)/g, '$1___LISTBREAK___$2');
+            iterations++;
+            if (prevText !== processedText) {
+                iterationLog += `<p>Iteration ${iterations}: Added LISTBREAK</p><pre>${processedText}</pre>`;
+            }
+        } while (prevText !== processedText && iterations < 100);
+        
+        const breakCount = (processedText.match(/___LISTBREAK___/g) || []).length;
+        output.innerHTML += `<div class="step"><h3>Step 2 - Protect boundaries (${iterations} iteration${iterations > 1 ? 's' : ''}, ${breakCount} boundaries protected):</h3>${iterationLog}<p><strong>Final result:</strong></p><pre>${processedText}</pre></div>`;
+        
+        // Step 3: Apply paragraph breaks
+        processedText = processedText.replace(/\n\n/g, '</p><p>');
+        output.innerHTML += `<div class="step"><h3>Step 3 - Apply paragraph breaks (\\n\\n → &lt;/p>&lt;p>):</h3><pre>${processedText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
+        
+        // Step 4: Restore list separators
+        processedText = processedText.replace(/___LISTBREAK___/g, '\n');
+        output.innerHTML += `<div class="step"><h3>Step 4 - Restore list separators (___LISTBREAK___ → \\n):</h3><pre>${processedText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
+        
+        // Step 5: Convert to HTML
+        let beforeConversion = processedText;
+        processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:\s*___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
+            const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
+            return '<ol>' + items + '</ol>';
+        });
+        
+        output.innerHTML += `<div class="step"><h3>Step 5 - Convert to HTML:</h3>`;
+        output.innerHTML += `<p><strong>Regex matched groups:</strong></p>`;
+        
+        // Show what the regex matched
+        let matches = beforeConversion.match(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:\s*___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g);
+        if (matches) {
+            output.innerHTML += `<p>Found ${matches.length} match(es):</p>`;
+            matches.forEach((m, i) => {
+                output.innerHTML += `<pre>Match ${i+1}: ${m.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+            });
+        } else {
+            output.innerHTML += `<p style="color: red;">No matches found!</p>`;
+        }
+        
+        output.innerHTML += `<p><strong>Final HTML:</strong></p><pre>${processedText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
+        
+        output.innerHTML += `<div class="step"><h3>Final Rendered Result:</h3>${processedText}</div>`;
+    </script>
+</body>
+</html>
+

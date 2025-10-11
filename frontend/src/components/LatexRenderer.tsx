@@ -598,6 +598,37 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Then handle ordered lists  
             processedText = processedText.replace(/^\d+\. (.+)$/gm, '___OL_ITEM___$1___/OL_ITEM___');
 
+            // Debug: Log if we have list items
+            if (processedText.includes('___OL_ITEM___') || processedText.includes('___UL_ITEM___')) {
+                console.log('📋 List items detected before paragraph processing');
+            }
+
+            // Handle markdown line breaks (double spaces or double newlines) - BEFORE converting list placeholders to HTML
+            // This must happen before list conversion to prevent paragraph breaks from splitting list items
+            processedText = processedText.replace(/ {2}\n/g, '<br>');
+            
+            // Temporarily protect list item boundaries from paragraph breaks
+            // Replace newlines between list items with a special marker
+            // Use a loop to handle all consecutive items (since regex doesn't match overlapping patterns)
+            let prevText;
+            let iterations = 0;
+            do {
+                prevText = processedText;
+                processedText = processedText.replace(/(___(?:UL|OL|TASK)_ITEM___[^\n]*___\/(?:UL|OL|TASK)_ITEM___)\n+(___(?:UL|OL|TASK)_ITEM___)/g, '$1___LISTBREAK___$2');
+                iterations++;
+            } while (prevText !== processedText && iterations < 100); // Safety limit
+            
+            const breakCount = (processedText.match(/___LISTBREAK___/g) || []).length;
+            if (breakCount > 0) {
+                console.log(`📋 Protected ${breakCount} list item boundaries`);
+            }
+            
+            // Now apply paragraph breaks to double newlines
+            processedText = processedText.replace(/\n\n/g, '</p><p>');
+            
+            // Restore list item separators
+            processedText = processedText.replace(/___LISTBREAK___/g, '\n');
+
             // Convert task list items to proper HTML
             processedText = processedText.replace(/(___TASK_ITEM___[\s\S]*?___\/TASK_ITEM___)+/g, (match) => {
                 const items = match.replace(/___TASK_ITEM___(checked|unchecked)___(.*?)___\/TASK_ITEM___/g, (_, checked, text) => {
@@ -654,14 +685,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             });
 
             // Convert consecutive ordered list items to proper HTML (allow whitespace between items)
+            let olCount = 0;
             processedText = processedText.replace(/(___OL_ITEM___[\s\S]*?___\/OL_ITEM___(?:\s*___OL_ITEM___[\s\S]*?___\/OL_ITEM___)*)/g, (match) => {
+                olCount++;
+                const itemCount = (match.match(/___OL_ITEM___/g) || []).length;
+                console.log(`📋 Creating ordered list #${olCount} with ${itemCount} item(s)`);
                 const items = match.replace(/___OL_ITEM___(.*?)___\/OL_ITEM___/g, '<li>$1</li>');
                 return '<ol>' + items + '</ol>';
             });
-
-            // Handle markdown line breaks (double spaces or double newlines) - AFTER list processing
-            processedText = processedText.replace(/ {2}\n/g, '<br>');
-            processedText = processedText.replace(/\n\n/g, '</p><p>');
+            if (olCount > 0) {
+                console.log(`📋 Total: Created ${olCount} ordered list(s)`);
+            }
 
             // Handle definition lists - DISABLED to prevent false positives
             /*
