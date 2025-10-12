@@ -372,7 +372,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
      * Stage 5: Process markdown lists
      */
     const processMarkdownLists = (text: string): string => {
-        console.log('🔍 Raw text before list processing (first 1000 chars):', text.substring(0, 1000));
         let processed = text;
 
         // Helper function to process parentheses in list content
@@ -558,7 +557,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Process table rows and convert to HTML
-        processed = processed.replace(/(__TABLE_ROW__[\s\S]*?__\/TABLE_ROW__)+/g, (match) => {
+        processed = processed.replace(/(__TABLE_ROW__[\s\S]*__\/TABLE_ROW__)+/g, (match) => {
             const rows = match.split('__/TABLE_ROW__').filter(row => row.trim());
             let tableHTML = '<table class="markdown-table">';
             let isHeader = true;
