@@ -144,9 +144,10 @@ function App() {
 
       const options = {
         useCORS: true,
+        allowTaint: true,
         scale: 2, // Higher quality rendering
         logging: false,
-        backgroundColor: '#ffffff',
+        backgroundColor: null, // Preserve original background colors
         width: content.scrollWidth,
         height: content.scrollHeight,
         x: 0,
@@ -161,7 +162,7 @@ function App() {
             await navigator.clipboard.write([
               new window.ClipboardItem({ 'image/png': blob })
             ]);
-            showNotification('Image copied to clipboard!', 'success');
+            showNotification('Screenshot coped to clipboard!', 'success');
           } catch {
             showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
             const link = document.createElement('a');
@@ -211,7 +212,7 @@ function App() {
 
     try {
       await navigator.clipboard.writeText(formattedHistory);
-      showNotification('Entire chat history copied to clipboard!', 'success');
+      showNotification('Raw conversation copied to clipboard!', 'success');
     } catch (err) {
       showNotification('Failed to copy to clipboard.', 'error');
       console.error('Copy failed:', err);
