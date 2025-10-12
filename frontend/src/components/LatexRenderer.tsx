@@ -26,8 +26,11 @@
  * 10. Restore code blocks and final cleanup
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import katex from 'katex';
+
+// Prism is loaded globally via CDN in index.html
+declare const Prism: any;
 
 interface LatexRendererProps {
     children: string;
@@ -143,6 +146,11 @@ const looksProse = (content: string): boolean => {
 };
 
 const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' }) => {
+    // Safety check
+    if (typeof children !== 'string') {
+        console.error('LatexRenderer: children must be a string, got:', typeof children);
+        return <div>Invalid content</div>;
+    }
     
     // ============================================================================
     // PREPROCESSING PIPELINE
@@ -310,13 +318,32 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     const preserveCodeBlocks = (text: string): { text: string; blocks: string[] } => {
         const blocks: string[] = [];
         
-        const processed = text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_, language, code) => {
-            const lang = language || 'text';
-            const highlightedCode = code.replace(/\n$/, '')
+        const processed = text.replace(/```([a-zA-Z0-9+#-]*)\n([\s\S]*?)```/g, (_, language, code) => {
+            const lang = language || 'plaintext';
+            const cleanCode = code.replace(/\n$/, '');
+            
+            // Map common aliases to Prism language names
+            const languageMap: { [key: string]: string } = {
+                'js': 'javascript',
+                'ts': 'typescript',
+                'py': 'python',
+                'rb': 'ruby',
+                'sh': 'bash',
+                'yml': 'yaml',
+                'html': 'markup',
+                'xml': 'markup',
+                'c++': 'cpp',
+                'c#': 'csharp',
+                'cs': 'csharp',
+            };
+            
+            const prismLang = languageMap[lang.toLowerCase()] || lang.toLowerCase();
+            
+            // Escape the code for safe HTML insertion
+            const escapedCode = cleanCode
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/^( +)/gm, (_match: string) => '&nbsp;'.repeat(_match.length));
+                .replace(/>/g, '&gt;');
 
             const codeBlockHTML = `
                 <div class="code-block-direct" data-language="${lang}" style="
@@ -330,20 +357,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                     line-height: 1.5;
                     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
                 ">
-                    <pre style="margin: 0; white-space: pre; word-wrap: normal; overflow-wrap: normal;">
-                        <code style="
-                            background: transparent;
-                            padding: 0;
-                            font-family: inherit;
-                            font-size: inherit;
-                            line-height: inherit;
-                            color: #e6edf3;
-                            white-space: pre;
-                            word-wrap: normal;
-                            overflow-wrap: normal;
-                            display: block;
-                        ">${highlightedCode}</code>
-                    </pre>
+                    <pre class="language-${prismLang}" style="margin: 0; white-space: pre; word-wrap: normal; overflow-wrap: normal;"><code class="language-${prismLang}">${escapedCode}</code></pre>
                 </div>
             `;
 
@@ -872,10 +886,38 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     // RENDER
     // ============================================================================
 
+    const contentRef = useRef<HTMLDivElement>(null);
     const processedContent = renderLatex(children);
+
+    // Apply Prism highlighting after content is rendered
+    useEffect(() => {
+        // Small delay to ensure DOM is fully updated
+        const timer = setTimeout(() => {
+            if (contentRef.current) {
+                const codeBlocks = contentRef.current.querySelectorAll('code[class*="language-"]');
+                console.log('Found code blocks:', codeBlocks.length);
+                console.log('Prism available:', typeof Prism !== 'undefined');
+                
+                if (typeof Prism !== 'undefined' && Prism.highlightAllUnder) {
+                    try {
+                        // Use highlightAllUnder to highlight all code blocks in the container
+                        Prism.highlightAllUnder(contentRef.current);
+                        console.log('Prism highlighting applied');
+                    } catch (error) {
+                        console.warn('Prism highlighting error:', error);
+                    }
+                } else {
+                    console.warn('Prism not loaded or highlightAllUnder not available');
+                }
+            }
+        }, 10);
+
+        return () => clearTimeout(timer);
+    }, [children]);
 
     return (
         <div
+            ref={contentRef}
             className={`latex-content ${className}`}
             dangerouslySetInnerHTML={{ __html: processedContent }}
             style={{
