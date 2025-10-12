@@ -320,8 +320,6 @@ function App() {
   // Helper function to initialize conversations from response
   const initializeConversations = (response: CompareResponse, userTimestamp: string) => {
     const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
-    console.log('User timestamp:', userTimestamp);
-    console.log('AI timestamp:', aiTimestamp);
 
     const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
       modelId,

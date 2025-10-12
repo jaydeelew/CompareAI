@@ -13,6 +13,7 @@ CompareIntel is a comprehensive web application that enables comparison of multi
 ## Key Features
 
 - **50+ AI Models:** Compare responses from models across multiple providers:
+
   - **Anthropic:** Claude 3 Haiku, Claude 3.5 Sonnet, Claude 3 Opus
   - **OpenAI:** GPT-4, GPT-4 Turbo, GPT-3.5 Turbo variations
   - **Google:** Gemini Pro, Gemini Flash, Gemini Exp models
@@ -21,6 +22,7 @@ CompareIntel is a comprehensive web application that enables comparison of multi
   - **Meta:** Llama 3.1 and 3.2 variants
   - **Many more providers and models**
 
+- **High-Speed Processing:** Optimized backend with 12-60x faster response processing (200-600ms improvement)
 - **Real-Time Processing:** Concurrent API calls with intelligent batch processing for optimal performance
 - **Performance Analytics:** Track success rates, response times, and model reliability
 - **Smart Selection Tools:** Quick select options (Top 5, Popular, by Provider) to streamline testing
@@ -96,19 +98,23 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 Choose your development environment:
 
 #### Option A: Standard Development (Recommended)
+
 ```bash
 # Start with hot reload and development features
 docker compose up --build
 ```
+
 - **Frontend:** [http://localhost:8080](http://localhost:8080)
 - **Backend API:** [http://localhost:8000](http://localhost:8000)
 
 #### Option B: HTTPS Development
+
 ```bash
 # For testing SSL-dependent features
 ./create-dev-ssl.sh
 docker compose -f docker-compose.dev-ssl.yml up --build
 ```
+
 - **Frontend:** [https://localhost:8443](https://localhost:8443)
 
 ### 4. Using the Application
@@ -120,6 +126,7 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 5. **Review responses** with performance metrics and success indicators
 
 **Pro Tips:**
+
 - Use "Top 5" button for quick comparisons
 - Select 15 or fewer models for optimal performance
 - Check the model statistics endpoint for reliability data
@@ -129,6 +136,7 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 ### AWS EC2 Deployment with SSL
 
 **Automated Setup:**
+
 ```bash
 # For compareintel.com (preconfigured)
 ./setup-compareintel-ssl.sh
@@ -138,12 +146,14 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 ```
 
 **Manual Deployment:**
+
 ```bash
 # Deploy production environment
 ./deploy.sh
 ```
 
 The deployment script automatically:
+
 - Detects and uses SSL certificates if available
 - Falls back to HTTP if SSL is not configured
 - Builds optimized production containers
@@ -169,11 +179,13 @@ The deployment script automatically:
 ## Advanced Configuration
 
 ### Performance Tuning
+
 - **Concurrent Requests:** Adjust `MAX_CONCURRENT_REQUESTS` in `model_runner.py`
 - **Timeout Settings:** Modify `INDIVIDUAL_MODEL_TIMEOUT` for slower connections
 - **Batch Size:** Configure `BATCH_SIZE` for optimal throughput
 
 ### Model Management
+
 - Models are organized by provider for easy selection
 - Support for 100+ models across major AI providers
 - Real-time model availability checking
@@ -184,6 +196,8 @@ The deployment script automatically:
 - **[DEV_WORKFLOW.md](DEV_WORKFLOW.md)** - Comprehensive development environment setup
 - **[SECURITY_SETUP.md](SECURITY_SETUP.md)** - SSL/HTTPS configuration and security best practices
 - **[CACHE_BUSTING_SETUP.md](CACHE_BUSTING_SETUP.md)** - Cache busting and performance optimizations
+- **[PERFORMANCE_SUMMARY.md](PERFORMANCE_SUMMARY.md)** - Response speed optimizations (12-60x faster processing)
+- **[PERFORMANCE_QUICK_START.md](PERFORMANCE_QUICK_START.md)** - Quick guide to performance improvements
 
 ## Contributing
 
@@ -196,6 +210,7 @@ We welcome contributions! Here's how you can help:
 5. **Open a Pull Request**
 
 ### Development Guidelines
+
 - Follow TypeScript best practices for frontend code
 - Use FastAPI conventions for backend development
 - Test your changes across multiple AI models

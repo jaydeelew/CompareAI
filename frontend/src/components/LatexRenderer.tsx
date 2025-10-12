@@ -893,21 +893,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     useEffect(() => {
         // Small delay to ensure DOM is fully updated
         const timer = setTimeout(() => {
-            if (contentRef.current) {
-                const codeBlocks = contentRef.current.querySelectorAll('code[class*="language-"]');
-                console.log('Found code blocks:', codeBlocks.length);
-                console.log('Prism available:', typeof Prism !== 'undefined');
-                
-                if (typeof Prism !== 'undefined' && Prism.highlightAllUnder) {
-                    try {
-                        // Use highlightAllUnder to highlight all code blocks in the container
-                        Prism.highlightAllUnder(contentRef.current);
-                        console.log('Prism highlighting applied');
-                    } catch (error) {
-                        console.warn('Prism highlighting error:', error);
-                    }
-                } else {
-                    console.warn('Prism not loaded or highlightAllUnder not available');
+            if (contentRef.current && typeof Prism !== 'undefined' && Prism.highlightAllUnder) {
+                try {
+                    Prism.highlightAllUnder(contentRef.current);
+                } catch (error) {
+                    // Silently fail - syntax highlighting is non-critical
                 }
             }
         }, 10);

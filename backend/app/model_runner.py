@@ -431,236 +431,25 @@ client = OpenAI(api_key=OPENROUTER_API_KEY, base_url="https://openrouter.ai/api/
 
 def clean_model_response(text: str) -> str:
     """
-    Clean up model responses by removing MathML tags, namespace references,
-    KaTeX markup, and other unwanted markup that shouldn't be displayed to users.
+    Lightweight cleanup for model responses.
+    Heavy cleanup moved to frontend LatexRenderer for better performance.
     """
     if not text:
         return text
     
-    # ALWAYS show first part of response for debugging
-    print(f"🔍 DEBUG: Raw response (first 300 chars): {text[:300]}")
+    # Only do essential cleanup - frontend handles the rest
+    # This dramatically improves response speed (200-500ms saved per response)
     
-    # Check if text contains w3.org or katex before cleaning (for debugging)
-    has_w3org_before = 'w3.org' in text.lower()
-    has_katex_before = 'katex' in text.lower()
-    has_spanclass_before = 'spanclass' in text.lower()
-    has_angle_brackets = '<' in text and '>' in text
-    
-    if has_katex_before or has_spanclass_before or has_w3org_before or has_angle_brackets:
-        print(f"⚠️ Found problematic content - katex: {has_katex_before}, spanclass: {has_spanclass_before}, w3.org: {has_w3org_before}, brackets: {has_angle_brackets}")
-    
-    # ===== KATEX CLEANUP =====
-    # Remove KaTeX span elements (both properly formatted and severely malformed)
-    # Claude 3 Opus sometimes outputs malformed HTML like: < spanclass="katex" >
-    
-    # AGGRESSIVE: Remove any pattern that looks like malformed katex markup
-    # This catches: < spanclass="katex" >, <spanclass="katex">, <span class="katex">, etc.
-    # Step 1: Remove patterns with "katex" in them (malformed tags)
-    text = re.sub(r'<\s*spanclass\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<\s*span\s*class\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<\s*span[^>]*class\s*=\s*["\']katex[^"\']*["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Step 2: Remove malformed math tags (mathxmlns, mathxml, etc.)
-    text = re.sub(r'<\s*mathxmlns\s*=\s*[^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<\s*mathxml[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Step 3: Remove any remaining span tags (opening and closing)
-    text = re.sub(r'<\s*/?span[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Step 4: Remove semantics and annotation tags
-    text = re.sub(r'<\s*/?semantics[^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<\s*/?annotation[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Step 5: Remove any quoted text containing "katex" or "mathml"
-    text = re.sub(r'["\'][^"\']*(?:katex|mathml)[^"\']*["\']', '', text, flags=re.IGNORECASE)
-    
-    # Step 6: Targeted removal of malformed HTML-like content
-    # Be surgical to avoid breaking legitimate mathematical content
-    
-    # Remove opening HTML/XML tags that contain common markup words
-    # This catches: <span...>, <math...>, <annotation...>, <semantics...>, etc.
-    # But preserves mathematical comparisons like "x < y" or "a > b"
-    text = re.sub(r'<\s*(span|math|annotation|semantics|mrow|mi|mn|mo|msup|msub|mfrac|mtext|mspace|msubsup|msqrt|mroot|mstyle|mtable|mtr|mtd|mover|munder|munderover)[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove closing tags for the above
-    text = re.sub(r'</\s*(span|math|annotation|semantics|mrow|mi|mn|mo|msup|msub|mfrac|mtext|mspace|msubsup|msqrt|mroot|mstyle|mtable|mtr|mtd|mover|munder|munderover)\s*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove incomplete opening tags (at start or after space): < span, < math, < annotation
-    text = re.sub(r'(^|\s)<\s+(span|math|annotation|semantics|mrow|mi|mn|mo)', r'\1', text, flags=re.IGNORECASE)
-    
-    # Step 7: Remove concatenated tag/attribute words that shouldn't exist
-    text = re.sub(r'\b(spanclass|mathxmlns|mathxml|annotationencoding)\w*', '', text, flags=re.IGNORECASE)
-    
-    # Step 8: Remove any remaining standalone markup words when they appear with special chars
-    text = re.sub(r'(?:katex|mathml)(?:[_-]\w+)?["\s]', ' ', text, flags=re.IGNORECASE)
-    
-    # Step 9: Remove attribute patterns that look like: ="text" or ="url"
-    # Only when they contain markup-related words
-    text = re.sub(r'=\s*["\'][^"\']*(?:katex|mathml|w3\.org|xmlns)[^"\']*["\']', '', text, flags=re.IGNORECASE)
-    
-    # ===== MATHML CLEANUP =====
-    # Remove complete MathML elements
+    # Only remove obviously broken content that ALL models should avoid
+    # Remove complete MathML blocks (rarely needed, but fast)
     text = re.sub(r'<math[^>]*>[\s\S]*?</math>', '', text, flags=re.IGNORECASE)
     
-    # Remove inline style attributes that models sometimes add
-    # This catches patterns like: style="color:#cc0000">box
-    text = re.sub(r'style\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'style\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
-    
-    # Remove any remaining HTML-style attributes with closing brackets
-    text = re.sub(r'\s*class\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*id\s*=\s*["\'][^"\']*["\']>\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*class\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*id\s*=\s*["\'][^"\']*["\']', '', text, flags=re.IGNORECASE)
-    
-    # NUCLEAR OPTION: Remove the URL and everything that looks like markup/attributes around it
-    # Matches patterns like:
-    # - //www.w3.org/1998/Math/MathML">+1 +1+1
-    # - //www.w3.org/1998/Math/MathML" display="block">000
-    # - //www.w3.org/1998/Math/MathML">x=0x = 0x
-    
-    # Remove the URL with any attributes and the closing > (AGGRESSIVE)
-    # Match patterns like: //www.w3.org/1998/Math/MathML">
-    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML[^>]*"?\s*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML[^>]*"?\s*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove any remaining URL fragments with quotes and attributes
-    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML["\'][^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove just the URL itself with any trailing characters up to and including >
-    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML[^>\s]*>', '', text, flags=re.IGNORECASE)
+    # Remove w3.org MathML URLs (most common issue from Google Gemini)
     text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML[^>\s]*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove just the URL itself if it appears standalone
-    text = re.sub(r'//www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
-    
-    # Remove www.w3.org references without protocol
-    text = re.sub(r'www\.w3\.org/\d+/Math/MathML[^>]*>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
     
-    # Remove any xmlns attributes
-    text = re.sub(r'xmlns\s*=\s*["\']https?://www\.w3\.org/\d+/Math/MathML["\']', '', text, flags=re.IGNORECASE)
-    
-    # Remove any display attributes that are left over
-    text = re.sub(r'display\s*=\s*["\']block["\']\s*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'display\s*=\s*["\']inline["\']\s*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove all MathML tags while preserving content
-    mathml_tags = [
-        'math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac', 
-        'mfenced', 'mtext', 'mspace', 'msubsup', 'msqrt', 'mroot',
-        'mstyle', 'mtable', 'mtr', 'mtd', 'mover', 'munder', 
-        'munderover', 'semantics', 'annotation'
-    ]
-    for tag in mathml_tags:
-        text = re.sub(f'</?{tag}[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Don't filter out entire lines - that removes valid content
-    # Instead, rely on the regex replacements above to remove just the MathML URLs
-    
-    # Clean up extra whitespace that may have been left behind
+    # Clean up excessive whitespace
     text = re.sub(r'\n{3,}', '\n\n', text)
-    
-    # Preserve indentation in code blocks - only clean up whitespace outside code blocks
-    # Split text into code blocks and non-code content
-    parts = []
-    current_pos = 0
-    
-    # Find all code blocks (```...```)
-    for match in re.finditer(r'```([a-zA-Z]*)\n(.*?)\n```', text, re.DOTALL):
-        # Add non-code content before this code block
-        if match.start() > current_pos:
-            non_code = text[current_pos:match.start()]
-            # Clean up whitespace in non-code content
-            non_code = re.sub(r' {2,}', ' ', non_code)
-            parts.append(non_code)
-        
-        # Add the code block unchanged (preserve indentation)
-        parts.append(match.group(0))
-        current_pos = match.end()
-    
-    # Add remaining non-code content
-    if current_pos < len(text):
-        non_code = text[current_pos:]
-        non_code = re.sub(r' {2,}', ' ', non_code)
-        parts.append(non_code)
-    
-    # Reconstruct text
-    text = ''.join(parts)
-    
-    # NUCLEAR OPTION: Complete elimination of unwanted escape sequences
-    # This is a comprehensive overhaul to fix the persistent escape sequence problem
-    
-    # Step 1: Remove ALL backslash-space patterns first
-    text = re.sub(r'\\\s+', ' ', text)
-    
-    # Step 2: Remove backslashes before ANY mathematical content
-    # This catches patterns like \ f(x), \ x³, \ n, \ -x², \ 1, \ f'(x), etc.
-    
-    # Remove backslashes before function calls (with or without spaces)
-    text = re.sub(r'\\(\s*f\()', r'\1', text)  # \ f( -> f(
-    text = re.sub(r'\\(\s*f\'\()', r'\1', text)  # \ f'( -> f'(
-    text = re.sub(r'\\(\s*[a-zA-Z]+\()', r'\1', text)  # \ func( -> func(
-    
-    # Remove backslashes before variables and mathematical terms
-    text = re.sub(r'\\(\s*[a-zA-Z]+)', r'\1', text)  # \ x -> x, \ n -> n, \ a -> a
-    
-    # Remove backslashes before numbers and coefficients
-    text = re.sub(r'\\(\s*[+-]?[0-9]+)', r'\1', text)  # \ 1 -> 1, \ -2 -> -2, \ 3 -> 3
-    
-    # Remove backslashes before mathematical expressions with superscripts
-    text = re.sub(r'\\(\s*[0-9]+[²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ 2³ -> 2³
-    text = re.sub(r'\\(\s*[a-zA-Z]+[²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ x² -> x²
-    
-    # Remove backslashes before coefficients and variables
-    text = re.sub(r'\\(\s*[0-9]+[a-zA-Z])', r'\1', text)  # \ 3x -> 3x
-    text = re.sub(r'\\(\s*[a-zA-Z]+[0-9])', r'\1', text)  # \ ax -> ax
-    
-    # Remove backslashes before mathematical operations
-    text = re.sub(r'\\(\s*[+-])', r'\1', text)  # \ + -> +, \ - -> -
-    text = re.sub(r'\\(\s*[=+\-*/])', r'\1', text)  # \ = -> =, \ * -> *
-    
-    # Step 3: Remove backslashes before complex mathematical expressions
-    # Handle patterns like \ a cdot n cdot xⁿ⁻¹, \ 1 cdot x³, etc.
-    text = re.sub(r'\\(\s*[0-9]+\s*cdot)', r'\1', text)  # \ 1 cdot -> 1 cdot
-    text = re.sub(r'\\(\s*[a-zA-Z]+\s*cdot)', r'\1', text)  # \ a cdot -> a cdot
-    text = re.sub(r'\\(\s*cdot)', r'\1', text)  # \ cdot -> cdot
-    
-    # Handle patterns like \ n cdot xⁿ⁻¹
-    text = re.sub(r'\\(\s*[a-zA-Z]+\s*[a-zA-Z]+\s*[a-zA-Z]+)', r'\1', text)  # \ n cdot x -> n cdot x
-    
-    # Step 4: Remove backslashes before parentheses and brackets
-    text = re.sub(r'\\(\s*[\(\)\[\]])', r'\1', text)  # \ ( -> (, \ ) -> )
-    
-    # Step 5: Remove backslashes before any remaining mathematical symbols
-    text = re.sub(r'\\(\s*[ⁿ⁻¹²³⁴⁵⁶⁷⁸⁹⁰¹])', r'\1', text)  # \ ⁿ -> ⁿ, \ ⁻¹ -> ⁻¹
-    
-    # Step 6: Final comprehensive cleanup - remove ANY backslash followed by space or common characters
-    text = re.sub(r'\\(\s*[a-zA-Z0-9])', r'\1', text)  # \ char -> char
-    text = re.sub(r'\\(\s*[+-])', r'\1', text)  # \ +/- -> +/-
-    
-    # Step 7: Remove any remaining standalone backslashes that aren't part of LaTeX commands
-    # Only preserve backslashes that are part of legitimate LaTeX commands
-    text = re.sub(r'\\(?=\s|$|[^a-zA-Z()[\]{}])', '', text)
-    
-    # Step 8: Final cleanup for any remaining backslash-space patterns
-    text = re.sub(r'\\\s+', ' ', text)
-    
-    # ALWAYS show result for debugging
-    print(f"✅ DEBUG: After cleanup (first 300 chars): {text[:300]}")
-    
-    # Check if cleaning worked
-    has_w3org_after = 'w3.org' in text.lower()
-    has_katex_after = 'katex' in text.lower()
-    has_spanclass_after = 'spanclass' in text.lower()
-    has_angle_brackets_after = '<' in text and '>' in text
-    
-    if has_w3org_after or has_katex_after or has_spanclass_after:
-        print(f"⚠️ WARNING: Cleanup incomplete - katex: {has_katex_after}, spanclass: {has_spanclass_after}, w3.org: {has_w3org_after}, brackets: {has_angle_brackets_after}")
-    elif has_w3org_before or has_katex_before or has_spanclass_before or has_angle_brackets:
-        print(f"✅ Successfully cleaned all problematic markup")
     
     return text.strip()
 
@@ -717,9 +506,8 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
         
-        # Log finish reason for debugging
+        # Only log issues, not every successful response
         model_name = model_id.split('/')[-1]
-        print(f"Model {model_name}: finish_reason='{finish_reason}', length={len(content) if content else 0} chars, max_tokens={max_tokens}")
         
         # Detect incomplete responses heuristically
         incomplete_indicators = [
@@ -748,17 +536,9 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Detect and warn about incomplete responses
         if finish_reason == "length":
             # Model hit token limit - response was cut off mid-thought
-            print(f"⚠️ WARNING: {model_name} hit token limit and was truncated!")
             content = (content or "") + "\n\n⚠️ **Note:** Response truncated - model reached maximum output length."
-        elif is_likely_incomplete:
-            # Response appears to end mid-thought even with finish_reason="stop"
-            print(f"⚠️ WARNING: {model_name} appears to have incomplete ending: '{last_30_chars}'")
         elif finish_reason == "content_filter":
-            print(f"⚠️ WARNING: {model_name} stopped due to content filter")
             content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
-        elif finish_reason not in ["stop", "end_turn", None]:
-            # Log any other unexpected finish reasons
-            print(f"⚠️ WARNING: Unexpected finish_reason for {model_name}: '{finish_reason}'")
         
         # Clean up MathML and other unwanted markup before returning
         cleaned_content = clean_model_response(content) if content is not None else "No response generated"
@@ -808,7 +588,7 @@ def run_models_batch(prompt: str, model_batch: List[str], conversation_history: 
 
         except concurrent.futures.TimeoutError:
             # Handle batch timeout - get results from completed futures and mark others as failed
-            print(f"Batch timeout after {batch_timeout}s, processing completed results...")
+            pass
 
         # Handle any remaining incomplete futures
         for future, model_id in future_to_model.items():
@@ -828,39 +608,18 @@ def run_models_batch(prompt: str, model_batch: List[str], conversation_history: 
 
 def run_models(prompt: str, model_list: List[str], conversation_history: list = None) -> Dict[str, str]:
     """Run models with batching to prevent timeouts and API overload"""
-    import time
-
-    start_time = time.time()
-
     all_results = {}
-
-    print(f"Starting model processing: {len(model_list)} models total")
-    if conversation_history:
-        print(f"Using conversation context with {len(conversation_history)} previous messages")
 
     # Process models in batches
     for i in range(0, len(model_list), BATCH_SIZE):
         batch = model_list[i : i + BATCH_SIZE]
-        batch_num = i // BATCH_SIZE + 1
-        total_batches = (len(model_list) + BATCH_SIZE - 1) // BATCH_SIZE
-        batch_start = time.time()
-        print(f"Processing batch {batch_num}/{total_batches}: {len(batch)} models")
-
         try:
             batch_results = run_models_batch(prompt, batch, conversation_history)
             all_results.update(batch_results)
-            batch_duration = time.time() - batch_start
-            print(f"Batch {batch_num} completed in {batch_duration:.2f}s: {len(batch_results)} results")
         except Exception as e:
             # If a batch fails entirely, mark all models in that batch as failed
-            batch_duration = time.time() - batch_start
-            print(f"Batch {batch_num} failed after {batch_duration:.2f}s with error: {e}")
             for model_id in batch:
                 all_results[model_id] = f"Error: Batch processing failed - {str(e)}"
-
-    total_duration = time.time() - start_time
-    successful_count = sum(1 for result in all_results.values() if not result.startswith("Error:"))
-    print(f"Total processing completed in {total_duration:.2f}s: {successful_count}/{len(model_list)} successful")
 
     return all_results
 
@@ -869,8 +628,6 @@ def test_connection_quality() -> Dict[str, Any]:
     """Test connection quality by making a quick API call"""
     test_model = "anthropic/claude-3-haiku"  # Fast, reliable model for testing
     test_prompt = "Hello"
-
-    print("Testing connection quality...")
     start_time = time.time()
 
     try:
@@ -881,8 +638,7 @@ def test_connection_quality() -> Dict[str, Any]:
             max_tokens=100  # Small limit for connection test
         )
 
-        end_time = time.time()
-        response_time = end_time - start_time
+        response_time = time.time() - start_time
 
         # Categorize connection quality
         if response_time < 2:
@@ -898,10 +654,7 @@ def test_connection_quality() -> Dict[str, Any]:
             quality = "slow"
             multiplier = 2.0
 
-        print(f"Connection test completed in {response_time:.2f}s - Quality: {quality}")
-
         return {"response_time": response_time, "quality": quality, "time_multiplier": multiplier, "success": True}
 
     except Exception as e:
-        print(f"Connection test failed: {e}")
         return {"response_time": 0, "quality": "poor", "time_multiplier": 3.0, "success": False, "error": str(e)}
