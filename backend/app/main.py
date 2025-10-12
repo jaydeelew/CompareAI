@@ -18,7 +18,7 @@ app = FastAPI(title="CompareAI API", version="1.0.0")
 MAX_MODELS_PER_REQUEST = 12
 
 # Rate limiting configuration
-MAX_DAILY_COMPARISONS = 2
+MAX_DAILY_COMPARISONS = 10
 
 # In-memory storage for model performance tracking
 model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
