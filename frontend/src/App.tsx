@@ -1287,7 +1287,7 @@ function App() {
 
                     if (count === 1) {
                       indicator = "⚡ Very Quick";
-                      description = "Single model comparison";
+                      description = "Single model processing";
                     } else if (count <= 4) {
                       indicator = "🚀 Quick";
                       description = "Small batch processing";
