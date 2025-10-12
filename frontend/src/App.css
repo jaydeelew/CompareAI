@@ -506,7 +506,7 @@ body {
 
 .hero-input-textarea {
   width: 100%;
-  padding: 1.2rem 5rem 1.2rem 2rem;
+  padding: 1.2rem 7.5rem 1.2rem 2rem;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.5rem;
   font-size: 1.1rem;
@@ -523,6 +523,7 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   min-height: auto;
   font-weight: 500;
+  overflow: auto;
 }
 
 .hero-input-textarea:focus {
@@ -543,12 +544,22 @@ body {
   opacity: 0.8;
 }
 
+/* Hide scrollbar */
+.hero-input-textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.hero-input-textarea {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .textarea-actions {
   position: absolute;
   right: 16px;
   bottom: 0.7rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
   z-index: 10;
 }
@@ -815,7 +826,7 @@ body {
   }
 
   .hero-input-textarea {
-    padding: 1rem 4rem 1rem 1.5rem;
+    padding: 1rem 6.5rem 1rem 1.5rem;
     font-size: 1rem;
     min-height: auto;
     border-radius: 1.25rem;

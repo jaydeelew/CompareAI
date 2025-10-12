@@ -397,27 +397,82 @@ function App() {
     }
   }, [conversations, isFollowUpMode]);
 
-  // Track mouse position over models section
+  // Immediately hide card when all models are deselected
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    if (selectedModels.length === 0) {
+      setShowDoneSelectingCard(false);
+    }
+  }, [selectedModels.length]);
+
+  // Track mouse position over models section with throttling for better performance
+  useEffect(() => {
+    let rafId: number | null = null;
+    let lastShowState = false;
+    let lastMouseY = 0;
+    let lastMouseX = 0;
+
+    const checkCardVisibility = (mouseY: number, mouseX: number) => {
       if (!modelsSectionRef.current) return;
 
       const rect = modelsSectionRef.current.getBoundingClientRect();
-
+      const viewportHeight = window.innerHeight;
+      
       // Check if mouse is over the section
-      const isOver = e.clientY >= rect.top && e.clientY <= rect.bottom &&
-                     e.clientX >= rect.left && e.clientX <= rect.right;
+      const isOver = mouseY >= rect.top && mouseY <= rect.bottom &&
+                     mouseX >= rect.left && mouseX <= rect.right;
 
-      // Show card if over models section, at least one model is selected, 
-      // AND models section is not collapsed
-      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden;
-      setShowDoneSelectingCard(shouldShow);
+      // Calculate where the center of the screen is (where the card will be)
+      const screenCenterY = viewportHeight / 2;
+      
+      // Check if the center of the screen (where the card appears) is within the section bounds
+      const isCardOverSection = screenCenterY >= rect.top && screenCenterY <= rect.bottom;
+
+      // Show card only if:
+      // 1. Mouse is over the section
+      // 2. The card position (screen center) is also over the section
+      // 3. At least one model is selected
+      // 4. Models section is not collapsed
+      const shouldShow = isOver && isCardOverSection && selectedModels.length > 0 && !isModelsHidden;
+      
+      // Only update state if it changed to avoid unnecessary re-renders
+      if (shouldShow !== lastShowState) {
+        lastShowState = shouldShow;
+        setShowDoneSelectingCard(shouldShow);
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMouseY = e.clientY;
+      lastMouseX = e.clientX;
+      
+      // Use requestAnimationFrame for smoother updates
+      if (rafId) return;
+      
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        checkCardVisibility(lastMouseY, lastMouseX);
+      });
+    };
+
+    const handleScroll = () => {
+      // When scrolling, check visibility with last known mouse position
+      if (rafId) return;
+      
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        checkCardVisibility(lastMouseY, lastMouseX);
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
     };
   }, [selectedModels.length, isModelsHidden]);
 
