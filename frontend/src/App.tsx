@@ -1461,7 +1461,7 @@ function App() {
                           {(() => {
                             const providerModels = modelsByProvider[provider] || [];
                             const providerModelIds = providerModels.map(model => model.id);
-                            const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
+                            const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
                             const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
                             const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
                               (isFollowUpMode && !hasAnySelected);
@@ -1476,20 +1476,21 @@ function App() {
                                 }}
                                 style={{
                                   padding: '0.25rem 0.5rem',
-                                  fontSize: '0.7rem',
-                                  border: `1px solid ${isDisabled ? '#d1d5db' : allProviderModelsSelected ? '#dc2626' : '#667eea'}`,
+                                  fontSize: '1.2rem',
+                                  border: 'none',
                                   background: 'transparent',
-                                  color: isDisabled ? '#9ca3af' : allProviderModelsSelected ? '#dc2626' : '#667eea',
-                                  borderRadius: '4px',
+                                  color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
                                   cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                  opacity: isDisabled ? 0.5 : (hasAnySelected && !allProviderModelsSelected ? 0.7 : 1)
+                                  opacity: isDisabled ? 0.5 : 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  transition: 'color 0.2s ease'
                                 }}
                                 title={isDisabled ?
                                   (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) :
-                                  allProviderModelsSelected ? `Deselect all ${provider} models` :
-                                    `Select all ${provider} models`}
+                                  allProviderModelsSelected ? `Deselect All` : `Select All`}
                               >
-                                {allProviderModelsSelected ? 'Deselect All' : 'Select All'}
+                                ✱
                               </div>
                             );
                           })()}
