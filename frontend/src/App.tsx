@@ -1593,7 +1593,6 @@ function App() {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             padding: '1rem',
-            borderRadius: '12px',
             margin: '1rem 0',
             textAlign: 'center',
             boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
