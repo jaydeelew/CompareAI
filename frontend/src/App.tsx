@@ -129,9 +129,12 @@ function App() {
       showNotification('Screenshot target not found.', 'error');
       return;
     }
-    // Temporarily expand scroll area to show all content
+    
+    // Store original styles that we'll modify
     const prevOverflow = content.style.overflow;
     const prevMaxHeight = content.style.maxHeight;
+    
+    // Expand to show all content
     content.style.overflow = 'visible';
     content.style.maxHeight = 'none';
     
@@ -139,50 +142,49 @@ function App() {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
-      // Import html2canvas dynamically
-      const html2canvas = (await import("html2canvas")).default;
+      // Import html-to-image dynamically - it uses SVG foreignObject which is more accurate
+      const { toBlob } = await import("html-to-image");
 
-      const options = {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2, // Higher quality rendering
-        logging: false,
-        backgroundColor: null, // Preserve original background colors
-        width: content.scrollWidth,
-        height: content.scrollHeight,
-        x: 0,
-        y: 0,
-      };
-      const canvas = await html2canvas(content, options);
+      // Use html-to-image which typically preserves colors better
+      const blob = await toBlob(content, {
+        pixelRatio: 2, // High quality
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        style: {
+          // Ensure the element is fully visible
+          overflow: 'visible',
+          maxHeight: 'none',
+        }
+      });
       
-      // Convert to blob with maximum quality to preserve colors
-      canvas.toBlob(async (blob: Blob | null) => {
-        if (blob && navigator.clipboard && window.ClipboardItem) {
-          try {
-            await navigator.clipboard.write([
-              new window.ClipboardItem({ 'image/png': blob })
-            ]);
-            showNotification('Screenshot coped to clipboard!', 'success');
-          } catch {
-            showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
-            const link = document.createElement('a');
-            link.download = `model_${safeId}_messages.png`;
-            link.href = canvas.toDataURL('image/png', 1.0);
-            link.click();
-          }
-        } else if (blob) {
-          showNotification('Clipboard not supported. Image downloaded.', 'error');
+      if (blob && navigator.clipboard && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([
+            new window.ClipboardItem({ 'image/png': blob })
+          ]);
+          showNotification('Screenshot copied to clipboard!', 'success');
+        } catch {
+          showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
           const link = document.createElement('a');
           link.download = `model_${safeId}_messages.png`;
-          link.href = canvas.toDataURL('image/png', 1.0);
+          link.href = URL.createObjectURL(blob);
           link.click();
-        } else {
-          showNotification('Could not create image blob.', 'error');
+          URL.revokeObjectURL(link.href);
         }
-      }, 'image/png', 1.0);
+      } else if (blob) {
+        showNotification('Clipboard not supported. Image downloaded.', 'error');
+        const link = document.createElement('a');
+        link.download = `model_${safeId}_messages.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } else {
+        showNotification('Could not create image blob.', 'error');
+      }
     } catch (err) {
       showNotification('Screenshot failed: ' + (err as Error).message, 'error');
     } finally {
+      // Restore original styles
       content.style.overflow = prevOverflow;
       content.style.maxHeight = prevMaxHeight;
     }
