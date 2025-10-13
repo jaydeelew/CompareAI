@@ -625,6 +625,18 @@ function App() {
     // Check if all provider models are currently selected
     const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
 
+    if (allProviderModelsSelected) {
+      // Deselecting - check if this would leave us with no models
+      const modelsAfterDeselect = selectedModels.filter(id => !providerModelIds.includes(id));
+      if (modelsAfterDeselect.length === 0) {
+        setError('Must have at least one model to process');
+        setTimeout(() => {
+          setError(null);
+        }, 5000);
+        return;
+      }
+    }
+
     setSelectedModels(prev => {
       const newSelection = new Set(prev);
 
@@ -632,21 +644,29 @@ function App() {
         // Deselect all provider models
         providerModelIds.forEach(id => newSelection.delete(id));
       } else {
-        // Select all provider models, but respect the limit
-        // Count how many models from this provider are already selected
-        const alreadySelectedFromProvider = providerModelIds.filter(id => prev.includes(id)).length;
-        // Calculate remaining slots excluding already selected models from this provider
-        const remainingSlots = MAX_MODELS_LIMIT - (prev.length - alreadySelectedFromProvider);
-        const modelsToAdd = providerModelIds.slice(0, remainingSlots);
+        // In follow-up mode, only allow selecting models that were originally selected
+        if (isFollowUpMode) {
+          const modelsToAdd = providerModelIds.filter(id => 
+            originalSelectedModels.includes(id) && !prev.includes(id)
+          );
+          modelsToAdd.forEach(id => newSelection.add(id));
+        } else {
+          // Select all provider models, but respect the limit
+          // Count how many models from this provider are already selected
+          const alreadySelectedFromProvider = providerModelIds.filter(id => prev.includes(id)).length;
+          // Calculate remaining slots excluding already selected models from this provider
+          const remainingSlots = MAX_MODELS_LIMIT - (prev.length - alreadySelectedFromProvider);
+          const modelsToAdd = providerModelIds.slice(0, remainingSlots);
 
-        modelsToAdd.forEach(id => newSelection.add(id));
+          modelsToAdd.forEach(id => newSelection.add(id));
+        }
       }
 
       return Array.from(newSelection);
     });
 
     // Clear any previous error when successfully adding models (only when selecting, not deselecting)
-    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Please select at least one model'))) {
+    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
       setError(null);
     }
   };
@@ -654,6 +674,16 @@ function App() {
 
   const handleModelToggle = (modelId: string) => {
     if (selectedModels.includes(modelId)) {
+      // Check if this is the last selected model
+      if (selectedModels.length === 1) {
+        setError('Must have at least one model to process');
+        // Clear the error after 5 seconds
+        setTimeout(() => {
+          setError(null);
+        }, 5000);
+        return;
+      }
+      
       // Allow deselection in both normal and follow-up mode
       setSelectedModels(prev => prev.filter(id => id !== modelId));
       // Clear any previous error when deselecting a model
@@ -661,13 +691,23 @@ function App() {
         setError(null);
       }
     } else {
-      // Prevent adding new models during follow-up mode
+      // In follow-up mode, only allow reselecting models that were originally selected
       if (isFollowUpMode) {
-        setError('Cannot add new models during follow-up. Please start a new comparison to select different models.');
-        // Clear the error after 5 seconds
-        setTimeout(() => {
-          setError(null);
-        }, 5000);
+        if (originalSelectedModels.includes(modelId)) {
+          // Allow reselection of previously selected model
+          setSelectedModels(prev => [...prev, modelId]);
+          // Clear any previous error when successfully adding a model
+          if (error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
+            setError(null);
+          }
+        } else {
+          // Prevent adding new models during follow-up mode
+          setError('Cannot add new models during follow-up. Please start a new comparison to select different models.');
+          // Clear the error after 5 seconds
+          setTimeout(() => {
+            setError(null);
+          }, 5000);
+        }
         return;
       }
 
@@ -679,7 +719,7 @@ function App() {
 
       setSelectedModels(prev => [...prev, modelId]);
       // Clear any previous error when successfully adding a model
-      if (error && (error.includes('Maximum') || error.includes('Please select at least one model'))) {
+      if (error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
         setError(null);
       }
     }
@@ -1365,7 +1405,7 @@ function App() {
               </h2>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                 {isFollowUpMode
-                  ? 'You can deselect models but cannot add new ones during follow-up'
+                  ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
                   : `Choose up to ${MAX_MODELS_LIMIT} models`
                 }
               </p>
@@ -1499,8 +1539,9 @@ function App() {
                             const providerModelIds = providerModels.map(model => model.id);
                             const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
                             const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+                            const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
                             const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
-                              (isFollowUpMode && !hasAnySelected);
+                              (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
 
                             return (
                               <div
@@ -1540,8 +1581,9 @@ function App() {
                         <div className="provider-models">
                           {models.map((model) => {
                             const isSelected = selectedModels.includes(model.id);
+                            const wasOriginallySelected = originalSelectedModels.includes(model.id);
                             const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) ||
-                              (isFollowUpMode && !isSelected);
+                              (isFollowUpMode && !isSelected && !wasOriginallySelected);
                             return (
                               <label
                                 key={model.id}
@@ -1562,7 +1604,7 @@ function App() {
                                 <div className="model-info">
                                   <h4>
                                     {model.name}
-                                    {isFollowUpMode && !isSelected && (
+                                    {isFollowUpMode && !isSelected && !wasOriginallySelected && (
                                       <span
                                         style={{
                                           fontSize: '0.7rem',
