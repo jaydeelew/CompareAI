@@ -2992,8 +2992,8 @@ body {
 
 /* Inline code styling */
 .message-content .latex-content .inline-code {
-  background: rgba(110, 118, 129, 0.4);
-  color: #e6edf3;
+  background: rgba(60, 60, 60, 0.8);
+  color: #ffffff;
   padding: 0.2em 0.4em;
   border-radius: 6px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
@@ -3030,8 +3030,8 @@ body {
 }
 
 .message-content .latex-content code:not(.inline-code):not(.code-block code) {
-  background: rgba(110, 118, 129, 0.4);
-  color: #e6edf3;
+  background: rgba(60, 60, 60, 0.8);
+  color: #ffffff;
   padding: 0.2em 0.4em;
   border-radius: 6px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', 'Courier New', monospace;
