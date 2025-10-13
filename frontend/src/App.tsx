@@ -425,16 +425,16 @@ function App() {
       // Calculate where the card is positioned (80% from top of viewport)
       const cardPositionY = viewportHeight * 0.8;
       
-      // Hide the card just before it would enter the section above "Available Models"
-      // The card should only show if the section's top edge is still below the card position
-      const isCardBelowSectionTop = cardPositionY < rect.top;
+      // Hide the card if it would be positioned above the models section
+      // (i.e., the card position is above the section's top edge)
+      const isCardAboveSection = cardPositionY < rect.top;
 
       // Show card only if:
       // 1. Mouse is over the section
-      // 2. The card position is below the top of the section (not entering from above)
+      // 2. The card position is NOT above the top of the section
       // 3. At least one model is selected
       // 4. Models section is not collapsed
-      const shouldShow = isOver && !isCardBelowSectionTop && selectedModels.length > 0 && !isModelsHidden;
+      const shouldShow = isOver && !isCardAboveSection && selectedModels.length > 0 && !isModelsHidden;
       
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
