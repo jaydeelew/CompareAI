@@ -1281,32 +1281,61 @@ function App() {
                   {(() => {
                     const count = selectedModels.length;
 
-                    let indicator, description;
+                    let description;
+                    let IconComponent;
 
                     if (count === 1) {
-                      indicator = "⚡ Very Quick";
                       description = "Single model processing";
+                      // Single square/box icon
+                      IconComponent = () => (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                          <rect x="5" y="5" width="14" height="14" rx="2" />
+                        </svg>
+                      );
                     } else if (count <= 4) {
-                      indicator = "🚀 Quick";
                       description = "Small batch processing";
+                      // Copy/duplicate icon
+                      IconComponent = () => (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                      );
                     } else if (count <= 8) {
-                      indicator = "⏱️ Moderate";
                       description = "Medium batch processing";
-                    } else if (count <= 12) {
-                      indicator = "⏳ Takes a while";
-                      description = "Large batch processing";
+                      // Layers icon
+                      IconComponent = () => (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                          <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                          <polyline points="2 17 12 22 22 17" />
+                          <polyline points="2 12 12 17 22 12" />
+                        </svg>
+                      );
                     } else {
-                      indicator = "🕐 Be patient";
-                      description = "Very large batch - grab a coffee!";
+                      description = "Large batch processing";
+                      // Server/database icon for large
+                      IconComponent = () => (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                          <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                          <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                          <line x1="6" y1="6" x2="6.01" y2="6" />
+                          <line x1="6" y1="18" x2="6.01" y2="18" />
+                        </svg>
+                      );
                     }
 
                     return (
                       <>
-                        <strong>{indicator}</strong> - {description}
-                        <br />
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                          {count} model{count !== 1 ? 's' : ''} selected • Processing time depends on your Internet connection
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                          <IconComponent />
+                          <span>{count} model{count !== 1 ? 's' : ''} selected • {description}</span>
+                          <IconComponent />
+                        </div>
+                        <div style={{ marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                            Processing time depends on your Internet connection and the amount of rendering needed
+                          </span>
+                        </div>
                       </>
                     );
                   })()}
