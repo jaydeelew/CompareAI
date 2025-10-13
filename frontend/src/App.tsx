@@ -428,13 +428,18 @@ function App() {
       // Hide the card if it would be positioned above the models section
       // (i.e., the card position is above the section's top edge)
       const isCardAboveSection = cardPositionY < rect.top;
+      
+      // Hide the card if it would be positioned below the models section
+      // (i.e., the card position is below the section's bottom edge)
+      const isCardBelowSection = cardPositionY > rect.bottom;
 
       // Show card only if:
       // 1. Mouse is over the section
       // 2. The card position is NOT above the top of the section
-      // 3. At least one model is selected
-      // 4. Models section is not collapsed
-      const shouldShow = isOver && !isCardAboveSection && selectedModels.length > 0 && !isModelsHidden;
+      // 3. The card position is NOT below the bottom of the section
+      // 4. At least one model is selected
+      // 5. Models section is not collapsed
+      const shouldShow = isOver && !isCardAboveSection && !isCardBelowSection && selectedModels.length > 0 && !isModelsHidden;
       
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
