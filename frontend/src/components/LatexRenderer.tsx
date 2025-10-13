@@ -134,12 +134,15 @@ const looksProse = (content: string): boolean => {
     if (content.match(/[a-zA-Z]{15,}/) && !looksMathematical(content)) return true;
     
     // Common prose patterns
-    if (/^(where|note|for example|i\.e\.|e\.g\.|etc\.|see|vs\.|antiderivative|a constant)/i.test(content)) {
+    if (/^(where|note|for example|i\.e\.|e\.g\.|etc\.|see|vs\.|antiderivative|a constant|to |for |in |on |at |of |with |from |by )/i.test(content)) {
         return true;
     }
     
-    // Many words without math
+    // Multiple words (even short phrases are likely prose, not math)
     const wordCount = content.trim().split(/\s+/).length;
+    if (wordCount > 2 && !looksMathematical(content)) return true;
+    
+    // Many words without math
     if (wordCount > 15 && !looksMathematical(content)) return true;
     
     return false;
@@ -274,6 +277,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
         // Handle content in parentheses with spaces: ( math content )
         converted = converted.replace(/\(\s+((?:[^()]|\([^()]*\))+?)\s+\)/g, (_match, content) => {
+            // Don't convert if content has markdown formatting
+            if (content.includes('*') || content.includes('_') || content.includes('`')) return _match;
             if (looksMathematical(content) && !looksProse(content)) {
                 return `\\(${content.trim()}\\)`;
             }
@@ -296,8 +301,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         converted = converted.replace(/(?<![a-zA-Z])\(([^()]+)\)/g, (_match, content) => {
             if (_match.includes('\\(') || content.includes('\\boxed')) return _match;
             if (content.match(/^(a|an)\s+/i)) return _match; // Prose
+            // Don't convert if content has markdown formatting (asterisks, underscores, backticks)
+            if (content.includes('*') || content.includes('_') || content.includes('`')) return _match;
             
             const trimmed = content.trim();
+            
+            // Don't convert phrases with multiple words (prose, not math)
+            if (trimmed.includes(' ')) return _match;
             
             // Single letter/number or simple math expressions
             if (/^[a-zA-Z0-9]$/.test(trimmed) || 
@@ -573,7 +583,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
                 if (cells.length > 0) {
                     const tag = isHeader ? 'th' : 'td';
-                    const rowHTML = '<tr>' + cells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
+                    // Process markdown formatting in each cell before creating HTML
+                    const processedCells = cells.map(cell => {
+                        let processed = cell;
+                        // Process bold and italic (bold first, then italic)
+                        processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                        processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+                        // Process inline code
+                        processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+                        return processed;
+                    });
+                    const rowHTML = '<tr>' + processedCells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
                     tableHTML += rowHTML;
                     if (index === 0) isHeader = false;
                 }
@@ -599,8 +619,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
         processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-        // Bold and italic
-        processed = processed.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+        // Bold and italic (preserve all spaces)
+        // Bold: match ** but allow single * inside
+        processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Italic: match single * but not when part of **
         processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
 
         // Strikethrough
