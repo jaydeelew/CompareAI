@@ -1605,6 +1605,9 @@ function App() {
                                   disabled={isDisabled}
                                   onChange={() => !isDisabled && handleModelToggle(model.id)}
                                   className="model-checkbox"
+                                  style={{
+                                    borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
+                                  }}
                                 />
                                 <div className="model-info">
                                   <h4>
