@@ -422,18 +422,19 @@ function App() {
       const isOver = mouseY >= rect.top && mouseY <= rect.bottom &&
                      mouseX >= rect.left && mouseX <= rect.right;
 
-      // Calculate where the center of the screen is (where the card will be)
-      const screenCenterY = viewportHeight / 2;
+      // Calculate where the card is positioned (80% from top of viewport)
+      const cardPositionY = viewportHeight * 0.8;
       
-      // Check if the center of the screen (where the card appears) is within the section bounds
-      const isCardOverSection = screenCenterY >= rect.top && screenCenterY <= rect.bottom;
+      // Hide the card just before it would enter the section above "Available Models"
+      // The card should only show if the section's top edge is still below the card position
+      const isCardBelowSectionTop = cardPositionY < rect.top;
 
       // Show card only if:
       // 1. Mouse is over the section
-      // 2. The card position (screen center) is also over the section
+      // 2. The card position is below the top of the section (not entering from above)
       // 3. At least one model is selected
       // 4. Models section is not collapsed
-      const shouldShow = isOver && isCardOverSection && selectedModels.length > 0 && !isModelsHidden;
+      const shouldShow = isOver && !isCardBelowSectionTop && selectedModels.length > 0 && !isModelsHidden;
       
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
