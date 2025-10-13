@@ -632,7 +632,10 @@ function App() {
         providerModelIds.forEach(id => newSelection.delete(id));
       } else {
         // Select all provider models, but respect the limit
-        const remainingSlots = MAX_MODELS_LIMIT - prev.length;
+        // Count how many models from this provider are already selected
+        const alreadySelectedFromProvider = providerModelIds.filter(id => prev.includes(id)).length;
+        // Calculate remaining slots excluding already selected models from this provider
+        const remainingSlots = MAX_MODELS_LIMIT - (prev.length - alreadySelectedFromProvider);
         const modelsToAdd = providerModelIds.slice(0, remainingSlots);
 
         modelsToAdd.forEach(id => newSelection.add(id));
