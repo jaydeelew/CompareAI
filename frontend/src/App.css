@@ -2006,6 +2006,14 @@ body {
   border-color: rgba(102, 126, 234, 0.4);
 }
 
+.provider-dropdown.has-selected-models {
+  border-color: #ef4444;
+}
+
+.provider-dropdown.has-selected-models:hover {
+  border-color: #dc2626;
+}
+
 .provider-header {
   display: flex;
   align-items: center;

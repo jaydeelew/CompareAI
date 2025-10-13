@@ -1474,8 +1474,10 @@ function App() {
                 </div>
               ) : (
                 <div className="provider-dropdowns">
-                  {Object.entries(modelsByProvider).map(([provider, models]) => (
-                    <div key={provider} className="provider-dropdown">
+                  {Object.entries(modelsByProvider).map(([provider, models]) => {
+                    const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
+                    return (
+                    <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
                       <button
                         className="provider-header"
                         onClick={() => toggleDropdown(provider)}
@@ -1583,7 +1585,8 @@ function App() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
