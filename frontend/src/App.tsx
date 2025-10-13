@@ -1403,7 +1403,10 @@ function App() {
         )}
 
         <section className="models-section" ref={modelsSectionRef}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', cursor: 'pointer' }}
+            onClick={() => setIsModelsHidden(!isModelsHidden)}
+          >
             <div>
               <h2 style={{ margin: 0 }}>
                 {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
@@ -1418,7 +1421,10 @@ function App() {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
-                  onClick={() => setSelectedModels([])}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedModels([]);
+                  }}
                   disabled={selectedModels.length === 0 || isFollowUpMode}
                   style={{
                     padding: '0.5rem 0.75rem',
@@ -1435,7 +1441,10 @@ function App() {
                   Clear All
                 </button>
                 <button
-                  onClick={collapseAllDropdowns}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    collapseAllDropdowns();
+                  }}
                   disabled={openDropdowns.size === 0}
                   style={{
                     padding: '0.5rem 0.75rem',
@@ -1451,21 +1460,27 @@ function App() {
                   Collapse All
                 </button>
               </div>
-              <div style={{
-                padding: '0.5rem 1rem',
-                background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
-                  selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
-                  selectedModels.length > 0 ? 'white' : '#6b7280',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
-              }}>
+              <div 
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
+                    selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                  color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
+                    selectedModels.length > 0 ? 'white' : '#6b7280',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {selectedModels.length} of {MAX_MODELS_LIMIT} selected
               </div>
               <button
-                onClick={() => setIsModelsHidden(!isModelsHidden)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModelsHidden(!isModelsHidden);
+                }}
                 style={{
                   padding: '0.5rem',
                   fontSize: '0.875rem',
