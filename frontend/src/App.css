@@ -731,6 +731,13 @@ body {
 }
 
 /* Responsive Design */
+/* Hide capability tiles when all 4 cannot fit side by side */
+@media (max-width: 950px) {
+  .hero-capabilities {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .navbar {
     padding: 0.75rem;
@@ -776,17 +783,6 @@ body {
   .hero-subtitle {
     font-size: clamp(0.95rem, 4vw, 1.15rem);
     margin-bottom: 2rem;
-  }
-
-  .hero-capabilities {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1.75rem;
-    padding: 0 0.5rem;
-  }
-
-  .capability-tile {
-    padding: 1rem 0.75rem;
   }
 
   .capability-icon {
