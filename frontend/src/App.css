@@ -2713,7 +2713,7 @@ body {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
   gap: 1.5rem;
   align-items: start;
 }
@@ -3935,18 +3935,6 @@ body {
   gap: 0.25rem;
 }
 
-/* Mobile landscape mode - 2 columns when phone is sideways */
-@media (max-width: 768px) and (orientation: landscape) {
-  .results-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-  }
-
-  .result-card {
-    width: 100%;
-  }
-}
-
 /* Responsive */
 @media (max-width: 1200px) {
   .app-main {
@@ -3969,6 +3957,9 @@ body {
 
   .app-main {
     padding: 1rem 0.5vw;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
   }
 
   .input-section,
@@ -3977,6 +3968,8 @@ body {
   .results-section {
     padding: 1rem 0.5vw;
     border-radius: 8px;
+    width: 100%;
+    max-width: 100%;
   }
 
   /* Mobile layout for models section header */
@@ -4020,6 +4013,19 @@ body {
   .models-grid,
   .results-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .result-card {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .results-section {
+    overflow-x: hidden;
+    width: 100%;
   }
 
   .results-metadata {
@@ -4030,6 +4036,19 @@ body {
   .conversation-content {
     padding: 0.5rem;
     max-height: 350px;
+  }
+}
+
+/* Mobile landscape mode - 2 columns when phone is sideways */
+@media (max-width: 768px) and (orientation: landscape) {
+  .results-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem;
+  }
+
+  .result-card {
+    width: 100%;
+    max-width: 100%;
   }
 }
 
