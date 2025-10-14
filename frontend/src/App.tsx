@@ -676,7 +676,7 @@ function App() {
     });
 
     // Clear any previous error when successfully adding models (only when selecting, not deselecting)
-    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
+    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
       setError(null);
     }
   };
@@ -707,7 +707,7 @@ function App() {
           // Allow reselection of previously selected model
           setSelectedModels(prev => [...prev, modelId]);
           // Clear any previous error when successfully adding a model
-          if (error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
+          if (error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
             setError(null);
           }
         } else {
@@ -729,7 +729,7 @@ function App() {
 
       setSelectedModels(prev => [...prev, modelId]);
       // Clear any previous error when successfully adding a model
-      if (error && (error.includes('Maximum') || error.includes('Must have at least one model'))) {
+      if (error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
         setError(null);
       }
     }
