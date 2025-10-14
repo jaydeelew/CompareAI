@@ -681,8 +681,8 @@ function App() {
 
   const handleModelToggle = (modelId: string) => {
     if (selectedModels.includes(modelId)) {
-      // Check if this is the last selected model
-      if (selectedModels.length === 1) {
+      // Check if this is the last selected model - only prevent in follow-up mode
+      if (selectedModels.length === 1 && isFollowUpMode) {
         setError('Must have at least one model to process');
         // Clear the error after 5 seconds
         setTimeout(() => {
