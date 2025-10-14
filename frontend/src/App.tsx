@@ -940,6 +940,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setIsModelsHidden(true); // Hide models section after clicking Compare
+    setShowDoneSelectingCard(false); // Hide "Done Selecting" card after clicking Compare
 
     // Capture user timestamp when they actually submit
     const userTimestamp = new Date().toISOString();
