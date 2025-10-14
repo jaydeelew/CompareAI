@@ -2713,7 +2713,7 @@ body {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 1.5rem;
   align-items: start;
 }
@@ -3388,6 +3388,11 @@ body {
     gap: 1rem;
   }
 
+  .result-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .result-header {
     padding: 0.5rem 1rem 0.375rem 1rem;
     display: flex;
@@ -3928,6 +3933,18 @@ body {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+/* Mobile landscape mode - 2 columns when phone is sideways */
+@media (max-width: 768px) and (orientation: landscape) {
+  .results-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .result-card {
+    width: 100%;
+  }
 }
 
 /* Responsive */
