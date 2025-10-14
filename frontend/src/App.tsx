@@ -1150,8 +1150,8 @@ function App() {
               className="done-selecting-button"
               aria-label="Done selecting models"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 2L8 20L2 16" />
               </svg>
             </button>
           </div>
