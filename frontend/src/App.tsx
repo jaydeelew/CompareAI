@@ -405,6 +405,24 @@ function App() {
     }
   }, [selectedModels.length]);
 
+  // Trigger card visibility check when models are selected (especially for mobile)
+  useEffect(() => {
+    if (selectedModels.length > 0 && !isModelsHidden && modelsSectionRef.current) {
+      // Check if we should show the card based on current viewport and section position
+      const rect = modelsSectionRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const cardPositionY = viewportHeight * 0.8;
+
+      // Show card if it would be positioned within the models section bounds
+      const isCardAboveSection = cardPositionY < rect.top;
+      const isCardBelowSection = cardPositionY > rect.bottom;
+
+      if (!isCardAboveSection && !isCardBelowSection) {
+        setShowDoneSelectingCard(true);
+      }
+    }
+  }, [selectedModels.length, isModelsHidden]);
+
   // Track mouse position over models section with throttling for better performance
   useEffect(() => {
     let rafId: number | null = null;
@@ -461,6 +479,23 @@ function App() {
       });
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      // Handle touch events for mobile devices
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        lastMouseY = touch.clientY;
+        lastMouseX = touch.clientX;
+
+        // Use requestAnimationFrame for smoother updates
+        if (rafId) return;
+
+        rafId = window.requestAnimationFrame(() => {
+          rafId = null;
+          checkCardVisibility(lastMouseY, lastMouseX);
+        });
+      }
+    };
+
     const handleScroll = () => {
       // When scrolling, check visibility with last known mouse position
       if (rafId) return;
@@ -472,10 +507,12 @@ function App() {
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('scroll', handleScroll);
       if (rafId) {
         window.cancelAnimationFrame(rafId);
