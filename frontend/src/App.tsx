@@ -407,19 +407,9 @@ function App() {
 
   // Trigger card visibility check when models are selected (especially for mobile)
   useEffect(() => {
-    if (selectedModels.length > 0 && !isModelsHidden && modelsSectionRef.current) {
-      // Check if we should show the card based on current viewport and section position
-      const rect = modelsSectionRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const cardPositionY = viewportHeight * 0.8;
-
-      // Show card if it would be positioned within the models section bounds
-      const isCardAboveSection = cardPositionY < rect.top;
-      const isCardBelowSection = cardPositionY > rect.bottom;
-
-      if (!isCardAboveSection && !isCardBelowSection) {
-        setShowDoneSelectingCard(true);
-      }
+    if (selectedModels.length > 0 && !isModelsHidden) {
+      // Simply show the card when models are selected and section is visible
+      setShowDoneSelectingCard(true);
     }
   }, [selectedModels.length, isModelsHidden]);
 
@@ -434,30 +424,16 @@ function App() {
       if (!modelsSectionRef.current) return;
 
       const rect = modelsSectionRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
 
       // Check if mouse is over the section
       const isOver = mouseY >= rect.top && mouseY <= rect.bottom &&
         mouseX >= rect.left && mouseX <= rect.right;
 
-      // Calculate where the card is positioned (80% from top of viewport)
-      const cardPositionY = viewportHeight * 0.8;
-
-      // Hide the card if it would be positioned above the models section
-      // (i.e., the card position is above the section's top edge)
-      const isCardAboveSection = cardPositionY < rect.top;
-
-      // Hide the card if it would be positioned below the models section
-      // (i.e., the card position is below the section's bottom edge)
-      const isCardBelowSection = cardPositionY > rect.bottom;
-
       // Show card only if:
       // 1. Mouse is over the section
-      // 2. The card position is NOT above the top of the section
-      // 3. The card position is NOT below the bottom of the section
-      // 4. At least one model is selected
-      // 5. Models section is not collapsed
-      const shouldShow = isOver && !isCardAboveSection && !isCardBelowSection && selectedModels.length > 0 && !isModelsHidden;
+      // 2. At least one model is selected
+      // 3. Models section is not collapsed
+      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden;
 
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
@@ -496,24 +472,12 @@ function App() {
       }
     };
 
-    const handleScroll = () => {
-      // When scrolling, check visibility with last known mouse position
-      if (rafId) return;
-
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        checkCardVisibility(lastMouseY, lastMouseX);
-      });
-    };
-
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('scroll', handleScroll);
       if (rafId) {
         window.cancelAnimationFrame(rafId);
       }
