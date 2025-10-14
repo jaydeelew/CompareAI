@@ -1409,10 +1409,10 @@ function App() {
 
         <section className="models-section" ref={modelsSectionRef}>
           <div
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', cursor: 'pointer' }}
+            className="models-section-header"
             onClick={() => setIsModelsHidden(!isModelsHidden)}
           >
-            <div>
+            <div className="models-header-title">
               <h2 style={{ margin: 0 }}>
                 {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
               </h2>
@@ -1423,8 +1423,8 @@ function App() {
                 }
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="models-header-controls">
+              <div className="models-header-buttons">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1465,47 +1465,52 @@ function App() {
                   Collapse All
                 </button>
               </div>
-              <div
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
-                    selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                  color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
-                    selectedModels.length > 0 ? 'white' : '#6b7280',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {selectedModels.length} of {MAX_MODELS_LIMIT} selected
+              <div className="models-header-right">
+                <div
+                  className="models-count-indicator"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
+                      selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                    color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
+                      selectedModels.length > 0 ? 'white' : '#6b7280',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {selectedModels.length} of {MAX_MODELS_LIMIT} selected
+                </div>
+                <button
+                  className="models-toggle-arrow"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsModelsHidden(!isModelsHidden);
+                  }}
+                  style={{
+                    padding: '0.5rem',
+                    fontSize: '1.25rem',
+                    border: '2px solid var(--primary-color)',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    background: 'var(--bg-primary)',
+                    color: 'var(--primary-color)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    fontWeight: 'bold'
+                  }}
+                  title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                >
+                  {isModelsHidden ? '▼' : '▲'}
+                </button>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsModelsHidden(!isModelsHidden);
-                }}
-                style={{
-                  padding: '0.5rem',
-                  fontSize: '0.875rem',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: 'none',
-                  background: 'transparent',
-                  color: 'var(--primary-color)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '36px',
-                  height: '36px'
-                }}
-                title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-              >
-                {isModelsHidden ? '▼' : '▲'}
-              </button>
             </div>
           </div>
 

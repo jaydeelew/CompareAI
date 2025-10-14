@@ -1448,6 +1448,36 @@ body {
   padding: 2rem 1rem 1rem 1rem;
 }
 
+/* Models section header */
+.models-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+}
+
+.models-header-title {
+  flex: 1;
+}
+
+.models-header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.models-header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.models-header-right {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .input-section:hover,
 .models-section:hover,
 .results-section:hover {
@@ -3932,6 +3962,43 @@ body {
     border-radius: 8px;
   }
 
+  /* Mobile layout for models section header */
+  .models-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .models-header-title {
+    order: 1;
+  }
+
+  .models-header-controls {
+    order: 2;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .models-header-buttons {
+    order: 1;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .models-header-right {
+    order: 2;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .models-count-indicator {
+    flex: 1;
+  }
+
+  .models-toggle-arrow {
+    flex-shrink: 0;
+  }
 
   .models-grid,
   .results-grid {
