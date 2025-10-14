@@ -868,6 +868,9 @@ function App() {
     // Hide the card
     setShowDoneSelectingCard(false);
 
+    // Collapse the models section
+    setIsModelsHidden(true);
+
     // Scroll to the very top
     window.scrollTo({
       top: 0,
