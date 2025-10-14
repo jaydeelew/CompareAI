@@ -1,4 +1,4 @@
-# CompareIntel
+# CompareAI
 
 A production-ready AI model comparison platform that enables side-by-side comparison of responses from 50+ AI models simultaneously. Built with modern web technologies and deployed with SSL/HTTPS support.
 
@@ -8,52 +8,59 @@ A production-ready AI model comparison platform that enables side-by-side compar
 
 ## Overview
 
-CompareIntel is a comprehensive web application that enables comparison of multiple AI language models from leading providers including OpenAI, Anthropic, Google, Cohere, DeepSeek, and many others. Users can submit text input and instantly see how different models respond, with detailed performance metrics and success/failure tracking.
+CompareAI is a comprehensive web application that enables comparison of multiple AI language models from leading providers including OpenAI, Anthropic, Google, Cohere, DeepSeek, and many others. Users can submit text input and instantly see how different models respond, with detailed performance metrics and success/failure tracking.
 
 ## Key Features
 
 - **50+ AI Models:** Compare responses from models across multiple providers:
 
-  - **Anthropic:** Claude 3 Haiku, Claude 3.5 Sonnet, Claude 3 Opus
-  - **OpenAI:** GPT-4, GPT-4 Turbo, GPT-3.5 Turbo variations
-  - **Google:** Gemini Pro, Gemini Flash, Gemini Exp models
-  - **Cohere:** Command R, Command R+, Command R7B
-  - **DeepSeek:** DeepSeek Chat, DeepSeek Coder
-  - **Meta:** Llama 3.1 and 3.2 variants
-  - **Many more providers and models**
+  - **Anthropic:** Claude Sonnet 4.5, Claude 4 Sonnet, Claude 3.7 Sonnet, Claude 3.5 Sonnet
+  - **OpenAI:** GPT-5 Pro, GPT-5 Nano, GPT-5 Mini, GPT-5 Codex, GPT-5 Chat, GPT-5, GPT-4o
+  - **Google:** Gemini 2.5 Pro, Gemini 2.5 Flash variants, Gemini 2.0 Flash
+  - **Cohere:** Command R7B, Command R+, Command A
+  - **DeepSeek:** DeepSeek V3.2 Exp, DeepSeek R1, DeepSeek Chat V3.1
+  - **Meta:** Llama 4 Scout, Llama 4 Maverick, Llama 3.3 70B Instruct, Llama Guard models
+  - **Microsoft:** WizardLM-2 8x22B, Phi 4 Reasoning Plus, Phi 4, MAI-DS-R1
+  - **Mistral:** Mistral Small 3.2, Mistral Medium 3.1, Mistral Large, Devstral models, Codestral
+  - **Qwen:** Qwen3 VL, Qwen3 Next, Qwen3 Max, Qwen3 Coder variants
+  - **xAI:** Grok 4 Fast, Grok 4, Grok 3 Mini, Grok 3
 
-- **High-Speed Processing:** Optimized backend with 12-60x faster response processing (200-600ms improvement)
+- **High-Speed Processing:** Optimized backend with concurrent API calls and intelligent batch processing
 - **Real-Time Processing:** Concurrent API calls with intelligent batch processing for optimal performance
 - **Performance Analytics:** Track success rates, response times, and model reliability
 - **Smart Selection Tools:** Quick select options (Top 5, Popular, by Provider) to streamline testing
-- **Intelligent Timeout Prevention:** Optimized request handling with user-friendly timeout management
+- **Rate Limiting:** Freemium model with 10 daily comparisons per user/IP address
+- **Advanced LaTeX Rendering:** Comprehensive LaTeX/Markdown renderer with KaTeX support
+- **Conversation History:** Support for multi-turn conversations with context preservation
 - **Responsive Design:** Modern, mobile-friendly interface with smooth animations
 - **Production Security:** SSL/HTTPS support with Let's Encrypt certificates
 - **Containerized Deployment:** Full Docker support for development and production environments
 
 ## Tech Stack
 
-- **Frontend:** React 18, TypeScript, Vite, Modern CSS with CSS Variables
-- **Backend:** FastAPI (Python), OpenAI SDK, OpenRouter Integration
+- **Frontend:** React 18, TypeScript, Vite, Modern CSS with CSS Variables, KaTeX for LaTeX rendering
+- **Backend:** FastAPI (Python), OpenAI SDK, OpenRouter Integration, Rate limiting with SlowAPI
 - **Infrastructure:** Docker, Docker Compose, Nginx reverse proxy
-- **Security:** SSL/HTTPS with Let's Encrypt, CORS configuration
+- **Security:** SSL/HTTPS with Let's Encrypt, CORS configuration, Rate limiting
 - **Deployment:** AWS EC2 with automated SSL setup scripts
 - **Monitoring:** Built-in model performance tracking and analytics
 
 ## Project Structure
 
 ```
-CompareIntel/
+CompareAI/
 ├── backend/                 # FastAPI application
 │   ├── app/
-│   │   ├── main.py         # API endpoints and CORS setup
+│   │   ├── main.py         # API endpoints, CORS setup, and rate limiting
 │   │   └── model_runner.py # Model integration and batch processing
 │   ├── Dockerfile          # Backend container configuration
 │   └── requirements.txt    # Python dependencies
 ├── frontend/               # React application
 │   ├── src/
 │   │   ├── App.tsx        # Main application component
-│   │   └── App.css        # Modern styling with animations
+│   │   ├── App.css        # Modern styling with animations
+│   │   └── components/
+│   │       └── LatexRenderer.tsx # Advanced LaTeX/Markdown renderer
 │   ├── Dockerfile         # Frontend container configuration
 │   └── package.json       # Node.js dependencies
 ├── nginx/                 # Reverse proxy configurations
@@ -63,8 +70,10 @@ CompareIntel/
 ├── docker-compose.yml     # Development environment
 ├── docker-compose.prod.yml # Production environment
 ├── docker-compose.ssl.yml  # SSL-enabled production
+├── docker-compose.dev-ssl.yml # Development with SSL
 ├── setup-ssl.sh           # Automated SSL certificate setup
-└── deploy.sh              # Production deployment script
+├── setup-compareintel-ssl.sh # Pre-configured SSL setup for compareintel.com
+└── create-dev-ssl.sh      # Self-signed certificates for development
 ```
 
 ## Getting Started
@@ -128,8 +137,9 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 **Pro Tips:**
 
 - Use "Top 5" button for quick comparisons
-- Select 15 or fewer models for optimal performance
+- Select 12 or fewer models for optimal performance (rate limited)
 - Check the model statistics endpoint for reliability data
+- Free tier allows 10 comparisons per day per IP address
 
 ## Production Deployment
 
@@ -148,17 +158,19 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 **Manual Deployment:**
 
 ```bash
-# Deploy production environment
-./deploy.sh
+# Deploy production environment (HTTP)
+docker compose -f docker-compose.prod.yml up -d
+
+# Deploy production environment (HTTPS)
+docker compose -f docker-compose.ssl.yml up -d
 ```
 
-The deployment script automatically:
+The deployment automatically:
 
-- Detects and uses SSL certificates if available
-- Falls back to HTTP if SSL is not configured
 - Builds optimized production containers
 - Configures Nginx reverse proxy
 - Sets up proper CORS and security headers
+- Enables rate limiting and performance monitoring
 
 ### Environment Options
 
@@ -172,32 +184,36 @@ The deployment script automatically:
 ## API Endpoints
 
 - `GET /` - Health check
+- `GET /health` - Detailed health status
 - `GET /models` - List all available models by provider
-- `POST /compare` - Compare models with input text
+- `POST /compare` - Compare models with input text (rate limited to 10/day)
 - `GET /model-stats` - Performance statistics for all models
+- `GET /rate-limit-status` - Check current rate limit status
+- `POST /dev/reset-rate-limit` - Reset rate limits (development only)
 
 ## Advanced Configuration
 
 ### Performance Tuning
 
-- **Concurrent Requests:** Adjust `MAX_CONCURRENT_REQUESTS` in `model_runner.py`
-- **Timeout Settings:** Modify `INDIVIDUAL_MODEL_TIMEOUT` for slower connections
-- **Batch Size:** Configure `BATCH_SIZE` for optimal throughput
+- **Concurrent Requests:** Adjust `MAX_CONCURRENT_REQUESTS` in `model_runner.py` (default: 12)
+- **Timeout Settings:** Modify `INDIVIDUAL_MODEL_TIMEOUT` for slower connections (default: 120s)
+- **Batch Size:** Configure `BATCH_SIZE` for optimal throughput (default: 12)
+- **Rate Limiting:** Adjust `MAX_DAILY_COMPARISONS` in `main.py` (default: 10)
 
 ### Model Management
 
 - Models are organized by provider for easy selection
-- Support for 100+ models across major AI providers
+- Support for 50+ models across major AI providers
 - Real-time model availability checking
 - Performance tracking and success rate monitoring
+- Maximum 12 models per comparison request
 
 ## Documentation
 
 - **[DEV_WORKFLOW.md](DEV_WORKFLOW.md)** - Comprehensive development environment setup
-- **[SECURITY_SETUP.md](SECURITY_SETUP.md)** - SSL/HTTPS configuration and security best practices
+- **[LATEX_RENDERER_IMPROVEMENTS.md](LATEX_RENDERER_IMPROVEMENTS.md)** - Advanced LaTeX rendering capabilities
+- **[RATE_LIMITING_IMPLEMENTATION.md](RATE_LIMITING_IMPLEMENTATION.md)** - Rate limiting and freemium model details
 - **[CACHE_BUSTING_SETUP.md](CACHE_BUSTING_SETUP.md)** - Cache busting and performance optimizations
-- **[PERFORMANCE_SUMMARY.md](PERFORMANCE_SUMMARY.md)** - Response speed optimizations (12-60x faster processing)
-- **[PERFORMANCE_QUICK_START.md](PERFORMANCE_QUICK_START.md)** - Quick guide to performance improvements
 
 ## Contributing
 
@@ -215,6 +231,8 @@ We welcome contributions! Here's how you can help:
 - Use FastAPI conventions for backend development
 - Test your changes across multiple AI models
 - Update documentation for new features
+- Respect rate limiting constraints in development
+- Test LaTeX rendering with mathematical content
 
 ## License
 
