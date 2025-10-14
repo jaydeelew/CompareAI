@@ -1496,7 +1496,7 @@ function App() {
                   style={{
                     padding: '0.5rem',
                     fontSize: '1.25rem',
-                    border: '2px solid var(--primary-color)',
+                    border: 'none',
                     outline: 'none',
                     boxShadow: 'none',
                     background: 'var(--bg-primary)',
