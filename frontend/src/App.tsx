@@ -142,8 +142,10 @@ function App() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
-      // Import html-to-image dynamically - it uses SVG foreignObject which is more accurate
-      const { toBlob } = await import("html-to-image");
+      // Dynamically import html-to-image with type safety workaround
+      // @ts-ignore
+      const htmlToImage = await import("html-to-image");
+      const toBlob = htmlToImage.toBlob;
 
       // Use html-to-image which typically preserves colors better
       const blob = await toBlob(content, {
