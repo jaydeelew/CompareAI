@@ -127,13 +127,13 @@ docker compose -f docker-compose.prod.yml down
 # SSH into your EC2 instance
 ssh -i CompareAI.pem ubuntu@54.163.207.252
 
+# ONE-TIME: Set up SSL certificates for both domains
+./setup-compareintel-ssl.sh
+
 cd CompareAI
 
 # Pull latest changes
 git pull origin master
-
-# ONE-TIME: Set up SSL certificates for both domains
-./setup-compareintel-ssl.sh
 
 # Stop current production services
 docker compose -f docker-compose.ssl.yml down
