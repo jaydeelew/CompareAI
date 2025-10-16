@@ -20,8 +20,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     const [isLoading, setIsLoading] = useState(false);
 
     const validateForm = (): boolean => {
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters long');
+        if (password.length < 12) {
+            setError('Password must be at least 12 characters long');
             return false;
         }
 
@@ -40,6 +40,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         // Check for number
         if (!/[0-9]/.test(password)) {
             setError('Password must contain at least one number');
+            return false;
+        }
+
+        // Check for special character
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+            setError('Password must contain at least one special character (!@#$%^&*()_+-=[]{};\':"|,.<>/?)');
             return false;
         }
 
@@ -117,13 +123,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="••••••••••••"
                         required
                         autoComplete="new-password"
                         disabled={isLoading}
-                        minLength={8}
+                        minLength={12}
                     />
-                    <small className="form-hint">At least 8 characters, with uppercase, lowercase, and a number</small>
+                    <small className="form-hint">At least 12 characters with uppercase, lowercase, number, and special character</small>
                 </div>
 
                 <div className="form-group">
@@ -133,11 +139,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="••••••••••••"
                         required
                         autoComplete="new-password"
                         disabled={isLoading}
-                        minLength={8}
+                        minLength={12}
                     />
                 </div>
 
