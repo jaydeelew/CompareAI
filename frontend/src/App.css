@@ -1,5 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Banner animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Screenshot button styling to match close-card-btn */
 
 .screenshot-card-btn {
@@ -184,9 +197,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: 0.375rem 1rem;
   max-width: none;
   margin: 0;
+  height: 60px;
 }
 
 .nav-brand {
@@ -198,6 +212,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
 }
 
 .logo-icon {
@@ -228,9 +249,10 @@ body {
   font-size: 0.75rem;
   color: #374151;
   font-weight: 600;
-  margin-top: 0.125rem;
+  margin-top: 0.0625rem;
   display: block;
   opacity: 1;
+  line-height: 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -239,6 +261,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-right: 1rem;
 }
 
 .nav-button {
@@ -265,14 +288,71 @@ body {
   height: 20px;
 }
 
+/* Auth Navigation Buttons */
+.nav-button-text {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-button-text:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.nav-button-primary {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.nav-button-primary:active {
+  transform: translateY(0);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1rem;
+}
+
 /* Hero Section - Modern 2025 Design */
 .hero-section {
   padding: 4rem 1rem 5rem;
+  margin: 0;
   text-align: center;
   background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 20%, #0ea5e9 50%, #1e40af 80%, #0f172a 100%);
   color: var(--text-inverse);
   position: relative;
   overflow: hidden;
+  display: block;
+  transition: margin-top 0.5s ease-out;
 }
 
 .hero-section::before {
@@ -1403,7 +1483,7 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 2rem 0 2rem 0;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

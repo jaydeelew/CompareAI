@@ -29,7 +29,11 @@ CompareAI is a comprehensive web application that enables comparison of multiple
 - **Real-Time Processing:** Concurrent API calls with intelligent batch processing for optimal performance
 - **Performance Analytics:** Track success rates, response times, and model reliability
 - **Smart Selection Tools:** Quick select options (Top 5, Popular, by Provider) to streamline testing
-- **Rate Limiting:** Freemium model with 10 daily comparisons per user/IP address
+- **Tiered Access:** 
+  - **Unregistered Users:** 5 free comparisons/day
+  - **Free (Registered):** 10 free comparisons/day
+  - **Starter:** 25 comparisons/day + overages ($14.99/mo)
+  - **Pro:** 50 comparisons/day + overages ($29.99/mo)
 - **Advanced LaTeX Rendering:** Comprehensive LaTeX/Markdown renderer with KaTeX support
 - **Conversation History:** Support for multi-turn conversations with context preservation
 - **Responsive Design:** Modern, mobile-friendly interface with smooth animations
@@ -139,7 +143,9 @@ docker compose -f docker-compose.dev-ssl.yml up --build
 - Use "Top 5" button for quick comparisons
 - Select 12 or fewer models for optimal performance (rate limited)
 - Check the model statistics endpoint for reliability data
-- Free tier allows 10 comparisons per day per IP address
+- **Unregistered users:** 5 comparisons per day per IP address
+- **Free registered users:** 10 comparisons per day (2x unregistered!)
+- **Register for free** to double your daily limit
 
 ## Production Deployment
 

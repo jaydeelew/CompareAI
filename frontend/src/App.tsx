@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthModal, UserMenu, VerifyEmail, VerificationBanner } from './components/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -42,10 +44,14 @@ interface ModelsByProvider {
 // Maximum number of models that can be selected
 const MAX_MODELS_LIMIT = 12;
 
-// Freemium usage limits
-const MAX_DAILY_USAGE = 10;
+// Freemium usage limits (anonymous users only)
+const MAX_DAILY_USAGE = 5;
 
-function App() {
+function AppContent() {
+  const { isAuthenticated, user, refreshUser } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
   // Screenshot handler for message area only
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
     const notif = document.createElement('div');
@@ -288,16 +294,28 @@ function App() {
         ? `${API_URL}/dev/reset-rate-limit?fingerprint=${encodeURIComponent(browserFingerprint)}`
         : `${API_URL}/dev/reset-rate-limit`;
 
+      // Prepare headers with auth token if available
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers
       });
 
       if (response.ok) {
-        // Reset frontend state
+        // Reset frontend state for anonymous users
         setUsageCount(0);
         localStorage.removeItem('compareai_usage');
         setError(null);
+
+        // If authenticated, refresh user data to show updated usage
+        if (isAuthenticated) {
+          await refreshUser();
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         alert(`❌ Failed to reset: ${errorData.detail || 'Unknown error'}`);
@@ -610,6 +628,21 @@ function App() {
     fetchModels();
   }, []);
 
+  // Reset page state when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Reset all state to default
+      setInput('');
+      setResponse(null);
+      setError(null);
+      setIsLoading(false);
+      setConversations([]);
+      setProcessingTime(null);
+      setIsFollowUpMode(false);
+      // Don't reset selectedModels or usage count - let them keep their selections
+    }
+  }, [isAuthenticated]);
+
   const toggleDropdown = (provider: string) => {
     setOpenDropdowns(prev => {
       const newSet = new Set(prev);
@@ -895,6 +928,14 @@ function App() {
     setIsAnimatingButton(false);
     setIsAnimatingTextarea(false);
 
+    // Check if user is logged in but not verified
+    if (user && !user.is_verified) {
+      setError('Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.');
+      // Scroll to the top to show the verification banner
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (selectedModels.length === 0) {
       setError('Please select at least one model below to compare responses');
       // Scroll to the models section to help the user
@@ -919,9 +960,16 @@ function App() {
   };
 
   const handleSubmit = async () => {
+    // Check if user is logged in but not verified
+    if (user && !user.is_verified) {
+      setError('Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     // Check daily usage limit
     if (usageCount >= MAX_DAILY_USAGE) {
-      setError('You\'ve reached your daily limit of 10 free comparisons.');
+      setError('You\'ve reached your daily limit of 5 free comparisons. Register for a free account to get 10 comparisons per day!');
       return;
     }
 
@@ -984,9 +1032,16 @@ function App() {
           })) || []
         : [];
 
+      // Prepare headers with auth token if available
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const res = await fetch(`${API_URL}/compare`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           input_data: input,
           models: selectedModels,
@@ -1036,17 +1091,29 @@ function App() {
       // Track usage only if at least one model succeeded
       // Don't count failed comparisons where all models had errors
       if (filteredData.metadata.models_successful > 0) {
+        // Refresh user data if authenticated to update usage count
+        if (isAuthenticated) {
+          try {
+            await refreshUser();
+          } catch (error) {
+            console.error('Failed to refresh user data:', error);
+          }
+        }
+
         // Sync with backend to get the actual count (backend now counts after success)
         try {
           const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
           if (response.ok) {
             const data = await response.json();
-            setUsageCount(data.fingerprint_usage_count || data.ip_usage_count || 0);
+            // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
+            const newCount = data.fingerprint_usage || data.daily_usage || 0;
+            console.log('Usage count synced from backend:', newCount);
+            setUsageCount(newCount);
 
             // Update localStorage to match backend
             const today = new Date().toDateString();
             localStorage.setItem('compareai_usage', JSON.stringify({
-              count: data.fingerprint_usage_count || data.ip_usage_count || 0,
+              count: newCount,
               date: today
             }));
           } else {
@@ -1220,15 +1287,39 @@ function App() {
           </div>
 
           <div className="nav-actions">
-            <button className="nav-button" title="Settings">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" />
-                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2" />
-              </svg>
-            </button>
+            {isAuthenticated ? (
+              <UserMenu />
+            ) : (
+              <>
+                <button
+                  className="nav-button-text"
+                  onClick={() => {
+                    setAuthModalMode('login');
+                    setIsAuthModalOpen(true);
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  className="nav-button-primary"
+                  onClick={() => {
+                    setAuthModalMode('register');
+                    setIsAuthModalOpen(true);
+                  }}
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
           </div>
         </nav>
+      </header>
 
+      {/* Email verification banners - placed between header and main content */}
+      <VerifyEmail onClose={() => { }} />
+      <VerificationBanner />
+
+      <main className="app-main">
         <div className="hero-section">
           <div className="hero-content">
             <h2 className="hero-title">Compare AI Models Side by Side</h2>
@@ -1402,9 +1493,7 @@ function App() {
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="app-main">
         {error && (
           <div className="error-message">
             <span>⚠️ {error}</span>
@@ -1703,21 +1792,22 @@ function App() {
           )}
         </section>
 
-        {/* Usage tracking display */}
-        {usageCount > 0 && (
+        {/* Usage tracking banner - only for anonymous users after first comparison */}
+        {!isAuthenticated && usageCount > 0 && (
           <div style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             padding: '1rem',
-            margin: '1rem 0',
+            margin: '0',
+            width: '100%',
             textAlign: 'center',
             boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
           }}>
             <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
               {usageCount < MAX_DAILY_USAGE ? (
-                `You've used ${usageCount} of ${MAX_DAILY_USAGE} free comparisons today`
+                `${MAX_DAILY_USAGE - usageCount} free comparisons remaining today • Register for 10 per day`
               ) : (
-                'You\'ve reached your daily limit!'
+                'Daily limit reached! Register for a free account to get 10 comparisons per day.'
               )}
             </div>
 
@@ -1983,7 +2073,23 @@ function App() {
           </section>
         )}
       </main>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
     </div>
+  );
+}
+
+// Wrap AppContent with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

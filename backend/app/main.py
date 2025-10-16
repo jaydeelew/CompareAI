@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Any
 from app.model_runner import run_models, OPENROUTER_MODELS, MODELS_BY_PROVIDER
@@ -9,10 +9,51 @@ import os
 import json
 from collections import defaultdict
 from typing import Dict, Any, Optional
+from sqlalchemy.orm import Session
+
+# Import authentication modules
+from app.database import get_db, Base, engine
+from app.models import User, UsageLog
+from app.dependencies import get_current_user
+from app.rate_limiting import (
+    check_user_rate_limit, increment_user_usage,
+    check_anonymous_rate_limit, increment_anonymous_usage,
+    get_user_usage_stats, get_anonymous_usage_stats,
+    get_model_limit, is_overage_allowed, get_overage_price,
+    anonymous_rate_limit_storage
+)
+from app.routers import auth
 
 print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(title="CompareAI API", version="1.0.0")
+
+# Add CORS middleware BEFORE including routers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://54.163.207.252",  # Your frontend URL
+        "http://compareintel.com",  # Your frontend domain
+        "https://localhost",  # HTTPS localhost (production-like dev)
+        "https://localhost:443",  # HTTPS localhost with port
+        "http://localhost:5173",  # For local development
+        "http://localhost:5174",  # Alternative local port
+        "http://localhost:3000",  # Alternative local port
+        "http://127.0.0.1:5173",  # Alternative localhost
+        "http://127.0.0.1:5174",  # Alternative localhost
+        "http://127.0.0.1:3000",  # Alternative localhost
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+# Include authentication router AFTER middleware
+app.include_router(auth.router)
 
 # Maximum number of models allowed per request
 MAX_MODELS_PER_REQUEST = 12
@@ -22,23 +63,6 @@ MAX_DAILY_COMPARISONS = 10
 
 # In-memory storage for model performance tracking
 model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
-
-# In-memory storage for rate limiting (IP address and browser fingerprint)
-# Structure: { "identifier": { "count": int, "date": str, "first_seen": datetime } }
-rate_limit_storage: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "date": "", "first_seen": None})
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://54.163.207.252",  # Your frontend URL
-        "http://compareintel.com",  # Your frontend domain
-        "http://localhost:5173",  # For local development
-        "http://localhost:3000",  # Alternative local port
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 def get_client_ip(request: Request) -> str:
@@ -122,48 +146,105 @@ async def health_check():
 
 
 @app.post("/compare")
-async def compare(req: CompareRequest, request: Request) -> CompareResponse:
+async def compare(
+    req: CompareRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
+) -> CompareResponse:
+    """
+    Compare AI models with hybrid rate limiting.
+    
+    Supports both authenticated users (subscription-based limits) and
+    anonymous users (IP/fingerprint-based limits).
+    """
     if not req.input_data.strip():
         raise HTTPException(status_code=400, detail="Input data cannot be empty")
 
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
 
-    # Enforce model limit
-    if len(req.models) > MAX_MODELS_PER_REQUEST:
+    # Determine model limit based on user tier
+    if current_user:
+        tier_model_limit = get_model_limit(current_user.subscription_tier)
+        tier_name = current_user.subscription_tier
+    else:
+        tier_model_limit = get_model_limit("free")  # Anonymous users get free tier limits
+        tier_name = "free"
+    
+    # Enforce tier-specific model limit
+    if len(req.models) > tier_model_limit:
+        upgrade_message = ""
+        if tier_name == "free":
+            upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
+        elif tier_name == "starter":
+            upgrade_message = " Upgrade to Pro for 9 models."
+        
         raise HTTPException(
             status_code=400,
-            detail=f"Maximum {MAX_MODELS_PER_REQUEST} models allowed per request. You selected {len(req.models)} models.",
+            detail=f"Your {tier_name} tier allows maximum {tier_model_limit} models per comparison. You selected {len(req.models)} models.{upgrade_message}",
         )
     
-    # --- RATE LIMITING ENFORCEMENT ---
-    # Get client identifiers (IP + optional fingerprint)
+    # --- HYBRID RATE LIMITING ---
     client_ip = get_client_ip(request)
     
-    # Check rate limit for IP address (primary check)
-    ip_allowed, ip_count = check_rate_limit(f"ip:{client_ip}")
+    is_overage = False
+    overage_charge = 0.0
     
-    # Check rate limit for browser fingerprint (secondary check, if provided)
-    fingerprint_allowed = True
-    fingerprint_count = 0
-    if req.browser_fingerprint:
-        fingerprint_allowed, fingerprint_count = check_rate_limit(f"fp:{req.browser_fingerprint}")
-    
-    # Deny if EITHER identifier has exceeded the limit
-    if not ip_allowed or not fingerprint_allowed:
-        max_count = max(ip_count, fingerprint_count)
-        raise HTTPException(
-            status_code=429,  # 429 Too Many Requests
-            detail=f"Daily limit of {MAX_DAILY_COMPARISONS} comparisons exceeded. You've used {max_count} today. Resets at midnight UTC."
-        )
-    
-    # Increment usage counters for both identifiers
-    increment_usage(f"ip:{client_ip}")
-    if req.browser_fingerprint:
-        increment_usage(f"fp:{req.browser_fingerprint}")
-    
-    print(f"Rate limit check passed - IP: {client_ip} ({ip_count + 1}/{MAX_DAILY_COMPARISONS}), Fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'} ({fingerprint_count + 1 if req.browser_fingerprint else 0}/{MAX_DAILY_COMPARISONS})")
-    # --- END RATE LIMITING ---
+    if current_user:
+        # Authenticated user - check subscription tier limits
+        is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
+        
+        if not is_allowed:
+            # Check if overage is allowed for this tier
+            if is_overage_allowed(current_user.subscription_tier):
+                overage_price = get_overage_price(current_user.subscription_tier)
+                is_overage = True
+                overage_charge = overage_price
+                
+                # Track overage for billing
+                current_user.monthly_overage_count += 1
+                
+                print(f"Authenticated user {current_user.email} - OVERAGE comparison (${overage_charge})")
+            else:
+                # Free tier - no overages allowed
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Daily limit of {daily_limit} comparisons exceeded. You've used {usage_count} today. "
+                           f"Upgrade to Starter ($14.99/mo) for 25 daily comparisons + overage options, "
+                           f"or Pro ($29.99/mo) for 50 daily comparisons."
+                )
+        
+        # Increment authenticated user usage
+        increment_user_usage(current_user, db)
+        
+        if is_overage:
+            print(f"Authenticated user {current_user.email} - Overage: {current_user.monthly_overage_count} this month (${overage_charge} each)")
+        else:
+            print(f"Authenticated user {current_user.email} - Usage: {usage_count + 1}/{daily_limit}")
+    else:
+        # Anonymous user - check IP/fingerprint limits
+        ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
+        
+        fingerprint_allowed = True
+        if req.browser_fingerprint:
+            fingerprint_allowed, _ = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
+        
+        if not ip_allowed or not fingerprint_allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily limit of 5 comparisons exceeded. Register for a free account (10 comparisons/day) to continue."
+            )
+        
+        # Increment anonymous usage
+        increment_anonymous_usage(f"ip:{client_ip}")
+        if req.browser_fingerprint:
+            increment_anonymous_usage(f"fp:{req.browser_fingerprint}")
+        print(f"Anonymous user - IP: {client_ip} ({ip_count + 1}/5)")
+    # --- END HYBRID RATE LIMITING ---
+
+    # Track start time for processing metrics
+    start_time = datetime.now()
 
     try:
         loop = asyncio.get_running_loop()
@@ -184,6 +265,9 @@ async def compare(req: CompareRequest, request: Request) -> CompareResponse:
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
 
+        # Calculate processing time
+        processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+        
         # Add metadata
         metadata = {
             "input_length": len(req.input_data),
@@ -191,7 +275,26 @@ async def compare(req: CompareRequest, request: Request) -> CompareResponse:
             "models_successful": successful_models,
             "models_failed": failed_models,
             "timestamp": datetime.now().isoformat(),
+            "processing_time_ms": processing_time_ms
         }
+        
+        # Log usage to database
+        usage_log = UsageLog(
+            user_id=current_user.id if current_user else None,
+            ip_address=client_ip,
+            browser_fingerprint=req.browser_fingerprint,
+            models_used=json.dumps(req.models),
+            input_length=len(req.input_data),
+            models_requested=len(req.models),
+            models_successful=successful_models,
+            models_failed=failed_models,
+            processing_time_ms=processing_time_ms,
+            estimated_cost=len(req.models) * 0.0166,  # Estimated cost per model
+            is_overage=is_overage,
+            overage_charge=overage_charge
+        )
+        db.add(usage_log)
+        db.commit()
 
         return CompareResponse(results=results, metadata=metadata)
 
@@ -225,33 +328,52 @@ async def get_model_stats():
 
 
 @app.get("/rate-limit-status")
-async def get_rate_limit_status(request: Request, fingerprint: Optional[str] = None):
-    """Get current rate limit status for the client"""
-    client_ip = get_client_ip(request)
+async def get_rate_limit_status(
+    request: Request,
+    fingerprint: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """
+    Get current rate limit status for the client.
     
-    # Check IP-based usage
-    ip_allowed, ip_count = check_rate_limit(f"ip:{client_ip}")
-    
-    result = {
-        "ip_address": client_ip,
-        "ip_usage_count": ip_count,
-        "max_daily_limit": MAX_DAILY_COMPARISONS,
-        "remaining": max(0, MAX_DAILY_COMPARISONS - ip_count),
-        "is_limited": not ip_allowed,
-    }
-    
-    # Check fingerprint-based usage if provided
-    if fingerprint:
-        fp_allowed, fp_count = check_rate_limit(f"fp:{fingerprint}")
-        result["fingerprint_usage_count"] = fp_count
-        result["fingerprint_remaining"] = max(0, MAX_DAILY_COMPARISONS - fp_count)
-        result["fingerprint_limited"] = not fp_allowed
-    
-    return result
+    Returns different information for authenticated vs anonymous users.
+    """
+    if current_user:
+        # Authenticated user - return subscription-based usage
+        usage_stats = get_user_usage_stats(current_user)
+        return {
+            **usage_stats,
+            "authenticated": True,
+            "email": current_user.email,
+            "subscription_status": current_user.subscription_status
+        }
+    else:
+        # Anonymous user - return IP/fingerprint-based usage
+        client_ip = get_client_ip(request)
+        usage_stats = get_anonymous_usage_stats(f"ip:{client_ip}")
+        
+        result = {
+            **usage_stats,
+            "authenticated": False,
+            "ip_address": client_ip
+        }
+        
+        # Include fingerprint stats if provided
+        if fingerprint:
+            fp_stats = get_anonymous_usage_stats(f"fp:{fingerprint}")
+            result["fingerprint_usage"] = fp_stats["daily_usage"]
+            result["fingerprint_remaining"] = fp_stats["remaining_usage"]
+        
+        return result
 
 
 @app.post("/dev/reset-rate-limit")
-async def reset_rate_limit_dev(request: Request, fingerprint: Optional[str] = None):
+async def reset_rate_limit_dev(
+    request: Request, 
+    fingerprint: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     DEV ONLY: Reset rate limits for the current client.
     This endpoint should be disabled in production!
@@ -262,16 +384,22 @@ async def reset_rate_limit_dev(request: Request, fingerprint: Optional[str] = No
     
     client_ip = get_client_ip(request)
     
-    # Reset IP-based rate limit
+    # Reset authenticated user's usage if logged in
+    if current_user:
+        current_user.daily_usage_count = 0
+        current_user.monthly_overage_count = 0
+        db.commit()
+    
+    # Reset IP-based rate limit (use anonymous_rate_limit_storage from rate_limiting.py)
     ip_key = f"ip:{client_ip}"
-    if ip_key in rate_limit_storage:
-        del rate_limit_storage[ip_key]
+    if ip_key in anonymous_rate_limit_storage:
+        del anonymous_rate_limit_storage[ip_key]
     
     # Reset fingerprint-based rate limit if provided
     if fingerprint:
         fp_key = f"fp:{fingerprint}"
-        if fp_key in rate_limit_storage:
-            del rate_limit_storage[fp_key]
+        if fp_key in anonymous_rate_limit_storage:
+            del anonymous_rate_limit_storage[fp_key]
     
     return {
         "message": "Rate limits reset successfully",

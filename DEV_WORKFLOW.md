@@ -13,38 +13,48 @@
 
 ## Environment 1: Local Development (HTTP)
 
-### When to Use
+### Option A: Local (No Docker) - Recommended for Daily Development
 
-- General UI work and styling
-- API development and testing
-- Most feature development
-- When you need fastest startup times
-
-### Commands
+**When to use:** UI work, API development, most feature development, fastest iteration
 
 ```bash
-# Start development environment
+# Terminal 1 - Backend
+cd backend
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+
+# Check if running:
+Backend: Visit http://localhost:8000/docs (should show API documentation)
+Frontend: Visit http://localhost:5173 (should show the app)
+
+# Stop servers:
+# Option 1: Press Ctrl+C in each terminal (if you have the terminals open)
+# Option 2: Kill by port number (if terminals are closed)
+lsof -ti:8000 | xargs kill -9  # Kill backend
+lsof -ti:5173 | xargs kill -9  # Kill frontend
+```
+
+**Access:** http://localhost:5173  
+**Features:** Fastest startup (~3s), instant hot reload, direct API connection
+
+### Option B: Docker with Nginx - For Integration Testing
+
+**When to use:** Before commits, testing nginx routing, verifying production-like behavior
+
+```bash
+# Start all services
 docker compose up
 
-# Install new dependencies (if needed)
-docker compose build frontend  # for npm packages
-docker compose build backend   # for pip packages
-
-# Stop development environment
+# Stop services
 docker compose down
 ```
 
-### Access
-
-- **URL:** http://localhost:5173 (recommended for development)
-- **Alternative:** http://localhost:8080 (through nginx proxy)
-- **Features:** Hot reload, fast startup, Vite proxy for API calls
-
-### Development Notes
-
-- **Vite Proxy:** API calls to `/api/*` are automatically proxied to the backend container
-- **Fast Development:** Access via port 5173 for fastest development experience
-- **Production Testing:** Use port 8080 to test nginx routing behavior
+**Access:** http://localhost:8080 (nginx proxy)  
+**Backend API Docs:** http://localhost:8000/docs  
+**Features:** Production-like architecture, nginx handles `/api/*` routing to backend
 
 ---
 
