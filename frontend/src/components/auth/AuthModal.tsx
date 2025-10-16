@@ -34,14 +34,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
     };
 
-    const handleOverlayClick = (e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) {
-            onClose();
-        }
-    };
-
     return (
-        <div className="auth-modal-overlay" onClick={handleOverlayClick}>
+        <div className="auth-modal-overlay">
             <div className="auth-modal">
                 <button className="auth-modal-close" onClick={onClose} aria-label="Close">
                     ×
