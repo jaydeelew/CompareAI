@@ -106,10 +106,9 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose }) => {
                     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                     : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                 color: 'white',
-                padding: hasAnimatedIn ? '1rem' : '0 1rem',
+                padding: hasAnimatedIn ? '1.5rem 1rem' : '0 1rem',
                 margin: '0',
                 width: '100%',
-                textAlign: 'center',
                 boxShadow: status === 'success'
                     ? '0 4px 15px rgba(16, 185, 129, 0.3)'
                     : '0 4px 15px rgba(239, 68, 68, 0.3)',
@@ -121,48 +120,106 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose }) => {
                 transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, max-height 0.5s ease-out, padding 0.5s ease-out'
             }}
         >
-            <div style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {status === 'success' && '✅ Email Verified Successfully!'}
-                {status === 'error' && '❌ Verification Failed'}
-            </div>
+            {status === 'success' ? (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1.5rem',
+                    maxWidth: '900px',
+                    margin: '0 auto'
+                }}>
+                    {/* Success Icon */}
+                    <div style={{
+                        flexShrink: 0,
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.25)',
+                        backdropFilter: 'blur(10px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                    }}>
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M26.6667 8L12 22.6667L5.33334 16" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
 
-            <div style={{ fontSize: '0.9rem', opacity: 0.95, marginBottom: '0.75rem' }}>
-                {message}
-            </div>
+                    {/* Text Content */}
+                    <div style={{ textAlign: 'left', flex: '1' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.35rem', letterSpacing: '0.01em' }}>
+                            Email Verified Successfully!
+                        </div>
+                        <div style={{ fontSize: '0.9rem', opacity: 0.95, lineHeight: '1.4' }}>
+                            {message}
+                        </div>
+                    </div>
 
-            {/* Invisible spacer for success state to match button height in error state */}
-            {status === 'success' && (
-                <div style={{ height: '32.8px' }}></div>
-            )}
+                    {/* Decorative Element */}
+                    <div style={{
+                        flexShrink: 0,
+                        width: '48px',
+                        height: '48px',
+                        opacity: 0.15
+                    }}>
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="24" cy="24" r="20" stroke="white" strokeWidth="2"/>
+                            <path d="M24 14V24L30 30" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div style={{ 
+                        fontSize: '1rem', 
+                        fontWeight: '600', 
+                        marginBottom: '0.5rem',
+                        textAlign: 'center'
+                    }}>
+                        ❌ Verification Failed
+                    </div>
 
-            {status === 'error' && (
-                <button
-                    onClick={() => {
-                        // Clear the token from URL and reset state
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        hasVerified.current = false; // Allow future verifications
-                        setIsVisible(false);
-                        onClose();
-                    }}
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.2)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        color: 'white',
-                        padding: '0.4rem 1rem',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        marginTop: '0.75rem'
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                    }}
-                >
-                    Close
-                </button>
+                    <div style={{ 
+                        fontSize: '0.9rem', 
+                        opacity: 0.95, 
+                        marginBottom: '0.75rem',
+                        textAlign: 'center'
+                    }}>
+                        {message}
+                    </div>
+
+                    <div style={{ textAlign: 'center' }}>
+                        <button
+                            onClick={() => {
+                                // Clear the token from URL and reset state
+                                window.history.replaceState({}, document.title, window.location.pathname);
+                                hasVerified.current = false; // Allow future verifications
+                                setIsVisible(false);
+                                onClose();
+                            }}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.2)',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                color: 'white',
+                                padding: '0.4rem 1rem',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                marginTop: '0.5rem'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </>
             )}
         </div>
     );

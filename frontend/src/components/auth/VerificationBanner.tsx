@@ -10,6 +10,7 @@ export const VerificationBanner: React.FC = () => {
     const [resendMessage, setResendMessage] = useState('');
     const [cooldownRemaining, setCooldownRemaining] = useState(0);
     const [isFadingOut, setIsFadingOut] = useState(false);
+    const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
 
     // Countdown timer for cooldown
     useEffect(() => {
@@ -27,6 +28,14 @@ export const VerificationBanner: React.FC = () => {
             setIsFadingOut(true);
         }
     }, [user?.is_verified, isFadingOut]);
+
+    // Trigger entrance animation when user becomes available and is unverified
+    useEffect(() => {
+        if (user && !user.is_verified && !hasAnimatedIn) {
+            // Small delay to ensure smooth entrance
+            setTimeout(() => setHasAnimatedIn(true), 50);
+        }
+    }, [user, hasAnimatedIn]);
 
     // Don't show banner if user is not logged in or if verified
     if (!user || user.is_verified) {
@@ -85,16 +94,16 @@ export const VerificationBanner: React.FC = () => {
             style={{
                 background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 color: 'white',
-                padding: '1rem',
+                padding: hasAnimatedIn ? '1rem' : '0 1rem',
                 margin: '0',
                 width: '100%',
                 textAlign: 'center',
                 boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
                 position: 'relative',
-                opacity: isFadingOut ? 0 : 1,
-                transform: isFadingOut ? 'translateY(-100%)' : 'translateY(0)',
-                transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
-                maxHeight: isFadingOut ? '0' : '500px',
+                opacity: isFadingOut ? 0 : (hasAnimatedIn ? 1 : 0),
+                transform: isFadingOut ? 'translateY(-100%)' : (hasAnimatedIn ? 'translateY(0)' : 'translateY(-20px)'),
+                transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, max-height 0.5s ease-out, padding 0.5s ease-out',
+                maxHeight: isFadingOut ? '0' : (hasAnimatedIn ? '500px' : '0'),
                 overflow: 'hidden'
             }}
         >
