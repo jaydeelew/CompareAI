@@ -55,39 +55,51 @@ function AppContent() {
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
     const channel = new BroadcastChannel('compareintel-verification');
-
+    let hasExistingTab = false;
+    
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'verify-email' && event.data.url) {
-        // Redirect to the verification URL
+        // An existing tab is responding - redirect to the verification URL
         window.location.href = event.data.url;
+      } else if (event.data.type === 'ping') {
+        // Another tab is checking if we exist - respond
+        hasExistingTab = true;
+        channel.postMessage({ type: 'pong' });
+      } else if (event.data.type === 'pong') {
+        // An existing tab responded to our ping
+        hasExistingTab = true;
       }
     };
-
+    
     channel.addEventListener('message', handleMessage);
-
+    
     // Check if this is a verification page opened from email
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-
+    
     if (token && window.opener === null) {
       // This is a new tab opened from email with a verification token
-      // Try to find an existing CompareIntel tab and redirect it instead
-      try {
-        channel.postMessage({
-          type: 'verify-email',
-          url: window.location.href
-        });
-
-        // Give existing tab a moment to respond, then close this tab
-        setTimeout(() => {
-          window.close();
-        }, 100);
-      } catch (e) {
-        // If no existing tab responds, stay on this tab
-        console.log('No existing CompareIntel tab found, staying on this tab');
-      }
+      // Ping to see if there's an existing CompareIntel tab
+      channel.postMessage({ type: 'ping' });
+      
+      // Wait a moment to see if any existing tab responds
+      setTimeout(() => {
+        if (hasExistingTab) {
+          // An existing tab exists - send verification URL to it and close this tab
+          channel.postMessage({ 
+            type: 'verify-email', 
+            url: window.location.href 
+          });
+          
+          // Give the existing tab time to redirect, then close this tab
+          setTimeout(() => {
+            window.close();
+          }, 500);
+        }
+        // If no existing tab, stay on this page and let the verification happen normally
+      }, 200);
     }
-
+    
     return () => {
       channel.removeEventListener('message', handleMessage);
       channel.close();
