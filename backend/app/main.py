@@ -32,7 +32,15 @@ app = FastAPI(title="CompareAI API", version="1.0.0")
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on application startup."""
-    Base.metadata.create_all(bind=engine, checkfirst=True)
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as e:
+        # If tables already exist or there's a schema mismatch, drop and recreate
+        print(f"Database initialization error: {e}")
+        print("Dropping and recreating all tables...")
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        print("Database tables recreated successfully")
 
 # Add CORS middleware BEFORE including routers
 app.add_middleware(
