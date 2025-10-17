@@ -7,9 +7,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BA
 interface VerifyEmailProps {
     onClose: () => void;
     externalToken?: string | null;
+    suppressVerification?: boolean;
 }
 
-export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken }) => {
+export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken, suppressVerification = false }) => {
     const { refreshUser } = useAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error' | 'idle'>('idle');
     const [message, setMessage] = useState('Verifying your email...');
@@ -24,7 +25,13 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
             const urlParams = new URLSearchParams(window.location.search);
             const token = externalToken || urlParams.get('token');
 
-            console.log('[VerifyEmail] useEffect triggered. externalToken:', externalToken, 'URL token:', urlParams.get('token'));
+            console.log('[VerifyEmail] useEffect triggered. externalToken:', externalToken, 'URL token:', urlParams.get('token'), 'suppressVerification:', suppressVerification);
+
+            // If verification is suppressed (new tab checking for existing tabs), don't verify yet
+            if (suppressVerification) {
+                console.log('[VerifyEmail] Verification suppressed, waiting for tab coordination');
+                return;
+            }
 
             // If no token, don't show anything
             if (!token) {
@@ -95,7 +102,7 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
         };
 
         verifyEmail();
-    }, [refreshUser, onClose, externalToken]);
+    }, [refreshUser, onClose, externalToken, suppressVerification]);
 
     // Auto-hide success banner after 5 seconds
     useEffect(() => {
