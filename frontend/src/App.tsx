@@ -52,6 +52,25 @@ function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
+  // Listen for verification messages from email
+  useEffect(() => {
+    const channel = new BroadcastChannel('compareintel-verification');
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'verify-email' && event.data.url) {
+        // Redirect to the verification URL
+        window.location.href = event.data.url;
+      }
+    };
+
+    channel.addEventListener('message', handleMessage);
+
+    return () => {
+      channel.removeEventListener('message', handleMessage);
+      channel.close();
+    };
+  }, []);
+
   // Screenshot handler for message area only
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
     const notif = document.createElement('div');

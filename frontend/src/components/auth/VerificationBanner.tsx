@@ -38,7 +38,7 @@ export const VerificationBanner: React.FC = () => {
     }, [user, hasAnimatedIn]);
 
     // Don't show banner if user is not logged in or if verified
-    if (!user || user.is_verified) {
+    if (!user || user.is_verified || isFadingOut) {
         return null;
     }
 
@@ -113,6 +113,10 @@ export const VerificationBanner: React.FC = () => {
 
             <div style={{ fontSize: '0.9rem', opacity: 0.95, marginBottom: '0.75rem' }}>
                 Check your inbox for a verification link from CompareIntel
+                <br />
+                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                    💡 Don't see it? Check your spam folder!
+                </span>
             </div>
 
             {resendMessage ? (

@@ -89,6 +89,36 @@ async def send_verification_email(email: EmailStr, token: str):
             font-size: 12px;
           }}
         </style>
+        <script>
+          function verifyEmail() {{
+            // Try to find an existing CompareIntel tab
+            const compareIntelUrl = '{frontend_url}';
+            const verificationUrl = '{verification_url}';
+            
+            // Check if we can access the opener window (if opened from existing tab)
+            if (window.opener && window.opener.location.hostname === new URL(compareIntelUrl).hostname) {{
+              // We're in a popup from the main site, redirect the parent
+              window.opener.location.href = verificationUrl;
+              window.close();
+              return;
+            }}
+            
+            // Try to use BroadcastChannel to communicate with existing tab
+            try {{
+              const channel = new BroadcastChannel('compareintel-verification');
+              channel.postMessage({{ type: 'verify-email', url: verificationUrl }});
+              
+              // Give the existing tab a moment to respond
+              setTimeout(() => {{
+                // If no response, open in current tab
+                window.location.href = verificationUrl;
+              }}, 100);
+            }} catch (e) {{
+              // Fallback: open in current tab
+              window.location.href = verificationUrl;
+            }}
+          }}
+        </script>
       </head>
       <body>
         <div class="container">
@@ -99,7 +129,7 @@ async def send_verification_email(email: EmailStr, token: str):
             <p>Thank you for registering with CompareIntel, the AI model comparison platform.</p>
             <p>To complete your registration and start comparing AI models, please verify your email address by clicking the button below:</p>
             <div style="text-align: center;">
-              <a href="{verification_url}" class="button">Verify Email Address</a>
+              <a href="javascript:void(0)" onclick="verifyEmail()" class="button">Verify Email Address</a>
             </div>
             <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #667eea;">{verification_url}</p>
