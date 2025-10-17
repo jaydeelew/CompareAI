@@ -24,10 +24,12 @@ export const VerificationBanner: React.FC = () => {
 
     // Monitor user verification status and trigger fade-out animation
     useEffect(() => {
+        console.log('[VerificationBanner] User changed. is_verified:', user?.is_verified, 'isFadingOut:', isFadingOut);
         if (user?.is_verified && !isFadingOut) {
+            console.log('[VerificationBanner] User verified! Starting fade-out');
             setIsFadingOut(true);
         }
-    }, [user?.is_verified, isFadingOut]);
+    }, [user, isFadingOut]);
 
     // Trigger entrance animation when user becomes available and is unverified
     useEffect(() => {

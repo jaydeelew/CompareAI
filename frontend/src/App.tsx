@@ -62,6 +62,7 @@ function AppContent() {
     
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'verify-email' && event.data.token) {
+        console.log('[App] Existing tab received verification token:', event.data.token);
         // An existing tab (this one) received a verification token from a new tab
         // Update URL without page reload and trigger verification
         const newUrl = new URL(window.location.href);
@@ -69,15 +70,18 @@ function AppContent() {
         window.history.pushState({}, '', newUrl);
         
         // Set the token to trigger verification in VerifyEmail component
+        console.log('[App] Setting verificationToken state');
         setVerificationToken(event.data.token);
         
         // Focus this tab
         window.focus();
       } else if (event.data.type === 'ping') {
+        console.log('[App] Received ping, responding with pong');
         // Another tab is checking if we exist - respond
         hasExistingTab = true;
         channel.postMessage({ type: 'pong' });
       } else if (event.data.type === 'pong') {
+        console.log('[App] Received pong from existing tab');
         // An existing tab responded to our ping
         hasExistingTab = true;
       }
@@ -90,6 +94,7 @@ function AppContent() {
     const token = urlParams.get('token');
     
     if (token && window.opener === null) {
+      console.log('[App] New tab detected with token, pinging for existing tabs');
       // This is a new tab opened from email with a verification token
       // Ping to see if there's an existing CompareIntel tab
       channel.postMessage({ type: 'ping' });
@@ -97,6 +102,7 @@ function AppContent() {
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
         if (hasExistingTab) {
+          console.log('[App] Found existing tab, sending token and closing');
           // An existing tab exists - send verification token to it and close this tab
           channel.postMessage({ 
             type: 'verify-email', 
@@ -107,6 +113,8 @@ function AppContent() {
           setTimeout(() => {
             window.close();
           }, 500);
+        } else {
+          console.log('[App] No existing tab found, staying open');
         }
         // If no existing tab, stay on this page and let the verification happen normally
       }, 200);
