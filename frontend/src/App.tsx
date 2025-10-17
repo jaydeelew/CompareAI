@@ -52,7 +52,7 @@ function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
-  // Listen for verification messages from email
+  // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
     const channel = new BroadcastChannel('compareintel-verification');
 
@@ -64,6 +64,29 @@ function AppContent() {
     };
 
     channel.addEventListener('message', handleMessage);
+
+    // Check if this is a verification page opened from email
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (token && window.opener === null) {
+      // This is a new tab opened from email with a verification token
+      // Try to find an existing CompareIntel tab and redirect it instead
+      try {
+        channel.postMessage({
+          type: 'verify-email',
+          url: window.location.href
+        });
+
+        // Give existing tab a moment to respond, then close this tab
+        setTimeout(() => {
+          window.close();
+        }, 100);
+      } catch (e) {
+        // If no existing tab responds, stay on this tab
+        console.log('No existing CompareIntel tab found, staying on this tab');
+      }
+    }
 
     return () => {
       channel.removeEventListener('message', handleMessage);
