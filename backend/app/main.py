@@ -26,10 +26,13 @@ from app.routers import auth
 
 print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="CompareAI API", version="1.0.0")
+
+# Create database tables on startup (only once, not per worker)
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on application startup."""
+    Base.metadata.create_all(bind=engine, checkfirst=True)
 
 # Add CORS middleware BEFORE including routers
 app.add_middleware(
