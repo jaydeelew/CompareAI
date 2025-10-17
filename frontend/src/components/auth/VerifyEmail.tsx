@@ -6,9 +6,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BA
 
 interface VerifyEmailProps {
     onClose: () => void;
+    externalToken?: string | null;
 }
 
-export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose }) => {
+export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken }) => {
     const { refreshUser } = useAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error' | 'idle'>('idle');
     const [message, setMessage] = useState('Verifying your email...');
@@ -18,13 +19,18 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose }) => {
 
     useEffect(() => {
         const verifyEmail = async () => {
-            // Get token from URL
+            // Get token from URL or external prop
             const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
+            const token = externalToken || urlParams.get('token');
 
             // If no token, don't show anything
             if (!token) {
                 return;
+            }
+
+            // Reset hasVerified if this is a new external token
+            if (externalToken && hasVerified.current) {
+                hasVerified.current = false;
             }
 
             // Prevent double-submission in React StrictMode (dev mode)
@@ -70,7 +76,7 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose }) => {
         };
 
         verifyEmail();
-    }, [refreshUser, onClose]);
+    }, [refreshUser, onClose, externalToken]);
 
     // Auto-hide success banner after 5 seconds
     useEffect(() => {

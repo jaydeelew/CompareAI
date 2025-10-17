@@ -52,15 +52,27 @@ function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
+  // State to trigger verification from another tab
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
     const channel = new BroadcastChannel('compareintel-verification');
     let hasExistingTab = false;
     
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'verify-email' && event.data.url) {
-        // An existing tab is responding - redirect to the verification URL
-        window.location.href = event.data.url;
+      if (event.data.type === 'verify-email' && event.data.token) {
+        // An existing tab (this one) received a verification token from a new tab
+        // Update URL without page reload and trigger verification
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('token', event.data.token);
+        window.history.pushState({}, '', newUrl);
+        
+        // Set the token to trigger verification in VerifyEmail component
+        setVerificationToken(event.data.token);
+        
+        // Focus this tab
+        window.focus();
       } else if (event.data.type === 'ping') {
         // Another tab is checking if we exist - respond
         hasExistingTab = true;
@@ -85,13 +97,13 @@ function AppContent() {
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
         if (hasExistingTab) {
-          // An existing tab exists - send verification URL to it and close this tab
+          // An existing tab exists - send verification token to it and close this tab
           channel.postMessage({ 
             type: 'verify-email', 
-            url: window.location.href 
+            token: token 
           });
           
-          // Give the existing tab time to redirect, then close this tab
+          // Give the existing tab time to process, then close this tab
           setTimeout(() => {
             window.close();
           }, 500);
@@ -1370,7 +1382,7 @@ function AppContent() {
       </header>
 
       {/* Email verification banners - placed between header and main content */}
-      <VerifyEmail onClose={() => { }} />
+      <VerifyEmail onClose={() => { }} externalToken={verificationToken} />
       <VerificationBanner />
 
       <main className="app-main">
