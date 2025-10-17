@@ -28,19 +28,20 @@ print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
 
-# Create database tables on startup (only once, not per worker)
+# Create database tables on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on application startup."""
+    """
+    Initialize database tables on application startup.
+    PostgreSQL handles concurrent table creation safely.
+    """
     try:
         Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("Database tables initialized successfully")
     except Exception as e:
-        # If tables already exist or there's a schema mismatch, drop and recreate
         print(f"Database initialization error: {e}")
-        print("Dropping and recreating all tables...")
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        print("Database tables recreated successfully")
+        # Let the application continue, as tables may already exist
+        pass
 
 # Add CORS middleware BEFORE including routers
 app.add_middleware(
