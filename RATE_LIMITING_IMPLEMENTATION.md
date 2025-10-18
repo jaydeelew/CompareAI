@@ -9,12 +9,15 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 ### Three-Layer Defense System
 
 1. **Backend IP-Based Rate Limiting** ⭐ (Primary - Cannot be bypassed)
+
    - Tracks requests by client IP address
    - Enforced on the backend before any processing
    - Most effective layer
 
 2. **Browser Fingerprint Tracking** (Secondary - Harder to bypass)
+
    - Generates unique fingerprint from browser characteristics
+   - Hashed using SHA-256 (64 characters) for privacy and database efficiency
    - Sent with each request to backend
    - Catches users with dynamic IPs or VPN switching
 
@@ -28,23 +31,27 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 ### Backend Changes (`backend/app/main.py`)
 
 1. **Added Rate Limiting Configuration**
+
    ```python
    MAX_DAILY_COMPARISONS = 10
    rate_limit_storage = {}  # In-memory storage
    ```
 
 2. **Added Helper Functions**
+
    - `get_client_ip(request)`: Extracts IP from request (handles proxies)
    - `check_rate_limit(identifier)`: Checks if identifier exceeded limit
    - `increment_usage(identifier)`: Increments usage counter
 
 3. **Updated `/compare` Endpoint**
+
    - Now accepts `browser_fingerprint` in request body
    - Checks rate limits for both IP and fingerprint
    - Returns 429 error if limit exceeded
    - Increments counters on successful request
 
 4. **Added New Endpoint**
+
    - `GET /rate-limit-status`: Check current usage status
    - Useful for debugging and user transparency
 
@@ -53,14 +60,32 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
 ### Frontend Changes (`frontend/src/App.tsx`)
 
-1. **Restored Browser Fingerprint Generation**
+1. **Browser Fingerprint Generation with Hashing** ✨ _Updated Oct 18, 2025_
+
    - Generates fingerprint on component mount
    - Uses canvas rendering + browser properties
+   - **Hashes fingerprint using SHA-256** (64 characters)
+   - Improves privacy (only hash stored, not raw data)
+   - Prevents database overflow errors (was 5000+ chars, now 64)
    - Stored in state for reuse
 
 2. **Updated API Calls**
-   - Sends `browser_fingerprint` with `/compare` requests
+   - Sends hashed `browser_fingerprint` with `/compare` requests
    - Better error handling for 429 (rate limit) errors
+
+### Backend Database Changes (`backend/app/models.py`) ✨ _Updated Oct 18, 2025_
+
+**UsageLog Model:**
+
+- Updated `browser_fingerprint` column from `String(500)` to `String(64)`
+- Optimized for SHA-256 hash storage
+- Prevents database overflow errors that were occurring with raw fingerprint data
+
+**Migration Script:**
+
+- Added `backend/migrate_fingerprint_column.py` to update existing databases
+- Automatically detects SQLite vs PostgreSQL
+- Safe, non-destructive migration
 
 ### Dependencies (`backend/requirements.txt`)
 
@@ -99,9 +124,11 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 ### Identifier Format
 
 - IP addresses: `ip:192.168.1.1`
-- Fingerprints: `fp:eyJ1c2VyQWdlbnQiOi...`
+- Fingerprints: `fp:a3f5e8c9d1b2...` (SHA-256 hash, 64 chars)
 
 This prevents collisions between IP and fingerprint tracking.
+
+**Note:** As of October 18, 2025, fingerprints are now SHA-256 hashes instead of Base64-encoded JSON strings. This provides better privacy and prevents database overflow issues.
 
 ### Daily Reset
 
@@ -117,13 +144,27 @@ pip install -r requirements.txt
 ```
 
 Or if using Docker:
+
 ```bash
 docker-compose down
 docker-compose build
 docker-compose up -d
 ```
 
-### 2. Restart Backend
+### 2. Run Database Migration ✨ _Required as of Oct 18, 2025_
+
+```bash
+# If running locally with virtual environment
+cd backend
+python migrate_fingerprint_column.py
+
+# If using Docker
+docker-compose run --rm backend python migrate_fingerprint_column.py
+```
+
+This updates the `browser_fingerprint` column to support SHA-256 hashes.
+
+### 3. Restart Backend
 
 ```bash
 # If running locally
@@ -133,7 +174,7 @@ python backend/app/main.py
 docker-compose restart backend
 ```
 
-### 3. Rebuild Frontend (if needed)
+### 4. Rebuild Frontend (if needed)
 
 ```bash
 cd frontend
@@ -160,14 +201,17 @@ npm run build
 ### Test 3: Bypass Attempts
 
 **Clearing localStorage (should NOT bypass):**
+
 1. Open DevTools → Application → Local Storage → Clear
 2. Try to compare → Should still be blocked ✓ (Backend tracks)
 
 **Using Incognito Mode (should NOT bypass):**
+
 1. Open incognito/private window
 2. Try to compare after hitting limit → Should be blocked ✓ (IP tracked)
 
 **Changing Networks (will reset counter):**
+
 1. Switch to different WiFi/mobile network (new IP)
 2. Can make 10 more comparisons (expected behavior)
 
@@ -189,30 +233,42 @@ curl "http://localhost:8000/rate-limit-status"
 
 ## Security Considerations
 
+### Privacy Improvements ✨ _As of Oct 18, 2025_
+
+**SHA-256 Hashing:**
+
+- Browser fingerprints are now hashed before storage
+- Only the hash (64 chars) is stored in the database and logs
+- Raw browser data never leaves the client's browser
+- Impossible to reverse-engineer the original fingerprint from the hash
+- Same browser always produces the same hash (deterministic)
+
 ### What This Prevents
 
 ✅ **Casual abuse**: Regular users can't exceed 10/day without effort  
 ✅ **Browser-based bypass**: Clearing localStorage doesn't help  
 ✅ **Incognito mode**: Still tracked by IP  
 ✅ **Multiple browsers**: Same IP = shared limit  
-✅ **Automated scripts**: Must spoof both IP and fingerprint  
+✅ **Automated scripts**: Must spoof both IP and fingerprint
 
 ### What This Does NOT Prevent
 
 ⚠️ **VPN switching**: New IP = new 10 comparisons  
 ⚠️ **Multiple devices**: Different IP = separate counter  
 ⚠️ **Sophisticated attackers**: Can spoof fingerprints  
-⚠️ **Server restart**: In-memory storage is reset  
+⚠️ **Server restart**: In-memory storage is reset
 
 ### Limitations
 
 **In-Memory Storage:**
+
 - Rate limits are stored in RAM
 - Restarting the server resets all counters
 - Not shared between multiple backend instances
 
 **For Production:**
 Consider upgrading to persistent storage:
+
 - Redis (fast, in-memory database)
 - PostgreSQL (persistent database)
 - MongoDB (document database)
@@ -222,6 +278,7 @@ Consider upgrading to persistent storage:
 ### Change Daily Limit
 
 Edit `backend/app/main.py`:
+
 ```python
 MAX_DAILY_COMPARISONS = 20  # Change from 10 to 20
 ```
@@ -229,6 +286,7 @@ MAX_DAILY_COMPARISONS = 20  # Change from 10 to 20
 ### Disable Rate Limiting (Development)
 
 Comment out the rate limiting section in `/compare` endpoint:
+
 ```python
 # # --- RATE LIMITING ENFORCEMENT ---
 # client_ip = get_client_ip(request)
@@ -239,13 +297,14 @@ Comment out the rate limiting section in `/compare` endpoint:
 ### Add Whitelist IPs
 
 Add this to `check_rate_limit()` function:
+
 ```python
 def check_rate_limit(identifier: str) -> tuple[bool, int]:
     # Whitelist for development/testing
     WHITELIST_IPS = ["127.0.0.1", "192.168.1.100"]
     if identifier.startswith("ip:") and identifier[3:] in WHITELIST_IPS:
         return True, 0
-    
+
     # ... rest of function ...
 ```
 
@@ -254,6 +313,7 @@ def check_rate_limit(identifier: str) -> tuple[bool, int]:
 ### Backend Logs
 
 Look for these messages:
+
 ```
 Rate limit check passed - IP: 192.168.1.100 (6/10), Fingerprint: eyJ1c2VyQWdlbnQiOi (6/10)
 ```
@@ -261,6 +321,7 @@ Rate limit check passed - IP: 192.168.1.100 (6/10), Fingerprint: eyJ1c2VyQWdlbnQ
 ### Check Rate Limit Storage
 
 Add a debug endpoint (development only):
+
 ```python
 @app.get("/debug/rate-limits")
 async def debug_rate_limits():
@@ -273,6 +334,7 @@ async def debug_rate_limits():
 ### Option 1: Persistent Storage (Recommended)
 
 Use Redis for rate limiting:
+
 ```python
 import redis
 r = redis.Redis(host='localhost', port=6379, db=0)
@@ -286,6 +348,7 @@ def check_rate_limit(identifier: str):
 ### Option 2: Distributed Rate Limiting
 
 For multiple backend servers, use shared storage:
+
 - Redis
 - Memcached
 - Database
@@ -293,6 +356,7 @@ For multiple backend servers, use shared storage:
 ### Option 3: User Accounts
 
 Most effective solution:
+
 - Email/password authentication
 - OAuth (Google, GitHub)
 - Tracks by user ID (not IP/fingerprint)
@@ -301,13 +365,16 @@ Most effective solution:
 ## Summary
 
 **You now have a multi-layer defense system that:**
+
 - ✅ Prevents casual abuse effectively
 - ✅ Works without user accounts
-- ✅ Tracks by both IP and browser fingerprint
+- ✅ Tracks by both IP and browser fingerprint (hashed for privacy)
 - ✅ Shows clear error messages
 - ✅ Easy to configure and monitor
+- ✅ Privacy-focused (only hashes stored, not raw data) ✨
 
 **This is NOT bulletproof, but it's:**
+
 - Good enough for freemium models
 - Better than localStorage alone
 - Balances security with user experience
@@ -315,3 +382,24 @@ Most effective solution:
 
 For most use cases, this level of protection is sufficient!
 
+---
+
+## October 2025 Update: Enhanced Privacy & Reliability
+
+**What Changed:**
+
+- Browser fingerprints are now hashed with SHA-256 before storage
+- Database column optimized from VARCHAR(500) to VARCHAR(64)
+- Fixed database overflow errors (fingerprints were 5000+ chars, now 64)
+- Enhanced user privacy (raw fingerprint data never stored)
+- Migration script added for seamless database updates
+
+**Action Required:**
+If you're updating from a previous version, run the migration script:
+
+```bash
+cd backend
+python migrate_fingerprint_column.py
+```
+
+See `DEPLOYMENT_NEEDED.md` for detailed deployment instructions.
