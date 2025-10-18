@@ -47,6 +47,42 @@ const MAX_MODELS_LIMIT = 12;
 // Freemium usage limits (anonymous users only)
 const MAX_DAILY_USAGE = 5;
 
+// Simple hash function to convert fingerprint to a fixed-length string
+const simpleHash = async (str: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// Generate browser fingerprint for usage tracking (anti-abuse measure)
+const generateBrowserFingerprint = async () => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Browser fingerprint', 2, 2);
+  }
+
+  const fingerprint = {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    screenResolution: `${screen.width}x${screen.height}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    canvas: canvas.toDataURL(),
+    colorDepth: screen.colorDepth,
+    hardwareConcurrency: navigator.hardwareConcurrency
+    // Removed timestamp to keep fingerprint consistent across page refreshes
+  };
+
+  const fingerprintString = JSON.stringify(fingerprint);
+  // Hash the fingerprint to keep it under 64 characters (SHA-256)
+  return await simpleHash(fingerprintString);
+};
+
 function AppContent() {
   const { isAuthenticated, user, refreshUser } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -344,31 +380,6 @@ function AppContent() {
   // Tab switching state - tracks active tab for each conversation
   const [activeResultTabs, setActiveResultTabs] = useState<{ [modelId: string]: 'formatted' | 'raw' }>({});
 
-  // Generate browser fingerprint for usage tracking (anti-abuse measure)
-  const generateBrowserFingerprint = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('Browser fingerprint', 2, 2);
-    }
-
-    const fingerprint = {
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      platform: navigator.platform,
-      screenResolution: `${screen.width}x${screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      canvas: canvas.toDataURL(),
-      colorDepth: screen.colorDepth,
-      hardwareConcurrency: navigator.hardwareConcurrency
-      // Removed timestamp to keep fingerprint consistent across page refreshes
-    };
-
-    return btoa(JSON.stringify(fingerprint));
-  };
-
   // Developer reset function
   const resetUsage = async () => {
     try {
@@ -634,11 +645,11 @@ function AppContent() {
   // Load usage data and fetch models on component mount
   useEffect(() => {
     // Generate browser fingerprint for anti-abuse tracking
-    const fingerprint = generateBrowserFingerprint();
-    setBrowserFingerprint(fingerprint);
+    const initFingerprint = async () => {
+      const fingerprint = await generateBrowserFingerprint();
+      setBrowserFingerprint(fingerprint);
 
-    // Sync usage count with backend
-    const syncUsageCount = async () => {
+      // Sync usage count with backend
       try {
         const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
         if (response.ok) {
@@ -683,7 +694,7 @@ function AppContent() {
       }
     };
 
-    syncUsageCount();
+    initFingerprint();
 
     const fetchModels = async () => {
       try {
