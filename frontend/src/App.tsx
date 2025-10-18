@@ -232,8 +232,7 @@ function AppContent() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
-      // Dynamically import html-to-image with type safety workaround
-      // @ts-ignore
+      // Dynamically import html-to-image
       const htmlToImage = await import("html-to-image");
       const toBlob = htmlToImage.toBlob;
 
@@ -465,6 +464,13 @@ function AppContent() {
       }, 100);
     }
   }, [isLoading]);
+
+  // Clear verification-related errors when user becomes verified
+  useEffect(() => {
+    if (user?.is_verified && error?.includes('verify your email')) {
+      setError(null);
+    }
+  }, [user?.is_verified, error]);
 
   // Scroll to results section when results are loaded
   useEffect(() => {
