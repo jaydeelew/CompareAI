@@ -67,10 +67,19 @@ function AppContent() {
 
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
+    console.log('[App] Setting up BroadcastChannel listener');
+    
+    // Check if BroadcastChannel is supported
+    if (typeof BroadcastChannel === 'undefined') {
+      console.error('[App] BroadcastChannel is not supported in this browser!');
+      return;
+    }
+    
     const channel = new BroadcastChannel('compareintel-verification');
     let hasExistingTab = false;
     
     const handleMessage = (event: MessageEvent) => {
+      console.log('[App] BroadcastChannel message received:', event.data);
       if (event.data.type === 'verify-email' && event.data.token) {
         console.log('[App] Existing tab received verification token:', event.data.token);
         // An existing tab (this one) received a verification token from a new tab
@@ -109,10 +118,12 @@ function AppContent() {
       // Note: suppressVerification is already true from initial state
       
       // Ping to see if there's an existing CompareIntel tab
+      console.log('[App] Sending ping via BroadcastChannel');
       channel.postMessage({ type: 'ping' });
       
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
+        console.log('[App] Timeout complete. hasExistingTab:', hasExistingTab);
         if (hasExistingTab) {
           console.log('[App] Found existing tab, sending token and closing');
           // An existing tab exists - send verification token to it and close this tab
