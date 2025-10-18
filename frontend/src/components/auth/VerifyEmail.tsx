@@ -25,23 +25,18 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
             const urlParams = new URLSearchParams(window.location.search);
             const token = externalToken || urlParams.get('token');
 
-            console.log('[VerifyEmail] useEffect triggered. externalToken:', externalToken, 'URL token:', urlParams.get('token'), 'suppressVerification:', suppressVerification);
-
             // If verification is suppressed (new tab checking for existing tabs), don't verify yet
             if (suppressVerification) {
-                console.log('[VerifyEmail] Verification suppressed, waiting for tab coordination');
                 return;
             }
 
             // If no token, don't show anything
             if (!token) {
-                console.log('[VerifyEmail] No token found, returning');
                 return;
             }
 
             // If this is a new external token, allow re-verification
             if (externalToken && externalToken !== lastProcessedToken.current) {
-                console.log('[VerifyEmail] New external token detected, resetting state');
                 hasVerified.current = false;
                 lastProcessedToken.current = externalToken;
                 // Reset state for new verification (but don't set status to idle yet)
@@ -51,12 +46,10 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
 
             // Prevent double-submission in React StrictMode (dev mode)
             if (hasVerified.current) {
-                console.log('[VerifyEmail] Already verified, skipping');
                 return;
             }
             hasVerified.current = true;
 
-            console.log('[VerifyEmail] Starting verification with token:', token);
             setStatus('verifying');
 
             try {
@@ -69,37 +62,29 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                 });
 
                 if (response.ok) {
-                    console.log('[VerifyEmail] Verification successful, refreshing user');
                     // Refresh user data first to update verification status (triggers orange banner fade-out)
                     try {
                         await refreshUser();
-                        console.log('[VerifyEmail] User refreshed successfully');
                     } catch (err) {
-                        console.log('[VerifyEmail] Could not refresh user data:', err);
+                        console.log('Could not refresh user data:', err);
                     }
 
                     // Small delay before showing success to allow orange banner to start fading
                     setTimeout(() => {
-                        console.log('[VerifyEmail] Setting status to success');
                         setStatus('success');
                         setMessage('Your account is now fully activated. You can make unlimited comparisons!');
                         // Trigger entrance animation
-                        setTimeout(() => {
-                            console.log('[VerifyEmail] Animating in green banner');
-                            setHasAnimatedIn(true);
-                        }, 50);
+                        setTimeout(() => setHasAnimatedIn(true), 50);
                     }, 300);
                 } else {
-                    console.log('[VerifyEmail] Verification failed with status:', response.status);
                     const error = await response.json();
-                    console.log('[VerifyEmail] Error response:', error);
                     setStatus('error');
                     setMessage(error.detail || 'Verification failed. The link may have expired.');
                     // Trigger error banner animation
                     setTimeout(() => setHasAnimatedIn(true), 50);
                 }
             } catch (error) {
-                console.error('[VerifyEmail] Verification error:', error);
+                console.error('Verification error:', error);
                 setStatus('error');
                 setMessage('Failed to verify email. Please try again later.');
                 // Trigger error banner animation
@@ -110,20 +95,20 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
         verifyEmail();
     }, [refreshUser, onClose, externalToken, suppressVerification]);
 
-    // Auto-hide success banner after 5 seconds
+    // Auto-hide success banner after 8 seconds
     useEffect(() => {
         if (status === 'success' && hasAnimatedIn) {
-            // Wait 5 seconds, then start fade-out
+            // Wait 8 seconds, then start fade-out
             const fadeTimer = setTimeout(() => {
                 setHasAnimatedIn(false); // Trigger fade-out
-            }, 5000);
+            }, 8000);
 
             // After fade-out completes, remove banner
             const removeTimer = setTimeout(() => {
                 window.history.replaceState({}, document.title, window.location.pathname);
                 setIsVisible(false);
                 onClose();
-            }, 5500); // 5000ms wait + 500ms fade-out
+            }, 8500); // 8000ms wait + 500ms fade-out
 
             return () => {
                 clearTimeout(fadeTimer);
@@ -134,11 +119,8 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
 
     // Don't show anything if we're idle, verifying, or not visible
     if (!isVisible || status === 'idle' || status === 'verifying') {
-        console.log('[VerifyEmail] Not rendering banner. isVisible:', isVisible, 'status:', status);
         return null;
     }
-    
-    console.log('[VerifyEmail] Rendering banner with status:', status, 'hasAnimatedIn:', hasAnimatedIn);
 
     return (
         <div

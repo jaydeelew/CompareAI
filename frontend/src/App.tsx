@@ -60,15 +60,11 @@ function AppContent() {
     const urlParams = new URLSearchParams(window.location.search);
     const hasTokenInUrl = urlParams.get('token') !== null;
     const isNewTab = window.opener === null;
-    const shouldSuppress = hasTokenInUrl && isNewTab;
-    console.log('[App] Initial suppressVerification:', shouldSuppress, '(hasToken:', hasTokenInUrl, 'isNewTab:', isNewTab, ')');
-    return shouldSuppress;
+    return hasTokenInUrl && isNewTab;
   });
 
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
-    console.log('[App] Setting up BroadcastChannel listener');
-    
     // Check if BroadcastChannel is supported
     if (typeof BroadcastChannel === 'undefined') {
       console.error('[App] BroadcastChannel is not supported in this browser!');
@@ -79,9 +75,7 @@ function AppContent() {
     let hasExistingTab = false;
     
     const handleMessage = (event: MessageEvent) => {
-      console.log('[App] BroadcastChannel message received:', event.data);
       if (event.data.type === 'verify-email' && event.data.token) {
-        console.log('[App] Existing tab received verification token:', event.data.token);
         // An existing tab (this one) received a verification token from a new tab
         // Update URL without page reload and trigger verification
         const newUrl = new URL(window.location.href);
@@ -89,18 +83,15 @@ function AppContent() {
         window.history.pushState({}, '', newUrl);
         
         // Set the token to trigger verification in VerifyEmail component
-        console.log('[App] Setting verificationToken state');
         setVerificationToken(event.data.token);
         
         // Focus this tab
         window.focus();
       } else if (event.data.type === 'ping') {
-        console.log('[App] Received ping, responding with pong');
         // Another tab is checking if we exist - respond
         hasExistingTab = true;
         channel.postMessage({ type: 'pong' });
       } else if (event.data.type === 'pong') {
-        console.log('[App] Received pong from existing tab');
         // An existing tab responded to our ping
         hasExistingTab = true;
       }
@@ -113,19 +104,15 @@ function AppContent() {
     const token = urlParams.get('token');
     
     if (token && window.opener === null) {
-      console.log('[App] New tab detected with token, pinging for existing tabs');
       // This is a new tab opened from email with a verification token
       // Note: suppressVerification is already true from initial state
       
       // Ping to see if there's an existing CompareIntel tab
-      console.log('[App] Sending ping via BroadcastChannel');
       channel.postMessage({ type: 'ping' });
       
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
-        console.log('[App] Timeout complete. hasExistingTab:', hasExistingTab);
         if (hasExistingTab) {
-          console.log('[App] Found existing tab, sending token and closing');
           // An existing tab exists - send verification token to it and close this tab
           channel.postMessage({ 
             type: 'verify-email', 
@@ -137,7 +124,6 @@ function AppContent() {
             window.close();
           }, 500);
         } else {
-          console.log('[App] No existing tab found, staying open and allowing verification');
           // No existing tab found - allow verification to proceed in this tab
           setSuppressVerification(false);
         }
