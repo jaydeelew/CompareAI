@@ -135,7 +135,7 @@ docker compose -f docker-compose.prod.yml down
 
 ```bash
 # SSH into your EC2 instance
-ssh -i CompareAI.pem ubuntu@54.163.207.252
+ssh -i CompareAI.pem ubuntu@44.212.141.149
 
 # ONE-TIME: Set up SSL certificates for both domains
 ./setup-compareintel-ssl.sh
@@ -156,6 +156,7 @@ docker compose -f docker-compose.ssl.yml ps
 docker compose -f docker-compose.ssl.yml logs -f
 
 ```
+
 ### Access & Verification
 
 - **Primary URL:** https://compareintel.com
