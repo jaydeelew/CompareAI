@@ -55,7 +55,15 @@ function AppContent() {
   // State to trigger verification from another tab
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
   // State to prevent new tab from verifying while checking for existing tabs
-  const [suppressVerification, setSuppressVerification] = useState(false);
+  // Initialize suppressVerification based on whether this is a new tab with a token
+  const [suppressVerification, setSuppressVerification] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasTokenInUrl = urlParams.get('token') !== null;
+    const isNewTab = window.opener === null;
+    const shouldSuppress = hasTokenInUrl && isNewTab;
+    console.log('[App] Initial suppressVerification:', shouldSuppress, '(hasToken:', hasTokenInUrl, 'isNewTab:', isNewTab, ')');
+    return shouldSuppress;
+  });
 
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
@@ -98,8 +106,7 @@ function AppContent() {
     if (token && window.opener === null) {
       console.log('[App] New tab detected with token, pinging for existing tabs');
       // This is a new tab opened from email with a verification token
-      // Suppress verification in this tab while we check for existing tabs
-      setSuppressVerification(true);
+      // Note: suppressVerification is already true from initial state
       
       // Ping to see if there's an existing CompareIntel tab
       channel.postMessage({ type: 'ping' });
