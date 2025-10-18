@@ -1,34 +1,65 @@
-annotated-types>=0.5.0
-anyio>=3.6.0,<4.0.0
-click>=8.0.0
+# ============================================================================
+# Core FastAPI Framework
+# ============================================================================
 fastapi>=0.100.0
-h11>=0.14.0
-httptools>=0.5.0
-idna>=3.0.0
+starlette>=0.27.0
 pydantic>=2.0.0
 pydantic_core>=2.0.0
-python-dotenv>=1.0.0
-python-multipart>=0.0.5
-PyYAML>=6.0
-sniffio>=1.3.0
-starlette>=0.27.0
+annotated-types>=0.5.0
 typing_extensions>=4.0.0
-uvicorn>=0.20.0
-uvloop>=0.17.0
-watchfiles>=0.18.0
-websockets>=10.0
-requests>=2.25.0
-aiohttp>=3.8.0
-openai>=1.0.0
-gunicorn
-slowapi>=0.1.9
 
-# Authentication & Database
-sqlalchemy>=2.0.0
-alembic>=1.12.0
-psycopg2-binary>=2.9.9
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-bcrypt==4.0.1
-fastapi-mail>=1.4.0
-pydantic[email]>=2.0.0
+# ============================================================================
+# ASGI Server & Production
+# ============================================================================
+uvicorn>=0.20.0
+gunicorn
+click>=8.0.0
+
+# ============================================================================
+# Performance Enhancements (Optional but Recommended)
+# ============================================================================
+uvloop>=0.17.0        # Faster event loop (Unix only)
+httptools>=0.5.0      # Faster HTTP parsing
+h11>=0.14.0           # HTTP/1.1 protocol implementation
+watchfiles>=0.18.0    # Development auto-reload
+websockets>=10.0      # WebSocket support
+
+# ============================================================================
+# Request Handling & Utilities
+# ============================================================================
+python-multipart>=0.0.5  # Form data parsing
+python-dotenv>=1.0.0     # Environment variables
+PyYAML>=6.0              # YAML configuration
+anyio>=3.6.0,<4.0.0      # Async compatibility layer
+sniffio>=1.3.0           # Async library detection
+idna>=3.0.0              # Internationalized domain names
+
+# ============================================================================
+# API Client
+# ============================================================================
+openai>=1.0.0         # OpenRouter API client
+
+# ============================================================================
+# Utility Scripts (Optional - only for get_openrouter_models.py)
+# ============================================================================
+requests>=2.25.0      # HTTP client for utility scripts
+
+# ============================================================================
+# Authentication & Security
+# ============================================================================
+python-jose[cryptography]>=3.3.0  # JWT token handling
+passlib[bcrypt]>=1.7.4            # Password hashing (legacy support)
+bcrypt==4.0.1                      # Password hashing (primary)
+
+# ============================================================================
+# Database
+# ============================================================================
+sqlalchemy>=2.0.0        # ORM
+alembic>=1.12.0          # Database migrations
+psycopg2-binary>=2.9.9   # PostgreSQL driver
+
+# ============================================================================
+# Email
+# ============================================================================
+fastapi-mail>=1.4.0      # Email sending
+pydantic[email]>=2.0.0   # Email validation
