@@ -90,14 +90,20 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                         }, 50);
                     }, 300);
                 } else {
+                    console.log('[VerifyEmail] Verification failed with status:', response.status);
                     const error = await response.json();
+                    console.log('[VerifyEmail] Error response:', error);
                     setStatus('error');
                     setMessage(error.detail || 'Verification failed. The link may have expired.');
+                    // Trigger error banner animation
+                    setTimeout(() => setHasAnimatedIn(true), 50);
                 }
             } catch (error) {
-                console.error('Verification error:', error);
+                console.error('[VerifyEmail] Verification error:', error);
                 setStatus('error');
                 setMessage('Failed to verify email. Please try again later.');
+                // Trigger error banner animation
+                setTimeout(() => setHasAnimatedIn(true), 50);
             }
         };
 
@@ -128,8 +134,11 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
 
     // Don't show anything if we're idle, verifying, or not visible
     if (!isVisible || status === 'idle' || status === 'verifying') {
+        console.log('[VerifyEmail] Not rendering banner. isVisible:', isVisible, 'status:', status);
         return null;
     }
+    
+    console.log('[VerifyEmail] Rendering banner with status:', status, 'hasAnimatedIn:', hasAnimatedIn);
 
     return (
         <div
