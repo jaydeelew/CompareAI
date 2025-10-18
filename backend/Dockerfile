@@ -6,10 +6,11 @@ ENV ENVIRONMENT=${ENVIRONMENT}
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and create temp directories
 RUN apt-get update && apt-get install -y \
     gcc \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /tmp /var/tmp /usr/tmp
 
 # Copy requirements first for better caching
 COPY requirements.txt .
