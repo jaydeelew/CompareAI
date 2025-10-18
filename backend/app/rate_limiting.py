@@ -9,29 +9,14 @@ authenticated users (subscription-based limits) and anonymous users
 from datetime import datetime, date
 from typing import Optional, Tuple, Dict, Any
 from sqlalchemy.orm import Session
-from app.models import User
+from .models import User
 from collections import defaultdict
 
 # Subscription tier configuration
 SUBSCRIPTION_CONFIG = {
-    "free": {
-        "daily_limit": 10,
-        "model_limit": 3,
-        "overage_allowed": False,
-        "overage_price": None
-    },
-    "starter": {
-        "daily_limit": 25,
-        "model_limit": 6,
-        "overage_allowed": True,
-        "overage_price": 0.20  # USD per comparison
-    },
-    "pro": {
-        "daily_limit": 50,
-        "model_limit": 9,
-        "overage_allowed": True,
-        "overage_price": 0.25  # USD per comparison
-    }
+    "free": {"daily_limit": 10, "model_limit": 3, "overage_allowed": False, "overage_price": None},
+    "starter": {"daily_limit": 25, "model_limit": 6, "overage_allowed": True, "overage_price": 0.20},  # USD per comparison
+    "pro": {"daily_limit": 50, "model_limit": 9, "overage_allowed": True, "overage_price": 0.25},  # USD per comparison
 }
 
 # Backwards compatibility - extract limits
@@ -40,19 +25,17 @@ MODEL_LIMITS = {tier: config["model_limit"] for tier, config in SUBSCRIPTION_CON
 
 # In-memory storage for anonymous rate limiting
 # Structure: { "identifier": { "count": int, "date": str, "first_seen": datetime } }
-anonymous_rate_limit_storage: Dict[str, Dict[str, Any]] = defaultdict(
-    lambda: {"count": 0, "date": "", "first_seen": None}
-)
+anonymous_rate_limit_storage: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "date": "", "first_seen": None})
 
 
 def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
     """
     Check rate limit for authenticated user based on subscription tier.
-    
+
     Args:
         user: Authenticated user object
         db: Database session
-        
+
     Returns:
         tuple: (is_allowed, current_count, daily_limit)
     """
@@ -62,20 +45,20 @@ def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
         user.daily_usage_count = 0
         user.usage_reset_date = today
         db.commit()
-    
+
     # Get daily limit based on subscription tier
     daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
-    
+
     # Check if user is within limit
     is_allowed = user.daily_usage_count < daily_limit
-    
+
     return is_allowed, user.daily_usage_count, daily_limit
 
 
 def increment_user_usage(user: User, db: Session) -> None:
     """
     Increment authenticated user's daily usage count.
-    
+
     Args:
         user: Authenticated user object
         db: Database session
@@ -88,40 +71,40 @@ def increment_user_usage(user: User, db: Session) -> None:
 def check_anonymous_rate_limit(identifier: str) -> Tuple[bool, int]:
     """
     Check rate limit for anonymous user using IP/fingerprint.
-    
+
     Args:
         identifier: Unique identifier (e.g., "ip:192.168.1.1" or "fp:xxx")
-        
+
     Returns:
         tuple: (is_allowed, current_count)
     """
     today = datetime.now().date().isoformat()
     user_data = anonymous_rate_limit_storage[identifier]
-    
+
     # Reset count if it's a new day
     if user_data["date"] != today:
         user_data["count"] = 0
         user_data["date"] = today
         user_data["first_seen"] = datetime.now()
-    
+
     current_count = user_data["count"]
-    
+
     # Anonymous users get 5 comparisons per day
     is_allowed = current_count < 5
-    
+
     return is_allowed, current_count
 
 
 def increment_anonymous_usage(identifier: str) -> None:
     """
     Increment usage count for anonymous user.
-    
+
     Args:
         identifier: Unique identifier (e.g., "ip:192.168.1.1" or "fp:xxx")
     """
     today = datetime.now().date().isoformat()
     user_data = anonymous_rate_limit_storage[identifier]
-    
+
     if user_data["date"] != today:
         user_data["count"] = 1
         user_data["date"] = today
@@ -133,70 +116,70 @@ def increment_anonymous_usage(identifier: str) -> None:
 def get_user_usage_stats(user: User) -> Dict[str, Any]:
     """
     Get usage statistics for authenticated user.
-    
+
     Args:
         user: Authenticated user object
-        
+
     Returns:
         dict: Usage statistics including daily usage, limit, and remaining
     """
     daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
     remaining = max(0, daily_limit - user.daily_usage_count)
-    
+
     return {
         "daily_usage": user.daily_usage_count,
         "daily_limit": daily_limit,
         "remaining_usage": remaining,
         "subscription_tier": user.subscription_tier,
-        "usage_reset_date": user.usage_reset_date.isoformat()
+        "usage_reset_date": user.usage_reset_date.isoformat(),
     }
 
 
 def get_anonymous_usage_stats(identifier: str) -> Dict[str, Any]:
     """
     Get usage statistics for anonymous user.
-    
+
     Args:
         identifier: Unique identifier
-        
+
     Returns:
         dict: Usage statistics including daily usage, limit, and remaining
     """
     _, current_count = check_anonymous_rate_limit(identifier)
     daily_limit = 5
     remaining = max(0, daily_limit - current_count)
-    
+
     return {
         "daily_usage": current_count,
         "daily_limit": daily_limit,
         "remaining_usage": remaining,
         "subscription_tier": "anonymous",
-        "usage_reset_date": date.today().isoformat()
+        "usage_reset_date": date.today().isoformat(),
     }
 
 
 def should_send_usage_warning(user: User) -> bool:
     """
     Check if usage warning email should be sent to user.
-    
+
     Sends warning at 80% usage (8/10 for free, 40/50 for pro, 80/100 for pro+).
-    
+
     Args:
         user: Authenticated user object
-        
+
     Returns:
         bool: True if warning should be sent
     """
     daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
     warning_threshold = int(daily_limit * 0.8)
-    
+
     return user.daily_usage_count == warning_threshold
 
 
 def reset_anonymous_rate_limits() -> None:
     """
     Clear all anonymous rate limit storage.
-    
+
     WARNING: This is for development/testing only.
     In production, rate limits reset automatically at midnight.
     """
@@ -206,10 +189,10 @@ def reset_anonymous_rate_limits() -> None:
 def get_model_limit(tier: str) -> int:
     """
     Get maximum models allowed per comparison for a tier.
-    
+
     Args:
         tier: Subscription tier
-        
+
     Returns:
         int: Maximum number of models allowed
     """
@@ -219,10 +202,10 @@ def get_model_limit(tier: str) -> int:
 def is_overage_allowed(tier: str) -> bool:
     """
     Check if overage is allowed for a tier.
-    
+
     Args:
         tier: Subscription tier name
-        
+
     Returns:
         bool: True if overage is allowed, False otherwise
     """
@@ -233,10 +216,10 @@ def is_overage_allowed(tier: str) -> bool:
 def get_overage_price(tier: str) -> Optional[float]:
     """
     Get overage price per comparison for a tier.
-    
+
     Args:
         tier: Subscription tier name
-        
+
     Returns:
         float: Price per overage comparison, or None if overages not allowed
     """
@@ -247,10 +230,10 @@ def get_overage_price(tier: str) -> Optional[float]:
 def get_tier_config(tier: str) -> Dict[str, Any]:
     """
     Get complete configuration for a tier.
-    
+
     Args:
         tier: Subscription tier name
-        
+
     Returns:
         dict: Tier configuration
     """
@@ -260,7 +243,7 @@ def get_tier_config(tier: str) -> Dict[str, Any]:
 def get_rate_limit_info() -> Dict[str, Any]:
     """
     Get information about all rate limits (for debugging).
-    
+
     Returns:
         dict: Information about subscription tiers and anonymous limits
     """
@@ -268,6 +251,5 @@ def get_rate_limit_info() -> Dict[str, Any]:
         "subscription_tiers": SUBSCRIPTION_LIMITS,
         "model_limits": MODEL_LIMITS,
         "anonymous_limit": 5,
-        "anonymous_users_tracked": len(anonymous_rate_limit_storage)
+        "anonymous_users_tracked": len(anonymous_rate_limit_storage),
     }
-

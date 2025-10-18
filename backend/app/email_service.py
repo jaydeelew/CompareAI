@@ -11,42 +11,54 @@ import os
 from typing import List
 
 # Email configuration from environment variables
-conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME", ""),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", ""),
-    MAIL_FROM=os.getenv("MAIL_FROM", "noreply@compareintel.com"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
-    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.sendgrid.net"),
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
-)
+# Only initialize if we have valid email settings
+MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+MAIL_FROM = os.getenv("MAIL_FROM", "noreply@compareintel.com")
+MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.sendgrid.net")
 
-# Initialize FastMail
-fm = FastMail(conf)
+# Check if email is configured
+EMAIL_CONFIGURED = bool(MAIL_USERNAME and MAIL_PASSWORD and MAIL_FROM and "@" in MAIL_FROM)
+
+if EMAIL_CONFIGURED:
+    conf = ConnectionConfig(
+        MAIL_USERNAME=MAIL_USERNAME,
+        MAIL_PASSWORD=MAIL_PASSWORD,
+        MAIL_FROM=MAIL_FROM,
+        MAIL_PORT=int(os.getenv("MAIL_PORT") or "587"),
+        MAIL_SERVER=MAIL_SERVER,
+        MAIL_STARTTLS=True,
+        MAIL_SSL_TLS=False,
+        USE_CREDENTIALS=True,
+        VALIDATE_CERTS=True,
+    )
+    # Initialize FastMail
+    fm = FastMail(conf)
+else:
+    conf = None
+    fm = None
 
 
 async def send_verification_email(email: EmailStr, token: str):
     """
     Send email verification link to user.
-    
+
     Args:
         email: User's email address
         token: Verification token
     """
     # Skip sending email if not configured (development mode)
-    if not os.getenv("MAIL_USERNAME") or not os.getenv("MAIL_PASSWORD"):
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    if not EMAIL_CONFIGURED:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         verification_url = f"{frontend_url}/verify-email?token={token}"
         print(f"Email service not configured - skipping verification email for {email}")
         print(f"Verification token: {token}")
         print(f"Verification URL: {verification_url}")
         return
-    
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     verification_url = f"{frontend_url}/verify-email?token={token}"
-    
+
     html = f"""
     <html>
       <head>
@@ -113,14 +125,9 @@ async def send_verification_email(email: EmailStr, token: str):
       </body>
     </html>
     """
-    
-    message = MessageSchema(
-        subject="Verify Your CompareIntel Account",
-        recipients=[email],
-        body=html,
-        subtype="html"
-    )
-    
+
+    message = MessageSchema(subject="Verify Your CompareIntel Account", recipients=[email], body=html, subtype="html")
+
     try:
         await fm.send_message(message)
     except Exception as e:
@@ -132,14 +139,23 @@ async def send_verification_email(email: EmailStr, token: str):
 async def send_password_reset_email(email: EmailStr, token: str):
     """
     Send password reset link to user.
-    
+
     Args:
         email: User's email address
         token: Password reset token
     """
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    # Skip sending email if not configured (development mode)
+    if not EMAIL_CONFIGURED:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        reset_url = f"{frontend_url}/reset-password?token={token}"
+        print(f"Email service not configured - skipping password reset email for {email}")
+        print(f"Reset token: {token}")
+        print(f"Reset URL: {reset_url}")
+        return
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     reset_url = f"{frontend_url}/reset-password?token={token}"
-    
+
     html = f"""
     <html>
       <head>
@@ -216,14 +232,9 @@ async def send_password_reset_email(email: EmailStr, token: str):
       </body>
     </html>
     """
-    
-    message = MessageSchema(
-        subject="Reset Your CompareIntel Password",
-        recipients=[email],
-        body=html,
-        subtype="html"
-    )
-    
+
+    message = MessageSchema(subject="Reset Your CompareIntel Password", recipients=[email], body=html, subtype="html")
+
     try:
         await fm.send_message(message)
     except Exception as e:
@@ -234,40 +245,34 @@ async def send_password_reset_email(email: EmailStr, token: str):
 async def send_subscription_confirmation_email(email: EmailStr, tier: str, period: str, amount: float):
     """
     Send subscription confirmation email.
-    
+
     Args:
         email: User's email address
         tier: Subscription tier (starter, pro)
         period: Subscription period (monthly, yearly)
         amount: Amount paid
     """
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     dashboard_url = f"{frontend_url}/dashboard"
-    
-    tier_display = tier.replace('_', ' ').title()
+
+    tier_display = tier.replace("_", " ").title()
     period_display = "Monthly" if period == "monthly" else "Yearly"
-    
+
     # Get tier benefits
     benefits = {
-        "starter": [
-            "25 daily comparisons",
-            "All models access",
-            "Email support",
-            "Usage analytics",
-            "1 month conversation history"
-        ],
+        "starter": ["25 daily comparisons", "All models access", "Email support", "Usage analytics", "1 month conversation history"],
         "pro": [
             "50 daily comparisons",
             "Priority processing",
             "Email support",
             "Usage analytics",
             "Export conversations",
-            "3 months conversation history"
+            "3 months conversation history",
         ],
     }
-    
+
     benefits_html = "".join([f"<li>{benefit}</li>" for benefit in benefits.get(tier, [])])
-    
+
     html = f"""
     <html>
       <head>
@@ -379,14 +384,11 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
       </body>
     </html>
     """
-    
+
     message = MessageSchema(
-        subject=f"Subscription Confirmed - CompareIntel {tier_display}",
-        recipients=[email],
-        body=html,
-        subtype="html"
+        subject=f"Subscription Confirmed - CompareIntel {tier_display}", recipients=[email], body=html, subtype="html"
     )
-    
+
     try:
         await fm.send_message(message)
     except Exception as e:
@@ -398,18 +400,18 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
 async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, daily_limit: int, tier: str):
     """
     Send warning email when user is approaching their daily limit.
-    
+
     Args:
         email: User's email address
         usage_count: Current usage count
         daily_limit: Daily limit for their tier
         tier: Current subscription tier
     """
-    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     upgrade_url = f"{frontend_url}/subscription"
-    
+
     percentage_used = (usage_count / daily_limit) * 100
-    
+
     html = f"""
     <html>
       <head>
@@ -497,18 +499,12 @@ async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, dail
       </body>
     </html>
     """
-    
-    message = MessageSchema(
-        subject="CompareIntel Usage Warning",
-        recipients=[email],
-        body=html,
-        subtype="html"
-    )
-    
+
+    message = MessageSchema(subject="CompareIntel Usage Warning", recipients=[email], body=html, subtype="html")
+
     try:
         await fm.send_message(message)
     except Exception as e:
         print(f"Failed to send usage warning email to {email}: {str(e)}")
         # Don't raise exception - this is just a notification
         pass
-
