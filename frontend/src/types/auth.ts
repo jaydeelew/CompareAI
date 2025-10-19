@@ -7,6 +7,8 @@ export interface User {
     email: string;
     is_verified: boolean;
     is_active: boolean;
+    role: 'user' | 'moderator' | 'admin' | 'super_admin';
+    is_admin: boolean;
     subscription_tier: 'free' | 'starter' | 'pro';
     subscription_status: 'active' | 'cancelled' | 'expired';
     subscription_period: 'monthly' | 'yearly';

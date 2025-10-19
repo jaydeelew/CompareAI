@@ -27,7 +27,7 @@ from .rate_limiting import (
     get_overage_price,
     anonymous_rate_limit_storage,
 )
-from .routers import auth
+from .routers import auth, admin
 
 print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
@@ -73,6 +73,7 @@ app.add_middleware(
 
 # Include authentication router AFTER middleware
 app.include_router(auth.router)
+app.include_router(admin.router)
 
 # Maximum number of models allowed per request
 MAX_MODELS_PER_REQUEST = 12

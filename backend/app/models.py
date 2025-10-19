@@ -40,6 +40,11 @@ class User(Base):
     subscription_start_date = Column(DateTime)
     subscription_end_date = Column(DateTime)
 
+    # Admin roles and permissions
+    role = Column(String(50), default="user")  # 'user', 'moderator', 'admin', 'super_admin'
+    is_admin = Column(Boolean, default=False)
+    admin_permissions = Column(Text)  # JSON string of specific permissions
+
     # Payment integration
     stripe_customer_id = Column(String(255), index=True)
 
@@ -212,3 +217,27 @@ class PaymentTransaction(Base):
 
     # Relationships
     user = relationship("User", back_populates="payment_transactions")
+
+
+class AdminActionLog(Base):
+    """Audit log for all admin actions."""
+
+    __tablename__ = "admin_action_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    target_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Action details
+    action_type = Column(String(100), nullable=False)  # 'user_create', 'user_update', 'user_delete', etc.
+    action_description = Column(Text, nullable=False)
+    details = Column(Text)  # JSON string with action-specific data
+    ip_address = Column(String(45))  # IPv4 or IPv6
+    user_agent = Column(Text)
+
+    # Timestamp
+    created_at = Column(DateTime, default=func.now(), index=True)
+
+    # Relationships
+    admin_user = relationship("User", foreign_keys=[admin_user_id], backref="admin_actions_performed")
+    target_user = relationship("User", foreign_keys=[target_user_id], backref="admin_actions_received")

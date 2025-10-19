@@ -145,3 +145,41 @@ def check_subscription_tier(required_tier: str):
         return current_user
 
     return dependency
+
+
+def require_admin_role(required_role: str = "admin"):
+    """
+    Dependency factory to check if user has required admin role.
+
+    Args:
+        required_role: Minimum required role ('moderator', 'admin', 'super_admin')
+
+    Returns:
+        Dependency function that validates admin role
+    """
+    role_hierarchy = {"moderator": 1, "admin": 2, "super_admin": 3}
+
+    def dependency(current_user: User = Depends(get_current_verified_user)) -> User:
+        if not current_user.is_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+        user_role_level = role_hierarchy.get(current_user.role, 0)
+        required_role_level = role_hierarchy.get(required_role, 0)
+
+        if user_role_level < required_role_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=f"This feature requires {required_role} role or higher"
+            )
+        return current_user
+
+    return dependency
+
+
+def get_current_admin_user(current_user: User = Depends(require_admin_role())) -> User:
+    """
+    Get current authenticated admin user.
+
+    Returns:
+        User: Current authenticated admin user
+    """
+    return current_user

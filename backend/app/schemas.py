@@ -51,6 +51,8 @@ class UserResponse(BaseModel):
     email: str
     is_verified: bool
     is_active: bool
+    role: str
+    is_admin: bool
     subscription_tier: str
     subscription_status: str
     subscription_period: str
@@ -255,3 +257,111 @@ class ConversationDetail(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# Admin Management Schemas
+# ============================================================================
+
+
+class AdminUserResponse(BaseModel):
+    """Schema for admin user data response."""
+
+    id: int
+    email: str
+    is_verified: bool
+    is_active: bool
+    role: str
+    is_admin: bool
+    subscription_tier: str
+    subscription_status: str
+    subscription_period: str
+    daily_usage_count: int
+    monthly_overage_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserCreate(BaseModel):
+    """Schema for creating a user via admin panel."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=12)
+    role: str = Field(default="user", pattern="^(user|moderator|admin|super_admin)$")
+    subscription_tier: str = Field(default="free", pattern="^(free|starter|pro)$")
+    subscription_period: str = Field(default="monthly", pattern="^(monthly|yearly)$")
+    is_active: bool = Field(default=True)
+    is_verified: bool = Field(default=False)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v):
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        if not any(char.isdigit() for char in v):
+            raise ValueError("Password must contain at least one digit")
+        if not any(char.isupper() for char in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(char.islower() for char in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        special_chars = "!@#$%^&*()_+-=[]{};':\"\\|,.<>/?"
+        if not any(char in special_chars for char in v):
+            raise ValueError("Password must contain at least one special character (!@#$%^&*()_+-=[]{};':\"\\|,.<>/?)")
+        return v
+
+
+class AdminUserUpdate(BaseModel):
+    """Schema for updating a user via admin panel."""
+
+    email: Optional[EmailStr] = None
+    role: Optional[str] = Field(None, pattern="^(user|moderator|admin|super_admin)$")
+    subscription_tier: Optional[str] = Field(None, pattern="^(free|starter|pro)$")
+    subscription_status: Optional[str] = Field(None, pattern="^(active|cancelled|expired)$")
+    subscription_period: Optional[str] = Field(None, pattern="^(monthly|yearly)$")
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    daily_usage_count: Optional[int] = Field(None, ge=0)
+    monthly_overage_count: Optional[int] = Field(None, ge=0)
+
+
+class AdminUserListResponse(BaseModel):
+    """Schema for paginated user list response."""
+
+    users: List[AdminUserResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class AdminActionLogResponse(BaseModel):
+    """Schema for admin action log response."""
+
+    id: int
+    admin_user_id: int
+    target_user_id: Optional[int]
+    action_type: str
+    action_description: str
+    details: Optional[str]
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminStatsResponse(BaseModel):
+    """Schema for admin dashboard stats."""
+
+    total_users: int
+    active_users: int
+    verified_users: int
+    users_by_tier: dict[str, int]
+    users_by_role: dict[str, int]
+    recent_registrations: int  # Last 7 days
+    total_usage_today: int
+    admin_actions_today: int
