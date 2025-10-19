@@ -1319,7 +1319,7 @@ function AppContent() {
     <div className="app">
       {/* Admin Panel - Show if user is admin and in admin view */}
       {currentView === 'admin' && user?.is_admin ? (
-        <AdminPanel />
+        <AdminPanel onClose={() => setCurrentView('main')} />
       ) : (
         <>
           {/* Done Selecting? Floating Card - Fixed position at screen center */}
@@ -1396,7 +1396,22 @@ function AppContent() {
 
           <div className="nav-actions">
             {isAuthenticated ? (
-              <UserMenu />
+              <>
+                {user?.is_admin && (
+                  <button
+                    className="admin-avatar-button"
+                    onClick={() => setCurrentView(currentView === 'admin' ? 'main' : 'admin')}
+                    title={currentView === 'admin' ? 'Back to Main App' : 'Admin Panel'}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                      <path d="M2 17l10 5 10-5"/>
+                      <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                  </button>
+                )}
+                <UserMenu />
+              </>
             ) : (
               <>
                 <button
@@ -2189,37 +2204,6 @@ function AppContent() {
             initialMode={authModalMode}
           />
         </>
-      )}
-
-      {/* Admin Navigation - Show admin button if user is admin */}
-      {user?.is_admin && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 1000,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '10px 15px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: '500',
-          transition: 'all 0.3s ease',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
-        }}
-        onClick={() => setCurrentView(currentView === 'admin' ? 'main' : 'admin')}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-          e.currentTarget.style.transform = 'scale(1.05)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-          e.currentTarget.style.transform = 'scale(1)';
-        }}
-        >
-          {currentView === 'admin' ? '← Back to App' : '⚙️ Admin Panel'}
-        </div>
       )}
     </div>
   );

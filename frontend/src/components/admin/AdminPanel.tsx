@@ -37,7 +37,11 @@ interface AdminUserListResponse {
     total_pages: number;
 }
 
-const AdminPanel: React.FC = () => {
+interface AdminPanelProps {
+    onClose?: () => void;
+}
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const { user } = useAuth();
     const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
@@ -379,13 +383,15 @@ const AdminPanel: React.FC = () => {
         <div className="admin-panel">
             <div className="admin-header">
                 <div className="admin-header-content">
+                    {onClose && (
+                        <button className="back-button" onClick={onClose} title="Back to Main App">
+                            ↪
+                        </button>
+                    )}
                     <div className="admin-title-section">
                         <h1>Admin Panel</h1>
                         <p>Manage users and monitor system activity</p>
                     </div>
-                    <a href="/" className="back-to-app-btn">
-                        ← Back to App
-                    </a>
                 </div>
             </div>
 

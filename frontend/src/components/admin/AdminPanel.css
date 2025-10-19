@@ -31,10 +31,44 @@
 
 .admin-header-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
+}
+
+.back-button {
+  position: absolute;
+  left: -50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  font-size: 3rem;
+  font-weight: bold;
+  transform: rotate(180deg);
+}
+
+.back-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: rotate(180deg) translateX(2px);
+}
+
+.back-button:active {
+  transform: translateX(-1px);
+}
+
+.admin-title-section {
+  text-align: center;
 }
 
 .admin-title-section h1 {
