@@ -48,6 +48,16 @@ const AdminPanel: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRole, setSelectedRole] = useState('');
     const [selectedTier, setSelectedTier] = useState('');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [createUserData, setCreateUserData] = useState({
+        email: '',
+        password: '',
+        role: 'user',
+        subscription_tier: 'free',
+        subscription_period: 'monthly',
+        is_active: true,
+        is_verified: false
+    });
 
     const fetchStats = useCallback(async () => {
         try {
@@ -233,6 +243,58 @@ const AdminPanel: React.FC = () => {
         }
     };
 
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const response = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(createUserData)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else if (response.status === 400) {
+                    throw new Error(errorData.detail || 'Invalid user data');
+                } else {
+                    throw new Error(`Failed to create user (${response.status})`);
+                }
+            }
+            
+            // Reset form and close modal
+            setCreateUserData({
+                email: '',
+                password: '',
+                role: 'user',
+                subscription_tier: 'free',
+                subscription_period: 'monthly',
+                is_active: true,
+                is_verified: false
+            });
+            setShowCreateModal(false);
+            
+            // Refresh user list
+            await fetchUsersInitial(currentPage);
+            
+            alert('User created successfully!');
+        } catch (err) {
+            console.error('Error creating user:', err);
+            setError(err instanceof Error ? err.message : 'Failed to create user');
+        }
+    };
+
     // Check if user is admin
     if (!user?.is_admin) {
         return (
@@ -333,7 +395,7 @@ const AdminPanel: React.FC = () => {
                     <h2>User Management</h2>
                     <button 
                         className="create-user-btn"
-                        onClick={() => alert('Create User functionality coming soon!')}
+                        onClick={() => setShowCreateModal(true)}
                     >
                         Create User
                     </button>
@@ -488,6 +550,135 @@ const AdminPanel: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Create User Modal */}
+            {showCreateModal && (
+                <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Create New User</h2>
+                            <button 
+                                className="modal-close-btn"
+                                onClick={() => setShowCreateModal(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleCreateUser} className="create-user-form">
+                            <div className="form-group">
+                                <label htmlFor="email">Email Address *</label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={createUserData.email}
+                                    onChange={(e) => setCreateUserData({...createUserData, email: e.target.value})}
+                                    required
+                                    placeholder="user@example.com"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="password">Password *</label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={createUserData.password}
+                                    onChange={(e) => setCreateUserData({...createUserData, password: e.target.value})}
+                                    required
+                                    minLength={12}
+                                    placeholder="Min 12 chars, uppercase, number, special char"
+                                />
+                                <small className="form-hint">
+                                    Must be at least 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{};':\"|,.&lt;&gt;/?)
+                                </small>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label htmlFor="role">Role *</label>
+                                    <select
+                                        id="role"
+                                        value={createUserData.role}
+                                        onChange={(e) => setCreateUserData({...createUserData, role: e.target.value})}
+                                        required
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="moderator">Moderator</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="super_admin">Super Admin</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="subscription_tier">Subscription Tier *</label>
+                                    <select
+                                        id="subscription_tier"
+                                        value={createUserData.subscription_tier}
+                                        onChange={(e) => setCreateUserData({...createUserData, subscription_tier: e.target.value})}
+                                        required
+                                    >
+                                        <option value="free">Free</option>
+                                        <option value="starter">Starter</option>
+                                        <option value="pro">Pro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label htmlFor="subscription_period">Subscription Period *</label>
+                                    <select
+                                        id="subscription_period"
+                                        value={createUserData.subscription_period}
+                                        onChange={(e) => setCreateUserData({...createUserData, subscription_period: e.target.value})}
+                                        required
+                                    >
+                                        <option value="monthly">Monthly</option>
+                                        <option value="yearly">Yearly</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={createUserData.is_active}
+                                            onChange={(e) => setCreateUserData({...createUserData, is_active: e.target.checked})}
+                                        />
+                                        <span>Active Account</span>
+                                    </label>
+                                    
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={createUserData.is_verified}
+                                            onChange={(e) => setCreateUserData({...createUserData, is_verified: e.target.checked})}
+                                        />
+                                        <span>Email Verified</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="modal-footer">
+                                <button 
+                                    type="button" 
+                                    className="cancel-btn"
+                                    onClick={() => setShowCreateModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="submit-btn"
+                                >
+                                    Create User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
