@@ -49,6 +49,8 @@ const AdminPanel: React.FC = () => {
     const [selectedRole, setSelectedRole] = useState('');
     const [selectedTier, setSelectedTier] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<{ id: number; email: string } | null>(null);
     const [createUserData, setCreateUserData] = useState({
         email: '',
         password: '',
@@ -295,6 +297,61 @@ const AdminPanel: React.FC = () => {
         }
     };
 
+    const handleDeleteClick = (userId: number, email: string) => {
+        setUserToDelete({ id: userId, email });
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!userToDelete) return;
+
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
+                method: 'DELETE',
+                headers
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Super Admin privileges required to delete users.');
+                } else if (response.status === 400) {
+                    throw new Error(errorData.detail || 'Cannot delete user');
+                } else if (response.status === 404) {
+                    throw new Error('User not found');
+                } else {
+                    throw new Error(`Failed to delete user (${response.status})`);
+                }
+            }
+            
+            // Close modal and reset state
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+            
+            // Refresh user list
+            await fetchUsersInitial(currentPage);
+            
+            alert('User deleted successfully!');
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            setError(err instanceof Error ? err.message : 'Failed to delete user');
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteModal(false);
+        setUserToDelete(null);
+    };
+
     // Check if user is admin
     if (!user?.is_admin) {
         return (
@@ -516,6 +573,13 @@ const AdminPanel: React.FC = () => {
                                                         Send Verification
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => handleDeleteClick(user.id, user.email)}
+                                                    className="delete-btn"
+                                                    title="Delete user (Super Admin only)"
+                                                >
+                                                    Delete
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -550,6 +614,52 @@ const AdminPanel: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && userToDelete && (
+                <div className="modal-overlay" onClick={handleDeleteCancel}>
+                    <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>⚠️ Confirm Delete</h2>
+                            <button 
+                                className="modal-close-btn"
+                                onClick={handleDeleteCancel}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div className="delete-modal-body">
+                            <p className="warning-text">
+                                Are you sure you want to delete this user? This action cannot be undone.
+                            </p>
+                            <div className="user-to-delete">
+                                <strong>Email:</strong> {userToDelete.email}
+                            </div>
+                            <p className="delete-note">
+                                <strong>Note:</strong> Only Super Admins can delete users. All user data, history, and associations will be permanently removed.
+                            </p>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button 
+                                type="button" 
+                                className="cancel-btn"
+                                onClick={handleDeleteCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                className="delete-confirm-btn"
+                                onClick={handleDeleteConfirm}
+                            >
+                                Delete User
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Create User Modal */}
             {showCreateModal && (

@@ -550,7 +550,8 @@
 }
 
 .toggle-btn,
-.verify-btn {
+.verify-btn,
+.delete-btn {
   padding: 0.5rem 0.875rem;
   border: none;
   border-radius: var(--radius-md);
@@ -568,7 +569,7 @@
 }
 
 .toggle-btn.deactivate {
-  background: linear-gradient(135deg, var(--error-color), #dc2626);
+  background: linear-gradient(135deg, var(--warning-color), #ea580c);
   color: white;
 }
 
@@ -577,8 +578,14 @@
   color: white;
 }
 
+.delete-btn {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+}
+
 .toggle-btn:hover,
-.verify-btn:hover {
+.verify-btn:hover,
+.delete-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -920,6 +927,71 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* Delete Modal Specific Styles */
+.delete-modal {
+  max-width: 500px;
+}
+
+.delete-modal-body {
+  padding: 2rem;
+}
+
+.warning-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--error-color);
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+.user-to-delete {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--error-color);
+  margin-bottom: 1.5rem;
+}
+
+.user-to-delete strong {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 0.5rem;
+}
+
+.delete-note {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.delete-note strong {
+  color: var(--text-primary);
+}
+
+.delete-confirm-btn {
+  padding: 0.875rem 1.75rem;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.delete-confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+}
+
 /* Modal Responsive Design */
 @media (max-width: 768px) {
   .modal-overlay {
@@ -952,8 +1024,13 @@
   }
   
   .cancel-btn,
-  .submit-btn {
+  .submit-btn,
+  .delete-confirm-btn {
     width: 100%;
+  }
+  
+  .delete-modal-body {
+    padding: 1.5rem;
   }
 }
 
