@@ -208,8 +208,8 @@ const AdminPanel: React.FC = () => {
                 }
             }
             
-            // Refresh users list
-            await fetchUsersInitial(currentPage);
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
         } catch (err) {
             console.error('Error toggling user status:', err);
             setError(err instanceof Error ? err.message : 'Failed to toggle user status');
@@ -239,6 +239,9 @@ const AdminPanel: React.FC = () => {
             }
             
             alert('Verification email sent successfully');
+            
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
         } catch (err) {
             console.error('Error sending verification:', err);
             setError(err instanceof Error ? err.message : 'Failed to send verification email');
@@ -287,8 +290,8 @@ const AdminPanel: React.FC = () => {
             });
             setShowCreateModal(false);
             
-            // Refresh user list
-            await fetchUsersInitial(currentPage);
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
             
             alert('User created successfully!');
         } catch (err) {
@@ -335,8 +338,8 @@ const AdminPanel: React.FC = () => {
             setShowDeleteModal(false);
             setUserToDelete(null);
             
-            // Refresh user list
-            await fetchUsersInitial(currentPage);
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
             
             alert('User deleted successfully!');
         } catch (err) {
