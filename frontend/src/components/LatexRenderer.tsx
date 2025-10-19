@@ -342,7 +342,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 'yml': 'yaml',
                 'html': 'markup',
                 'xml': 'markup',
-                'c++': 'cpp',
+                'c++': 'clike', // Use clike instead of cpp to avoid the error
+                'cpp': 'clike', // Use clike instead of cpp to avoid the error
                 'c#': 'csharp',
                 'cs': 'csharp',
             };
@@ -912,17 +913,33 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
     // Apply Prism highlighting after content is rendered
     useEffect(() => {
-        // Small delay to ensure DOM is fully updated
-        const timer = setTimeout(() => {
-            if (contentRef.current && typeof Prism !== 'undefined' && Prism.highlightAllUnder) {
-                try {
-                    Prism.highlightAllUnder(contentRef.current);
-                } catch (error) {
-                    // Silently fail - syntax highlighting is non-critical
-                }
+        // Wait for Prism to be fully loaded and DOM to be ready
+        const highlightCode = () => {
+            if (!contentRef.current) return;
+            
+            // Check if Prism is available and properly initialized
+            if (typeof Prism === 'undefined' || !Prism.highlightAllUnder || !Prism.languages) {
+                console.warn('Prism.js not ready, skipping syntax highlighting');
+                return;
             }
-        }, 10);
+            
+            try {
+                // Only highlight if we have code elements
+                const codeElements = contentRef.current.querySelectorAll('code[class*="language-"]');
+                if (codeElements.length > 0) {
+                    Prism.highlightAllUnder(contentRef.current);
+                }
+            } catch (error) {
+                console.warn('Prism.js highlighting failed:', error);
+            }
+        };
 
+        // Try immediately, then retry if needed
+        highlightCode();
+        
+        // Retry after a delay if Prism might still be loading
+        const timer = setTimeout(highlightCode, 200);
+        
         return () => clearTimeout(timer);
     }, [children]);
 

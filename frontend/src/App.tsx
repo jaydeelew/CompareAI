@@ -3,8 +3,9 @@ import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal, UserMenu, VerifyEmail, VerificationBanner } from './components/auth';
+import { AdminPanel } from './components/admin';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface CompareResponse {
   results: { [key: string]: string };
@@ -87,6 +88,7 @@ function AppContent() {
   const { isAuthenticated, user, refreshUser } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
   // State to trigger verification from another tab
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
@@ -1315,8 +1317,13 @@ function AppContent() {
 
   return (
     <div className="app">
-      {/* Done Selecting? Floating Card - Fixed position at screen center */}
-      {showDoneSelectingCard && (
+      {/* Admin Panel - Show if user is admin and in admin view */}
+      {currentView === 'admin' && user?.is_admin ? (
+        <AdminPanel />
+      ) : (
+        <>
+          {/* Done Selecting? Floating Card - Fixed position at screen center */}
+          {showDoneSelectingCard && (
         <div className="done-selecting-card">
           <div className="done-selecting-content">
             <h3>Done Selecting?</h3>
@@ -2175,12 +2182,45 @@ function AppContent() {
         )}
       </main>
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialMode={authModalMode}
-      />
+          {/* Auth Modal */}
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            initialMode={authModalMode}
+          />
+        </>
+      )}
+
+      {/* Admin Navigation - Show admin button if user is admin */}
+      {user?.is_admin && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '10px 15px',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '500',
+          transition: 'all 0.3s ease',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}
+        onClick={() => setCurrentView(currentView === 'admin' ? 'main' : 'admin')}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+        >
+          {currentView === 'admin' ? '← Back to App' : '⚙️ Admin Panel'}
+        </div>
+      )}
     </div>
   );
 }

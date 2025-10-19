@@ -8,7 +8,7 @@ import type { User, AuthContextType, LoginCredentials, RegisterData, AuthRespons
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api';
 console.log('API_BASE_URL:', API_BASE_URL); // Debug log
 
 interface AuthProviderProps {

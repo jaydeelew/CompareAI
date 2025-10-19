@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth, useAuthHeaders } from '../../contexts/AuthContext';
+import './AdminPanel.css';
 
 interface AdminUser {
     id: number;
@@ -37,7 +38,8 @@ interface AdminUserListResponse {
 }
 
 const AdminPanel: React.FC = () => {
-    const { user, getAuthHeaders } = useAuth();
+    const { user } = useAuth();
+    const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [users, setUsers] = useState<AdminUserListResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -46,7 +48,190 @@ const AdminPanel: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRole, setSelectedRole] = useState('');
     const [selectedTier, setSelectedTier] = useState('');
-    const [showCreateModal, setShowCreateModal] = useState(false);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const response = await fetch('/api/admin/stats', {
+                headers
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to fetch admin stats (${response.status})`);
+                }
+            }
+            
+            const data = await response.json();
+            setStats(data);
+        } catch (err) {
+            console.error('Error fetching admin stats:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+        }
+    }, [getAuthHeaders]);
+
+    const fetchUsersInitial = useCallback(async (page = 1) => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const params = new URLSearchParams({
+                page: page.toString(),
+                per_page: '20'
+            });
+            
+            const response = await fetch(`/api/admin/users?${params}`, {
+                headers
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to fetch users (${response.status})`);
+                }
+            }
+            
+            const data = await response.json();
+            setUsers(data);
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch users');
+        }
+    }, [getAuthHeaders]);
+
+    useEffect(() => {
+        const loadData = async () => {
+            // Only load data if user is properly authenticated and is admin
+            if (!user?.is_admin) {
+                setLoading(false);
+                return;
+            }
+            
+            setLoading(true);
+            setError(null); // Clear any previous errors
+            
+            try {
+                await Promise.all([fetchStats(), fetchUsersInitial(currentPage)]);
+            } catch (err) {
+                console.error('Error loading admin data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadData();
+    }, [currentPage, user?.is_admin, fetchStats, fetchUsersInitial]);
+
+    const handleManualSearch = async () => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const params = new URLSearchParams({
+                page: '1',
+                per_page: '20'
+            });
+            
+            if (searchTerm) params.append('search', searchTerm);
+            if (selectedRole) params.append('role', selectedRole);
+            if (selectedTier) params.append('tier', selectedTier);
+            
+            const response = await fetch(`/api/admin/users?${params}`, {
+                headers
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to fetch users (${response.status})`);
+                }
+            }
+            
+            const data = await response.json();
+            setUsers(data);
+            setCurrentPage(1);
+        } catch (err) {
+            console.error('Error searching users:', err);
+            setError(err instanceof Error ? err.message : 'Failed to search users');
+        }
+    };
+
+    const toggleUserActive = async (userId: number) => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const response = await fetch(`/api/admin/users/${userId}/toggle-active`, {
+                method: 'POST',
+                headers
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to toggle user status (${response.status})`);
+                }
+            }
+            
+            // Refresh users list
+            await fetchUsersInitial(currentPage);
+        } catch (err) {
+            console.error('Error toggling user status:', err);
+            setError(err instanceof Error ? err.message : 'Failed to toggle user status');
+        }
+    };
+
+    const sendVerification = async (userId: number) => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+            
+            const response = await fetch(`/api/admin/users/${userId}/send-verification`, {
+                method: 'POST',
+                headers
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to send verification email (${response.status})`);
+                }
+            }
+            
+            alert('Verification email sent successfully');
+        } catch (err) {
+            console.error('Error sending verification:', err);
+            setError(err instanceof Error ? err.message : 'Failed to send verification email');
+        }
+    };
 
     // Check if user is admin
     if (!user?.is_admin) {
@@ -60,100 +245,6 @@ const AdminPanel: React.FC = () => {
         );
     }
 
-    const fetchStats = async () => {
-        try {
-            const response = await fetch('/api/admin/stats', {
-                headers: getAuthHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch admin stats');
-            }
-            
-            const data = await response.json();
-            setStats(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch stats');
-        }
-    };
-
-    const fetchUsers = async (page = 1) => {
-        try {
-            const params = new URLSearchParams({
-                page: page.toString(),
-                per_page: '20'
-            });
-            
-            if (searchTerm) params.append('search', searchTerm);
-            if (selectedRole) params.append('role', selectedRole);
-            if (selectedTier) params.append('tier', selectedTier);
-            
-            const response = await fetch(`/api/admin/users?${params}`, {
-                headers: getAuthHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch users');
-            }
-            
-            const data = await response.json();
-            setUsers(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch users');
-        }
-    };
-
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            await Promise.all([fetchStats(), fetchUsers(currentPage)]);
-            setLoading(false);
-        };
-        
-        loadData();
-    }, [currentPage, searchTerm, selectedRole, selectedTier]);
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        setCurrentPage(1);
-        fetchUsers(1);
-    };
-
-    const toggleUserActive = async (userId: number) => {
-        try {
-            const response = await fetch(`/api/admin/users/${userId}/toggle-active`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to toggle user status');
-            }
-            
-            // Refresh users list
-            fetchUsers(currentPage);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to toggle user status');
-        }
-    };
-
-    const sendVerification = async (userId: number) => {
-        try {
-            const response = await fetch(`/api/admin/users/${userId}/send-verification`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to send verification email');
-            }
-            
-            alert('Verification email sent successfully');
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send verification email');
-        }
-    };
-
     if (loading) {
         return (
             <div className="admin-panel">
@@ -165,8 +256,15 @@ const AdminPanel: React.FC = () => {
     return (
         <div className="admin-panel">
             <div className="admin-header">
-                <h1>Admin Panel</h1>
-                <p>Manage users and monitor system activity</p>
+                <div className="admin-header-content">
+                    <div className="admin-title-section">
+                        <h1>Admin Panel</h1>
+                        <p>Manage users and monitor system activity</p>
+                    </div>
+                    <a href="/" className="back-to-app-btn">
+                        ← Back to App
+                    </a>
+                </div>
             </div>
 
             {error && (
@@ -235,14 +333,14 @@ const AdminPanel: React.FC = () => {
                     <h2>User Management</h2>
                     <button 
                         className="create-user-btn"
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => alert('Create User functionality coming soon!')}
                     >
                         Create User
                     </button>
                 </div>
 
                 {/* Search and Filters */}
-                <form className="search-form" onSubmit={handleSearch}>
+                <div className="search-form">
                     <div className="search-controls">
                         <input
                             type="text"
@@ -275,9 +373,15 @@ const AdminPanel: React.FC = () => {
                             <option value="pro">Pro</option>
                         </select>
                         
-                        <button type="submit" className="search-btn">Search</button>
+                        <button 
+                            type="button"
+                            className="search-btn"
+                            onClick={handleManualSearch}
+                        >
+                            Search
+                        </button>
                     </div>
-                </form>
+                </div>
 
                 {/* Users Table */}
                 {users && (
@@ -321,7 +425,7 @@ const AdminPanel: React.FC = () => {
                                         </td>
                                         <td>
                                             <div className="usage-info">
-                                                <span>{user.daily_usage_count} today</span>
+                                                <span className="usage-count">{user.daily_usage_count} today</span>
                                                 {user.monthly_overage_count > 0 && (
                                                     <span className="overage-count">
                                                         {user.monthly_overage_count} overages
@@ -329,7 +433,11 @@ const AdminPanel: React.FC = () => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                                        <td>
+                                            <span title={new Date(user.created_at).toLocaleString()}>
+                                                {new Date(user.created_at).toLocaleDateString()}
+                                            </span>
+                                        </td>
                                         <td>
                                             <div className="action-buttons">
                                                 <button
