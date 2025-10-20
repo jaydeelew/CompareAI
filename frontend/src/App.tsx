@@ -2008,7 +2008,7 @@ function AppContent() {
               }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                   {usageCount < MAX_DAILY_USAGE ? (
-                    `${MAX_DAILY_USAGE - usageCount} free comparisons remaining today • Register for 10 per day`
+                    `${MAX_DAILY_USAGE - usageCount} of 5 comparisons remaining today • Register for 10 free per day`
                   ) : (
                     'Daily limit reached! Register for a free account to get 10 comparisons per day.'
                   )}
