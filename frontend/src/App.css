@@ -3120,6 +3120,64 @@ body {
   box-sizing: border-box !important;
 }
 
+/* Code block header with language label and copy button */
+.code-block-header {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.code-language-label {
+  font-size: 11px;
+  color: #7d8590;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: rgba(125, 133, 144, 0.15);
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  user-select: none;
+}
+
+.code-copy-btn {
+  pointer-events: auto !important;
+  background: none;
+  border: none;
+  color: #7d8590;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.code-copy-btn:hover {
+  background: rgba(125, 133, 144, 0.15);
+  color: #e6edf3;
+}
+
+.code-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.code-copy-btn svg {
+  pointer-events: none;
+  width: 14px;
+  height: 14px;
+}
+
 .message-content .latex-content .code-block::before {
   content: attr(data-language);
   position: absolute;
