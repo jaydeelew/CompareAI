@@ -63,7 +63,7 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onClose }) => {
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
             }}>
                 <button
-                    onClick={onClose}
+                    onClick={() => onClose()}
                     style={{
                         position: 'absolute',
                         top: '1rem',
