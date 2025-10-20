@@ -129,7 +129,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                         disabled={isLoading}
                         minLength={12}
                     />
-                    <small className="form-hint">At least 12 characters with uppercase, lowercase, number, and special character</small>
+                    <small className="form-hint">Min 12 chars: uppercase, lowercase, number & special char</small>
                 </div>
 
                 <div className="form-group">
