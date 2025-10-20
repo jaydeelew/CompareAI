@@ -1916,7 +1916,7 @@ function AppContent() {
         </section>
 
         {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
-        {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && error.includes('daily limit'))) && (
+        {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
           <div style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
