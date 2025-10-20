@@ -14,7 +14,7 @@ interface ForgotPasswordFormProps {
     onClose?: () => void;
 }
 
-export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onSuccess, onBackToLogin, onClose }) => {
+export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin, onClose }) => {
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
