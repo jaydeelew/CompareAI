@@ -15,10 +15,16 @@
     border-radius: 8px;
     transition: background-color 0.2s ease;
     height: 40px;
+    outline: none;
 }
 
 .user-menu-trigger:hover {
     background-color: rgba(0, 0, 0, 0.05);
+}
+
+.user-menu-trigger:focus,
+.user-menu-trigger:focus-visible {
+    outline: none;
 }
 
 .user-avatar {
@@ -32,6 +38,7 @@
     justify-content: center;
     font-weight: 600;
     font-size: 1rem;
+    outline: none;
 }
 
 .user-menu-caret {

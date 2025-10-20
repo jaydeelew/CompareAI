@@ -315,6 +315,7 @@ body {
   margin-right: 0.125rem;
   padding: 0;
   flex-shrink: 0;
+  outline: none;
 }
 
 .admin-avatar-button:hover {
@@ -324,6 +325,11 @@ body {
 
 .admin-avatar-button:active {
   transform: scale(0.98);
+}
+
+.admin-avatar-button:focus,
+.admin-avatar-button:focus-visible {
+  outline: none;
 }
 
 /* Auth Navigation Buttons */
