@@ -2280,7 +2280,10 @@ function AppContent() {
           {/* Auth Modal */}
           <AuthModal
             isOpen={isAuthModalOpen}
-            onClose={() => setIsAuthModalOpen(false)}
+            onClose={() => {
+              setIsAuthModalOpen(false);
+              setLoginEmail(''); // Reset email when modal closes
+            }}
             initialMode={authModalMode}
             initialEmail={loginEmail}
           />

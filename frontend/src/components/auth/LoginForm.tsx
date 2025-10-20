@@ -2,7 +2,7 @@
  * Login Form Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthForms.css';
 
@@ -19,6 +19,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Update email when initialEmail prop changes (including when it's reset to empty)
+    useEffect(() => {
+        setEmail(initialEmail);
+    }, [initialEmail]);
 
     const handleForgotPasswordClick = () => {
         // Pass the email to the forgot password form if it's been entered

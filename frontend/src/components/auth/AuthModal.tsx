@@ -32,18 +32,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
     }, [isOpen, initialMode]);
 
+    // Reset forgotPasswordEmail when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setForgotPasswordEmail('');
+        }
+    }, [isOpen]);
+
     // No need for manual password reset detection - handled by App.tsx tab coordination
 
     if (!isOpen) return null;
 
     const handleSuccess = () => {
+        // Reset email state on successful login/register
+        setForgotPasswordEmail('');
+        onClose();
+    };
+
+    const handleClose = () => {
+        // Reset email state when modal closes
+        setForgotPasswordEmail('');
         onClose();
     };
 
     return (
         <div className="auth-modal-overlay">
             <div className="auth-modal">
-                <button className="auth-modal-close" onClick={onClose} aria-label="Close">
+                <button className="auth-modal-close" onClick={handleClose} aria-label="Close">
                     ×
                 </button>
 
@@ -65,8 +80,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 ) : (
                     <ForgotPasswordForm
                         onSuccess={handleSuccess}
-                        onBackToLogin={() => setMode('login')}
-                        onClose={onClose}
+                        onBackToLogin={() => {
+                            setForgotPasswordEmail('');
+                            setMode('login');
+                        }}
+                        onClose={handleClose}
                         initialEmail={forgotPasswordEmail}
                     />
                 )}

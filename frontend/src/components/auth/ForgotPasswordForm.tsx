@@ -3,7 +3,7 @@
  * Allows users to request a password reset email
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AuthForms.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -20,6 +20,16 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Update email when initialEmail prop changes (including when it's reset to empty)
+    useEffect(() => {
+        setEmail(initialEmail);
+        // Also reset success state when email changes (new session)
+        if (initialEmail === '') {
+            setSuccess(false);
+            setError('');
+        }
+    }, [initialEmail]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
