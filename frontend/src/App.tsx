@@ -104,43 +104,18 @@ function AppContent() {
   // State to track if we're in password reset mode
   const [showPasswordReset, setShowPasswordReset] = useState(false);
 
-  // Check for password reset token on mount and when URL changes
+  // Check for password reset token on mount (for direct navigation or non-tab scenarios)
   useEffect(() => {
-    const checkPasswordResetMode = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      const path = window.location.pathname;
-      const fullUrl = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const path = window.location.pathname;
+    const fullUrl = window.location.href;
 
-      // Show password reset if:
-      // 1. URL explicitly contains 'reset-password' (either in path or as parameter name)
-      if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
-        setShowPasswordReset(true);
-        // Close the auth modal if it's open (e.g., showing "Check Your Email" success message)
-        setIsAuthModalOpen(false);
-      } else {
-        setShowPasswordReset(false);
-      }
-    };
-
-    // Check on mount
-    checkPasswordResetMode();
-
-    // Also check when URL changes (for navigation events)
-    const handleLocationChange = () => {
-      checkPasswordResetMode();
-    };
-
-    // Listen for URL changes
-    window.addEventListener('popstate', handleLocationChange);
-
-    // Also periodically check (in case of hash/query changes not detected)
-    const intervalId = setInterval(checkPasswordResetMode, 500);
-
-    return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      clearInterval(intervalId);
-    };
+    // Show password reset if URL contains reset-password and a token
+    // This handles cases where user directly navigates to the URL (not from email link in new tab)
+    if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
+      setShowPasswordReset(true);
+    }
   }, []);
 
   // Handle password reset close
@@ -179,8 +154,26 @@ function AppContent() {
 
         // Focus this tab
         window.focus();
+      } else if (event.data.type === 'password-reset' && event.data.token) {
+        // An existing tab (this one) received a password reset token from a new tab
+        // Close the "Check Your Email" dialog if it's open
+        setIsAuthModalOpen(false);
+
+        // Update URL without page reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('token', event.data.token);
+        if (!newUrl.pathname.includes('reset-password')) {
+          newUrl.pathname = '/reset-password';
+        }
+        window.history.pushState({}, '', newUrl);
+
+        // Show the password reset form
+        setShowPasswordReset(true);
+
+        // Focus this tab
+        window.focus();
       } else if (event.data.type === 'ping') {
-        // Another tab is checking if we exist - respond
+        // Another tab is checking if we exist - always respond for both email verification and password reset
         hasExistingTab = true;
         channel.postMessage({ type: 'pong' });
       } else if (event.data.type === 'pong') {
@@ -194,9 +187,14 @@ function AppContent() {
     // Check if this is a verification page opened from email
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
+    const path = window.location.pathname;
+    const fullUrl = window.location.href;
+    const isPasswordReset = path.includes('reset-password') || fullUrl.includes('reset-password');
 
     if (token && window.opener === null) {
-      // This is a new tab opened from email with a verification token
+      // This is a new tab opened from email with a token
+      // Use tab coordination for both email verification AND password reset
+
       // Note: suppressVerification is already true from initial state
 
       // Ping to see if there's an existing CompareIntel tab
@@ -205,19 +203,33 @@ function AppContent() {
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
         if (hasExistingTab) {
-          // An existing tab exists - send verification token to it and close this tab
-          channel.postMessage({
-            type: 'verify-email',
-            token: token
-          });
+          // An existing tab exists - send the token to it and close this tab
+          if (isPasswordReset) {
+            // Send password reset token
+            channel.postMessage({
+              type: 'password-reset',
+              token: token
+            });
+          } else {
+            // Send email verification token
+            channel.postMessage({
+              type: 'verify-email',
+              token: token
+            });
+          }
 
           // Give the existing tab time to process, then close this tab
           setTimeout(() => {
             window.close();
           }, 500);
         } else {
-          // No existing tab found - allow verification to proceed in this tab
-          setSuppressVerification(false);
+          // No existing tab found - handle in this tab
+          if (isPasswordReset) {
+            setShowPasswordReset(true);
+            setSuppressVerification(false);
+          } else {
+            setSuppressVerification(false);
+          }
         }
       }, 200);
     }

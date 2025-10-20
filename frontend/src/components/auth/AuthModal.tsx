@@ -29,36 +29,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
     }, [isOpen, initialMode]);
 
-    // Listen for password reset flow to auto-close the modal
-    useEffect(() => {
-        const handlePasswordResetFlow = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const path = window.location.pathname;
-            const fullUrl = window.location.href;
-
-            // If user clicked the reset link while modal is open, close the modal immediately
-            if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
-                if (isOpen) {
-                    onClose();
-                }
-            }
-        };
-
-        // Check immediately
-        handlePasswordResetFlow();
-
-        // Listen for URL changes (for single-page apps)
-        window.addEventListener('popstate', handlePasswordResetFlow);
-
-        // Also check periodically in case URL changes aren't detected
-        const intervalId = setInterval(handlePasswordResetFlow, 200);
-
-        return () => {
-            window.removeEventListener('popstate', handlePasswordResetFlow);
-            clearInterval(intervalId);
-        };
-    }, [isOpen, onClose]);
+    // No need for manual password reset detection - handled by App.tsx tab coordination
 
     if (!isOpen) return null;
 
