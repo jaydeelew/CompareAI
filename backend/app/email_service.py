@@ -74,7 +74,7 @@ async def send_verification_email(email: EmailStr, token: str):
             padding: 20px;
           }}
           .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -88,7 +88,7 @@ async def send_verification_email(email: EmailStr, token: str):
           .button {{
             display: inline-block;
             padding: 12px 30px;
-            background: #667eea;
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -114,7 +114,7 @@ async def send_verification_email(email: EmailStr, token: str):
               <a href="{verification_url}" class="button" target="_blank">Verify Email Address</a>
             </div>
             <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #667eea;">{verification_url}</p>
+            <p style="word-break: break-all; color: #0ea5e9;">{verification_url}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>
             <p>If you didn't create an account with CompareIntel, you can safely ignore this email.</p>
           </div>
@@ -171,7 +171,7 @@ async def send_password_reset_email(email: EmailStr, token: str):
             padding: 20px;
           }}
           .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -185,7 +185,7 @@ async def send_password_reset_email(email: EmailStr, token: str):
           .button {{
             display: inline-block;
             padding: 12px 30px;
-            background: #667eea;
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -219,7 +219,7 @@ async def send_password_reset_email(email: EmailStr, token: str):
               <a href="{reset_url}" class="button">Reset Password</a>
             </div>
             <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #667eea;">{reset_url}</p>
+            <p style="word-break: break-all; color: #0ea5e9;">{reset_url}</p>
             <div class="warning">
               <strong>⚠️ Security Notice:</strong> This link will expire in 1 hour.
             </div>
@@ -288,7 +288,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             padding: 20px;
           }}
           .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -302,7 +302,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
           .button {{
             display: inline-block;
             padding: 12px 30px;
-            background: #667eea;
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -310,7 +310,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
           }}
           .subscription-box {{
             background: white;
-            border: 2px solid #667eea;
+            border: 2px solid #0ea5e9;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
@@ -334,7 +334,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             content: "✓";
             position: absolute;
             left: 0;
-            color: #667eea;
+            color: #0ea5e9;
             font-weight: bold;
           }}
           .footer {{
@@ -441,7 +441,7 @@ async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, dail
           .button {{
             display: inline-block;
             padding: 12px 30px;
-            background: #667eea;
+            background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
             color: white;
             text-decoration: none;
             border-radius: 6px;
