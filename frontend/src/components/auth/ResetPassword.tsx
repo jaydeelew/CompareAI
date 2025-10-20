@@ -8,7 +8,7 @@ import { ResetPasswordForm } from './ResetPasswordForm';
 import './AuthForms.css';
 
 interface ResetPasswordProps {
-    onClose: () => void;
+    onClose: (email?: string) => void;
 }
 
 export const ResetPassword: React.FC<ResetPasswordProps> = ({ onClose }) => {
@@ -21,15 +21,15 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onClose }) => {
         setToken(tokenParam);
     }, []);
 
-    const handleSuccess = () => {
+    const handleSuccess = (email?: string) => {
         // Clear the token from URL
         const url = new URL(window.location.href);
         url.searchParams.delete('token');
         window.history.pushState({}, '', url);
 
-        // Close and redirect to login
+        // Close and redirect to login, passing the email
         setTimeout(() => {
-            onClose();
+            onClose(email);
         }, 2000);
     };
 

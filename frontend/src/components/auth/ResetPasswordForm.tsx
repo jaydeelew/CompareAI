@@ -10,7 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface ResetPasswordFormProps {
     token: string;
-    onSuccess?: () => void;
+    onSuccess?: (email?: string) => void;
 }
 
 export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onSuccess }) => {
@@ -85,10 +85,13 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onS
                 throw new Error(errorData.detail || 'Failed to reset password');
             }
 
+            const data = await response.json();
+            const userEmail = data.email;
+
             setSuccess(true);
-            // Redirect to login after success
+            // Redirect to login after success, passing the email
             setTimeout(() => {
-                onSuccess?.();
+                onSuccess?.(userEmail);
             }, 2000);
         } catch (err) {
             console.error('Password reset error:', err);

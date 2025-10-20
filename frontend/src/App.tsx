@@ -88,6 +88,7 @@ function AppContent() {
   const { isAuthenticated, user, refreshUser } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
   // State to trigger verification from another tab
@@ -119,13 +120,16 @@ function AppContent() {
   }, []);
 
   // Handle password reset close
-  const handlePasswordResetClose = () => {
+  const handlePasswordResetClose = (email?: string) => {
     setShowPasswordReset(false);
     // Clear the token from URL
     const url = new URL(window.location.href);
     url.searchParams.delete('token');
     window.history.pushState({}, '', url);
-    // Open login modal
+    // Open login modal with the email if provided
+    if (email) {
+      setLoginEmail(email);
+    }
     setIsAuthModalOpen(true);
     setAuthModalMode('login');
   };
@@ -2278,6 +2282,7 @@ function AppContent() {
             isOpen={isAuthModalOpen}
             onClose={() => setIsAuthModalOpen(false)}
             initialMode={authModalMode}
+            initialEmail={loginEmail}
           />
         </>
       )}

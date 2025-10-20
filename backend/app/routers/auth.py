@@ -285,7 +285,7 @@ async def reset_password(reset: PasswordReset, db: Session = Depends(get_db)):
     user.reset_token_expires = None
     db.commit()
 
-    return {"message": "Password reset successfully"}
+    return {"message": "Password reset successfully", "email": user.email}
 
 
 @router.get("/me", response_model=UserResponse)

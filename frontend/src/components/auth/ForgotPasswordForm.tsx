@@ -12,10 +12,11 @@ interface ForgotPasswordFormProps {
     onSuccess?: () => void;
     onBackToLogin?: () => void;
     onClose?: () => void;
+    initialEmail?: string;
 }
 
-export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin, onClose }) => {
-    const [email, setEmail] = useState('');
+export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin, onClose, initialEmail = '' }) => {
+    const [email, setEmail] = useState(initialEmail);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);

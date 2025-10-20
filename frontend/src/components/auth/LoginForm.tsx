@@ -9,15 +9,23 @@ import './AuthForms.css';
 interface LoginFormProps {
     onSuccess?: () => void;
     onSwitchToRegister?: () => void;
-    onForgotPassword?: () => void;
+    onForgotPassword?: (email?: string) => void;
+    initialEmail?: string;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister, onForgotPassword }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister, onForgotPassword, initialEmail = '' }) => {
     const { login } = useAuth();
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(initialEmail);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleForgotPasswordClick = () => {
+        // Pass the email to the forgot password form if it's been entered
+        if (onForgotPassword) {
+            onForgotPassword(email);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,7 +109,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
                     <button
                         type="button"
                         className="auth-link-btn"
-                        onClick={onForgotPassword}
+                        onClick={handleForgotPasswordClick}
                     >
                         Forgot Password?
                     </button>

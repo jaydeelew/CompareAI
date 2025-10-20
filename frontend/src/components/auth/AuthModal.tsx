@@ -13,14 +13,17 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialMode?: 'login' | 'register' | 'forgot-password';
+    initialEmail?: string;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
     isOpen,
     onClose,
-    initialMode = 'login'
+    initialMode = 'login',
+    initialEmail = ''
 }) => {
     const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>('');
 
     // Update mode when initialMode changes (e.g., when opening modal with different button)
     useEffect(() => {
@@ -48,7 +51,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <LoginForm
                         onSuccess={handleSuccess}
                         onSwitchToRegister={() => setMode('register')}
-                        onForgotPassword={() => setMode('forgot-password')}
+                        onForgotPassword={(email) => {
+                            setForgotPasswordEmail(email || '');
+                            setMode('forgot-password');
+                        }}
+                        initialEmail={initialEmail}
                     />
                 ) : mode === 'register' ? (
                     <RegisterForm
@@ -60,6 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onSuccess={handleSuccess}
                         onBackToLogin={() => setMode('login')}
                         onClose={onClose}
+                        initialEmail={forgotPasswordEmail}
                     />
                 )}
             </div>
