@@ -116,6 +116,8 @@ function AppContent() {
       // 1. URL explicitly contains 'reset-password' (either in path or as parameter name)
       if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
         setShowPasswordReset(true);
+        // Close the auth modal if it's open (e.g., showing "Check Your Email" success message)
+        setIsAuthModalOpen(false);
       } else {
         setShowPasswordReset(false);
       }

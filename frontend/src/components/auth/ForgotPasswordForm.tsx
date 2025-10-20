@@ -20,6 +20,21 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Reset success state if user navigates away from success view
+    React.useEffect(() => {
+        // If the URL contains a reset-password token, auto-close this modal
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const fullUrl = window.location.href;
+
+        if (token && fullUrl.includes('reset-password')) {
+            // User clicked the reset link - close this success dialog
+            if (onClose) {
+                onClose();
+            }
+        }
+    }, [onClose]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');

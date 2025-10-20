@@ -34,22 +34,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const handlePasswordResetFlow = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
+            const path = window.location.pathname;
             const fullUrl = window.location.href;
 
-            // If user clicked the reset link while modal is open, close the modal
-            if (isOpen && token && fullUrl.includes('reset-password')) {
-                onClose();
+            // If user clicked the reset link while modal is open, close the modal immediately
+            if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
+                if (isOpen) {
+                    onClose();
+                }
             }
         };
 
-        // Check on mount and when URL changes
+        // Check immediately
         handlePasswordResetFlow();
 
         // Listen for URL changes (for single-page apps)
         window.addEventListener('popstate', handlePasswordResetFlow);
 
+        // Also check periodically in case URL changes aren't detected
+        const intervalId = setInterval(handlePasswordResetFlow, 200);
+
         return () => {
             window.removeEventListener('popstate', handlePasswordResetFlow);
+            clearInterval(intervalId);
         };
     }, [isOpen, onClose]);
 
