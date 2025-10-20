@@ -9,9 +9,10 @@ import './AuthForms.css';
 interface LoginFormProps {
     onSuccess?: () => void;
     onSwitchToRegister?: () => void;
+    onForgotPassword?: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister, onForgotPassword }) => {
     const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -94,6 +95,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
                         onClick={onSwitchToRegister}
                     >
                         Sign up
+                    </button>
+                </p>
+                <p style={{ textAlign: 'center' }}>
+                    <button
+                        type="button"
+                        className="auth-link-btn"
+                        onClick={onForgotPassword}
+                    >
+                        Forgot Password?
                     </button>
                 </p>
             </div>

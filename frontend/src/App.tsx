@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthModal, UserMenu, VerifyEmail, VerificationBanner } from './components/auth';
+import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
 import { AdminPanel } from './components/admin';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -101,6 +101,37 @@ function AppContent() {
     return hasTokenInUrl && isNewTab;
   });
 
+  // State to track if we're in password reset mode
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+
+  // Check for password reset token on mount and when URL changes
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const path = window.location.pathname;
+    const fullUrl = window.location.href;
+
+    // Show password reset if:
+    // 1. URL explicitly contains 'reset-password' (either in path or as parameter name)
+    if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
+      setShowPasswordReset(true);
+    } else {
+      setShowPasswordReset(false);
+    }
+  }, []);
+
+  // Handle password reset close
+  const handlePasswordResetClose = () => {
+    setShowPasswordReset(false);
+    // Clear the token from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    window.history.pushState({}, '', url);
+    // Open login modal
+    setIsAuthModalOpen(true);
+    setAuthModalMode('login');
+  };
+
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
     // Check if BroadcastChannel is supported
@@ -108,10 +139,10 @@ function AppContent() {
       console.error('[App] BroadcastChannel is not supported in this browser!');
       return;
     }
-    
+
     const channel = new BroadcastChannel('compareintel-verification');
     let hasExistingTab = false;
-    
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'verify-email' && event.data.token) {
         // An existing tab (this one) received a verification token from a new tab
@@ -119,10 +150,10 @@ function AppContent() {
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('token', event.data.token);
         window.history.pushState({}, '', newUrl);
-        
+
         // Set the token to trigger verification in VerifyEmail component
         setVerificationToken(event.data.token);
-        
+
         // Focus this tab
         window.focus();
       } else if (event.data.type === 'ping') {
@@ -134,29 +165,29 @@ function AppContent() {
         hasExistingTab = true;
       }
     };
-    
+
     channel.addEventListener('message', handleMessage);
-    
+
     // Check if this is a verification page opened from email
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    
+
     if (token && window.opener === null) {
       // This is a new tab opened from email with a verification token
       // Note: suppressVerification is already true from initial state
-      
+
       // Ping to see if there's an existing CompareIntel tab
       channel.postMessage({ type: 'ping' });
-      
+
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
         if (hasExistingTab) {
           // An existing tab exists - send verification token to it and close this tab
-          channel.postMessage({ 
-            type: 'verify-email', 
-            token: token 
+          channel.postMessage({
+            type: 'verify-email',
+            token: token
           });
-          
+
           // Give the existing tab time to process, then close this tab
           setTimeout(() => {
             window.close();
@@ -167,7 +198,7 @@ function AppContent() {
         }
       }, 200);
     }
-    
+
     return () => {
       channel.removeEventListener('message', handleMessage);
       channel.close();
@@ -1324,878 +1355,888 @@ function AppContent() {
         <>
           {/* Done Selecting? Floating Card - Fixed position at screen center */}
           {showDoneSelectingCard && (
-        <div className="done-selecting-card">
-          <div className="done-selecting-content">
-            <h3>Done Selecting?</h3>
-            <button
-              onClick={handleDoneSelecting}
-              className="done-selecting-button"
-              aria-label="Done selecting models"
-            >
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 2L8 20L2 16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <header className="app-header">
-        <nav className="navbar">
-          <div className="nav-brand">
-            <div className="brand-logo">
-              <svg className="logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Background circle */}
-                <circle cx="24" cy="24" r="24" fill="url(#logoGradient)" />
-
-                {/* AI Brain/Neural Network Pattern */}
-                <g>
-                  {/* Central node */}
-                  <circle cx="24" cy="24" r="3" fill="white" />
-
-                  {/* Left side nodes */}
-                  <circle cx="12" cy="18" r="2" fill="white" opacity="0.9" />
-                  <circle cx="12" cy="24" r="2" fill="white" opacity="0.9" />
-                  <circle cx="12" cy="30" r="2" fill="white" opacity="0.9" />
-
-                  {/* Right side nodes */}
-                  <circle cx="36" cy="18" r="2" fill="white" opacity="0.9" />
-                  <circle cx="36" cy="24" r="2" fill="white" opacity="0.9" />
-                  <circle cx="36" cy="30" r="2" fill="white" opacity="0.9" />
-
-                  {/* Connection lines */}
-                  <line x1="14" y1="18" x2="21" y2="21" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <line x1="14" y1="24" x2="21" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <line x1="14" y1="30" x2="21" y2="27" stroke="white" strokeWidth="1.5" opacity="0.7" />
-
-                  <line x1="27" y1="21" x2="34" y2="18" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <line x1="27" y1="24" x2="34" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
-                  <line x1="27" y1="27" x2="34" y2="30" stroke="white" strokeWidth="1.5" opacity="0.7" />
-
-                  {/* Comparison arrows */}
-                  <path d="M16 15 L20 12 L20 14 L28 14 L28 12 L32 15 L28 18 L28 16 L20 16 L20 18 Z"
-                    fill="white" opacity="0.8" />
-                  <path d="M16 33 L20 30 L20 32 L28 32 L28 30 L32 33 L28 36 L28 34 L20 34 L20 36 Z"
-                    fill="white" opacity="0.8" />
-                </g>
-
-                <defs>
-                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="50%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#1d4ed8" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="brand-text">
-                <h1>CompareIntel</h1>
-                <span className="brand-tagline">AI Model Comparison Platform</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="nav-actions">
-            {isAuthenticated ? (
-              <>
-                {user?.is_admin && (
-                  <button
-                    className="admin-avatar-button"
-                    onClick={() => setCurrentView(currentView === 'admin' ? 'main' : 'admin')}
-                    title={currentView === 'admin' ? 'Back to Main App' : 'Admin Panel'}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                      <path d="M2 17l10 5 10-5"/>
-                      <path d="M2 12l10 5 10-5"/>
-                    </svg>
-                  </button>
-                )}
-                <UserMenu />
-              </>
-            ) : (
-              <>
+            <div className="done-selecting-card">
+              <div className="done-selecting-content">
+                <h3>Done Selecting?</h3>
                 <button
-                  className="nav-button-text"
-                  onClick={() => {
-                    setAuthModalMode('login');
-                    setIsAuthModalOpen(true);
-                  }}
+                  onClick={handleDoneSelecting}
+                  className="done-selecting-button"
+                  aria-label="Done selecting models"
                 >
-                  Sign In
-                </button>
-                <button
-                  className="nav-button-primary"
-                  onClick={() => {
-                    setAuthModalMode('register');
-                    setIsAuthModalOpen(true);
-                  }}
-                >
-                  Sign Up
-                </button>
-              </>
-            )}
-          </div>
-        </nav>
-      </header>
-
-      {/* Email verification banners - placed between header and main content */}
-      <VerifyEmail onClose={() => { }} externalToken={verificationToken} suppressVerification={suppressVerification} />
-      <VerificationBanner />
-
-      <main className="app-main">
-        <div className="hero-section">
-          <div className="hero-content">
-            <h2 className="hero-title">Compare AI Models Side by Side</h2>
-            <p className="hero-subtitle">Get responses from multiple AI models to find the best solution for your needs</p>
-
-            <div className="hero-capabilities">
-              <div className="capability-tile">
-                <div className="capability-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L8 20L2 16" />
                   </svg>
-                </div>
-                <h3 className="capability-title">Natural Language</h3>
-                <p className="capability-description">Compare conversational responses</p>
-              </div>
-
-              <div className="capability-tile">
-                <div className="capability-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 18 22 12 16 6"></polyline>
-                    <polyline points="8 6 2 12 8 18"></polyline>
-                  </svg>
-                </div>
-                <h3 className="capability-title">Code Generation</h3>
-                <p className="capability-description">Evaluate programming capabilities</p>
-              </div>
-
-              <div className="capability-tile">
-                <div className="capability-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-                    <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-                    <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                  </svg>
-                </div>
-                <h3 className="capability-title">Formatted Math</h3>
-                <p className="capability-description">Render LaTeX equations beautifully</p>
-              </div>
-
-              <div className="capability-tile">
-                <div className="capability-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                  </svg>
-                </div>
-                <h3 className="capability-title">Concurrent Processing</h3>
-                <p className="capability-description">Get all responses simultaneously</p>
-              </div>
-            </div>
-
-            <div className="hero-input-section">
-              <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
-              <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (isFollowUpMode) {
-                        handleContinueConversation();
-                      } else {
-                        handleSubmitClick();
-                      }
-                    }
-                  }}
-                  placeholder={isFollowUpMode
-                    ? "Enter your follow-up question or request here..."
-                    : "Let's get started..."
-                  }
-                  className="hero-input-textarea"
-                  rows={1}
-                />
-                <div className="textarea-actions">
-                  {isFollowUpMode && (
-                    <button
-                      onClick={handleNewComparison}
-                      className="textarea-icon-button new-inquiry-button"
-                      title="Exit follow up mode"
-                      disabled={isLoading}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                      </svg>
-                    </button>
-                  )}
-                  <button
-                    ref={compareButtonRef}
-                    onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                    disabled={isLoading}
-                    className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                    title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Processing time message moved here */}
-              {selectedModels.length > 0 && (
-                <div className="processing-time-message">
-                  {(() => {
-                    const count = selectedModels.length;
-
-                    let description;
-                    let IconComponent;
-
-                    if (count === 1) {
-                      description = "Single model processing";
-                      // Single square/box icon
-                      IconComponent = () => (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
-                          <rect x="5" y="5" width="14" height="14" rx="2" />
-                        </svg>
-                      );
-                    } else if (count <= 4) {
-                      description = "Small batch processing";
-                      // Copy/duplicate icon
-                      IconComponent = () => (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                        </svg>
-                      );
-                    } else if (count <= 8) {
-                      description = "Medium batch processing";
-                      // Layers icon
-                      IconComponent = () => (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
-                          <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                          <polyline points="2 17 12 22 22 17" />
-                          <polyline points="2 12 12 17 22 12" />
-                        </svg>
-                      );
-                    } else {
-                      description = "Large batch processing";
-                      // Server/database icon for large
-                      IconComponent = () => (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
-                          <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-                          <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-                          <line x1="6" y1="6" x2="6.01" y2="6" />
-                          <line x1="6" y1="18" x2="6.01" y2="18" />
-                        </svg>
-                      );
-                    }
-
-                    return (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                          <IconComponent />
-                          <span>{count} model{count !== 1 ? 's' : ''} selected • {description}</span>
-                          <IconComponent />
-                        </div>
-                        <div style={{ marginTop: '0.25rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Processing time depends on your Internet connection and the amount of rendering needed
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="error-message">
-            <span>⚠️ {error}</span>
-          </div>
-        )}
-
-        <section className="models-section" ref={modelsSectionRef}>
-          <div
-            className="models-section-header"
-            onClick={() => setIsModelsHidden(!isModelsHidden)}
-          >
-            <div className="models-header-title">
-              <h2 style={{ margin: 0 }}>
-                {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
-              </h2>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                {isFollowUpMode
-                  ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
-                  : `Choose up to ${MAX_MODELS_LIMIT} models`
-                }
-              </p>
-            </div>
-            <div className="models-header-controls">
-              <div className="models-header-buttons">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedModels([]);
-                  }}
-                  disabled={selectedModels.length === 0 || isFollowUpMode}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid #dc2626',
-                    background: 'transparent',
-                    color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626',
-                    borderRadius: '6px',
-                    cursor: (selectedModels.length === 0 || isFollowUpMode) ? 'not-allowed' : 'pointer',
-                    opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1
-                  }}
-                  title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selected models'}
-                >
-                  Clear All
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    collapseAllDropdowns();
-                  }}
-                  disabled={openDropdowns.size === 0}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid #3b82f6',
-                    background: 'transparent',
-                    color: openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6',
-                    borderRadius: '6px',
-                    cursor: openDropdowns.size === 0 ? 'not-allowed' : 'pointer',
-                    opacity: openDropdowns.size === 0 ? 0.5 : 1
-                  }}
-                >
-                  Collapse All
                 </button>
               </div>
-              <div className="models-header-right">
-                <div
-                  className="models-count-indicator"
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
-                      selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                    color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
-                      selectedModels.length > 0 ? 'white' : '#6b7280',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {selectedModels.length} of {MAX_MODELS_LIMIT} selected
-                </div>
-                <button
-                  className="models-toggle-arrow"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsModelsHidden(!isModelsHidden);
-                  }}
-                  style={{
-                    padding: '0.5rem',
-                    fontSize: '1.25rem',
-                    border: 'none',
-                    outline: 'none',
-                    boxShadow: 'none',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--primary-color)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '36px',
-                    height: '36px',
-                    fontWeight: 'bold'
-                  }}
-                  title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-                >
-                  {isModelsHidden ? '▼' : '▲'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Warning for approaching limit */}
-          {selectedModels.length > 8 && selectedModels.length < MAX_MODELS_LIMIT && (
-            <div className="warning-message" style={{
-              background: '#fff3cd',
-              border: '1px solid #ffeaa7',
-              color: '#856404',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              marginBottom: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <span>⚠️</span>
-              <span>
-                You've selected {selectedModels.length} models. Maximum {MAX_MODELS_LIMIT} allowed for optimal performance.
-              </span>
             </div>
           )}
 
-          {!isModelsHidden && (
-            <>
-              {isLoadingModels ? (
-                <div className="loading-message">Loading available models...</div>
-              ) : Object.keys(modelsByProvider).length === 0 ? (
-                <div className="error-message">
-                  <p>No models available. Please check the server connection.</p>
-                  <p>Debug info: modelsByProvider keys: {JSON.stringify(Object.keys(modelsByProvider))}</p>
+          <header className="app-header">
+            <nav className="navbar">
+              <div className="nav-brand">
+                <div className="brand-logo">
+                  <svg className="logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Background circle */}
+                    <circle cx="24" cy="24" r="24" fill="url(#logoGradient)" />
+
+                    {/* AI Brain/Neural Network Pattern */}
+                    <g>
+                      {/* Central node */}
+                      <circle cx="24" cy="24" r="3" fill="white" />
+
+                      {/* Left side nodes */}
+                      <circle cx="12" cy="18" r="2" fill="white" opacity="0.9" />
+                      <circle cx="12" cy="24" r="2" fill="white" opacity="0.9" />
+                      <circle cx="12" cy="30" r="2" fill="white" opacity="0.9" />
+
+                      {/* Right side nodes */}
+                      <circle cx="36" cy="18" r="2" fill="white" opacity="0.9" />
+                      <circle cx="36" cy="24" r="2" fill="white" opacity="0.9" />
+                      <circle cx="36" cy="30" r="2" fill="white" opacity="0.9" />
+
+                      {/* Connection lines */}
+                      <line x1="14" y1="18" x2="21" y2="21" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                      <line x1="14" y1="24" x2="21" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                      <line x1="14" y1="30" x2="21" y2="27" stroke="white" strokeWidth="1.5" opacity="0.7" />
+
+                      <line x1="27" y1="21" x2="34" y2="18" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                      <line x1="27" y1="24" x2="34" y2="24" stroke="white" strokeWidth="1.5" opacity="0.7" />
+                      <line x1="27" y1="27" x2="34" y2="30" stroke="white" strokeWidth="1.5" opacity="0.7" />
+
+                      {/* Comparison arrows */}
+                      <path d="M16 15 L20 12 L20 14 L28 14 L28 12 L32 15 L28 18 L28 16 L20 16 L20 18 Z"
+                        fill="white" opacity="0.8" />
+                      <path d="M16 33 L20 30 L20 32 L28 32 L28 30 L32 33 L28 36 L28 34 L20 34 L20 36 Z"
+                        fill="white" opacity="0.8" />
+                    </g>
+
+                    <defs>
+                      <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#2563eb" />
+                        <stop offset="50%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#1d4ed8" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="brand-text">
+                    <h1>CompareIntel</h1>
+                    <span className="brand-tagline">AI Model Comparison Platform</span>
+                  </div>
                 </div>
-              ) : (
-                <div className="provider-dropdowns">
-                  {Object.entries(modelsByProvider).map(([provider, models]) => {
-                    const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
-                    return (
-                      <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
+              </div>
+
+              <div className="nav-actions">
+                {isAuthenticated ? (
+                  <>
+                    {user?.is_admin && (
+                      <button
+                        className="admin-avatar-button"
+                        onClick={() => setCurrentView(currentView === 'admin' ? 'main' : 'admin')}
+                        title={currentView === 'admin' ? 'Back to Main App' : 'Admin Panel'}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                          <path d="M2 17l10 5 10-5" />
+                          <path d="M2 12l10 5 10-5" />
+                        </svg>
+                      </button>
+                    )}
+                    <UserMenu />
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="nav-button-text"
+                      onClick={() => {
+                        setAuthModalMode('login');
+                        setIsAuthModalOpen(true);
+                      }}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      className="nav-button-primary"
+                      onClick={() => {
+                        setAuthModalMode('register');
+                        setIsAuthModalOpen(true);
+                      }}
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )}
+              </div>
+            </nav>
+          </header>
+
+          {/* Email verification banners - placed between header and main content */}
+          {/* Only show VerifyEmail if we're NOT in password reset mode */}
+          {!showPasswordReset && (
+            <>
+              <VerifyEmail onClose={() => { }} externalToken={verificationToken} suppressVerification={suppressVerification} />
+              <VerificationBanner />
+            </>
+          )}
+
+          {/* Password reset modal */}
+          {showPasswordReset && (
+            <ResetPassword onClose={handlePasswordResetClose} />
+          )}
+
+          <main className="app-main">
+            <div className="hero-section">
+              <div className="hero-content">
+                <h2 className="hero-title">Compare AI Models Side by Side</h2>
+                <p className="hero-subtitle">Get responses from multiple AI models to find the best solution for your needs</p>
+
+                <div className="hero-capabilities">
+                  <div className="capability-tile">
+                    <div className="capability-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                    </div>
+                    <h3 className="capability-title">Natural Language</h3>
+                    <p className="capability-description">Compare conversational responses</p>
+                  </div>
+
+                  <div className="capability-tile">
+                    <div className="capability-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                      </svg>
+                    </div>
+                    <h3 className="capability-title">Code Generation</h3>
+                    <p className="capability-description">Evaluate programming capabilities</p>
+                  </div>
+
+                  <div className="capability-tile">
+                    <div className="capability-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                        <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                        <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                      </svg>
+                    </div>
+                    <h3 className="capability-title">Formatted Math</h3>
+                    <p className="capability-description">Render LaTeX equations beautifully</p>
+                  </div>
+
+                  <div className="capability-tile">
+                    <div className="capability-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                      </svg>
+                    </div>
+                    <h3 className="capability-title">Concurrent Processing</h3>
+                    <p className="capability-description">Get all responses simultaneously</p>
+                  </div>
+                </div>
+
+                <div className="hero-input-section">
+                  <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
+                  <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
+                    <textarea
+                      ref={textareaRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (isFollowUpMode) {
+                            handleContinueConversation();
+                          } else {
+                            handleSubmitClick();
+                          }
+                        }
+                      }}
+                      placeholder={isFollowUpMode
+                        ? "Enter your follow-up question or request here..."
+                        : "Let's get started..."
+                      }
+                      className="hero-input-textarea"
+                      rows={1}
+                    />
+                    <div className="textarea-actions">
+                      {isFollowUpMode && (
                         <button
-                          className="provider-header"
-                          onClick={() => toggleDropdown(provider)}
-                          aria-expanded={openDropdowns.has(provider)}
+                          onClick={handleNewComparison}
+                          className="textarea-icon-button new-inquiry-button"
+                          title="Exit follow up mode"
+                          disabled={isLoading}
                         >
-                          <div className="provider-left">
-                            <span className="provider-name">{provider}</span>
-                            <span className="provider-count">
-                              {(() => {
-                                const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                return `${selectedCount} of ${models.length} selected`;
-                              })()}
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {(() => {
-                              const providerModels = modelsByProvider[provider] || [];
-                              const providerModelIds = providerModels.map(model => model.id);
-                              const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
-                              const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
-                              const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
-                              const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
-                                (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
-
-                              return (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isDisabled) {
-                                      toggleAllForProvider(provider);
-                                    }
-                                  }}
-                                  style={{
-                                    padding: '0.25rem 0.5rem',
-                                    fontSize: '1.2rem',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
-                                    cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                    opacity: isDisabled ? 0.5 : 1,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    transition: 'color 0.2s ease'
-                                  }}
-                                  title={isDisabled ?
-                                    (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) :
-                                    allProviderModelsSelected ? `Deselect All` : `Select All`}
-                                >
-                                  ✱
-                                </div>
-                              );
-                            })()}
-                            <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
-                              ▼
-                            </span>
-                          </div>
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                          </svg>
                         </button>
+                      )}
+                      <button
+                        ref={compareButtonRef}
+                        onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
+                        disabled={isLoading}
+                        className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
+                        title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
 
-                        {openDropdowns.has(provider) && (
-                          <div className="provider-models">
-                            {models.map((model) => {
-                              const isSelected = selectedModels.includes(model.id);
-                              const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                              const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) ||
-                                (isFollowUpMode && !isSelected && !wasOriginallySelected);
-                              return (
-                                <label
-                                  key={model.id}
-                                  className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                                  style={{
-                                    opacity: isDisabled ? 0.5 : 1,
-                                    cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                    position: 'relative'
-                                  }}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    disabled={isDisabled}
-                                    onChange={() => !isDisabled && handleModelToggle(model.id)}
-                                    className="model-checkbox"
-                                    style={{
-                                      borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
-                                    }}
-                                  />
-                                  <div className="model-info">
-                                    <h4>
-                                      {model.name}
-                                      {isFollowUpMode && !isSelected && !wasOriginallySelected && (
-                                        <span
-                                          style={{
-                                            fontSize: '0.7rem',
-                                            marginLeft: '0.5rem',
-                                            padding: '0.125rem 0.375rem',
-                                            background: 'rgba(156, 163, 175, 0.2)',
-                                            color: '#6b7280',
-                                            borderRadius: '4px',
-                                            fontWeight: '500'
-                                          }}
-                                        >
-                                          Not in conversation
-                                        </span>
-                                      )}
-                                    </h4>
-                                    <p>{model.description}</p>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {/* Processing time message moved here */}
+                  {selectedModels.length > 0 && (
+                    <div className="processing-time-message">
+                      {(() => {
+                        const count = selectedModels.length;
+
+                        let description;
+                        let IconComponent;
+
+                        if (count === 1) {
+                          description = "Single model processing";
+                          // Single square/box icon
+                          IconComponent = () => (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                              <rect x="5" y="5" width="14" height="14" rx="2" />
+                            </svg>
+                          );
+                        } else if (count <= 4) {
+                          description = "Small batch processing";
+                          // Copy/duplicate icon
+                          IconComponent = () => (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          );
+                        } else if (count <= 8) {
+                          description = "Medium batch processing";
+                          // Layers icon
+                          IconComponent = () => (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                              <polyline points="2 17 12 22 22 17" />
+                              <polyline points="2 12 12 17 22 12" />
+                            </svg>
+                          );
+                        } else {
+                          description = "Large batch processing";
+                          // Server/database icon for large
+                          IconComponent = () => (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                              <line x1="6" y1="6" x2="6.01" y2="6" />
+                              <line x1="6" y1="18" x2="6.01" y2="18" />
+                            </svg>
+                          );
+                        }
+
+                        return (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                              <IconComponent />
+                              <span>{count} model{count !== 1 ? 's' : ''} selected • {description}</span>
+                              <IconComponent />
+                            </div>
+                            <div style={{ marginTop: '0.25rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                                Processing time depends on your Internet connection and the amount of rendering needed
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="error-message">
+                <span>⚠️ {error}</span>
+              </div>
+            )}
+
+            <section className="models-section" ref={modelsSectionRef}>
+              <div
+                className="models-section-header"
+                onClick={() => setIsModelsHidden(!isModelsHidden)}
+              >
+                <div className="models-header-title">
+                  <h2 style={{ margin: 0 }}>
+                    {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
+                  </h2>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    {isFollowUpMode
+                      ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
+                      : `Choose up to ${MAX_MODELS_LIMIT} models`
+                    }
+                  </p>
+                </div>
+                <div className="models-header-controls">
+                  <div className="models-header-buttons">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModels([]);
+                      }}
+                      disabled={selectedModels.length === 0 || isFollowUpMode}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.75rem',
+                        border: '1px solid #dc2626',
+                        background: 'transparent',
+                        color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626',
+                        borderRadius: '6px',
+                        cursor: (selectedModels.length === 0 || isFollowUpMode) ? 'not-allowed' : 'pointer',
+                        opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1
+                      }}
+                      title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selected models'}
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        collapseAllDropdowns();
+                      }}
+                      disabled={openDropdowns.size === 0}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.75rem',
+                        border: '1px solid #3b82f6',
+                        background: 'transparent',
+                        color: openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6',
+                        borderRadius: '6px',
+                        cursor: openDropdowns.size === 0 ? 'not-allowed' : 'pointer',
+                        opacity: openDropdowns.size === 0 ? 0.5 : 1
+                      }}
+                    >
+                      Collapse All
+                    </button>
+                  </div>
+                  <div className="models-header-right">
+                    <div
+                      className="models-count-indicator"
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
+                          selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
+                        color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
+                          selectedModels.length > 0 ? 'white' : '#6b7280',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {selectedModels.length} of {MAX_MODELS_LIMIT} selected
+                    </div>
+                    <button
+                      className="models-toggle-arrow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModelsHidden(!isModelsHidden);
+                      }}
+                      style={{
+                        padding: '0.5rem',
+                        fontSize: '1.25rem',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'var(--bg-primary)',
+                        color: 'var(--primary-color)',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '36px',
+                        height: '36px',
+                        fontWeight: 'bold'
+                      }}
+                      title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                    >
+                      {isModelsHidden ? '▼' : '▲'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning for approaching limit */}
+              {selectedModels.length > 8 && selectedModels.length < MAX_MODELS_LIMIT && (
+                <div className="warning-message" style={{
+                  background: '#fff3cd',
+                  border: '1px solid #ffeaa7',
+                  color: '#856404',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span>⚠️</span>
+                  <span>
+                    You've selected {selectedModels.length} models. Maximum {MAX_MODELS_LIMIT} allowed for optimal performance.
+                  </span>
                 </div>
               )}
 
-              {/* Selected Models Cards */}
-              {selectedModels.length > 0 && (
-                <div className="selected-models-section">
-                  <h3>Selected Models ({selectedModels.length})</h3>
-                  <div className="selected-models-grid">
-                    {selectedModels.map((modelId) => {
-                      const model = allModels.find(m => m.id === modelId);
-                      if (!model) return null;
+              {!isModelsHidden && (
+                <>
+                  {isLoadingModels ? (
+                    <div className="loading-message">Loading available models...</div>
+                  ) : Object.keys(modelsByProvider).length === 0 ? (
+                    <div className="error-message">
+                      <p>No models available. Please check the server connection.</p>
+                      <p>Debug info: modelsByProvider keys: {JSON.stringify(Object.keys(modelsByProvider))}</p>
+                    </div>
+                  ) : (
+                    <div className="provider-dropdowns">
+                      {Object.entries(modelsByProvider).map(([provider, models]) => {
+                        const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
+                        return (
+                          <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
+                            <button
+                              className="provider-header"
+                              onClick={() => toggleDropdown(provider)}
+                              aria-expanded={openDropdowns.has(provider)}
+                            >
+                              <div className="provider-left">
+                                <span className="provider-name">{provider}</span>
+                                <span className="provider-count">
+                                  {(() => {
+                                    const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                    return `${selectedCount} of ${models.length} selected`;
+                                  })()}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {(() => {
+                                  const providerModels = modelsByProvider[provider] || [];
+                                  const providerModelIds = providerModels.map(model => model.id);
+                                  const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
+                                  const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+                                  const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
+                                  const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
+                                    (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
+
+                                  return (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isDisabled) {
+                                          toggleAllForProvider(provider);
+                                        }
+                                      }}
+                                      style={{
+                                        padding: '0.25rem 0.5rem',
+                                        fontSize: '1.2rem',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
+                                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                        opacity: isDisabled ? 0.5 : 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        transition: 'color 0.2s ease'
+                                      }}
+                                      title={isDisabled ?
+                                        (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) :
+                                        allProviderModelsSelected ? `Deselect All` : `Select All`}
+                                    >
+                                      ✱
+                                    </div>
+                                  );
+                                })()}
+                                <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                                  ▼
+                                </span>
+                              </div>
+                            </button>
+
+                            {openDropdowns.has(provider) && (
+                              <div className="provider-models">
+                                {models.map((model) => {
+                                  const isSelected = selectedModels.includes(model.id);
+                                  const wasOriginallySelected = originalSelectedModels.includes(model.id);
+                                  const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) ||
+                                    (isFollowUpMode && !isSelected && !wasOriginallySelected);
+                                  return (
+                                    <label
+                                      key={model.id}
+                                      className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                      style={{
+                                        opacity: isDisabled ? 0.5 : 1,
+                                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                        position: 'relative'
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        disabled={isDisabled}
+                                        onChange={() => !isDisabled && handleModelToggle(model.id)}
+                                        className="model-checkbox"
+                                        style={{
+                                          borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
+                                        }}
+                                      />
+                                      <div className="model-info">
+                                        <h4>
+                                          {model.name}
+                                          {isFollowUpMode && !isSelected && !wasOriginallySelected && (
+                                            <span
+                                              style={{
+                                                fontSize: '0.7rem',
+                                                marginLeft: '0.5rem',
+                                                padding: '0.125rem 0.375rem',
+                                                background: 'rgba(156, 163, 175, 0.2)',
+                                                color: '#6b7280',
+                                                borderRadius: '4px',
+                                                fontWeight: '500'
+                                              }}
+                                            >
+                                              Not in conversation
+                                            </span>
+                                          )}
+                                        </h4>
+                                        <p>{model.description}</p>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Selected Models Cards */}
+                  {selectedModels.length > 0 && (
+                    <div className="selected-models-section">
+                      <h3>Selected Models ({selectedModels.length})</h3>
+                      <div className="selected-models-grid">
+                        {selectedModels.map((modelId) => {
+                          const model = allModels.find(m => m.id === modelId);
+                          if (!model) return null;
+
+                          return (
+                            <div key={modelId} className="selected-model-card">
+                              <div className="selected-model-header">
+                                <h4>{model.name}</h4>
+                                <button
+                                  className="remove-model-btn"
+                                  onClick={() => handleModelToggle(modelId)}
+                                  aria-label={`Remove ${model.name}`}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <p className="selected-model-provider">{model.provider}</p>
+                              <p className="selected-model-description">{model.description}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+
+            {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
+            {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                padding: '1rem',
+                margin: '0',
+                width: '100%',
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+              }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  {usageCount < MAX_DAILY_USAGE ? (
+                    `${MAX_DAILY_USAGE - usageCount} free comparisons remaining today • Register for 10 per day`
+                  ) : (
+                    'Daily limit reached! Register for a free account to get 10 comparisons per day.'
+                  )}
+                </div>
+
+                {/* Developer reset button - only show in development */}
+                {import.meta.env.DEV && (
+                  <button
+                    onClick={resetUsage}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      color: 'white',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      marginTop: '0.5rem'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    }}
+                  >
+                    🔄 Reset Usage (Dev Only)
+                  </button>
+                )}
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="loading-section">
+                <div className="loading-content">
+                  <div className="modern-spinner"></div>
+                  <p>Processing {selectedModels.length === 1 ? 'response from 1 AI model' : `responses from ${selectedModels.length} AI models`}...</p>
+                </div>
+                <button
+                  onClick={handleCancel}
+                  className="cancel-button"
+                  aria-label="Stop comparison"
+                >
+                  <span className="cancel-x">✕</span>
+                  <span className="cancel-text">Cancel</span>
+                </button>
+              </div>
+            )}
+
+            {response && (
+              <section className="results-section">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <h2 style={{ margin: 0 }}>Comparison Results</h2>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    {!isFollowUpMode && (
+                      <button
+                        onClick={handleFollowUp}
+                        className="follow-up-button"
+                        title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
+                        disabled={isFollowUpDisabled()}
+                      >
+                        Follow up
+                      </button>
+                    )}
+                    {closedCards.size > 0 && (
+                      <button
+                        onClick={showAllResults}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.875rem',
+                          border: '1px solid var(--primary-color)',
+                          background: 'var(--primary-color)',
+                          color: 'white',
+                          borderRadius: 'var(--radius-md)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          fontWeight: '500'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'var(--primary-hover)';
+                          e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'var(--primary-color)';
+                          e.currentTarget.style.borderColor = 'var(--primary-color)';
+                        }}
+                      >
+                        Show All Results ({closedCards.size} hidden)
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="results-metadata">
+                  <div className="metadata-item">
+                    <span className="metadata-label">Input Length:</span>
+                    <span className="metadata-value">{response.metadata.input_length} characters</span>
+                  </div>
+                  <div className="metadata-item">
+                    <span className="metadata-label">Models Successful:</span>
+                    <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
+                      {response.metadata.models_successful}/{response.metadata.models_requested}
+                    </span>
+                  </div>
+                  {Object.keys(response.results).length > 0 && (
+                    <div className="metadata-item">
+                      <span className="metadata-label">Results Visible:</span>
+                      <span className="metadata-value">
+                        {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                      </span>
+                    </div>
+                  )}
+                  {response.metadata.models_failed > 0 && (
+                    <div className="metadata-item">
+                      <span className="metadata-label">Models Failed:</span>
+                      <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                    </div>
+                  )}
+                  {processingTime && (
+                    <div className="metadata-item">
+                      <span className="metadata-label">Processing Time:</span>
+                      <span className="metadata-value">
+                        {(() => {
+                          if (processingTime < 1000) {
+                            return `${processingTime}ms`;
+                          } else if (processingTime < 60000) {
+                            return `${(processingTime / 1000).toFixed(1)}s`;
+                          } else {
+                            const minutes = Math.floor(processingTime / 60000);
+                            const seconds = Math.floor((processingTime % 60000) / 1000);
+                            return `${minutes}m ${seconds}s`;
+                          }
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="results-grid">
+                  {conversations
+                    .filter((conv) => !closedCards.has(conv.modelId))
+                    .map((conversation) => {
+                      const model = allModels.find(m => m.id === conversation.modelId);
+                      const latestMessage = conversation.messages[conversation.messages.length - 1];
+                      const isError = latestMessage?.content.startsWith('Error');
+                      const safeId = getSafeId(conversation.modelId);
 
                       return (
-                        <div key={modelId} className="selected-model-card">
-                          <div className="selected-model-header">
-                            <h4>{model.name}</h4>
-                            <button
-                              className="remove-model-btn"
-                              onClick={() => handleModelToggle(modelId)}
-                              aria-label={`Remove ${model.name}`}
-                            >
-                              ✕
-                            </button>
+                        <div key={conversation.modelId} className="result-card conversation-card">
+                          <div className="result-header">
+                            <div className="result-header-top">
+                              <h3>{model?.name || conversation.modelId}</h3>
+                              <div className="header-buttons-container">
+                                <button
+                                  className="screenshot-card-btn"
+                                  onClick={() => handleScreenshot(conversation.modelId)}
+                                  title="Screenshot message area"
+                                  aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                                    <path d="M8 21h8" />
+                                    <path d="M12 17v4" />
+                                  </svg>
+                                </button>
+                                <button
+                                  className="copy-response-btn"
+                                  onClick={() => handleCopyResponse(conversation.modelId)}
+                                  title="Copy entire chat history"
+                                  aria-label={`Copy entire chat history from ${model?.name || conversation.modelId}`}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                  </svg>
+                                </button>
+                                <button
+                                  className="close-card-btn"
+                                  onClick={() => closeResultCard(conversation.modelId)}
+                                  title="Hide this result"
+                                  aria-label={`Hide result for ${model?.name || conversation.modelId}`}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 6L6 18" />
+                                    <path d="M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="result-header-bottom">
+                              <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                              <div className="result-tabs">
+                                <button
+                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
+                                  onClick={() => switchResultTab(conversation.modelId, 'formatted')}
+                                >
+                                  Formatted
+                                </button>
+                                <button
+                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
+                                  onClick={() => switchResultTab(conversation.modelId, 'raw')}
+                                >
+                                  Raw
+                                </button>
+                              </div>
+                              <span className={`status ${isError ? 'error' : 'success'}`}>
+                                {isError ? 'Failed' : 'Success'}
+                              </span>
+                            </div>
                           </div>
-                          <p className="selected-model-provider">{model.provider}</p>
-                          <p className="selected-model-description">{model.description}</p>
+                          <div className="conversation-content" id={`conversation-content-${safeId}`}>
+                            {conversation.messages.map((message) => (
+                              <div key={message.id} className={`conversation-message ${message.type}`}>
+                                <div className="message-header">
+                                  <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {message.type === 'user' ? (
+                                      <>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <circle cx="12" cy="8" r="4" />
+                                          <path d="M20 21a8 8 0 1 0-16 0" />
+                                        </svg>
+                                        <span>You</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                                          <rect x="9" y="9" width="6" height="6" />
+                                          <line x1="9" y1="2" x2="9" y2="4" />
+                                          <line x1="15" y1="2" x2="15" y2="4" />
+                                          <line x1="9" y1="20" x2="9" y2="22" />
+                                          <line x1="15" y1="20" x2="15" y2="22" />
+                                          <line x1="20" y1="9" x2="22" y2="9" />
+                                          <line x1="20" y1="15" x2="22" y2="15" />
+                                          <line x1="2" y1="9" x2="4" y2="9" />
+                                          <line x1="2" y1="15" x2="4" y2="15" />
+                                        </svg>
+                                        <span>AI</span>
+                                      </>
+                                    )}
+                                  </span>
+                                  <span className="message-time">
+                                    {new Date(message.timestamp).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                                <div className="message-content">
+                                  {(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? (
+                                    <LatexRenderer className="result-output">
+                                      {message.content}
+                                    </LatexRenderer>
+                                  ) : (
+                                    <pre className="result-output raw-output">
+                                      {message.content}
+                                    </pre>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       );
                     })}
-                  </div>
                 </div>
-              )}
-            </>
-          )}
-        </section>
-
-        {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
-        {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '1rem',
-            margin: '0',
-            width: '100%',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
-          }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-              {usageCount < MAX_DAILY_USAGE ? (
-                `${MAX_DAILY_USAGE - usageCount} free comparisons remaining today • Register for 10 per day`
-              ) : (
-                'Daily limit reached! Register for a free account to get 10 comparisons per day.'
-              )}
-            </div>
-
-            {/* Developer reset button - only show in development */}
-            {import.meta.env.DEV && (
-              <button
-                onClick={resetUsage}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  color: 'white',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  marginTop: '0.5rem'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                }}
-              >
-                🔄 Reset Usage (Dev Only)
-              </button>
+              </section>
             )}
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="loading-section">
-            <div className="loading-content">
-              <div className="modern-spinner"></div>
-              <p>Processing {selectedModels.length === 1 ? 'response from 1 AI model' : `responses from ${selectedModels.length} AI models`}...</p>
-            </div>
-            <button
-              onClick={handleCancel}
-              className="cancel-button"
-              aria-label="Stop comparison"
-            >
-              <span className="cancel-x">✕</span>
-              <span className="cancel-text">Cancel</span>
-            </button>
-          </div>
-        )}
-
-        {response && (
-          <section className="results-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0 }}>Comparison Results</h2>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                {!isFollowUpMode && (
-                  <button
-                    onClick={handleFollowUp}
-                    className="follow-up-button"
-                    title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
-                    disabled={isFollowUpDisabled()}
-                  >
-                    Follow up
-                  </button>
-                )}
-                {closedCards.size > 0 && (
-                  <button
-                    onClick={showAllResults}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      border: '1px solid var(--primary-color)',
-                      background: 'var(--primary-color)',
-                      color: 'white',
-                      borderRadius: 'var(--radius-md)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      fontWeight: '500'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'var(--primary-hover)';
-                      e.currentTarget.style.borderColor = 'var(--primary-hover)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'var(--primary-color)';
-                      e.currentTarget.style.borderColor = 'var(--primary-color)';
-                    }}
-                  >
-                    Show All Results ({closedCards.size} hidden)
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Metadata */}
-            <div className="results-metadata">
-              <div className="metadata-item">
-                <span className="metadata-label">Input Length:</span>
-                <span className="metadata-value">{response.metadata.input_length} characters</span>
-              </div>
-              <div className="metadata-item">
-                <span className="metadata-label">Models Successful:</span>
-                <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
-                  {response.metadata.models_successful}/{response.metadata.models_requested}
-                </span>
-              </div>
-              {Object.keys(response.results).length > 0 && (
-                <div className="metadata-item">
-                  <span className="metadata-label">Results Visible:</span>
-                  <span className="metadata-value">
-                    {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
-                  </span>
-                </div>
-              )}
-              {response.metadata.models_failed > 0 && (
-                <div className="metadata-item">
-                  <span className="metadata-label">Models Failed:</span>
-                  <span className="metadata-value failed">{response.metadata.models_failed}</span>
-                </div>
-              )}
-              {processingTime && (
-                <div className="metadata-item">
-                  <span className="metadata-label">Processing Time:</span>
-                  <span className="metadata-value">
-                    {(() => {
-                      if (processingTime < 1000) {
-                        return `${processingTime}ms`;
-                      } else if (processingTime < 60000) {
-                        return `${(processingTime / 1000).toFixed(1)}s`;
-                      } else {
-                        const minutes = Math.floor(processingTime / 60000);
-                        const seconds = Math.floor((processingTime % 60000) / 1000);
-                        return `${minutes}m ${seconds}s`;
-                      }
-                    })()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="results-grid">
-              {conversations
-                .filter((conv) => !closedCards.has(conv.modelId))
-                .map((conversation) => {
-                  const model = allModels.find(m => m.id === conversation.modelId);
-                  const latestMessage = conversation.messages[conversation.messages.length - 1];
-                  const isError = latestMessage?.content.startsWith('Error');
-                  const safeId = getSafeId(conversation.modelId);
-
-                  return (
-                    <div key={conversation.modelId} className="result-card conversation-card">
-                      <div className="result-header">
-                        <div className="result-header-top">
-                          <h3>{model?.name || conversation.modelId}</h3>
-                          <div className="header-buttons-container">
-                            <button
-                              className="screenshot-card-btn"
-                              onClick={() => handleScreenshot(conversation.modelId)}
-                              title="Screenshot message area"
-                              aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="2" y="3" width="20" height="14" rx="2" />
-                                <path d="M8 21h8" />
-                                <path d="M12 17v4" />
-                              </svg>
-                            </button>
-                            <button
-                              className="copy-response-btn"
-                              onClick={() => handleCopyResponse(conversation.modelId)}
-                              title="Copy entire chat history"
-                              aria-label={`Copy entire chat history from ${model?.name || conversation.modelId}`}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                              </svg>
-                            </button>
-                            <button
-                              className="close-card-btn"
-                              onClick={() => closeResultCard(conversation.modelId)}
-                              title="Hide this result"
-                              aria-label={`Hide result for ${model?.name || conversation.modelId}`}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 6L6 18" />
-                                <path d="M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="result-header-bottom">
-                          <span className="output-length">{latestMessage?.content.length || 0} chars</span>
-                          <div className="result-tabs">
-                            <button
-                              className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
-                              onClick={() => switchResultTab(conversation.modelId, 'formatted')}
-                            >
-                              Formatted
-                            </button>
-                            <button
-                              className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
-                              onClick={() => switchResultTab(conversation.modelId, 'raw')}
-                            >
-                              Raw
-                            </button>
-                          </div>
-                          <span className={`status ${isError ? 'error' : 'success'}`}>
-                            {isError ? 'Failed' : 'Success'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="conversation-content" id={`conversation-content-${safeId}`}>
-                        {conversation.messages.map((message) => (
-                          <div key={message.id} className={`conversation-message ${message.type}`}>
-                            <div className="message-header">
-                              <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {message.type === 'user' ? (
-                                  <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <circle cx="12" cy="8" r="4" />
-                                      <path d="M20 21a8 8 0 1 0-16 0" />
-                                    </svg>
-                                    <span>You</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="4" y="4" width="16" height="16" rx="2" />
-                                      <rect x="9" y="9" width="6" height="6" />
-                                      <line x1="9" y1="2" x2="9" y2="4" />
-                                      <line x1="15" y1="2" x2="15" y2="4" />
-                                      <line x1="9" y1="20" x2="9" y2="22" />
-                                      <line x1="15" y1="20" x2="15" y2="22" />
-                                      <line x1="20" y1="9" x2="22" y2="9" />
-                                      <line x1="20" y1="15" x2="22" y2="15" />
-                                      <line x1="2" y1="9" x2="4" y2="9" />
-                                      <line x1="2" y1="15" x2="4" y2="15" />
-                                    </svg>
-                                    <span>AI</span>
-                                  </>
-                                )}
-                              </span>
-                              <span className="message-time">
-                                {new Date(message.timestamp).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <div className="message-content">
-                              {(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? (
-                                <LatexRenderer className="result-output">
-                                  {message.content}
-                                </LatexRenderer>
-                              ) : (
-                                <pre className="result-output raw-output">
-                                  {message.content}
-                                </pre>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </section>
-        )}
-      </main>
+          </main>
 
           {/* Auth Modal */}
           <AuthModal

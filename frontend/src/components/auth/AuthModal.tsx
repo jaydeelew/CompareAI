@@ -6,12 +6,13 @@
 import React, { useState, useEffect } from 'react';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 import './AuthForms.css';
 
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
-    initialMode?: 'login' | 'register';
+    initialMode?: 'login' | 'register' | 'forgot-password';
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -19,7 +20,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose,
     initialMode = 'login'
 }) => {
-    const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+    const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
 
     // Update mode when initialMode changes (e.g., when opening modal with different button)
     useEffect(() => {
@@ -27,6 +28,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setMode(initialMode);
         }
     }, [isOpen, initialMode]);
+
+    // Listen for password reset flow to auto-close the modal
+    useEffect(() => {
+        const handlePasswordResetFlow = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const fullUrl = window.location.href;
+
+            // If user clicked the reset link while modal is open, close the modal
+            if (isOpen && token && fullUrl.includes('reset-password')) {
+                onClose();
+            }
+        };
+
+        // Check on mount and when URL changes
+        handlePasswordResetFlow();
+
+        // Listen for URL changes (for single-page apps)
+        window.addEventListener('popstate', handlePasswordResetFlow);
+
+        return () => {
+            window.removeEventListener('popstate', handlePasswordResetFlow);
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
@@ -45,11 +70,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <LoginForm
                         onSuccess={handleSuccess}
                         onSwitchToRegister={() => setMode('register')}
+                        onForgotPassword={() => setMode('forgot-password')}
                     />
-                ) : (
+                ) : mode === 'register' ? (
                     <RegisterForm
                         onSuccess={handleSuccess}
                         onSwitchToLogin={() => setMode('login')}
+                    />
+                ) : (
+                    <ForgotPasswordForm
+                        onSuccess={handleSuccess}
+                        onBackToLogin={() => setMode('login')}
+                        onClose={onClose}
                     />
                 )}
             </div>
