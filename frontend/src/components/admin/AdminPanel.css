@@ -589,6 +589,7 @@
 
 .toggle-btn,
 .verify-btn,
+.reset-usage-btn,
 .delete-btn {
   padding: 0.5rem 0.875rem;
   border: none;
@@ -616,6 +617,11 @@
   color: white;
 }
 
+.reset-usage-btn {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: white;
+}
+
 .delete-btn {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
@@ -623,6 +629,7 @@
 
 .toggle-btn:hover,
 .verify-btn:hover,
+.reset-usage-btn:hover,
 .delete-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);

@@ -439,3 +439,35 @@ async def toggle_user_active(
     )
 
     return AdminUserResponse.from_orm(user)
+
+
+@router.post("/users/{user_id}/reset-usage", response_model=AdminUserResponse)
+async def reset_user_usage(
+    user_id: int, request: Request, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+):
+    """Reset user's daily usage count to zero."""
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Store previous usage count for logging
+    previous_usage = user.daily_usage_count
+
+    # Reset daily usage count to 0
+    user.daily_usage_count = 0
+    db.commit()
+    db.refresh(user)
+
+    # Log admin action
+    log_admin_action(
+        db=db,
+        admin_user=current_user,
+        action_type="reset_usage",
+        action_description=f"Reset daily usage for user {user.email}",
+        target_user_id=user.id,
+        details={"previous_usage": previous_usage, "new_usage": 0},
+        request=request,
+    )
+
+    return AdminUserResponse.from_orm(user)

@@ -42,7 +42,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [users, setUsers] = useState<AdminUserListResponse | null>(null);
@@ -71,11 +71,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const response = await fetch('/api/admin/stats', {
                 headers
             });
-            
+
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
@@ -85,7 +85,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to fetch admin stats (${response.status})`);
                 }
             }
-            
+
             const data = await response.json();
             setStats(data);
         } catch (err) {
@@ -100,16 +100,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const params = new URLSearchParams({
                 page: page.toString(),
                 per_page: '20'
             });
-            
+
             const response = await fetch(`/api/admin/users?${params}`, {
                 headers
             });
-            
+
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
@@ -119,7 +119,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to fetch users (${response.status})`);
                 }
             }
-            
+
             const data = await response.json();
             setUsers(data);
         } catch (err) {
@@ -135,10 +135,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 setLoading(false);
                 return;
             }
-            
+
             setLoading(true);
             setError(null); // Clear any previous errors
-            
+
             try {
                 await Promise.all([fetchStats(), fetchUsersInitial(currentPage)]);
             } catch (err) {
@@ -147,7 +147,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 setLoading(false);
             }
         };
-        
+
         loadData();
     }, [currentPage, user?.is_admin, fetchStats, fetchUsersInitial]);
 
@@ -157,20 +157,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const params = new URLSearchParams({
                 page: '1',
                 per_page: '20'
             });
-            
+
             if (searchTerm) params.append('search', searchTerm);
             if (selectedRole) params.append('role', selectedRole);
             if (selectedTier) params.append('tier', selectedTier);
-            
+
             const response = await fetch(`/api/admin/users?${params}`, {
                 headers
             });
-            
+
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
@@ -180,7 +180,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to fetch users (${response.status})`);
                 }
             }
-            
+
             const data = await response.json();
             setUsers(data);
             setCurrentPage(1);
@@ -196,12 +196,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const response = await fetch(`/api/admin/users/${userId}/toggle-active`, {
                 method: 'POST',
                 headers
             });
-            
+
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
@@ -211,7 +211,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to toggle user status (${response.status})`);
                 }
             }
-            
+
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
         } catch (err) {
@@ -226,12 +226,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const response = await fetch(`/api/admin/users/${userId}/send-verification`, {
                 method: 'POST',
                 headers
             });
-            
+
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
@@ -241,14 +241,50 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to send verification email (${response.status})`);
                 }
             }
-            
+
             alert('Verification email sent successfully');
-            
+
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
         } catch (err) {
             console.error('Error sending verification:', err);
             setError(err instanceof Error ? err.message : 'Failed to send verification email');
+        }
+    };
+
+    const resetUsage = async (userId: number) => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch(`/api/admin/users/${userId}/reset-usage`, {
+                method: 'POST',
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to reset usage (${response.status})`);
+                }
+            }
+
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
+
+            // If the admin reset their own usage, refresh their user data in AuthContext
+            // This ensures the UserMenu dropdown shows the updated count
+            if (user && userId === user.id) {
+                await refreshUser();
+            }
+        } catch (err) {
+            console.error('Error resetting usage:', err);
+            setError(err instanceof Error ? err.message : 'Failed to reset usage');
         }
     };
 
@@ -259,7 +295,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const response = await fetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
@@ -268,7 +304,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 },
                 body: JSON.stringify(createUserData)
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
                 if (response.status === 401) {
@@ -281,7 +317,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to create user (${response.status})`);
                 }
             }
-            
+
             // Reset form and close modal
             setCreateUserData({
                 email: '',
@@ -293,10 +329,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 is_verified: false
             });
             setShowCreateModal(false);
-            
+
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
-            
+
             alert('User created successfully!');
         } catch (err) {
             console.error('Error creating user:', err);
@@ -317,12 +353,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
-            
+
             const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
                 method: 'DELETE',
                 headers
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 if (response.status === 401) {
@@ -337,14 +373,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     throw new Error(`Failed to delete user (${response.status})`);
                 }
             }
-            
+
             // Close modal and reset state
             setShowDeleteModal(false);
             setUserToDelete(null);
-            
+
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
-            
+
             alert('User deleted successfully!');
         } catch (err) {
             console.error('Error deleting user:', err);
@@ -459,7 +495,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             <div className="user-management">
                 <div className="user-management-header">
                     <h2>User Management</h2>
-                    <button 
+                    <button
                         className="create-user-btn"
                         onClick={() => setShowCreateModal(true)}
                     >
@@ -477,7 +513,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input"
                         />
-                        
+
                         <select
                             value={selectedRole}
                             onChange={(e) => setSelectedRole(e.target.value)}
@@ -489,7 +525,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <option value="admin">Admin</option>
                             <option value="super_admin">Super Admin</option>
                         </select>
-                        
+
                         <select
                             value={selectedTier}
                             onChange={(e) => setSelectedTier(e.target.value)}
@@ -500,8 +536,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <option value="starter">Starter</option>
                             <option value="pro">Pro</option>
                         </select>
-                        
-                        <button 
+
+                        <button
                             type="button"
                             className="search-btn"
                             onClick={handleManualSearch}
@@ -583,6 +619,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     </button>
                                                 )}
                                                 <button
+                                                    onClick={() => resetUsage(user.id)}
+                                                    className="reset-usage-btn"
+                                                    title="Reset daily usage to 0"
+                                                >
+                                                    Zero Usage
+                                                </button>
+                                                <button
                                                     onClick={() => handleDeleteClick(user.id, user.email)}
                                                     className="delete-btn"
                                                     title="Delete user (Super Admin only)"
@@ -606,11 +649,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 >
                                     Previous
                                 </button>
-                                
+
                                 <span className="page-info">
                                     Page {currentPage} of {users.total_pages}
                                 </span>
-                                
+
                                 <button
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     disabled={currentPage === users.total_pages}
@@ -630,14 +673,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>⚠️ Confirm Delete</h2>
-                            <button 
+                            <button
                                 className="modal-close-btn"
                                 onClick={handleDeleteCancel}
                             >
                                 ×
                             </button>
                         </div>
-                        
+
                         <div className="delete-modal-body">
                             <p className="warning-text">
                                 Are you sure you want to delete this user? This action cannot be undone.
@@ -651,15 +694,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         </div>
 
                         <div className="modal-footer">
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 className="cancel-btn"
                                 onClick={handleDeleteCancel}
                             >
                                 Cancel
                             </button>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 className="delete-confirm-btn"
                                 onClick={handleDeleteConfirm}
                             >
@@ -676,14 +719,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>Create New User</h2>
-                            <button 
+                            <button
                                 className="modal-close-btn"
                                 onClick={() => setShowCreateModal(false)}
                             >
                                 ×
                             </button>
                         </div>
-                        
+
                         <form onSubmit={handleCreateUser} className="create-user-form">
                             <div className="form-group">
                                 <label htmlFor="email">Email Address *</label>
@@ -691,7 +734,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     id="email"
                                     type="email"
                                     value={createUserData.email}
-                                    onChange={(e) => setCreateUserData({...createUserData, email: e.target.value})}
+                                    onChange={(e) => setCreateUserData({ ...createUserData, email: e.target.value })}
                                     required
                                     placeholder="user@example.com"
                                 />
@@ -703,13 +746,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     id="password"
                                     type="password"
                                     value={createUserData.password}
-                                    onChange={(e) => setCreateUserData({...createUserData, password: e.target.value})}
+                                    onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
                                     required
                                     minLength={12}
                                     placeholder="Min 12 chars, uppercase, number, special char"
                                 />
                                 <small className="form-hint">
-                                    Must be at least 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{};':\"|,.&lt;&gt;/?)
+                                    Must be at least 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{ };':\"|,.&lt;&gt;/?)
                                 </small>
                             </div>
 
@@ -719,7 +762,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     <select
                                         id="role"
                                         value={createUserData.role}
-                                        onChange={(e) => setCreateUserData({...createUserData, role: e.target.value})}
+                                        onChange={(e) => setCreateUserData({ ...createUserData, role: e.target.value })}
                                         required
                                     >
                                         <option value="user">User</option>
@@ -734,7 +777,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     <select
                                         id="subscription_tier"
                                         value={createUserData.subscription_tier}
-                                        onChange={(e) => setCreateUserData({...createUserData, subscription_tier: e.target.value})}
+                                        onChange={(e) => setCreateUserData({ ...createUserData, subscription_tier: e.target.value })}
                                         required
                                     >
                                         <option value="free">Free</option>
@@ -750,7 +793,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     <select
                                         id="subscription_period"
                                         value={createUserData.subscription_period}
-                                        onChange={(e) => setCreateUserData({...createUserData, subscription_period: e.target.value})}
+                                        onChange={(e) => setCreateUserData({ ...createUserData, subscription_period: e.target.value })}
                                         required
                                     >
                                         <option value="monthly">Monthly</option>
@@ -763,16 +806,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         <input
                                             type="checkbox"
                                             checked={createUserData.is_active}
-                                            onChange={(e) => setCreateUserData({...createUserData, is_active: e.target.checked})}
+                                            onChange={(e) => setCreateUserData({ ...createUserData, is_active: e.target.checked })}
                                         />
                                         <span>Active Account</span>
                                     </label>
-                                    
+
                                     <label>
                                         <input
                                             type="checkbox"
                                             checked={createUserData.is_verified}
-                                            onChange={(e) => setCreateUserData({...createUserData, is_verified: e.target.checked})}
+                                            onChange={(e) => setCreateUserData({ ...createUserData, is_verified: e.target.checked })}
                                         />
                                         <span>Email Verified</span>
                                     </label>
@@ -780,15 +823,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             </div>
 
                             <div className="modal-footer">
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     className="cancel-btn"
                                     onClick={() => setShowCreateModal(false)}
                                 >
                                     Cancel
                                 </button>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="submit-btn"
                                 >
                                     Create User
