@@ -51,20 +51,24 @@
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-md);
-  transition: all 0.2s ease;
   font-size: 3rem;
   font-weight: bold;
   transform: rotate(180deg);
+  outline: none;
 }
 
 .back-button:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  transform: rotate(180deg) translateX(2px);
+  transform: rotate(180deg);
 }
 
 .back-button:active {
-  transform: translateX(-1px);
+  transform: rotate(180deg);
+}
+
+.back-button:focus {
+  outline: none;
 }
 
 .admin-title-section {
@@ -486,39 +490,39 @@
   letter-spacing: 0.5px;
 }
 
-.role-user { 
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe); 
-  color: #1e40af; 
+.role-user {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
 }
 
-.role-moderator { 
-  background: linear-gradient(135deg, #fed7aa, #fdba74); 
-  color: #ea580c; 
+.role-moderator {
+  background: linear-gradient(135deg, #fed7aa, #fdba74);
+  color: #ea580c;
 }
 
-.role-admin { 
-  background: linear-gradient(135deg, #e9d5ff, #d8b4fe); 
-  color: #7c3aed; 
+.role-admin {
+  background: linear-gradient(135deg, #e9d5ff, #d8b4fe);
+  color: #7c3aed;
 }
 
-.role-super_admin { 
-  background: linear-gradient(135deg, #fecaca, #fca5a5); 
-  color: #dc2626; 
+.role-super_admin {
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  color: #dc2626;
 }
 
-.tier-free { 
-  background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
-  color: #16a34a; 
+.tier-free {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #16a34a;
 }
 
-.tier-starter { 
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe); 
-  color: #2563eb; 
+.tier-starter {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #2563eb;
 }
 
-.tier-pro { 
-  background: linear-gradient(135deg, #e9d5ff, #d8b4fe); 
-  color: #7c3aed; 
+.tier-pro {
+  background: linear-gradient(135deg, #e9d5ff, #d8b4fe);
+  color: #7c3aed;
 }
 
 .status-badge {
@@ -673,60 +677,60 @@
   .admin-panel {
     padding: 1rem;
   }
-  
+
   .admin-header {
     padding: 2rem 1.5rem;
   }
-  
+
   .admin-header-content {
     flex-direction: column;
     gap: 1.5rem;
     text-align: center;
   }
-  
+
   .admin-title-section h1 {
     font-size: 2rem;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .stats-breakdown {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .search-controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-input,
   .filter-select {
     width: 100%;
   }
-  
+
   .users-table {
     font-size: 0.875rem;
   }
-  
+
   .users-table th,
   .users-table td {
     padding: 0.75rem 0.5rem;
   }
-  
+
   .action-buttons {
     flex-direction: column;
   }
-  
+
   .user-management-header {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .pagination {
     flex-direction: column;
     gap: 0.75rem;
@@ -744,6 +748,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -1031,38 +1036,38 @@
   .modal-overlay {
     padding: 1rem;
   }
-  
+
   .modal-content {
     max-height: 95vh;
   }
-  
+
   .modal-header {
     padding: 1.5rem;
   }
-  
+
   .modal-header h2 {
     font-size: 1.5rem;
   }
-  
+
   .create-user-form {
     padding: 1.5rem;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .modal-footer {
     flex-direction: column;
     padding: 1rem 1.5rem;
   }
-  
+
   .cancel-btn,
   .submit-btn,
   .delete-confirm-btn {
     width: 100%;
   }
-  
+
   .delete-modal-body {
     padding: 1.5rem;
   }
