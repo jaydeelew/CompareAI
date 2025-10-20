@@ -25,6 +25,16 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
             const urlParams = new URLSearchParams(window.location.search);
             const token = externalToken || urlParams.get('token');
 
+            // Check if this is a password reset token (not an email verification token)
+            const path = window.location.pathname;
+            const fullUrl = window.location.href;
+            const isPasswordReset = path.includes('reset-password') || fullUrl.includes('reset-password');
+
+            // Don't try to verify password reset tokens - let ResetPassword component handle those
+            if (isPasswordReset) {
+                return;
+            }
+
             // If verification is suppressed (new tab checking for existing tabs), don't verify yet
             if (suppressVerification) {
                 return;
@@ -166,7 +176,7 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
                     }}>
                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M26.6667 8L12 22.6667L5.33334 16" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M26.6667 8L12 22.6667L5.33334 16" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </div>
 
@@ -188,25 +198,25 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                         opacity: 0.15
                     }}>
                         <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="24" cy="24" r="20" stroke="white" strokeWidth="2"/>
-                            <path d="M24 14V24L30 30" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                            <circle cx="24" cy="24" r="20" stroke="white" strokeWidth="2" />
+                            <path d="M24 14V24L30 30" stroke="white" strokeWidth="2" strokeLinecap="round" />
                         </svg>
                     </div>
                 </div>
             ) : (
                 <>
-                    <div style={{ 
-                        fontSize: '1rem', 
-                        fontWeight: '600', 
+                    <div style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
                         marginBottom: '0.5rem',
                         textAlign: 'center'
                     }}>
                         ❌ Verification Failed
                     </div>
 
-                    <div style={{ 
-                        fontSize: '0.9rem', 
-                        opacity: 0.95, 
+                    <div style={{
+                        fontSize: '0.9rem',
+                        opacity: 0.95,
                         marginBottom: '0.75rem',
                         textAlign: 'center'
                     }}>

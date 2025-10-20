@@ -106,18 +106,39 @@ function AppContent() {
 
   // Check for password reset token on mount and when URL changes
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const path = window.location.pathname;
-    const fullUrl = window.location.href;
+    const checkPasswordResetMode = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const path = window.location.pathname;
+      const fullUrl = window.location.href;
 
-    // Show password reset if:
-    // 1. URL explicitly contains 'reset-password' (either in path or as parameter name)
-    if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
-      setShowPasswordReset(true);
-    } else {
-      setShowPasswordReset(false);
-    }
+      // Show password reset if:
+      // 1. URL explicitly contains 'reset-password' (either in path or as parameter name)
+      if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
+        setShowPasswordReset(true);
+      } else {
+        setShowPasswordReset(false);
+      }
+    };
+
+    // Check on mount
+    checkPasswordResetMode();
+
+    // Also check when URL changes (for navigation events)
+    const handleLocationChange = () => {
+      checkPasswordResetMode();
+    };
+
+    // Listen for URL changes
+    window.addEventListener('popstate', handleLocationChange);
+
+    // Also periodically check (in case of hash/query changes not detected)
+    const intervalId = setInterval(checkPasswordResetMode, 500);
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Handle password reset close
