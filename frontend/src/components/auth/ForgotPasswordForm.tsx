@@ -70,7 +70,8 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
                         📧
                     </div>
                     <p style={{ color: '#666', marginBottom: '1rem' }}>
-                        We've sent password reset instructions to <strong>{email}</strong>
+                        If this email is associated with an account,<br />
+                        we've sent password reset instructions to <strong>{email}</strong>
                     </p>
                     <p style={{ color: '#999', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                         The link will expire in 1 hour for security reasons.
