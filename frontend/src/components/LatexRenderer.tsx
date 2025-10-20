@@ -240,6 +240,41 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         // Fix double parentheses (( ... )) - often used for emphasis
         fixed = fixed.replace(/\(\(\s*([^()]+)\s*\)\)/g, '( $1 )');
 
+        // Fix specific mathematical patterns that cause rendering issues
+        // Fix double negative signs in parentheses: (-(-7)) -> (-(-7))
+        // This handles the case where we have -(-7) which should stay as -(-7)
+        fixed = fixed.replace(/\(-\s*\(-\s*(\d+)\s*\)\s*\)/g, '(-(-$1))');
+        
+        // Fix the specific case where --7 appears (should be -(-7))
+        fixed = fixed.replace(/--(\d+)/g, '-(-$1)');
+        
+        // Fix multiplication in parentheses: (2(2)) -> (2 \cdot 2) or (2 \times 2)
+        fixed = fixed.replace(/\((\d+)\s*\((\d+)\s*\)\s*\)/g, '($1 \\cdot $2)');
+        
+        // Fix the specific case where (22) appears (should be (2 \cdot 2))
+        fixed = fixed.replace(/\((\d)(\d)\)/g, '($1 \\cdot $2)');
+        
+        // Additional fix for the specific pattern: (--7) -> (-(-7))
+        fixed = fixed.replace(/\(--(\d+)\)/g, '(-(-$1))');
+        
+        // Fix square root symbol: √ -> \sqrt
+        fixed = fixed.replace(/√(\d+)/g, '\\sqrt{$1}');
+        
+        // Fix plus-minus symbol: ± -> \pm
+        fixed = fixed.replace(/±/g, '\\pm');
+        
+        // Fix multiplication symbol: × -> \times
+        fixed = fixed.replace(/×/g, '\\times');
+        
+        // Fix spacing around \times in parentheses: (2\times2) -> (2 \times 2)
+        fixed = fixed.replace(/\((\d+)\\times(\d+)\)/g, '($1 \\times $2)');
+        
+        // Fix various Unicode minus signs to regular ASCII minus
+        fixed = fixed.replace(/−/g, '-'); // Unicode minus sign (U+2212) to ASCII hyphen-minus
+        fixed = fixed.replace(/‒/g, '-'); // Figure dash (U+2012) to ASCII hyphen-minus
+        fixed = fixed.replace(/–/g, '-'); // En dash (U+2013) to ASCII hyphen-minus
+        fixed = fixed.replace(/—/g, '-'); // Em dash (U+2014) to ASCII hyphen-minus
+
         // Fix derivative notation
         fixed = fixed.replace(/fracdx\[([^\]]+)\]/g, '\\frac{d}{dx}[$1]');
         fixed = fixed.replace(/fracd([a-z])\[([^\]]+)\]/g, '\\frac{d}{d$1}[$2]');
@@ -297,7 +332,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return _match;
         });
 
-        // Handle simple parentheses (not function calls)
+        // Handle simple parentheses (not function calls) - BUT be more careful about mathematical expressions
         converted = converted.replace(/(?<![a-zA-Z])\(([^()]+)\)/g, (_match, content) => {
             if (_match.includes('\\(') || content.includes('\\boxed')) return _match;
             if (content.match(/^(a|an)\s+/i)) return _match; // Prose
@@ -305,6 +340,23 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             if (content.includes('*') || content.includes('_') || content.includes('`')) return _match;
             
             const trimmed = content.trim();
+            
+            // Don't convert if this contains LaTeX commands that were already processed
+            if (content.includes('\\cdot') || content.includes('\\pm') || content.includes('\\sqrt')) {
+                return _match;
+            }
+            
+            // Don't convert if this is part of a larger mathematical expression
+            // Check if this parentheses is part of a mathematical statement (contains =, ±, /, etc.)
+            const beforeMatch = text.substring(0, text.indexOf(_match));
+            const afterMatch = text.substring(text.indexOf(_match) + _match.length);
+            
+            // If there's an equals sign, plus/minus, division, or other math operators nearby, 
+            // this is likely part of a larger math expression and shouldn't be converted
+            const mathContextPattern = /[=+\-×·÷±≠≤≥≈∞∑∏∫√²³⁴⁵⁶⁷⁸⁹⁰¹]/;
+            if (mathContextPattern.test(beforeMatch.slice(-20)) || mathContextPattern.test(afterMatch.slice(0, 20))) {
+                return _match;
+            }
             
             // Don't convert phrases with multiple words (prose, not math)
             if (trimmed.includes(' ')) return _match;
@@ -422,7 +474,55 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     const renderMathContent = (text: string): string => {
         let rendered = text;
 
-        // First, handle explicit display math ($$...$$)
+        // FIRST: Handle mathematical expressions BEFORE individual symbols get processed
+        // This catches expressions like "x = ..." that contain LaTeX commands
+        rendered = rendered.replace(/^x\s*=\s*(.+)$/gm, (_match, rightSide) => {
+            const fullExpression = `x = ${rightSide}`;
+            console.log('🔍 renderMathContent - Found x= line (EARLY):', fullExpression);
+            
+            // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
+            const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(fullExpression);
+            const alreadyRendered = fullExpression.includes('<span class="katex">') || fullExpression.includes('katex');
+            
+            if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
+                console.log('🔍 renderMathContent - Processing x= line as math (EARLY):', fullExpression);
+                return safeRenderKatex(fullExpression, false);
+            }
+            console.log('🔍 renderMathContent - Skipping x= line (EARLY):', fullExpression);
+            return _match;
+        });
+
+        // Handle other mathematical expressions that don't have explicit delimiters
+        rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+)$/gm, (_match, expression) => {
+            console.log('🔍 renderMathContent - Checking expression (EARLY):', expression);
+            // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
+            const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(expression);
+            const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
+            
+            if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
+                console.log('🔍 renderMathContent - Processing as math (EARLY):', expression);
+                return safeRenderKatex(expression, false);
+            }
+            console.log('🔍 renderMathContent - Skipping (EARLY):', expression);
+            return _match;
+        });
+
+        // Handle mathematical expressions within text (like verification steps)
+        // Look for patterns like "2(3)² - 7(3) + 3 = 18 - 21 + 3 = 0"
+        rendered = rendered.replace(/(\d+\([^)]+\)[²³⁴⁵⁶⁷⁸⁹⁰¹]?\s*[-+]\s*\d+\([^)]+\)\s*[-+]\s*\d+\s*=\s*[^=\n<]+)/g, (_match, mathExpression) => {
+            console.log('🔍 renderMathContent - Found math in text (EARLY):', mathExpression);
+            
+            const alreadyRendered = mathExpression.includes('<span class="katex">') || mathExpression.includes('katex');
+            
+            if (!alreadyRendered && looksMathematical(mathExpression)) {
+                console.log('🔍 renderMathContent - Processing math in text (EARLY):', mathExpression);
+                return safeRenderKatex(mathExpression, false);
+            }
+            console.log('🔍 renderMathContent - Skipping math in text (EARLY):', mathExpression);
+            return _match;
+        });
+
+        // Then handle explicit display math ($$...$$)
         MATH_DELIMITERS.display.forEach(({ pattern }) => {
             rendered = rendered.replace(pattern, (_match, math) => {
                 return safeRenderKatex(math, true);
@@ -552,6 +652,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         rendered = rendered.replace(/([a-zA-Z])\^(\d+|[a-zA-Z])/g, (_match, base, exp) => {
             return safeRenderKatex(`${base}^{${exp}}`, false);
         });
+
 
         return rendered;
     };
@@ -855,11 +956,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         try {
             let processed = text;
 
+            // Debug logging for multi-line mathematical expressions
+            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
+                console.log('🔍 LatexRenderer Debug - Input:', text);
+            }
+
             // Stage 1: Clean malformed content
             processed = cleanMalformedContent(processed);
 
             // Stage 2: Fix LaTeX issues
             processed = fixLatexIssues(processed);
+            
+            // Debug logging after Stage 2
+            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
+                console.log('🔍 LatexRenderer Debug - After Stage 2:', processed);
+            }
 
             // Stage 3: Convert implicit math notation
             processed = convertImplicitMath(processed);
@@ -873,6 +984,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Stage 6: Render math content
             processed = renderMathContent(processed);
+            
+            // Debug logging after Stage 6
+            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
+                console.log('🔍 LatexRenderer Debug - After Stage 6 (renderMathContent):', processed);
+            }
 
             // Stage 7: Process markdown formatting
             processed = processMarkdown(processed);
@@ -888,10 +1004,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 processed = processed.replace(`__CODE_BLOCK_${i}__`, block);
             });
 
-            // Final cleanup
-            processed = processed.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1');
+            // Final cleanup - only unescape markdown characters, not LaTeX commands
+            // Don't remove backslashes that are part of LaTeX commands
+            processed = processed.replace(/\\([`*_#+\-.!|])/g, '$1');
             processed = processed.replace(/\\\(/g, '');
             processed = processed.replace(/\\\)/g, '');
+
+            // Debug logging final result
+            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
+                console.log('🔍 LatexRenderer Debug - Final Result:', processed);
+            }
 
             return processed;
 
