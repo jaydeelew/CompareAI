@@ -115,7 +115,7 @@ export const UserMenu: React.FC = () => {
                         <a
                             href="mailto:support@compareintel.com"
                             className="menu-item"
-                            onClick={(e) => {
+                            onClick={() => {
                                 // Don't prevent default - let the browser handle it naturally
                                 setIsOpen(false);
                             }}
