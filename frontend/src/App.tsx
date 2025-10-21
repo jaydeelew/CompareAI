@@ -4,6 +4,7 @@ import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
 import { AdminPanel } from './components/admin';
+import { Footer } from './components';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -2276,6 +2277,9 @@ function AppContent() {
               </section>
             )}
           </main>
+
+          {/* Footer */}
+          <Footer />
 
           {/* Auth Modal */}
           <AuthModal

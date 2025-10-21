@@ -112,6 +112,17 @@ export const UserMenu: React.FC = () => {
                             <span className="menu-icon">⚙️</span>
                             Settings
                         </a>
+                        <a
+                            href="mailto:support@compareintel.com"
+                            className="menu-item"
+                            onClick={(e) => {
+                                // Don't prevent default - let the browser handle it naturally
+                                setIsOpen(false);
+                            }}
+                        >
+                            <span className="menu-icon">📧</span>
+                            Contact Support
+                        </a>
                     </nav>
 
                     <div className="user-menu-divider"></div>

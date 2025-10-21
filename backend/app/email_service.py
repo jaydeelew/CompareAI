@@ -119,6 +119,7 @@ async def send_verification_email(email: EmailStr, token: str):
             <p>If you didn't create an account with CompareIntel, you can safely ignore this email.</p>
           </div>
           <div class="footer">
+            <p>Need help? Contact us at <a href="mailto:support@compareintel.com" style="color: #0ea5e9;">support@compareintel.com</a></p>
             <p>&copy; 2025 CompareIntel. All rights reserved.</p>
           </div>
         </div>
@@ -226,6 +227,7 @@ async def send_password_reset_email(email: EmailStr, token: str):
             <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
           </div>
           <div class="footer">
+            <p>Need help? Contact us at <a href="mailto:support@compareintel.com" style="color: #0ea5e9;">support@compareintel.com</a></p>
             <p>&copy; 2025 CompareIntel. All rights reserved.</p>
           </div>
         </div>
@@ -378,6 +380,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             </p>
           </div>
           <div class="footer">
+            <p>Need help? Contact us at <a href="mailto:support@compareintel.com" style="color: #0ea5e9;">support@compareintel.com</a></p>
             <p>&copy; 2025 CompareIntel. All rights reserved.</p>
           </div>
         </div>
@@ -493,6 +496,7 @@ async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, dail
             </p>
           </div>
           <div class="footer">
+            <p>Need help? Contact us at <a href="mailto:support@compareintel.com" style="color: #0ea5e9;">support@compareintel.com</a></p>
             <p>&copy; 2025 CompareIntel. All rights reserved.</p>
           </div>
         </div>
