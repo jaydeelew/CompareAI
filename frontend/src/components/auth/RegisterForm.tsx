@@ -2,7 +2,7 @@
  * Register Form Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthForms.css';
 
@@ -18,6 +18,45 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Auto-sync password to confirm password field when password changes
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newPassword = e.target.value;
+        setPassword(newPassword);
+        // Auto-fill confirm password field when password is filled (e.g., by 1Password)
+        if (newPassword && !confirmPassword) {
+            setConfirmPassword(newPassword);
+        }
+    };
+
+    // Monitor password field for programmatic changes (e.g., 1Password autofill)
+    useEffect(() => {
+        const passwordField = document.getElementById('register-password') as HTMLInputElement;
+        if (passwordField) {
+            // Check for changes every 100ms to catch 1Password autofill
+            const interval = setInterval(() => {
+                if (passwordField.value && passwordField.value !== password && !confirmPassword) {
+                    setPassword(passwordField.value);
+                    setConfirmPassword(passwordField.value);
+                }
+            }, 100);
+
+            // Also use MutationObserver for immediate detection
+            const observer = new MutationObserver(() => {
+                if (passwordField.value && passwordField.value !== password && !confirmPassword) {
+                    setPassword(passwordField.value);
+                    setConfirmPassword(passwordField.value);
+                }
+            });
+
+            observer.observe(passwordField, { attributes: true, attributeFilter: ['value'] });
+
+            return () => {
+                clearInterval(interval);
+                observer.disconnect();
+            };
+        }
+    }, [password, confirmPassword]);
 
     const validateForm = (): boolean => {
         if (password.length < 12) {
@@ -94,7 +133,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                 <p>Get 10 daily comparisons for free</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="auth-form">
+            <form onSubmit={handleSubmit} className="auth-form" autoComplete="off">
                 {error && (
                     <div className="auth-error">
                         <span className="error-icon">⚠️</span>
@@ -106,6 +145,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                     <label htmlFor="email">Email</label>
                     <input
                         id="email"
+                        name="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -117,25 +157,30 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="password">Password</label>
+                    <label htmlFor="register-password">Password</label>
                     <input
-                        id="password"
+                        id="register-password"
+                        name="password"
                         type="password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={handlePasswordChange}
                         placeholder="••••••••••••"
                         required
                         autoComplete="new-password"
                         disabled={isLoading}
                         minLength={12}
+                        data-lpignore="false"
+                        data-form-type="register"
+                        data-1p-ignore="false"
                     />
                     <small className="form-hint">Min 12 chars: uppercase, lowercase, number & special char</small>
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="confirmPassword">Confirm Password</label>
+                    <label htmlFor="register-confirm-password">Confirm Password</label>
                     <input
-                        id="confirmPassword"
+                        id="register-confirm-password"
+                        name="confirmPassword"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -144,6 +189,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                         autoComplete="new-password"
                         disabled={isLoading}
                         minLength={12}
+                        data-lpignore="false"
+                        data-form-type="register"
+                        data-1p-ignore="false"
                     />
                 </div>
 
