@@ -14,12 +14,14 @@ from collections import defaultdict
 
 # Subscription tier configuration - MODEL-BASED PRICING
 # daily_limit = model responses per day (not comparisons)
-# model_limit = max models per comparison (tiered: 3/3/6/9)
+# model_limit = max models per comparison (tiered: 3/6/6/9/9)
 # overage_price = price per additional model response (TBD - pricing not yet finalized)
 SUBSCRIPTION_CONFIG = {
     "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False, "overage_price": None},  # Free registered users
-    "starter": {"daily_limit": 150, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
-    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
 }
 
 # Backwards compatibility - extract limits

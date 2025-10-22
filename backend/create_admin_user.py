@@ -107,10 +107,12 @@ def create_admin_user():
         print("\nSelect subscription tier:")
         print("1. free - Free tier")
         print("2. starter - Starter tier")
-        print("3. pro - Pro tier")
+        print("3. starter_plus - Starter+ tier")
+        print("4. pro - Pro tier")
+        print("5. pro_plus - Pro+ tier")
 
         while True:
-            tier_choice = input("Enter choice (1-3): ").strip()
+            tier_choice = input("Enter choice (1-5): ").strip()
             if tier_choice == "1":
                 subscription_tier = "free"
                 break
@@ -118,10 +120,16 @@ def create_admin_user():
                 subscription_tier = "starter"
                 break
             elif tier_choice == "3":
+                subscription_tier = "starter_plus"
+                break
+            elif tier_choice == "4":
                 subscription_tier = "pro"
                 break
+            elif tier_choice == "5":
+                subscription_tier = "pro_plus"
+                break
             else:
-                print("Invalid choice. Please enter 1, 2, or 3.")
+                print("Invalid choice. Please enter 1, 2, 3, 4, or 5.")
 
         # Create user
         user = User(

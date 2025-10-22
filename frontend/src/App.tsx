@@ -96,8 +96,10 @@ function AppContent() {
 
     switch (user.subscription_tier) {
       case 'pro':
+      case 'pro_plus':
         return 9;
       case 'starter':
+      case 'starter_plus':
         return 6;
       case 'free':
       default:
@@ -950,7 +952,7 @@ function AppContent() {
         const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
         const upgradeMsg = tierName === 'Anonymous' ? ' Register for a free account to get 3 models.' :
           tierName === 'free' ? ' Upgrade to Starter for 6 models or Pro for 9 models.' :
-            tierName === 'starter' ? ' Upgrade to Pro for 9 models.' : '';
+            (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models.' : '';
         setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
         return;
       }

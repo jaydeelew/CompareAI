@@ -127,12 +127,12 @@ def check_subscription_tier(required_tier: str):
     Dependency factory to check if user has required subscription tier.
 
     Args:
-        required_tier: Minimum required tier ('free', 'starter', 'pro')
+        required_tier: Minimum required tier ('free', 'starter', 'starter_plus', 'pro', 'pro_plus')
 
     Returns:
         Dependency function that validates subscription tier
     """
-    tier_hierarchy = {"free": 0, "starter": 1, "pro": 2}
+    tier_hierarchy = {"free": 0, "starter": 1, "starter_plus": 2, "pro": 3, "pro_plus": 4}
 
     def dependency(current_user: User = Depends(get_current_verified_user)) -> User:
         user_tier_level = tier_hierarchy.get(current_user.subscription_tier, 0)

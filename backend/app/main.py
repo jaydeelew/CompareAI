@@ -196,7 +196,7 @@ async def compare(
             upgrade_message = " Register for a free account to compare up to 3 models."
         elif tier_name == "free":
             upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
-        elif tier_name == "starter":
+        elif tier_name in ["starter", "starter_plus"]:
             upgrade_message = " Upgrade to Pro for 9 models."
 
         raise HTTPException(

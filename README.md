@@ -95,15 +95,22 @@ See [DEV_WORKFLOW.md](DEV_WORKFLOW.md) for detailed deployment workflows.
 
 - Anonymous (unregistered): 10 model responses/day (IP + browser fingerprint)
 - Free (registered): 20 model responses/day
-- Starter: 150 model responses/day + overage options (pricing TBD)
-- Pro: 450 model responses/day + overage options (pricing TBD)
+- Starter: 50 model responses/day + overage options (pricing TBD)
+- Starter+: 100 model responses/day + overage options (pricing TBD)
+- Pro: 200 model responses/day + overage options (pricing TBD)
+- Pro+: 400 model responses/day + overage options (pricing TBD)
 
 **Model Limits per Comparison:**
 
 - Anonymous: 3 models max
 - Free: 3 models max
-- Starter: 6 models max
-- Pro: 9 models max
+- Starter/Starter+: 6 models max
+- Pro/Pro+: 9 models max
+
+**Support & Features:**
+
+- Starter/Starter+: 48-hour email support, 30 days chat history
+- Pro/Pro+: 24-hour priority email support, 60-90 days chat history
 
 ## Key API Endpoints
 
@@ -131,8 +138,10 @@ GET  /model-stats                # Performance metrics
 # MODEL-BASED PRICING: daily_limit = model responses per day
 SUBSCRIPTION_CONFIG = {
     "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False},  # Registered users
-    "starter": {"daily_limit": 150, "model_limit": 6, "overage_allowed": True},
-    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
+    "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True},
+    "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True},
+    "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True},
+    "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True}
 }
 # Anonymous (unregistered): 10 model responses/day, 3 models max
 ```

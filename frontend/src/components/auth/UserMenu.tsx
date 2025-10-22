@@ -233,7 +233,7 @@ export const UserMenu: React.FC = () => {
                                 <div className="tier-features">
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>150 model responses</strong> per day (7.5x more)</span>
+                                        <span className="feature-text"><strong>50 model responses</strong> per day (2.5x more)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
@@ -245,7 +245,35 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text">Expedited email support (<strong>48-hour</strong> max response)</span>
+                                        <span className="feature-text">Email support (<strong>48-hour</strong> response)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>30 days</strong> chat history retention</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pricing-tier tier-starter">
+                                <div className="tier-header">
+                                    <h3 className="tier-name">Starter+</h3>
+                                </div>
+                                <div className="tier-features">
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>100 model responses</strong> per day (5x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Compare up to <strong>6 models</strong> simultaneously (2x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Overage options available</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Email support (<strong>48-hour</strong> response)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
@@ -262,7 +290,7 @@ export const UserMenu: React.FC = () => {
                                 <div className="tier-features">
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>450 model responses</strong> per day (22.5x more)</span>
+                                        <span className="feature-text"><strong>200 model responses</strong> per day (10x more)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
@@ -274,7 +302,35 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text">Expedited email support (<strong>24-hour</strong> max response)</span>
+                                        <span className="feature-text">Priority email support (<strong>24-hour</strong> response)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>60 days</strong> chat history retention</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pricing-tier tier-pro">
+                                <div className="tier-header">
+                                    <h3 className="tier-name">Pro+</h3>
+                                </div>
+                                <div className="tier-features">
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>400 model responses</strong> per day (20x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Compare up to <strong>9 models</strong> simultaneously (3x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Overage options available</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Priority email support (<strong>24-hour</strong> response)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>

@@ -34,7 +34,7 @@ class User(Base):
     reset_token_expires = Column(DateTime)
 
     # Subscription details
-    subscription_tier = Column(String(50), default="free")  # 'free', 'starter', 'pro'
+    subscription_tier = Column(String(50), default="free")  # 'free', 'starter', 'starter_plus', 'pro', 'pro_plus'
     subscription_status = Column(String(50), default="active")  # 'active', 'cancelled', 'expired'
     subscription_period = Column(String(20), default="monthly")  # 'monthly', 'yearly'
     subscription_start_date = Column(DateTime)

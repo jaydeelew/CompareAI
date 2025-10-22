@@ -9,7 +9,7 @@ export interface User {
     is_active: boolean;
     role: 'user' | 'moderator' | 'admin' | 'super_admin';
     is_admin: boolean;
-    subscription_tier: 'free' | 'starter' | 'pro';
+    subscription_tier: 'free' | 'starter' | 'starter_plus' | 'pro' | 'pro_plus';
     subscription_status: 'active' | 'cancelled' | 'expired';
     subscription_period: 'monthly' | 'yearly';
     daily_usage_count: number; // MODEL-BASED: counts individual model responses, not comparisons

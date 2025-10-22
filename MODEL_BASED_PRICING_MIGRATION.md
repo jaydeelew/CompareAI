@@ -21,12 +21,14 @@ This migration switches CompareAI from **comparison-based** to **model-based** p
 
 ## 🎯 New Tier Structure
 
-| Tier                         | Daily Model Responses | Max Models/Comparison | Notes                    |
-| ---------------------------- | --------------------- | --------------------- | ------------------------ |
-| **Anonymous (unregistered)** | 10                    | 9                     | IP + fingerprint tracked |
-| **Free (registered)**        | 20                    | 9                     | No overages              |
-| **Starter**                  | 150                   | 9                     | Overage available (TBD)  |
-| **Pro**                      | 450                   | 9                     | Overage available (TBD)  |
+| Tier                         | Daily Model Responses | Max Models/Comparison | Support Response | Chat History | Notes                    |
+| ---------------------------- | --------------------- | --------------------- | ---------------- | ------------ | ------------------------ |
+| **Anonymous (unregistered)** | 10                    | 3                     | N/A              | N/A          | IP + fingerprint tracked |
+| **Free (registered)**        | 20                    | 3                     | N/A              | N/A          | No overages              |
+| **Starter**                  | 50                    | 6                     | 48 hours         | 30 days      | Overage available (TBD)  |
+| **Starter+**                 | 100                   | 6                     | 48 hours         | 30 days      | Overage available (TBD)  |
+| **Pro**                      | 200                   | 9                     | 24 hours         | 60 days      | Overage available (TBD)  |
+| **Pro+**                     | 400                   | 9                     | 24 hours         | 90 days      | Overage available (TBD)  |
 
 ### Translation from Old System:
 
@@ -34,8 +36,8 @@ This migration switches CompareAI from **comparison-based** to **model-based** p
 | ----------------------- | ------------------------------- | ----------------------------------- |
 | Anonymous: 5 comparisons | 10 model responses (unregistered) | ~3 comparisons × 3 models         |
 | Free: 10 comparisons    | 20 model responses (registered) | ~6 comparisons × 3 models           |
-| Starter: 25 comparisons | 150 model responses             | ~25 comparisons × 6 models          |
-| Pro: 50 comparisons     | 450 model responses             | ~50 comparisons × 9 models          |
+| Starter: 25 comparisons | 50 model responses              | ~8 comparisons × 6 models           |
+| Pro: 50 comparisons     | 200 model responses             | ~22 comparisons × 9 models          |
 
 **Key Benefit:** Registration provides 2x capacity (10 → 20 model responses), creating strong incentive to create a free account.
 

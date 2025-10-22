@@ -137,7 +137,7 @@ class PasswordReset(BaseModel):
 class SubscriptionUpdate(BaseModel):
     """Schema for updating subscription."""
 
-    tier: str = Field(..., pattern="^(free|starter|pro)$")
+    tier: str = Field(..., pattern="^(free|starter|starter_plus|pro|pro_plus)$")
     period: str = Field(..., pattern="^(monthly|yearly)$")
 
 
@@ -291,7 +291,7 @@ class AdminUserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=12)
     role: str = Field(default="user", pattern="^(user|moderator|admin|super_admin)$")
-    subscription_tier: str = Field(default="free", pattern="^(free|starter|pro)$")
+    subscription_tier: str = Field(default="free", pattern="^(free|starter|starter_plus|pro|pro_plus)$")
     subscription_period: str = Field(default="monthly", pattern="^(monthly|yearly)$")
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=False)
@@ -318,7 +318,7 @@ class AdminUserUpdate(BaseModel):
 
     email: Optional[EmailStr] = None
     role: Optional[str] = Field(None, pattern="^(user|moderator|admin|super_admin)$")
-    subscription_tier: Optional[str] = Field(None, pattern="^(free|starter|pro)$")
+    subscription_tier: Optional[str] = Field(None, pattern="^(free|starter|starter_plus|pro|pro_plus)$")
     subscription_status: Optional[str] = Field(None, pattern="^(active|cancelled|expired)$")
     subscription_period: Optional[str] = Field(None, pattern="^(monthly|yearly)$")
     is_active: Optional[bool] = None
