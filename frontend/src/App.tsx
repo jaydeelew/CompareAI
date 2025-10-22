@@ -1370,7 +1370,11 @@ function AppContent() {
         } else {
           const timeoutMinutes = Math.floor(dynamicTimeout / 60000);
           const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000);
-          setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} models). Try selecting fewer models, or wait a moment and try again.`);
+          const modelText = selectedModels.length === 1 ? 'model' : 'models';
+          const suggestionText = selectedModels.length === 1
+            ? 'Please wait a moment and try again.'
+            : 'Try selecting fewer models, or wait a moment and try again.';
+          setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} ${modelText}). ${suggestionText}`);
         }
       } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
         setError('Unable to connect to the server. Please check if the backend is running.');
