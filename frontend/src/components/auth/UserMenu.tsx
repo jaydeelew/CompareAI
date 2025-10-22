@@ -7,9 +7,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './UserMenu.css';
 
+type ModalType = 'dashboard' | 'settings' | 'upgrade' | null;
+
 export const UserMenu: React.FC = () => {
     const { user, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
+    const [activeModal, setActiveModal] = useState<ModalType>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu when clicking outside
@@ -28,6 +31,18 @@ export const UserMenu: React.FC = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOpen]);
+
+    // Prevent body scroll when modal is open
+    useEffect(() => {
+        if (activeModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [activeModal]);
 
     if (!user) return null;
 
@@ -51,6 +66,15 @@ export const UserMenu: React.FC = () => {
             default:
                 return 'Free';
         }
+    };
+
+    const handleMenuItemClick = (modalType: ModalType) => {
+        setActiveModal(modalType);
+        setIsOpen(false);
+    };
+
+    const closeModal = () => {
+        setActiveModal(null);
     };
 
     return (
@@ -100,18 +124,27 @@ export const UserMenu: React.FC = () => {
                     <div className="user-menu-divider"></div>
 
                     <nav className="user-menu-nav">
-                        <a href="/dashboard" className="menu-item">
+                        <button
+                            className="menu-item"
+                            onClick={() => handleMenuItemClick('dashboard')}
+                        >
                             <span className="menu-icon">📊</span>
                             Dashboard
-                        </a>
-                        <a href="/pricing" className="menu-item">
+                        </button>
+                        <button
+                            className="menu-item"
+                            onClick={() => handleMenuItemClick('upgrade')}
+                        >
                             <span className="menu-icon">💳</span>
                             Upgrade Plan
-                        </a>
-                        <a href="/settings" className="menu-item">
+                        </button>
+                        <button
+                            className="menu-item"
+                            onClick={() => handleMenuItemClick('settings')}
+                        >
                             <span className="menu-icon">⚙️</span>
                             Settings
-                        </a>
+                        </button>
                         <a
                             href="mailto:support@compareintel.com"
                             className="menu-item"
@@ -137,6 +170,121 @@ export const UserMenu: React.FC = () => {
                         <span className="menu-icon">🚪</span>
                         Sign Out
                     </button>
+                </div>
+            )}
+
+            {/* Modals */}
+            {activeModal === 'dashboard' && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-content coming-soon-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={closeModal} aria-label="Close modal">
+                            ×
+                        </button>
+                        <div className="modal-icon">📊</div>
+                        <h2 className="modal-title">Dashboard</h2>
+                        <p className="modal-description">
+                            The Dashboard feature is coming soon! Track your usage analytics, view comparison history, and gain insights into your AI model evaluations all in one place.
+                        </p>
+                        <button className="modal-button-primary" onClick={closeModal}>
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeModal === 'settings' && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-content coming-soon-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={closeModal} aria-label="Close modal">
+                            ×
+                        </button>
+                        <div className="modal-icon">⚙️</div>
+                        <h2 className="modal-title">Settings</h2>
+                        <p className="modal-description">
+                            The Settings feature is coming soon! Customize your experience, manage your account preferences, and configure notifications to suit your workflow.
+                        </p>
+                        <button className="modal-button-primary" onClick={closeModal}>
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeModal === 'upgrade' && (
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-content upgrade-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={closeModal} aria-label="Close modal">
+                            ×
+                        </button>
+                        <div className="upgrade-modal-header">
+                            <h2 className="modal-title">Upgrade Your Plan</h2>
+                            <p className="modal-subtitle">Choose the plan that best fits your needs</p>
+                        </div>
+
+                        <div className="pricing-tiers">
+                            <div className="pricing-tier tier-starter">
+                                <div className="tier-header">
+                                    <h3 className="tier-name">Starter</h3>
+                                    <div className="tier-badge tier-badge-starter">POPULAR</div>
+                                </div>
+                                <div className="tier-features">
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>25 comparisons</strong> per day</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Compare up to <strong>6 models</strong> simultaneously</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Expedited email support (<strong>48-hour</strong> max response)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>30 days</strong> chat history retention</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pricing-tier tier-pro">
+                                <div className="tier-header">
+                                    <h3 className="tier-name">Pro</h3>
+                                    <div className="tier-badge tier-badge-pro">BEST VALUE</div>
+                                </div>
+                                <div className="tier-features">
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>50 comparisons</strong> per day</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Compare up to <strong>9 models</strong> simultaneously</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Expedited email support (<strong>24-hour</strong> max response)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text"><strong>90 days</strong> chat history retention</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="upgrade-modal-footer">
+                            <p className="pricing-notice">
+                                💡 <strong>Flexible overage pricing:</strong> Need more comparisons? Both paid tiers allow you to exceed your daily limit by paying per additional comparison. Never hit a hard limit again!
+                            </p>
+                            <p className="pricing-notice" style={{ marginTop: '0.75rem' }}>
+                                These paid tiers and pricing will be available soon. We're working hard to bring you the best value and features!
+                            </p>
+                            <button className="modal-button-primary" onClick={closeModal}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
