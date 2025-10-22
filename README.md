@@ -91,15 +91,16 @@ See [DEV_WORKFLOW.md](DEV_WORKFLOW.md) for detailed deployment workflows.
 - Password reset with secure tokens
 - Optional anonymous usage (IP/fingerprint tracking)
 
-**Rate Limiting:**
+**Rate Limiting (Model-Based):**
 
-- Anonymous: 5 comparisons/day (IP + browser fingerprint)
-- Free tier: 10/day
-- Starter: 25/day + $0.20/overage
-- Pro: 50/day + $0.25/overage
+- Anonymous (unregistered): 10 model responses/day (IP + browser fingerprint)
+- Free (registered): 20 model responses/day
+- Starter: 150 model responses/day + overage options (pricing TBD)
+- Pro: 450 model responses/day + overage options (pricing TBD)
 
 **Model Limits per Comparison:**
 
+- Anonymous: 3 models max
 - Free: 3 models max
 - Starter: 6 models max
 - Pro: 9 models max
@@ -127,12 +128,16 @@ GET  /model-stats                # Performance metrics
 **Subscription Tiers** (`backend/app/rate_limiting.py`):
 
 ```python
+# MODEL-BASED PRICING: daily_limit = model responses per day
 SUBSCRIPTION_CONFIG = {
-    "free": {"daily_limit": 10, "model_limit": 3, "overage_allowed": False},
-    "starter": {"daily_limit": 25, "model_limit": 6, "overage_price": 0.20},
-    "pro": {"daily_limit": 50, "model_limit": 9, "overage_price": 0.25}
+    "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False},  # Registered users
+    "starter": {"daily_limit": 150, "model_limit": 6, "overage_allowed": True},
+    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
 }
+# Anonymous (unregistered): 10 model responses/day, 3 models max
 ```
+
+**Note:** Usage is now tracked by individual model responses, not comparisons. Each model in a comparison counts as one response toward the daily limit.
 
 ## Project Structure
 

@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document describes the **multi-layer anti-abuse system** implemented to prevent users from exceeding the daily comparison limit without requiring user accounts.
+This document describes the **multi-layer anti-abuse system** implemented to prevent users from exceeding daily limits. The system uses **model-based pricing** where each AI model response counts individually toward the daily limit.
+
+**Updated October 22, 2025:** Switched from comparison-based to model-based rate limiting. All tiers now support up to 9 models per comparison.
 
 ## Architecture
 
@@ -30,25 +32,34 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
 ### Backend Changes (`backend/app/main.py`)
 
-1. **Added Rate Limiting Configuration**
+1. **Rate Limiting Configuration (Model-Based)**
 
    ```python
-   MAX_DAILY_COMPARISONS = 10
-   rate_limit_storage = {}  # In-memory storage
+   # MODEL-BASED PRICING: daily_limit = model responses per day
+   SUBSCRIPTION_CONFIG = {
+       "free": {"daily_limit": 20, "model_limit": 9, "overage_allowed": False},  # Registered users
+       "starter": {"daily_limit": 150, "model_limit": 9, "overage_allowed": True},
+       "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
+   }
+   # Anonymous (unregistered) users: 10 model responses/day
    ```
 
-2. **Added Helper Functions**
+2. **Helper Functions (Model-Based)**
 
    - `get_client_ip(request)`: Extracts IP from request (handles proxies)
    - `check_rate_limit(identifier)`: Checks if identifier exceeded limit
-   - `increment_usage(identifier)`: Increments usage counter
+   - `increment_usage(identifier, count)`: Increments usage by number of models used
+   - `check_user_rate_limit(user, db)`: Checks authenticated user's model response limit
+   - `increment_user_usage(user, db, count)`: Increments user's usage by model count
 
-3. **Updated `/compare` Endpoint**
+3. **Updated `/compare` Endpoint (Model-Based)**
 
-   - Now accepts `browser_fingerprint` in request body
-   - Checks rate limits for both IP and fingerprint
-   - Returns 429 error if limit exceeded
-   - Increments counters on successful request
+   - Enforces uniform 9 model limit per comparison (all tiers)
+   - Calculates model responses needed for the request
+   - Checks if user has enough model responses remaining
+   - Returns 429 error if limit would be exceeded
+   - Increments counters by number of models used (not just +1)
+   - Tracks overage model responses for paid tiers
 
 4. **Added New Endpoint**
 
@@ -107,16 +118,20 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
    - IP address from request
    - Browser fingerprint from body
    ↓
-4. Backend checks rate limits:
-   - IP count < 10? ✓
-   - Fingerprint count < 10? ✓
+4. Backend checks rate limits (MODEL-BASED):
+   - Calculate models needed (e.g., 3 models selected = 3 model responses)
+   - Check: current usage + models needed ≤ daily limit?
+   - For anonymous (unregistered): IP count + models ≤ 10? ✓
+   - For authenticated free: usage + models ≤ 20? ✓
+   - For authenticated paid: usage + models ≤ tier limit? ✓
    ↓
-5. If EITHER limit exceeded:
-   → Return 429 error
+5. If limit would be exceeded:
+   → Return 429 error with specific message
+   → Shows how many model responses available vs. needed
    → User sees error message
    ↓
-6. If both pass:
-   → Increment both counters
+6. If check passes:
+   → Increment counter by number of models (not +1)
    → Process comparison
    → Return results
 ```
@@ -190,13 +205,23 @@ npm run build
 3. Check browser console: Should see fingerprint being generated
 4. Check backend logs: Should see IP and fingerprint tracking
 
-### Test 2: Reach the Limit
+### Test 2: Reach the Limit (Model-Based)
 
-1. Make 10 comparisons from the same browser
-2. On the 11th attempt:
-   - Should see error: "Daily limit of 10 comparisons exceeded..."
+**Anonymous User (Unregistered):**
+1. Make 3 comparisons using 3 models each (3 × 3 = 9 model responses)
+2. On the next attempt with 2+ models:
+   - Should see error: "Daily limit of 10 model responses exceeded..."
    - Frontend shows red error message
    - Backend returns 429 status code
+   - Encouraged to register for 20 model responses/day
+
+**Free Tier User (Registered):**
+1. Make 6 comparisons using 3 models each (6 × 3 = 18 model responses)
+2. Alternatively, make 2 comparisons using 9 models each (2 × 9 = 18 model responses)
+3. On the next attempt with 3+ models:
+   - Should see error about exceeding 20 model responses
+   - Message shows exactly how many responses available vs. needed
+   - Encouraged to upgrade to Starter
 
 ### Test 3: Bypass Attempts
 
@@ -221,15 +246,57 @@ npm run build
 # Check your current rate limit status
 curl "http://localhost:8000/rate-limit-status"
 
-# Response example:
+# Response example (model-based):
 {
   "ip_address": "192.168.1.100",
-  "ip_usage_count": 5,
-  "max_daily_limit": 10,
-  "remaining": 5,
+  "ip_usage_count": 7,  # model responses used
+  "max_daily_limit": 10,  # for anonymous (unregistered) users
+  "remaining": 3,  # model responses remaining
   "is_limited": false
 }
+
+# Authenticated free user example:
+{
+  "daily_usage": 15,  # model responses used today
+  "daily_limit": 20,  # for free registered tier
+  "remaining_usage": 5,  # model responses remaining
+  "subscription_tier": "free",
+  "model_limit": 9  # max models per comparison (uniform)
+}
 ```
+
+## Model-Based Pricing Benefits ✨ _New as of Oct 22, 2025_
+
+**Why Model-Based Instead of Comparison-Based?**
+
+1. **Fair Usage:** Users pay/consume based on actual AI usage
+   - 1 model comparison = 1 model response
+   - 9 model comparison = 9 model responses
+   - No penalty for efficient usage patterns
+
+2. **Flexible Optimization:** Users can choose model count based on needs
+   - Quick test: Use 1 model (1 response)
+   - Focused comparison: Use 3 models (3 responses)
+   - Comprehensive analysis: Use 9 models (9 responses)
+
+3. **Uniform Capabilities:** All tiers have same model access
+   - Free, Starter, and Pro can all use up to 9 models per comparison
+   - Only difference is daily capacity (30/150/450 model responses)
+   - No artificial feature restrictions
+
+4. **Better Cost Alignment:** 
+   - Our cost: $0.0166 per model response
+   - Model-based tracking directly reflects our costs
+   - More predictable profitability
+   - Fairer overage pricing (when implemented)
+
+**Example Scenarios:**
+
+- **Anonymous User:** 3 comparisons × 3 models = 9 responses (within 10/day limit)
+- **Free Registered User:** 6 comparisons × 3 models = 18 responses (within 20/day limit)
+- **Efficient Starter User:** 50 comparisons × 3 models = 150 responses (fits Starter tier)
+- **Power Pro User:** 50 comparisons × 9 models = 450 responses (needs Pro tier)
+- **Variable User:** Mix of 1-9 models per comparison based on task complexity
 
 ## Security Considerations
 
@@ -245,15 +312,17 @@ curl "http://localhost:8000/rate-limit-status"
 
 ### What This Prevents
 
-✅ **Casual abuse**: Regular users can't exceed 10/day without effort  
+✅ **Casual abuse**: Regular users can't exceed limits without effort  
 ✅ **Browser-based bypass**: Clearing localStorage doesn't help  
 ✅ **Incognito mode**: Still tracked by IP  
 ✅ **Multiple browsers**: Same IP = shared limit  
 ✅ **Automated scripts**: Must spoof both IP and fingerprint
+✅ **Model response abuse**: Each model used counts individually
+✅ **Registration incentive**: 2x capacity encourages account creation
 
 ### What This Does NOT Prevent
 
-⚠️ **VPN switching**: New IP = new 10 comparisons  
+⚠️ **VPN switching**: New IP = fresh limit (10 model responses for anonymous)  
 ⚠️ **Multiple devices**: Different IP = separate counter  
 ⚠️ **Sophisticated attackers**: Can spoof fingerprints  
 ⚠️ **Server restart**: In-memory storage is reset
@@ -275,7 +344,25 @@ Consider upgrading to persistent storage:
 
 ## Configuration
 
-### Change Daily Limit
+### Change Model Response Limits
+
+Edit `backend/app/rate_limiting.py`:
+
+```python
+# Adjust limits for each tier
+SUBSCRIPTION_CONFIG = {
+    "free": {"daily_limit": 20, "model_limit": 9, "overage_allowed": False},  # Registered users
+    "starter": {"daily_limit": 150, "model_limit": 9, "overage_allowed": True},
+    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
+}
+```
+
+For anonymous (unregistered) users, update in `check_anonymous_rate_limit()`:
+```python
+is_allowed = current_count < 10  # Change 10 to your desired limit
+```
+
+### Change Daily Limit (Legacy Documentation)
 
 Edit `backend/app/main.py`:
 

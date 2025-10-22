@@ -46,8 +46,9 @@ interface ModelsByProvider {
 // Maximum number of models that can be selected
 const MAX_MODELS_LIMIT = 12;
 
-// Freemium usage limits (anonymous users only)
-const MAX_DAILY_USAGE = 5;
+// Freemium usage limits (anonymous users only) - MODEL-BASED
+// Anonymous (unregistered) users get 10 model responses per day
+const MAX_DAILY_USAGE = 10;
 
 // Simple hash function to convert fingerprint to a fixed-length string
 const simpleHash = async (str: string): Promise<string> => {
@@ -1141,9 +1142,17 @@ function AppContent() {
       return;
     }
 
-    // Check daily usage limit
+    // Check daily usage limit (model-based)
+    const modelsNeeded = selectedModels.length;
     if (usageCount >= MAX_DAILY_USAGE) {
-      setError('You\'ve reached your daily limit of 5 free comparisons. Register for a free account to get 10 comparisons per day!');
+      setError('You\'ve reached your daily limit of 10 model responses. Register for a free account to get 20 model responses per day!');
+      return;
+    }
+
+    // Check if this comparison would exceed the limit
+    if (usageCount + modelsNeeded > MAX_DAILY_USAGE) {
+      const remaining = MAX_DAILY_USAGE - usageCount;
+      setError(`You have ${remaining} model responses remaining today, but need ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
       return;
     }
 
@@ -1292,7 +1301,7 @@ function AppContent() {
             }));
           } else {
             // Fallback to local increment if backend sync fails
-            const newUsageCount = usageCount + 1;
+            const newUsageCount = usageCount + selectedModels.length;
             setUsageCount(newUsageCount);
             const today = new Date().toDateString();
             localStorage.setItem('compareai_usage', JSON.stringify({
@@ -1302,8 +1311,8 @@ function AppContent() {
           }
         } catch (error) {
           console.error('Failed to sync usage count after comparison:', error);
-          // Fallback to local increment
-          const newUsageCount = usageCount + 1;
+          // Fallback to local increment (increment by number of models used)
+          const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
           const today = new Date().toDateString();
           localStorage.setItem('compareai_usage', JSON.stringify({
@@ -2013,9 +2022,9 @@ function AppContent() {
               }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                   {usageCount < MAX_DAILY_USAGE ? (
-                    `${MAX_DAILY_USAGE - usageCount} of 5 comparisons remaining today • Register for 10 free per day`
+                    `${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Register for 20 free per day`
                   ) : (
-                    'Daily limit reached! Register for a free account to get 10 comparisons per day.'
+                    'Daily limit reached! Register for a free account to get 20 model responses per day.'
                   )}
                 </div>
 

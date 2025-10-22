@@ -12,8 +12,8 @@ export interface User {
     subscription_tier: 'free' | 'starter' | 'pro';
     subscription_status: 'active' | 'cancelled' | 'expired';
     subscription_period: 'monthly' | 'yearly';
-    daily_usage_count: number;
-    monthly_overage_count: number;
+    daily_usage_count: number; // MODEL-BASED: counts individual model responses, not comparisons
+    monthly_overage_count: number; // MODEL-BASED: counts overage model responses
     created_at: string;
 }
 
@@ -54,14 +54,14 @@ export interface AuthContextType {
 }
 
 export interface UsageStats {
-    daily_usage: number;
-    daily_limit: number;
-    remaining_usage: number;
+    daily_usage: number; // MODEL-BASED: number of model responses used today
+    daily_limit: number; // MODEL-BASED: total model responses allowed per day
+    remaining_usage: number; // MODEL-BASED: remaining model responses
     subscription_tier: string;
-    model_limit: number;
+    model_limit: number; // Max models per comparison (uniform 9 for all tiers)
     overage_allowed: boolean;
-    overage_price: number | null;
-    monthly_overage_count: number;
+    overage_price: number | null; // Price per additional model response (TBD)
+    monthly_overage_count: number; // MODEL-BASED: overage model responses this month
     reset_time: string;
 }
 

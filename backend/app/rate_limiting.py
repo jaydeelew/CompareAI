@@ -12,11 +12,14 @@ from sqlalchemy.orm import Session
 from .models import User
 from collections import defaultdict
 
-# Subscription tier configuration
+# Subscription tier configuration - MODEL-BASED PRICING
+# daily_limit = model responses per day (not comparisons)
+# model_limit = max models per comparison (tiered: 3/3/6/9)
+# overage_price = price per additional model response (TBD - pricing not yet finalized)
 SUBSCRIPTION_CONFIG = {
-    "free": {"daily_limit": 10, "model_limit": 3, "overage_allowed": False, "overage_price": None},
-    "starter": {"daily_limit": 25, "model_limit": 6, "overage_allowed": True, "overage_price": 0.20},  # USD per comparison
-    "pro": {"daily_limit": 50, "model_limit": 9, "overage_allowed": True, "overage_price": 0.25},  # USD per comparison
+    "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False, "overage_price": None},  # Free registered users
+    "starter": {"daily_limit": 150, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
 }
 
 # Backwards compatibility - extract limits
@@ -55,15 +58,16 @@ def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
     return is_allowed, user.daily_usage_count, daily_limit
 
 
-def increment_user_usage(user: User, db: Session) -> None:
+def increment_user_usage(user: User, db: Session, count: int = 1) -> None:
     """
     Increment authenticated user's daily usage count.
 
     Args:
         user: Authenticated user object
         db: Database session
+        count: Number of model responses to add (default: 1)
     """
-    user.daily_usage_count += 1
+    user.daily_usage_count += count
     user.updated_at = datetime.utcnow()
     db.commit()
 
@@ -89,28 +93,29 @@ def check_anonymous_rate_limit(identifier: str) -> Tuple[bool, int]:
 
     current_count = user_data["count"]
 
-    # Anonymous users get 5 comparisons per day
-    is_allowed = current_count < 5
+    # Anonymous (unregistered) users get 10 model responses per day
+    is_allowed = current_count < 10
 
     return is_allowed, current_count
 
 
-def increment_anonymous_usage(identifier: str) -> None:
+def increment_anonymous_usage(identifier: str, count: int = 1) -> None:
     """
     Increment usage count for anonymous user.
 
     Args:
         identifier: Unique identifier (e.g., "ip:192.168.1.1" or "fp:xxx")
+        count: Number of model responses to add (default: 1)
     """
     today = datetime.now().date().isoformat()
     user_data = anonymous_rate_limit_storage[identifier]
 
     if user_data["date"] != today:
-        user_data["count"] = 1
+        user_data["count"] = count
         user_data["date"] = today
         user_data["first_seen"] = datetime.now()
     else:
-        user_data["count"] += 1
+        user_data["count"] += count
 
 
 def get_user_usage_stats(user: User) -> Dict[str, Any]:
@@ -146,7 +151,7 @@ def get_anonymous_usage_stats(identifier: str) -> Dict[str, Any]:
         dict: Usage statistics including daily usage, limit, and remaining
     """
     _, current_count = check_anonymous_rate_limit(identifier)
-    daily_limit = 5
+    daily_limit = 10  # Model responses per day for anonymous (unregistered) users
     remaining = max(0, daily_limit - current_count)
 
     return {
@@ -162,7 +167,7 @@ def should_send_usage_warning(user: User) -> bool:
     """
     Check if usage warning email should be sent to user.
 
-    Sends warning at 80% usage (8/10 for free, 40/50 for pro, 80/100 for pro+).
+    Sends warning at 80% usage (16/20 for free, 120/150 for starter, 360/450 for pro).
 
     Args:
         user: Authenticated user object
@@ -170,7 +175,7 @@ def should_send_usage_warning(user: User) -> bool:
     Returns:
         bool: True if warning should be sent
     """
-    daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
+    daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 20)
     warning_threshold = int(daily_limit * 0.8)
 
     return user.daily_usage_count == warning_threshold
@@ -250,6 +255,6 @@ def get_rate_limit_info() -> Dict[str, Any]:
     return {
         "subscription_tiers": SUBSCRIPTION_LIMITS,
         "model_limits": MODEL_LIMITS,
-        "anonymous_limit": 5,
+        "anonymous_limit": 10,  # Model responses per day for unregistered users
         "anonymous_users_tracked": len(anonymous_rate_limit_storage),
     }

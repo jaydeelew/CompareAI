@@ -108,14 +108,14 @@ export const UserMenu: React.FC = () => {
                         <div className="usage-info">
                             <div className="usage-label">Today's Usage</div>
                             <div className="usage-value">
-                                {user.daily_usage_count} comparisons
+                                {user.daily_usage_count} model responses
                             </div>
                         </div>
                         {user.monthly_overage_count > 0 && (
                             <div className="usage-info">
                                 <div className="usage-label">Monthly Overages</div>
                                 <div className="usage-value overage-count">
-                                    {user.monthly_overage_count} comparisons
+                                    {user.monthly_overage_count} model responses
                                 </div>
                             </div>
                         )}
@@ -218,7 +218,10 @@ export const UserMenu: React.FC = () => {
                         </button>
                         <div className="upgrade-modal-header">
                             <h2 className="modal-title">Upgrade Your Plan</h2>
-                            <p className="modal-subtitle">Choose the plan that best fits your needs</p>
+                            <p className="modal-subtitle">Get more capacity and compare more models simultaneously</p>
+                            <p className="modal-subtitle" style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: '#666' }}>
+                                You currently have: <strong>20 model responses per day</strong> • <strong>3 models max</strong> per comparison
+                            </p>
                         </div>
 
                         <div className="pricing-tiers">
@@ -230,11 +233,15 @@ export const UserMenu: React.FC = () => {
                                 <div className="tier-features">
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>25 comparisons</strong> per day</span>
+                                        <span className="feature-text"><strong>150 model responses</strong> per day (7.5x more)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text">Compare up to <strong>6 models</strong> simultaneously</span>
+                                        <span className="feature-text">Compare up to <strong>6 models</strong> simultaneously (2x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Overage options available</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
@@ -255,11 +262,15 @@ export const UserMenu: React.FC = () => {
                                 <div className="tier-features">
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>50 comparisons</strong> per day</span>
+                                        <span className="feature-text"><strong>450 model responses</strong> per day (22.5x more)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text">Compare up to <strong>9 models</strong> simultaneously</span>
+                                        <span className="feature-text">Compare up to <strong>9 models</strong> simultaneously (3x more)</span>
+                                    </div>
+                                    <div className="feature-item">
+                                        <span className="feature-icon">✓</span>
+                                        <span className="feature-text">Overage options available</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
@@ -275,10 +286,10 @@ export const UserMenu: React.FC = () => {
 
                         <div className="upgrade-modal-footer">
                             <p className="pricing-notice">
-                                💡 <strong>Flexible overage pricing:</strong> Need more comparisons? Both paid tiers allow you to exceed your daily limit by paying per additional comparison. Never hit a hard limit again!
+                                💡 <strong>Model-based pricing:</strong> Each AI model response counts toward your daily limit. Higher tiers give you more daily responses AND let you compare more models at once for deeper analysis!
                             </p>
                             <p className="pricing-notice" style={{ marginTop: '0.75rem' }}>
-                                These paid tiers and pricing will be available soon. We're working hard to bring you the best value and features!
+                                Paid tiers and pricing will be available soon. We're working hard to bring you the best value and features!
                             </p>
                             <button className="modal-button-primary" onClick={closeModal}>
                                 Close

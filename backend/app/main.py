@@ -186,13 +186,15 @@ async def compare(
         tier_model_limit = get_model_limit(current_user.subscription_tier)
         tier_name = current_user.subscription_tier
     else:
-        tier_model_limit = get_model_limit("free")  # Anonymous users get free tier limits
-        tier_name = "free"
+        tier_model_limit = 3  # Anonymous users get 3 models max
+        tier_name = "anonymous"
 
     # Enforce tier-specific model limit
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
-        if tier_name == "free":
+        if tier_name == "anonymous":
+            upgrade_message = " Register for a free account to compare up to 3 models."
+        elif tier_name == "free":
             upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
         elif tier_name == "starter":
             upgrade_message = " Upgrade to Pro for 9 models."
@@ -201,6 +203,9 @@ async def compare(
             status_code=400,
             detail=f"Your {tier_name} tier allows maximum {tier_model_limit} models per comparison. You selected {len(req.models)} models.{upgrade_message}",
         )
+    
+    # Get number of models for usage tracking
+    num_models = len(req.models)
 
     # --- HYBRID RATE LIMITING ---
     client_ip = get_client_ip(request)
@@ -209,57 +214,75 @@ async def compare(
     overage_charge = 0.0
 
     if current_user:
-        # Authenticated user - check subscription tier limits
+        # Authenticated user - check subscription tier limits (model response based)
         is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
 
-        if not is_allowed:
+        # Check if user has enough model responses remaining
+        if usage_count + num_models > daily_limit:
+            models_needed = num_models
+            models_over_limit = (usage_count + num_models) - daily_limit
+            
             # Check if overage is allowed for this tier
             if is_overage_allowed(current_user.subscription_tier):
-                overage_price = get_overage_price(current_user.subscription_tier)
+                # Overage allowed but pricing not yet implemented
+                # For now, allow the request but track it
                 is_overage = True
-                overage_charge = overage_price
-
-                # Track overage for billing
-                current_user.monthly_overage_count += 1
-
-                print(f"Authenticated user {current_user.email} - OVERAGE comparison (${overage_charge})")
+                overage_charge = 0.0  # Pricing TBD
+                
+                # Track overage model responses for future billing
+                current_user.monthly_overage_count += models_over_limit
+                
+                print(f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses (pricing TBD)")
             else:
                 # Free tier - no overages allowed
+                models_available = max(0, daily_limit - usage_count)
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Daily limit of {daily_limit} comparisons exceeded. You've used {usage_count} today. "
-                    f"Upgrade to Starter ($14.99/mo) for 25 daily comparisons + overage options, "
-                    f"or Pro ($29.99/mo) for 50 daily comparisons.",
+                    detail=f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. "
+                    f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity and overage options.",
                 )
 
-        # Increment authenticated user usage
-        increment_user_usage(current_user, db)
+        # Increment authenticated user usage by number of models
+        increment_user_usage(current_user, db, count=num_models)
 
         if is_overage:
             print(
-                f"Authenticated user {current_user.email} - Overage: {current_user.monthly_overage_count} this month (${overage_charge} each)"
+                f"Authenticated user {current_user.email} - Overage: {current_user.monthly_overage_count} model responses this month"
             )
         else:
-            print(f"Authenticated user {current_user.email} - Usage: {usage_count + 1}/{daily_limit}")
+            print(f"Authenticated user {current_user.email} - Usage: {usage_count + num_models}/{daily_limit} model responses")
     else:
-        # Anonymous user - check IP/fingerprint limits
+        # Anonymous user - check IP/fingerprint limits (model response based)
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
 
         fingerprint_allowed = True
+        fingerprint_count = 0
         if req.browser_fingerprint:
-            fingerprint_allowed, _ = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
+            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
 
-        if not ip_allowed or not fingerprint_allowed:
+        # Check if user has enough model responses remaining
+        if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
+            models_available = max(0, 10 - max(ip_count, fingerprint_count))
             raise HTTPException(
                 status_code=429,
-                detail="Daily limit of 5 comparisons exceeded. Register for a free account (10 comparisons/day) to continue.",
+                detail=f"Daily limit of 10 model responses exceeded. You have {models_available} remaining and need {num_models}. "
+                f"Register for a free account (20 model responses/day) to continue.",
+            )
+        
+        # Check if this request would exceed the limit
+        if ip_count + num_models > 10 or (req.browser_fingerprint and fingerprint_count + num_models > 10):
+            models_available = max(0, 10 - max(ip_count, fingerprint_count))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
+                f"Register for a free account (20 model responses/day) to continue.",
             )
 
-        # Increment anonymous usage
-        increment_anonymous_usage(f"ip:{client_ip}")
+        # Increment anonymous usage by number of models
+        increment_anonymous_usage(f"ip:{client_ip}", count=num_models)
         if req.browser_fingerprint:
-            increment_anonymous_usage(f"fp:{req.browser_fingerprint}")
-        print(f"Anonymous user - IP: {client_ip} ({ip_count + 1}/5)")
+            increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=num_models)
+        print(f"Anonymous user - IP: {client_ip} ({ip_count + num_models}/10 model responses)")
     # --- END HYBRID RATE LIMITING ---
 
     # Track start time for processing metrics

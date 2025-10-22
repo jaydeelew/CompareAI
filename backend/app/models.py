@@ -48,10 +48,10 @@ class User(Base):
     # Payment integration
     stripe_customer_id = Column(String(255), index=True)
 
-    # Usage tracking
-    daily_usage_count = Column(Integer, default=0)
+    # Usage tracking (MODEL-BASED: counts individual model responses, not comparisons)
+    daily_usage_count = Column(Integer, default=0)  # Number of model responses used today
     usage_reset_date = Column(Date, default=func.current_date())
-    monthly_overage_count = Column(Integer, default=0)  # Track overages for billing
+    monthly_overage_count = Column(Integer, default=0)  # Track overage model responses for billing
     overage_reset_date = Column(Date, default=func.current_date())  # Reset monthly
 
     # Timestamps
@@ -148,18 +148,18 @@ class UsageLog(Base):
     ip_address = Column(String(45))  # IPv4 or IPv6
     browser_fingerprint = Column(String(64))  # SHA-256 hash of browser fingerprint
 
-    # Comparison details
+    # Comparison details (MODEL-BASED: each model counts as one response)
     models_used = Column(Text)  # JSON array of model IDs
     input_length = Column(Integer)
-    models_requested = Column(Integer)
+    models_requested = Column(Integer)  # Number of model responses in this comparison
     models_successful = Column(Integer)
     models_failed = Column(Integer)
     processing_time_ms = Column(Integer)
 
-    # Cost tracking
+    # Cost tracking (MODEL-BASED)
     estimated_cost = Column(DECIMAL(10, 4))  # Estimated cost in USD
-    is_overage = Column(Boolean, default=False)  # Whether this was an overage comparison
-    overage_charge = Column(DECIMAL(10, 4), default=0)  # Charge for overage (if applicable)
+    is_overage = Column(Boolean, default=False)  # Whether this included overage model responses
+    overage_charge = Column(DECIMAL(10, 4), default=0)  # Charge for overage model responses (if applicable)
 
     # Timestamp
     created_at = Column(DateTime, default=func.now(), index=True)
