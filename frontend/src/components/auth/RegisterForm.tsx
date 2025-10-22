@@ -32,24 +32,53 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     // Monitor password field for programmatic changes (e.g., 1Password autofill)
     useEffect(() => {
         const passwordField = document.getElementById('register-password') as HTMLInputElement;
-        if (passwordField) {
+        const confirmPasswordField = document.getElementById('register-confirm-password') as HTMLInputElement;
+
+        if (passwordField && confirmPasswordField) {
             // Check for changes every 100ms to catch 1Password autofill
             const interval = setInterval(() => {
-                if (passwordField.value && passwordField.value !== password && !confirmPassword) {
+                // If password field has a value but React state doesn't match
+                if (passwordField.value && passwordField.value !== password) {
                     setPassword(passwordField.value);
-                    setConfirmPassword(passwordField.value);
+                    // Auto-fill confirm password field if it's empty
+                    if (!confirmPassword) {
+                        setConfirmPassword(passwordField.value);
+                    }
+                }
+
+                // If confirm password field has a value but React state doesn't match
+                if (confirmPasswordField.value && confirmPasswordField.value !== confirmPassword) {
+                    setConfirmPassword(confirmPasswordField.value);
+                    // If password field is empty, copy from confirm field
+                    if (!password) {
+                        setPassword(confirmPasswordField.value);
+                    }
                 }
             }, 100);
 
             // Also use MutationObserver for immediate detection
             const observer = new MutationObserver(() => {
-                if (passwordField.value && passwordField.value !== password && !confirmPassword) {
+                // If password field has a value but React state doesn't match
+                if (passwordField.value && passwordField.value !== password) {
                     setPassword(passwordField.value);
-                    setConfirmPassword(passwordField.value);
+                    // Auto-fill confirm password field if it's empty
+                    if (!confirmPassword) {
+                        setConfirmPassword(passwordField.value);
+                    }
+                }
+
+                // If confirm password field has a value but React state doesn't match
+                if (confirmPasswordField.value && confirmPasswordField.value !== confirmPassword) {
+                    setConfirmPassword(confirmPasswordField.value);
+                    // If password field is empty, copy from confirm field
+                    if (!password) {
+                        setPassword(confirmPasswordField.value);
+                    }
                 }
             });
 
             observer.observe(passwordField, { attributes: true, attributeFilter: ['value'] });
+            observer.observe(confirmPasswordField, { attributes: true, attributeFilter: ['value'] });
 
             return () => {
                 clearInterval(interval);
@@ -57,6 +86,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
             };
         }
     }, [password, confirmPassword]);
+
 
     const validateForm = (): boolean => {
         if (password.length < 12) {
