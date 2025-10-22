@@ -43,10 +43,6 @@ interface ModelsByProvider {
   [provider: string]: Model[];
 }
 
-// Maximum number of models that can be selected (will be dynamically determined by tier)
-// Kept for backwards compatibility in some checks, but should use getMaxModelsForUser()
-const MAX_MODELS_LIMIT = 12;
-
 // Freemium usage limits (anonymous users only) - MODEL-BASED
 // Anonymous (unregistered) users get 10 model responses per day
 const MAX_DAILY_USAGE = 10;
