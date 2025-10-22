@@ -471,3 +471,54 @@ async def reset_user_usage(
     )
 
     return AdminUserResponse.from_orm(user)
+
+
+@router.post("/users/{user_id}/change-tier", response_model=AdminUserResponse)
+async def change_user_tier(
+    user_id: int,
+    tier_data: dict,
+    request: Request,
+    current_user: User = Depends(require_admin_role("super_admin")),
+    db: Session = Depends(get_db)
+):
+    """Change user's subscription tier. Super admin only."""
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate tier
+    new_tier = tier_data.get("subscription_tier")
+    valid_tiers = ["free", "starter", "starter_plus", "pro", "pro_plus"]
+    if new_tier not in valid_tiers:
+        raise HTTPException(status_code=400, detail=f"Invalid tier. Must be one of: {', '.join(valid_tiers)}")
+    
+    # Store previous tier for logging
+    previous_tier = user.subscription_tier
+    
+    # Update tier
+    user.subscription_tier = new_tier
+    
+    # Update subscription status based on tier
+    if new_tier == "free":
+        user.subscription_status = "active"
+    else:
+        # Keep existing status for paid tiers, or set to active if it was free
+        if user.subscription_status not in ["active", "cancelled", "expired"]:
+            user.subscription_status = "active"
+    
+    db.commit()
+    db.refresh(user)
+    
+    # Log admin action
+    log_admin_action(
+        db=db,
+        admin_user=current_user,
+        action_type="change_tier",
+        action_description=f"Changed subscription tier for user {user.email} from {previous_tier} to {new_tier}",
+        target_user_id=user.id,
+        details={"previous_tier": previous_tier, "new_tier": new_tier},
+        request=request,
+    )
+    
+    return AdminUserResponse.from_orm(user)

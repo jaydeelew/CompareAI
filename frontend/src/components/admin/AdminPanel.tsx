@@ -54,7 +54,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [selectedTier, setSelectedTier] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showTierChangeModal, setShowTierChangeModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState<{ id: number; email: string } | null>(null);
+    const [tierChangeData, setTierChangeData] = useState<{ userId: number; email: string; currentTier: string; newTier: string } | null>(null);
     const [createUserData, setCreateUserData] = useState({
         email: '',
         password: '',
@@ -285,6 +287,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         } catch (err) {
             console.error('Error resetting usage:', err);
             setError(err instanceof Error ? err.message : 'Failed to reset usage');
+        }
+    };
+
+    const handleTierChangeClick = (userId: number, email: string, currentTier: string, newTier: string) => {
+        if (currentTier === newTier) {
+            return; // No change needed
+        }
+        setTierChangeData({ userId, email, currentTier, newTier });
+        setShowTierChangeModal(true);
+    };
+
+    const handleTierChangeCancel = () => {
+        setShowTierChangeModal(false);
+        setTierChangeData(null);
+        // Refresh the page to reset the dropdown to the original value
+        fetchUsersInitial(currentPage);
+    };
+
+    const handleTierChangeConfirm = async () => {
+        if (!tierChangeData) return;
+
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch(`/api/admin/users/${tierChangeData.userId}/change-tier`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ subscription_tier: tierChangeData.newTier })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Super admin privileges required.');
+                } else {
+                    throw new Error(`Failed to change tier (${response.status})`);
+                }
+            }
+
+            // Close modal and reset data
+            setShowTierChangeModal(false);
+            setTierChangeData(null);
+
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
+
+            // If the admin changed their own tier, refresh their user data in AuthContext
+            if (user && tierChangeData.userId === user.id) {
+                await refreshUser();
+            }
+        } catch (err) {
+            console.error('Error changing tier:', err);
+            setError(err instanceof Error ? err.message : 'Failed to change tier');
+            setShowTierChangeModal(false);
+            setTierChangeData(null);
         }
     };
 
@@ -564,63 +628,78 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.users.map((user) => (
-                                    <tr key={user.id}>
-                                        <td>{user.email}</td>
+                                {users.users.map((userRow) => (
+                                    <tr key={userRow.id}>
+                                        <td>{userRow.email}</td>
                                         <td>
-                                            <span className={`role-badge role-${user.role}`}>
-                                                {user.role}
+                                            <span className={`role-badge role-${userRow.role}`}>
+                                                {userRow.role}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`tier-badge tier-${user.subscription_tier}`}>
-                                                {user.subscription_tier}
+                                            {user?.role === 'super_admin' ? (
+                                                <select
+                                                    value={userRow.subscription_tier}
+                                                    onChange={(e) => handleTierChangeClick(userRow.id, userRow.email, userRow.subscription_tier, e.target.value)}
+                                                    className="tier-select"
+                                                    title="Change subscription tier (Super Admin only)"
+                                                >
+                                                    <option value="free">Free</option>
+                                                    <option value="starter">Starter</option>
+                                                    <option value="starter_plus">Starter+</option>
+                                                    <option value="pro">Pro</option>
+                                                    <option value="pro_plus">Pro+</option>
+                                                </select>
+                                            ) : (
+                                                <span className={`tier-badge tier-${userRow.subscription_tier}`}>
+                                                    {userRow.subscription_tier}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className={`status-badge ${userRow.is_active ? 'active' : 'inactive'}`}>
+                                                {userRow.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
-                                                {user.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`verified-badge ${user.is_verified ? 'verified' : 'unverified'}`}>
-                                                {user.is_verified ? '✓' : '✗'}
+                                            <span className={`verified-badge ${userRow.is_verified ? 'verified' : 'unverified'}`}>
+                                                {userRow.is_verified ? '✓' : '✗'}
                                             </span>
                                         </td>
                                         <td>
                                             <div className="usage-info">
-                                                <span className="usage-count">{user.daily_usage_count} today</span>
-                                                {user.monthly_overage_count > 0 && (
+                                                <span className="usage-count">{userRow.daily_usage_count} today</span>
+                                                {userRow.monthly_overage_count > 0 && (
                                                     <span className="overage-count">
-                                                        {user.monthly_overage_count} overages
+                                                        {userRow.monthly_overage_count} overages
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
                                         <td>
-                                            <span title={new Date(user.created_at).toLocaleString()}>
-                                                {new Date(user.created_at).toLocaleDateString()}
+                                            <span title={new Date(userRow.created_at).toLocaleString()}>
+                                                {new Date(userRow.created_at).toLocaleDateString()}
                                             </span>
                                         </td>
                                         <td>
                                             <div className="action-buttons">
                                                 <button
-                                                    onClick={() => toggleUserActive(user.id)}
-                                                    className={`toggle-btn ${user.is_active ? 'deactivate' : 'activate'}`}
+                                                    onClick={() => toggleUserActive(userRow.id)}
+                                                    className={`toggle-btn ${userRow.is_active ? 'deactivate' : 'activate'}`}
                                                 >
-                                                    {user.is_active ? 'Deactivate' : 'Activate'}
+                                                    {userRow.is_active ? 'Deactivate' : 'Activate'}
                                                 </button>
-                                                {!user.is_verified && (
+                                                {!userRow.is_verified && (
                                                     <button
-                                                        onClick={() => sendVerification(user.id)}
+                                                        onClick={() => sendVerification(userRow.id)}
                                                         className="verify-btn"
                                                     >
                                                         Send Verification
                                                     </button>
                                                 )}
-                                                {user.daily_usage_count > 0 && (
+                                                {userRow.daily_usage_count > 0 && (
                                                     <button
-                                                        onClick={() => resetUsage(user.id)}
+                                                        onClick={() => resetUsage(userRow.id)}
                                                         className="reset-usage-btn"
                                                         title="Reset daily usage to 0"
                                                     >
@@ -628,7 +707,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     </button>
                                                 )}
                                                 <button
-                                                    onClick={() => handleDeleteClick(user.id, user.email)}
+                                                    onClick={() => handleDeleteClick(userRow.id, userRow.email)}
                                                     className="delete-btn"
                                                     title="Delete user (Super Admin only)"
                                                 >
@@ -709,6 +788,66 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 onClick={handleDeleteConfirm}
                             >
                                 Delete User
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Tier Change Confirmation Modal */}
+            {showTierChangeModal && tierChangeData && (
+                <div className="modal-overlay" onClick={handleTierChangeCancel}>
+                    <div className="modal-content tier-change-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>⚠️ Confirm Tier Change</h2>
+                            <button
+                                className="modal-close-btn"
+                                onClick={handleTierChangeCancel}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="tier-change-modal-body">
+                            <p className="warning-text">
+                                You are about to change the subscription tier for this user. Please review the details below and confirm.
+                            </p>
+                            <div className="tier-change-details">
+                                <div className="tier-change-row">
+                                    <strong>User:</strong> {tierChangeData.email}
+                                </div>
+                                <div className="tier-change-row">
+                                    <strong>Current Tier:</strong>
+                                    <span className={`tier-badge tier-${tierChangeData.currentTier}`}>
+                                        {tierChangeData.currentTier}
+                                    </span>
+                                </div>
+                                <div className="tier-change-row">
+                                    <strong>New Tier:</strong>
+                                    <span className={`tier-badge tier-${tierChangeData.newTier}`}>
+                                        {tierChangeData.newTier}
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="tier-change-note">
+                                <strong>⚠️ Warning:</strong> This will immediately change the user's subscription tier and may affect their access limits, features, and billing. This action will be logged in the admin audit trail.
+                            </p>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={handleTierChangeCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="tier-change-confirm-btn"
+                                onClick={handleTierChangeConfirm}
+                            >
+                                Confirm Tier Change
                             </button>
                         </div>
                     </div>
