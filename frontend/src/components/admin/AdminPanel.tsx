@@ -618,13 +618,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                         Send Verification
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={() => resetUsage(user.id)}
-                                                    className="reset-usage-btn"
-                                                    title="Reset daily usage to 0"
-                                                >
-                                                    Zero Usage
-                                                </button>
+                                                {user.daily_usage_count > 0 && (
+                                                    <button
+                                                        onClick={() => resetUsage(user.id)}
+                                                        className="reset-usage-btn"
+                                                        title="Reset daily usage to 0"
+                                                    >
+                                                        Zero Usage
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => handleDeleteClick(user.id, user.email)}
                                                     className="delete-btn"
