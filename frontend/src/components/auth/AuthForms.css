@@ -63,6 +63,89 @@
     opacity: 0.6;
 }
 
+/* Password input container with toggle button */
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-container input {
+    padding-right: 2.5rem;
+    /* Make room for the toggle button */
+    width: 100%;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1rem;
+    color: #666;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 4px;
+    outline: none;
+    box-shadow: none;
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+    box-shadow: none;
+    border: none;
+}
+
+.password-toggle-btn:hover:not(:disabled) {
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.password-toggle-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Prevent autofill styling changes */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+    background-color: white !important;
+    color: black !important;
+    font-size: 0.925rem !important;
+    padding: 0.6rem 0.85rem !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+}
+
+/* Ensure password fields maintain consistent styling when visible */
+.password-input-container input[type="text"],
+.password-input-container input[type="password"] {
+    font-family: inherit !important;
+    font-size: 0.925rem !important;
+    padding: 0.6rem 0.85rem !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    background-color: white !important;
+    color: black !important;
+    transition: all 0.2s ease !important;
+}
+
+.password-input-container input[type="text"]:focus,
+.password-input-container input[type="password"]:focus {
+    outline: none !important;
+    border-color: #4a90e2 !important;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1) !important;
+}
+
 .form-hint {
     font-size: 0.75rem;
     color: #666;

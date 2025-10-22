@@ -18,6 +18,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Auto-sync password to confirm password field when password changes
     const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,41 +190,63 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
 
                 <div className="form-group">
                     <label htmlFor="register-password">Password</label>
-                    <input
-                        id="register-password"
-                        name="password"
-                        type="password"
-                        value={password}
-                        onChange={handlePasswordChange}
-                        placeholder="••••••••••••"
-                        required
-                        autoComplete="new-password"
-                        disabled={isLoading}
-                        minLength={12}
-                        data-lpignore="false"
-                        data-form-type="register"
-                        data-1p-ignore="false"
-                    />
+                    <div className="password-input-container">
+                        <input
+                            id="register-password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={handlePasswordChange}
+                            placeholder="••••••••••••"
+                            required
+                            autoComplete="new-password"
+                            disabled={isLoading}
+                            minLength={12}
+                            data-lpignore="false"
+                            data-form-type="register"
+                            data-1p-ignore="false"
+                        />
+                        <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isLoading}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? "🔒" : "👁️"}
+                        </button>
+                    </div>
                     <small className="form-hint">Min 12 chars: uppercase, lowercase, number & special char</small>
                 </div>
 
                 <div className="form-group">
                     <label htmlFor="register-confirm-password">Confirm Password</label>
-                    <input
-                        id="register-confirm-password"
-                        name="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        required
-                        autoComplete="new-password"
-                        disabled={isLoading}
-                        minLength={12}
-                        data-lpignore="false"
-                        data-form-type="register"
-                        data-1p-ignore="false"
-                    />
+                    <div className="password-input-container">
+                        <input
+                            id="register-confirm-password"
+                            name="confirmPassword"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            required
+                            autoComplete="new-password"
+                            disabled={isLoading}
+                            minLength={12}
+                            data-lpignore="false"
+                            data-form-type="register"
+                            data-1p-ignore="false"
+                        />
+                        <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            disabled={isLoading}
+                            aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                        >
+                            {showConfirmPassword ? "🔒" : "👁️"}
+                        </button>
+                    </div>
                 </div>
 
                 <button
