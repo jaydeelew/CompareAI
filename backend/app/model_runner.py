@@ -10,10 +10,10 @@ load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Configuration optimized for 12-model limit
-MAX_CONCURRENT_REQUESTS = 12  # Perfect match for 12-model limit
+# Configuration optimized for 9-model limit (Pro tier maximum)
+MAX_CONCURRENT_REQUESTS = 9  # Matches Pro tier limit of 9 models
 INDIVIDUAL_MODEL_TIMEOUT = 120  # Increased timeout for very long, detailed responses
-BATCH_SIZE = 12  # Process all 12 models in single batch for optimal performance
+BATCH_SIZE = 9  # Process all 9 models in single batch for optimal performance
 
 # Connection quality optimizations
 # For slower connections, you may want to reduce MAX_CONCURRENT_REQUESTS to 6-8

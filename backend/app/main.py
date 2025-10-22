@@ -76,7 +76,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 
 # Maximum number of models allowed per request
-MAX_MODELS_PER_REQUEST = 12
+MAX_MODELS_PER_REQUEST = 9
 
 # Rate limiting configuration
 MAX_DAILY_COMPARISONS = 10

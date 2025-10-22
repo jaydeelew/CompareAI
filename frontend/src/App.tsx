@@ -43,7 +43,8 @@ interface ModelsByProvider {
   [provider: string]: Model[];
 }
 
-// Maximum number of models that can be selected
+// Maximum number of models that can be selected (will be dynamically determined by tier)
+// Kept for backwards compatibility in some checks, but should use getMaxModelsForUser()
 const MAX_MODELS_LIMIT = 12;
 
 // Freemium usage limits (anonymous users only) - MODEL-BASED
@@ -90,6 +91,25 @@ function AppContent() {
   const { isAuthenticated, user, refreshUser } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
+  // Get max models based on user tier
+  const getMaxModelsForUser = () => {
+    if (!isAuthenticated || !user) {
+      return 3; // Anonymous users
+    }
+
+    switch (user.subscription_tier) {
+      case 'pro':
+        return 9;
+      case 'starter':
+        return 6;
+      case 'free':
+      default:
+        return 3;
+    }
+  };
+
+  const maxModelsLimit = getMaxModelsForUser();
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
@@ -873,7 +893,7 @@ function AppContent() {
           // Count how many models from this provider are already selected
           const alreadySelectedFromProvider = providerModelIds.filter(id => prev.includes(id)).length;
           // Calculate remaining slots excluding already selected models from this provider
-          const remainingSlots = MAX_MODELS_LIMIT - (prev.length - alreadySelectedFromProvider);
+          const remainingSlots = maxModelsLimit - (prev.length - alreadySelectedFromProvider);
           const modelsToAdd = providerModelIds.slice(0, remainingSlots);
 
           modelsToAdd.forEach(id => newSelection.add(id));
@@ -930,8 +950,12 @@ function AppContent() {
       }
 
       // Check limit before adding (only in normal mode)
-      if (selectedModels.length >= MAX_MODELS_LIMIT) {
-        setError(`Maximum ${MAX_MODELS_LIMIT} models allowed for optimal performance. Please deselect some models first.`);
+      if (selectedModels.length >= maxModelsLimit) {
+        const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
+        const upgradeMsg = tierName === 'Anonymous' ? ' Register for a free account to get 3 models.' :
+          tierName === 'free' ? ' Upgrade to Starter for 6 models or Pro for 9 models.' :
+            tierName === 'starter' ? ' Upgrade to Pro for 9 models.' : '';
+        setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
         return;
       }
 
@@ -1658,7 +1682,7 @@ function AppContent() {
                               <rect x="5" y="5" width="14" height="14" rx="2" />
                             </svg>
                           );
-                        } else if (count <= 4) {
+                        } else if (count <= 3) {
                           description = "Small batch processing";
                           // Copy/duplicate icon
                           IconComponent = () => (
@@ -1667,7 +1691,7 @@ function AppContent() {
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                             </svg>
                           );
-                        } else if (count <= 8) {
+                        } else if (count <= 6) {
                           description = "Medium batch processing";
                           // Layers icon
                           IconComponent = () => (
@@ -1675,6 +1699,17 @@ function AppContent() {
                               <polygon points="12 2 2 7 12 12 22 7 12 2" />
                               <polyline points="2 17 12 22 22 17" />
                               <polyline points="2 12 12 17 22 12" />
+                            </svg>
+                          );
+                        } else if (count <= 9) {
+                          description = "Large batch processing";
+                          // Server/database icon for large
+                          IconComponent = () => (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'pulse 2s ease-in-out infinite', display: 'block' }}>
+                              <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                              <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                              <line x1="6" y1="6" x2="6.01" y2="6" />
+                              <line x1="6" y1="18" x2="6.01" y2="18" />
                             </svg>
                           );
                         } else {
@@ -1699,7 +1734,7 @@ function AppContent() {
                             </div>
                             <div style={{ marginTop: '0.25rem' }}>
                               <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                                Processing time depends on your Internet connection and the amount of rendering needed
+                                Processing time depends on your Internet connection and number of models selected
                               </span>
                             </div>
                           </>
@@ -1729,7 +1764,7 @@ function AppContent() {
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                     {isFollowUpMode
                       ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
-                      : `Choose up to ${MAX_MODELS_LIMIT} models`
+                      : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous)' : user?.subscription_tier ? ` (${user.subscription_tier.charAt(0).toUpperCase() + user.subscription_tier.slice(1)})` : ''}`
                     }
                   </p>
                 </div>
@@ -1780,18 +1815,18 @@ function AppContent() {
                       className="models-count-indicator"
                       style={{
                         padding: '0.5rem 1rem',
-                        background: selectedModels.length >= MAX_MODELS_LIMIT ? '#fef2f2' :
+                        background: selectedModels.length >= maxModelsLimit ? '#fef2f2' :
                           selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                        color: selectedModels.length >= MAX_MODELS_LIMIT ? '#dc2626' :
+                        color: selectedModels.length >= maxModelsLimit ? '#dc2626' :
                           selectedModels.length > 0 ? 'white' : '#6b7280',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontWeight: '600',
-                        border: `1px solid ${selectedModels.length >= MAX_MODELS_LIMIT ? '#fecaca' : '#e5e7eb'}`
+                        border: `1px solid ${selectedModels.length >= maxModelsLimit ? '#fecaca' : '#e5e7eb'}`
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {selectedModels.length} of {MAX_MODELS_LIMIT} selected
+                      {selectedModels.length} of {maxModelsLimit} selected
                     </div>
                     <button
                       className="models-toggle-arrow"
@@ -1825,7 +1860,7 @@ function AppContent() {
               </div>
 
               {/* Warning for approaching limit */}
-              {selectedModels.length > 8 && selectedModels.length < MAX_MODELS_LIMIT && (
+              {selectedModels.length >= maxModelsLimit - 1 && selectedModels.length < maxModelsLimit && (
                 <div className="warning-message" style={{
                   background: '#fff3cd',
                   border: '1px solid #ffeaa7',
@@ -1839,7 +1874,7 @@ function AppContent() {
                 }}>
                   <span>⚠️</span>
                   <span>
-                    You've selected {selectedModels.length} models. Maximum {MAX_MODELS_LIMIT} allowed for optimal performance.
+                    You've selected {selectedModels.length} models. Maximum {maxModelsLimit} allowed for your {!isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'Free'} tier.
                   </span>
                 </div>
               )}
@@ -1880,7 +1915,7 @@ function AppContent() {
                                   const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
                                   const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
                                   const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
-                                  const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !hasAnySelected) ||
+                                  const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
                                     (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
 
                                   return (
@@ -1904,7 +1939,7 @@ function AppContent() {
                                         transition: 'color 0.2s ease'
                                       }}
                                       title={isDisabled ?
-                                        (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${MAX_MODELS_LIMIT})`) :
+                                        (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
                                         allProviderModelsSelected ? `Deselect All` : `Select All`}
                                     >
                                       ✱
@@ -1922,7 +1957,7 @@ function AppContent() {
                                 {models.map((model) => {
                                   const isSelected = selectedModels.includes(model.id);
                                   const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                                  const isDisabled = (selectedModels.length >= MAX_MODELS_LIMIT && !isSelected) ||
+                                  const isDisabled = (selectedModels.length >= maxModelsLimit && !isSelected) ||
                                     (isFollowUpMode && !isSelected && !wasOriginallySelected);
                                   return (
                                     <label
