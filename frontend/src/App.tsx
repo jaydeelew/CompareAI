@@ -524,6 +524,13 @@ function AppContent() {
     }
   };
 
+  // Sync extendedUsageCount with user data when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setExtendedUsageCount(user.daily_extended_usage || 0);
+    }
+  }, [isAuthenticated, user]);
+
   // Tier recommendation function
   const getExtendedRecommendation = (inputText: string): boolean => {
     if (!inputText.trim()) return false;
@@ -1226,14 +1233,19 @@ function AppContent() {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
       const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
 
-      if (extendedUsageCount >= extendedLimit) {
+      // Use server data for authenticated users, localStorage for anonymous users
+      const currentExtendedUsage = isAuthenticated && user
+        ? user.daily_extended_usage
+        : extendedUsageCount;
+
+      if (currentExtendedUsage >= extendedLimit) {
         setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. Upgrade to a higher tier for more Extended interactions.`);
         return;
       }
 
       // Check if this would exceed the Extended limit
-      if (extendedUsageCount + modelsNeeded > extendedLimit) {
-        const remaining = extendedLimit - extendedUsageCount;
+      if (currentExtendedUsage + modelsNeeded > extendedLimit) {
+        const remaining = extendedLimit - currentExtendedUsage;
         setError(`You have ${remaining} Extended interactions remaining today, but need ${modelsNeeded} for this comparison. Upgrade to a higher tier for more Extended interactions.`);
         return;
       }
