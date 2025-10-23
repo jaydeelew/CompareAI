@@ -47,6 +47,16 @@ interface ModelsByProvider {
 // Anonymous (unregistered) users get 10 model responses per day
 const MAX_DAILY_USAGE = 10;
 
+// Extended tier limits per subscription tier
+const EXTENDED_TIER_LIMITS = {
+  anonymous: 2,
+  free: 5,
+  starter: 10,
+  starter_plus: 20,
+  pro: 40,
+  pro_plus: 80
+};
+
 // Simple hash function to convert fingerprint to a fixed-length string
 const simpleHash = async (str: string): Promise<string> => {
   const encoder = new TextEncoder();
@@ -441,6 +451,7 @@ function AppContent() {
   };
   const [response, setResponse] = useState<CompareResponse | null>(null);
   const [input, setInput] = useState('');
+  const [isExtendedMode, setIsExtendedMode] = useState(false);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -466,6 +477,7 @@ function AppContent() {
 
   // Freemium usage tracking state
   const [usageCount, setUsageCount] = useState(0);
+  const [extendedUsageCount, setExtendedUsageCount] = useState(0);
   const [browserFingerprint, setBrowserFingerprint] = useState('');
   const [isModelsHidden, setIsModelsHidden] = useState(false);
 
@@ -510,6 +522,26 @@ function AppContent() {
       console.error('Reset error:', error);
       alert('❌ Failed to reset rate limits. Make sure the backend is running.');
     }
+  };
+
+  // Tier recommendation function
+  const getExtendedRecommendation = (inputText: string): boolean => {
+    if (!inputText.trim()) return false;
+
+    const text = inputText.toLowerCase();
+    const length = inputText.length;
+
+    const extendedKeywords = [
+      'detailed', 'comprehensive', 'thorough', 'complete', 'full analysis', 'deep dive',
+      'explain in detail', 'comprehensive analysis', 'thorough explanation', 'complete guide',
+      'step by step', 'tutorial', 'guide', 'documentation', 'research', 'analysis',
+      'compare and contrast', 'pros and cons', 'advantages and disadvantages',
+      'code review', 'debug', 'optimize', 'refactor', 'architecture', 'design pattern'
+    ];
+
+    const hasExtendedKeywords = extendedKeywords.some(keyword => text.includes(keyword));
+
+    return length > 3000 || hasExtendedKeywords;
   };
 
   // Get all models in a flat array for compatibility
@@ -781,6 +813,17 @@ function AppContent() {
             setUsageCount(usage.count || 0);
           } else {
             setUsageCount(0);
+          }
+        }
+
+        // Initialize Extended usage from localStorage
+        const savedExtendedUsage = localStorage.getItem('compareai_extended_usage');
+        if (savedExtendedUsage) {
+          const extendedUsage = JSON.parse(savedExtendedUsage);
+          if (extendedUsage.date === today) {
+            setExtendedUsageCount(extendedUsage.count || 0);
+          } else {
+            setExtendedUsageCount(0);
           }
         }
       }
@@ -1178,6 +1221,24 @@ function AppContent() {
       return;
     }
 
+    // Check Extended tier limit if using Extended tier
+    if (isExtendedMode) {
+      const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+      const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+
+      if (extendedUsageCount >= extendedLimit) {
+        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. Upgrade to a higher tier for more Extended interactions.`);
+        return;
+      }
+
+      // Check if this would exceed the Extended limit
+      if (extendedUsageCount + modelsNeeded > extendedLimit) {
+        const remaining = extendedLimit - extendedUsageCount;
+        setError(`You have ${remaining} Extended interactions remaining today, but need ${modelsNeeded} for this comparison. Upgrade to a higher tier for more Extended interactions.`);
+        return;
+      }
+    }
+
     if (!input.trim()) {
       setError('Please enter some text to compare');
       return;
@@ -1251,7 +1312,8 @@ function AppContent() {
           input_data: input,
           models: selectedModels,
           conversation_history: conversationHistory,
-          browser_fingerprint: browserFingerprint  // Send fingerprint for rate limiting
+          browser_fingerprint: browserFingerprint,  // Send fingerprint for rate limiting
+          tier: isExtendedMode ? 'extended' : 'standard'  // Send Extended mode as tier
         }),
         signal: controller.signal,
       });
@@ -1293,6 +1355,11 @@ function AppContent() {
 
       setResponse(filteredData);
 
+      // Deselect Extended mode after successful Extended request
+      if (isExtendedMode) {
+        setIsExtendedMode(false);
+      }
+
       // Track usage only if at least one model succeeded
       // Don't count failed comparisons where all models had errors
       if (filteredData.metadata.models_successful > 0) {
@@ -1325,22 +1392,52 @@ function AppContent() {
             // Fallback to local increment if backend sync fails
             const newUsageCount = usageCount + selectedModels.length;
             setUsageCount(newUsageCount);
+
+            // Update Extended usage if using Extended tier
+            if (isExtendedMode) {
+              const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
+              setExtendedUsageCount(newExtendedUsageCount);
+            }
+
             const today = new Date().toDateString();
             localStorage.setItem('compareai_usage', JSON.stringify({
               count: newUsageCount,
               date: today
             }));
+
+            // Store Extended usage separately
+            if (isExtendedMode) {
+              localStorage.setItem('compareai_extended_usage', JSON.stringify({
+                count: extendedUsageCount + selectedModels.length,
+                date: today
+              }));
+            }
           }
         } catch (error) {
           console.error('Failed to sync usage count after comparison:', error);
           // Fallback to local increment (increment by number of models used)
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
+
+          // Update Extended usage if using Extended tier
+          if (isExtendedMode) {
+            const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
+            setExtendedUsageCount(newExtendedUsageCount);
+          }
+
           const today = new Date().toDateString();
           localStorage.setItem('compareai_usage', JSON.stringify({
             count: newUsageCount,
             date: today
           }));
+
+          // Store Extended usage separately
+          if (isExtendedMode) {
+            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              count: extendedUsageCount + selectedModels.length,
+              date: today
+            }));
+          }
         }
       } else {
         // All models failed - show a message but don't count it
@@ -1649,6 +1746,14 @@ function AppContent() {
                           </svg>
                         </button>
                       )}
+                      <button
+                        className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
+                        onClick={() => setIsExtendedMode(!isExtendedMode)}
+                        disabled={isLoading}
+                        title={isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
+                      >
+                        E
+                      </button>
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}

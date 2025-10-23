@@ -260,3 +260,93 @@ def get_rate_limit_info() -> Dict[str, Any]:
         "anonymous_limit": 10,  # Model responses per day for unregistered users
         "anonymous_users_tracked": len(anonymous_rate_limit_storage),
     }
+
+
+# Extended tier usage tracking
+EXTENDED_TIER_LIMITS = {
+    "anonymous": 2,
+    "free": 5,
+    "starter": 10,
+    "starter_plus": 20,
+    "pro": 40,
+    "pro_plus": 80
+}
+
+def check_extended_tier_limit(user: User, db: Session) -> Tuple[bool, int, int]:
+    """
+    Check Extended tier limit for authenticated user.
+    
+    Args:
+        user: Authenticated user object
+        db: Database session
+        
+    Returns:
+        tuple: (is_allowed, current_count, daily_limit)
+    """
+    # Reset counter if it's a new day
+    today = date.today()
+    if user.extended_usage_reset_date != today:
+        user.daily_extended_usage = 0
+        user.extended_usage_reset_date = today
+        db.commit()
+    
+    # Get daily limit based on subscription tier
+    daily_limit = EXTENDED_TIER_LIMITS.get(user.subscription_tier, 5)
+    
+    # Check if user is within limit
+    is_allowed = user.daily_extended_usage < daily_limit
+    
+    return is_allowed, user.daily_extended_usage, daily_limit
+
+def increment_extended_usage(user: User, db: Session, count: int = 1) -> None:
+    """
+    Increment authenticated user's daily Extended usage count.
+    
+    Args:
+        user: Authenticated user object
+        db: Database session
+        count: Number of Extended responses to add (default: 1)
+    """
+    user.daily_extended_usage += count
+    user.updated_at = datetime.utcnow()
+    db.commit()
+
+def check_anonymous_extended_limit(identifier: str) -> Tuple[bool, int]:
+    """
+    Check Extended tier limit for anonymous user.
+    
+    Args:
+        identifier: IP or fingerprint identifier
+        
+    Returns:
+        tuple: (is_allowed, current_count)
+    """
+    today = date.today().isoformat()
+    storage_key = f"{identifier}_extended"
+    
+    # Reset if new day
+    if anonymous_rate_limit_storage[storage_key]["date"] != today:
+        anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
+    
+    current_count = anonymous_rate_limit_storage[storage_key]["count"]
+    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]  # 2 for anonymous users
+    
+    is_allowed = current_count < daily_limit
+    
+    return is_allowed, current_count
+
+def increment_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
+    """
+    Increment anonymous user's Extended usage count.
+    
+    Args:
+        identifier: IP or fingerprint identifier
+        count: Number of Extended responses to add (default: 1)
+    """
+    today = date.today().isoformat()
+    storage_key = f"{identifier}_extended"
+    
+    if storage_key not in anonymous_rate_limit_storage:
+        anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
+    
+    anonymous_rate_limit_storage[storage_key]["count"] += count

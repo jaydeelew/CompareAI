@@ -473,7 +473,7 @@ def get_model_max_tokens(model_id: str) -> int:
     return model_limits.get(model_id, 8192)
 
 
-def call_openrouter(prompt: str, model_id: str, conversation_history: list = None) -> str:
+def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None) -> str:
     try:
         # Build messages array - use standard format like official AI providers
         messages = []
@@ -494,14 +494,23 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        # Get model-specific max_tokens limit to prevent truncation issues
-        max_tokens = get_model_max_tokens(model_id)
+        # Get tier-based max_tokens limit
+        tier_limits = {
+            "brief": 2000,
+            "standard": 4000,
+            "extended": 8192
+        }
+        tier_max_tokens = tier_limits.get(tier, 4000)
+        
+        # Don't exceed model's maximum capability
+        model_max_tokens = get_model_max_tokens(model_id)
+        max_tokens = min(tier_max_tokens, model_max_tokens)
         
         response = client.chat.completions.create(
             model=model_id, 
             messages=messages, 
             timeout=INDIVIDUAL_MODEL_TIMEOUT,
-            max_tokens=max_tokens  # Use model-specific limit
+            max_tokens=max_tokens  # Use tier-based limit
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
@@ -536,7 +545,12 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
         # Detect and warn about incomplete responses
         if finish_reason == "length":
             # Model hit token limit - response was cut off mid-thought
-            content = (content or "") + "\n\n⚠️ **Note:** Response truncated - model reached maximum output length."
+            tier_messages = {
+                "brief": "⚠️ **Brief tier limit reached.** Response truncated at 2,000 tokens. Upgrade to Standard (4,000) or Extended (8,000) for longer responses.",
+                "standard": "⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
+                "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available."
+            }
+            content = (content or "") + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
         elif finish_reason == "content_filter":
             content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
         
@@ -558,13 +572,13 @@ def call_openrouter(prompt: str, model_id: str, conversation_history: list = Non
             return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models_batch(prompt: str, model_batch: List[str], conversation_history: list = None) -> Dict[str, str]:
+def run_models_batch(prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: list = None) -> Dict[str, str]:
     """Run a batch of models with limited concurrency"""
     results = {}
 
     def call(model_id):
         try:
-            return model_id, call_openrouter(prompt, model_id, conversation_history)
+            return model_id, call_openrouter(prompt, model_id, tier, conversation_history)
         except Exception as e:
             return model_id, f"Error: {str(e)}"
 
@@ -606,7 +620,7 @@ def run_models_batch(prompt: str, model_batch: List[str], conversation_history: 
     return results
 
 
-def run_models(prompt: str, model_list: List[str], conversation_history: list = None) -> Dict[str, str]:
+def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: list = None) -> Dict[str, str]:
     """Run models with batching to prevent timeouts and API overload"""
     all_results = {}
 
@@ -614,7 +628,7 @@ def run_models(prompt: str, model_list: List[str], conversation_history: list = 
     for i in range(0, len(model_list), BATCH_SIZE):
         batch = model_list[i : i + BATCH_SIZE]
         try:
-            batch_results = run_models_batch(prompt, batch, conversation_history)
+            batch_results = run_models_batch(prompt, batch, tier, conversation_history)
             all_results.update(batch_results)
         except Exception as e:
             # If a batch fails entirely, mark all models in that batch as failed

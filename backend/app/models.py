@@ -53,6 +53,10 @@ class User(Base):
     usage_reset_date = Column(Date, default=func.current_date())
     monthly_overage_count = Column(Integer, default=0)  # Track overage model responses for billing
     overage_reset_date = Column(Date, default=func.current_date())  # Reset monthly
+    
+    # Extended tier usage tracking
+    daily_extended_usage = Column(Integer, default=0)  # Number of Extended tier responses used today
+    extended_usage_reset_date = Column(Date, default=func.current_date())
 
     # Timestamps
     created_at = Column(DateTime, default=func.now())

@@ -13,6 +13,7 @@ export interface User {
     subscription_status: 'active' | 'cancelled' | 'expired';
     subscription_period: 'monthly' | 'yearly';
     daily_usage_count: number; // MODEL-BASED: counts individual model responses, not comparisons
+    daily_extended_usage: number; // Extended tier usage count
     monthly_overage_count: number; // MODEL-BASED: counts overage model responses
     created_at: string;
 }

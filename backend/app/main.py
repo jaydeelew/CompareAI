@@ -26,8 +26,39 @@ from .rate_limiting import (
     is_overage_allowed,
     get_overage_price,
     anonymous_rate_limit_storage,
+    check_extended_tier_limit,
+    increment_extended_usage,
+    check_anonymous_extended_limit,
+    increment_anonymous_extended_usage,
 )
 from .routers import auth, admin
+
+# Tier configuration
+TIER_LIMITS = {
+    "brief": {"input_chars": 1000, "output_tokens": 2000},
+    "standard": {"input_chars": 5000, "output_tokens": 4000},
+    "extended": {"input_chars": 15000, "output_tokens": 8192}
+}
+
+# Extended tier daily limits per subscription tier
+EXTENDED_TIER_LIMITS = {
+    "anonymous": 2,
+    "free": 5,
+    "starter": 10,
+    "starter_plus": 20,
+    "pro": 40,
+    "pro_plus": 80
+}
+
+def validate_tier_limits(input_data: str, tier: str) -> bool:
+    """Validate input length against tier limits"""
+    if tier not in TIER_LIMITS:
+        return False
+    return len(input_data) <= TIER_LIMITS[tier]["input_chars"]
+
+def get_tier_max_tokens(tier: str) -> int:
+    """Get max tokens for tier"""
+    return TIER_LIMITS.get(tier, TIER_LIMITS["standard"])["output_tokens"]
 
 print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
 
@@ -51,9 +82,11 @@ async def startup_event():
 
 
 # Add CORS middleware BEFORE including routers
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# For development, allow all localhost origins
+if os.environ.get('ENVIRONMENT') == 'development':
+    allowed_origins = ["*"]  # Allow all origins in development
+else:
+    allowed_origins = [
         "http://54.163.207.252",  # Your frontend URL
         "http://compareintel.com",  # Your frontend domain
         "https://localhost",  # HTTPS localhost (production-like dev)
@@ -64,7 +97,11 @@ app.add_middleware(
         "http://127.0.0.1:5173",  # Alternative localhost
         "http://127.0.0.1:5174",  # Alternative localhost
         "http://127.0.0.1:3000",  # Alternative localhost
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -148,6 +185,7 @@ class CompareRequest(BaseModel):
     models: list[str]
     conversation_history: list[ConversationMessage] = []  # Optional conversation context
     browser_fingerprint: Optional[str] = None  # Optional browser fingerprint for rate limiting
+    tier: str = "standard"  # brief, standard, extended
 
 
 class CompareResponse(BaseModel):
@@ -180,6 +218,14 @@ async def compare(
 
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
+
+    # Validate tier limits
+    if not validate_tier_limits(req.input_data, req.tier):
+        tier_limit = TIER_LIMITS[req.tier]["input_chars"]
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Input exceeds {req.tier} tier limit of {tier_limit} characters. Current: {len(req.input_data)} characters."
+        )
 
     # Determine model limit based on user tier
     if current_user:
@@ -285,12 +331,52 @@ async def compare(
         print(f"Anonymous user - IP: {client_ip} ({ip_count + num_models}/10 model responses)")
     # --- END HYBRID RATE LIMITING ---
 
+    # --- EXTENDED TIER LIMITING ---
+    if req.tier == "extended":
+        if current_user:
+            # Check Extended tier limit for authenticated users
+            extended_allowed, extended_count, extended_limit = check_extended_tier_limit(current_user, db)
+            
+            if not extended_allowed:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Daily Extended tier limit of {extended_limit} exceeded. You have used {extended_count} Extended interactions today. "
+                    f"Upgrade to a higher tier for more Extended interactions."
+                )
+            
+            # Increment Extended usage
+            increment_extended_usage(current_user, db, count=num_models)
+            print(f"Authenticated user {current_user.email} - Extended usage: {extended_count + num_models}/{extended_limit}")
+        else:
+            # Check Extended tier limit for anonymous users
+            ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(f"ip:{client_ip}")
+            fingerprint_extended_allowed = True
+            fingerprint_extended_count = 0
+            
+            if req.browser_fingerprint:
+                fingerprint_extended_allowed, fingerprint_extended_count = check_anonymous_extended_limit(f"fp:{req.browser_fingerprint}")
+            
+            if not ip_extended_allowed or (req.browser_fingerprint and not fingerprint_extended_allowed):
+                extended_available = max(0, 2 - max(ip_extended_count, fingerprint_extended_count))
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Daily Extended tier limit of 2 exceeded. You have {extended_available} Extended interactions remaining. "
+                    f"Register for a free account to get 5 Extended interactions per day."
+                )
+            
+            # Increment anonymous Extended usage
+            increment_anonymous_extended_usage(f"ip:{client_ip}", count=num_models)
+            if req.browser_fingerprint:
+                increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=num_models)
+            print(f"Anonymous user - Extended usage: {max(ip_extended_count, fingerprint_extended_count) + num_models}/2")
+    # --- END EXTENDED TIER LIMITING ---
+
     # Track start time for processing metrics
     start_time = datetime.now()
 
     try:
         loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.conversation_history)
+        results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.tier, req.conversation_history)
 
         # Count successful vs failed models
         successful_models = 0
@@ -424,17 +510,28 @@ async def reset_rate_limit_dev(
     if current_user:
         current_user.daily_usage_count = 0
         current_user.monthly_overage_count = 0
+        current_user.daily_extended_usage = 0  # Reset extended interactions count
         db.commit()
 
     # Reset IP-based rate limit (use anonymous_rate_limit_storage from rate_limiting.py)
     ip_key = f"ip:{client_ip}"
     if ip_key in anonymous_rate_limit_storage:
         del anonymous_rate_limit_storage[ip_key]
+    
+    # Reset IP-based extended usage tracking
+    ip_extended_key = f"ip:{client_ip}_extended"
+    if ip_extended_key in anonymous_rate_limit_storage:
+        del anonymous_rate_limit_storage[ip_extended_key]
 
     # Reset fingerprint-based rate limit if provided
     if fingerprint:
         fp_key = f"fp:{fingerprint}"
         if fp_key in anonymous_rate_limit_storage:
             del anonymous_rate_limit_storage[fp_key]
+        
+        # Reset fingerprint-based extended usage tracking
+        fp_extended_key = f"fp:{fingerprint}_extended"
+        if fp_extended_key in anonymous_rate_limit_storage:
+            del anonymous_rate_limit_storage[fp_extended_key]
 
     return {"message": "Rate limits reset successfully", "ip_address": client_ip, "fingerprint_reset": fingerprint is not None}

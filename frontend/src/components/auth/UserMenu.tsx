@@ -15,6 +15,18 @@ export const UserMenu: React.FC = () => {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
+    // Extended tier limits per subscription tier
+    const getExtendedLimit = (tier: string): number => {
+        const limits = {
+            free: 5,
+            starter: 10,
+            starter_plus: 20,
+            pro: 40,
+            pro_plus: 80
+        };
+        return limits[tier as keyof typeof limits] || 5;
+    };
+
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -109,6 +121,12 @@ export const UserMenu: React.FC = () => {
                             <div className="usage-label">Today's Usage</div>
                             <div className="usage-value">
                                 {user.daily_usage_count} model responses
+                            </div>
+                        </div>
+                        <div className="usage-info">
+                            <div className="usage-label">Extended Interactions</div>
+                            <div className="usage-value">
+                                {user.daily_extended_usage || 0} of {getExtendedLimit(user.subscription_tier)} remaining
                             </div>
                         </div>
                         {user.monthly_overage_count > 0 && (

@@ -82,7 +82,7 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                     // Small delay before showing success to allow orange banner to start fading
                     setTimeout(() => {
                         setStatus('success');
-                        setMessage('Your account is now fully activated. You can make unlimited comparisons!');
+                        setMessage('Your account is now fully activated. You can begin to compare AI models!');
                         // Trigger entrance animation
                         setTimeout(() => setHasAnimatedIn(true), 50);
                     }, 300);
