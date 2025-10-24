@@ -10,7 +10,7 @@ lengths for both standard and extended tiers.
 """
 
 # Standard length response (approximately 500-800 tokens)
-MOCK_RESPONSE_STANDARD = """I'd be happy to help you with that question. Let me provide a comprehensive answer that addresses the key points.
+MOCK_RESPONSE_STANDARD = """I'd be happy to help you with that question. Let me provide an answer that addresses the key points.
 
 First, it's important to understand the context and background of this topic. The fundamental concepts involve several interconnected elements that work together to create a cohesive system. When we examine the core principles, we can see how each component plays a crucial role in the overall functionality.
 
