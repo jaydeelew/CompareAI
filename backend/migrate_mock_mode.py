@@ -31,18 +31,19 @@ def migrate():
     
     try:
         # Check if column already exists (works for both SQLite and PostgreSQL)
-        # For SQLite, we use PRAGMA table_info
-        # For PostgreSQL, we use information_schema
-        try:
-            # Try SQLite approach first
+        # Detect database type from the DATABASE_URL
+        is_sqlite = 'sqlite' in DATABASE_URL.lower()
+        
+        if is_sqlite:
+            # SQLite approach
             result = session.execute(text("PRAGMA table_info(users)"))
             columns = [row[1] for row in result.fetchall()]
             
             if 'mock_mode_enabled' in columns:
                 print("✅ mock_mode_enabled column already exists, skipping migration")
                 return
-        except Exception:
-            # Try PostgreSQL approach
+        else:
+            # PostgreSQL approach
             result = session.execute(text("""
                 SELECT column_name 
                 FROM information_schema.columns 
@@ -55,11 +56,18 @@ def migrate():
         
         print("📝 Adding mock_mode_enabled column to users table...")
         
-        # Add the new column (works for both SQLite and PostgreSQL)
-        session.execute(text("""
-            ALTER TABLE users 
-            ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT 0
-        """))
+        # Add the new column with appropriate default for each database
+        if is_sqlite:
+            session.execute(text("""
+                ALTER TABLE users 
+                ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT 0
+            """))
+        else:
+            # PostgreSQL prefers FALSE
+            session.execute(text("""
+                ALTER TABLE users 
+                ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE
+            """))
         
         session.commit()
         print("✅ Successfully added mock_mode_enabled column")
