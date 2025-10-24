@@ -18,9 +18,9 @@ const FlowerIcon: React.FC<FlowerIconProps> = ({ filledPetals, size = 20, classN
     const petals = [];
     const centerX = 12;
     const centerY = 12;
-    const petalDistance = 7; // Distance from center to petal center
-    const petalWidth = 3.5; // Width of each petal
-    const petalHeight = 5; // Height of each petal
+    const petalDistance = 7.5; // Distance from center to petal center
+    const petalWidth = 1.8; // Width of each petal (thinner)
+    const petalHeight = 4.5; // Height of each petal
 
     for (let i = 0; i < 9; i++) {
         // Angle for each petal (starting from top and going clockwise)
@@ -66,7 +66,7 @@ const FlowerIcon: React.FC<FlowerIconProps> = ({ filledPetals, size = 20, classN
             <circle
                 cx={centerX}
                 cy={centerY}
-                r="2"
+                r="4"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
