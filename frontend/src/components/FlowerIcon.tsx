@@ -18,32 +18,39 @@ const FlowerIcon: React.FC<FlowerIconProps> = ({ filledPetals, size = 20, classN
     const petals = [];
     const centerX = 12;
     const centerY = 12;
-    const petalDistance = 7.5; // Distance from center to petal center
-    const petalWidth = 1.8; // Width of each petal (thinner)
-    const petalHeight = 4.5; // Height of each petal
+    const petalDistance = 6; // Distance from center to petal base
 
+    // Create teardrop-shaped petals using path
     for (let i = 0; i < 9; i++) {
         // Angle for each petal (starting from top and going clockwise)
         const angle = (i * 40 - 90) * (Math.PI / 180); // 40 degrees apart, starting at top
+        const angleDeg = i * 40; // Angle in degrees for rotation
 
-        // Position of petal center
-        const petalX = centerX + petalDistance * Math.cos(angle);
-        const petalY = centerY + petalDistance * Math.sin(angle);
+        // Position of petal base (closer to center)
+        const baseX = centerX + petalDistance * Math.cos(angle);
+        const baseY = centerY + petalDistance * Math.sin(angle);
 
-        // Create ellipse for petal
         const isFilled = i < numFilled;
 
+        // Create a teardrop shape using a path
+        // The teardrop is oriented to point away from the center
+        const teardropPath = `
+      M 0,0
+      C -1.5,-2 -2,-3.5 0,-5
+      C 2,-3.5 1.5,-2 0,0
+      Z
+    `;
+
         petals.push(
-            <ellipse
+            <path
                 key={i}
-                cx={petalX}
-                cy={petalY}
-                rx={petalWidth}
-                ry={petalHeight}
-                transform={`rotate(${i * 40} ${petalX} ${petalY})`}
+                d={teardropPath}
+                transform={`translate(${baseX}, ${baseY}) rotate(${angleDeg})`}
                 fill={isFilled ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 opacity={isFilled ? 1 : 0.4}
             />
         );
@@ -67,7 +74,7 @@ const FlowerIcon: React.FC<FlowerIconProps> = ({ filledPetals, size = 20, classN
                 cx={centerX}
                 cy={centerY}
                 r="4"
-                fill="none"
+                fill="currentColor"
                 stroke="currentColor"
                 strokeWidth="1.5"
             />
