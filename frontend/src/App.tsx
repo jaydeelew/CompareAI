@@ -354,6 +354,140 @@ function AppContent() {
   // Sanitize modelId for HTML id and selector
   const getSafeId = (modelId: string) => modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
 
+  // Helper to check if element is scrolled to bottom (within 50px threshold)
+  const isScrolledToBottom = (element: HTMLElement): boolean => {
+    const threshold = 50; // px tolerance
+    return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+  };
+
+  // Setup scroll listener for a model to detect user scrolling
+  // Returns true if successful, false if element not found
+  const setupScrollListener = (modelId: string): boolean => {
+    const safeId = getSafeId(modelId);
+    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+
+    if (!conversationContent) {
+      console.log(`⚠️ Scroll listener setup failed for ${modelId}: element not found yet`);
+      return false;
+    }
+
+    // Remove existing listeners if any
+    const existingListeners = scrollListenersRef.current.get(modelId);
+    if (existingListeners) {
+      conversationContent.removeEventListener('scroll', existingListeners.scroll);
+      conversationContent.removeEventListener('wheel', existingListeners.wheel);
+      conversationContent.removeEventListener('touchstart', existingListeners.touchstart);
+      conversationContent.removeEventListener('mousedown', existingListeners.mousedown);
+    }
+
+    // Initialize last scroll position
+    lastScrollTopRef.current.set(modelId, conversationContent.scrollTop);
+
+    // Handle mouse wheel - immediate indication of user interaction
+    const handleWheel = () => {
+      // IMMEDIATELY pause auto-scroll when user scrolls
+      autoScrollPausedRef.current.add(modelId);
+
+      userInteractingRef.current.add(modelId);
+
+      // Check scroll position after wheel event to potentially resume
+      setTimeout(() => {
+        if (isScrolledToBottom(conversationContent)) {
+          // User scrolled to bottom - resume auto-scroll
+          autoScrollPausedRef.current.delete(modelId);
+        }
+        // If not at bottom, keep it paused (already set above)
+        userInteractingRef.current.delete(modelId);
+      }, 150);
+    };
+
+    // Handle touch start - immediate indication of user interaction
+    const handleTouchStart = () => {
+      // IMMEDIATELY pause auto-scroll when user touches to scroll
+      autoScrollPausedRef.current.add(modelId);
+
+      userInteractingRef.current.add(modelId);
+
+      // Check scroll position after touch to potentially resume
+      setTimeout(() => {
+        if (isScrolledToBottom(conversationContent)) {
+          // User scrolled to bottom - resume auto-scroll
+          autoScrollPausedRef.current.delete(modelId);
+        }
+        // If not at bottom, keep it paused (already set above)
+        userInteractingRef.current.delete(modelId);
+      }, 150);
+    };
+
+    // Handle mousedown on scrollbar - user is clicking/dragging scrollbar
+    const handleMouseDown = () => {
+      // IMMEDIATELY pause auto-scroll when user clicks scrollbar
+      autoScrollPausedRef.current.add(modelId);
+
+      userInteractingRef.current.add(modelId);
+
+      // Check scroll position after mousedown to potentially resume
+      setTimeout(() => {
+        if (isScrolledToBottom(conversationContent)) {
+          // User scrolled to bottom - resume auto-scroll
+          autoScrollPausedRef.current.delete(modelId);
+        }
+        userInteractingRef.current.delete(modelId);
+      }, 150);
+    };
+
+    // Handle scroll event - detect if scrolling upward (user interaction)
+    const handleScroll = () => {
+      const lastScrollTop = lastScrollTopRef.current.get(modelId) || 0;
+      const currentScrollTop = conversationContent.scrollTop;
+
+      // If scrolling up (position decreased), it's likely user interaction
+      if (currentScrollTop < lastScrollTop) {
+        // User scrolled up - pause auto-scroll
+        autoScrollPausedRef.current.add(modelId);
+      } else if (isScrolledToBottom(conversationContent)) {
+        // Scrolled to bottom - resume auto-scroll
+        autoScrollPausedRef.current.delete(modelId);
+      }
+
+      // Update last scroll position
+      lastScrollTopRef.current.set(modelId, currentScrollTop);
+    };
+
+    // Add all listeners
+    conversationContent.addEventListener('wheel', handleWheel, { passive: true });
+    conversationContent.addEventListener('touchstart', handleTouchStart, { passive: true });
+    conversationContent.addEventListener('mousedown', handleMouseDown, { passive: true });
+    conversationContent.addEventListener('scroll', handleScroll, { passive: true });
+
+    scrollListenersRef.current.set(modelId, {
+      scroll: handleScroll,
+      wheel: handleWheel,
+      touchstart: handleTouchStart,
+      mousedown: handleMouseDown
+    });
+
+    console.log(`✅ Scroll listener setup successful for ${modelId}`);
+    return true;
+  };
+
+  // Cleanup scroll listener for a model
+  const cleanupScrollListener = (modelId: string) => {
+    const safeId = getSafeId(modelId);
+    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+    const listeners = scrollListenersRef.current.get(modelId);
+
+    if (conversationContent && listeners) {
+      conversationContent.removeEventListener('scroll', listeners.scroll);
+      conversationContent.removeEventListener('wheel', listeners.wheel);
+      conversationContent.removeEventListener('touchstart', listeners.touchstart);
+      conversationContent.removeEventListener('mousedown', listeners.mousedown);
+    }
+    scrollListenersRef.current.delete(modelId);
+    userInteractingRef.current.delete(modelId);
+    lastScrollTopRef.current.delete(modelId);
+  };
+
   const handleScreenshot = async (modelId: string) => {
     const safeId = getSafeId(modelId);
     console.log('Screenshot button clicked for model:', modelId, 'Safe ID:', safeId);
@@ -479,6 +613,12 @@ function AppContent() {
   const [isAnimatingButton, setIsAnimatingButton] = useState(false);
   const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
+
+  // Auto-scroll control state - tracks which models have auto-scroll paused by user
+  const autoScrollPausedRef = useRef<Set<string>>(new Set()); // Ref for immediate access without state delay
+  const scrollListenersRef = useRef<Map<string, { scroll: () => void; wheel: () => void; touchstart: () => void; mousedown: () => void }>>(new Map());
+  const userInteractingRef = useRef<Set<string>>(new Set()); // Track which models user is actively interacting with
+  const lastScrollTopRef = useRef<Map<string, number>>(new Map()); // Track last scroll position to detect user scrolling
 
   // Freemium usage tracking state
   const [usageCount, setUsageCount] = useState(0);
@@ -672,6 +812,29 @@ function AppContent() {
       setShowDoneSelectingCard(true);
     }
   }, [selectedModels.length, isModelsHidden]);
+
+  // Cleanup scroll listeners on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up all scroll listeners when component unmounts
+      const listeners = scrollListenersRef.current;
+      listeners.forEach((_listener, modelId) => {
+        const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
+        const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+        const listenerSet = listeners.get(modelId);
+
+        if (conversationContent && listenerSet) {
+          conversationContent.removeEventListener('scroll', listenerSet.scroll);
+          conversationContent.removeEventListener('wheel', listenerSet.wheel);
+          conversationContent.removeEventListener('touchstart', listenerSet.touchstart);
+          conversationContent.removeEventListener('mousedown', listenerSet.mousedown);
+        }
+      });
+      scrollListenersRef.current.clear();
+      userInteractingRef.current.clear();
+      lastScrollTopRef.current.clear();
+    };
+  }, []);
 
   // Track mouse position over models section with throttling for better performance
   useEffect(() => {
@@ -1291,6 +1454,14 @@ function AppContent() {
     setProcessingTime(null);
     userCancelledRef.current = false;
     hasScrolledToResultsRef.current = false; // Reset scroll tracking for new comparison
+    autoScrollPausedRef.current.clear(); // Clear auto-scroll pause ref
+    userInteractingRef.current.clear(); // Clear user interaction tracking
+    lastScrollTopRef.current.clear(); // Clear scroll position tracking
+
+    // Clean up any existing scroll listeners from previous comparison
+    scrollListenersRef.current.forEach((_listener, modelId) => {
+      cleanupScrollListener(modelId);
+    });
 
     const startTime = Date.now();
 
@@ -1360,7 +1531,7 @@ function AppContent() {
       // Initialize results object for streaming updates
       const streamingResults: { [key: string]: string } = {};
       const completedModels = new Set<string>(); // Track which models have finished
-      let streamingMetadata: any = null;
+      let streamingMetadata: CompareResponse['metadata'] | null = null;
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
 
@@ -1382,6 +1553,9 @@ function AppContent() {
         }));
         setConversations(emptyConversations);
       }
+
+      // Track which models have had listeners set up (to avoid duplicates)
+      const listenersSetUp = new Set<string>();
 
       if (reader) {
         try {
@@ -1419,12 +1593,38 @@ function AppContent() {
                   // Content chunk arrived - append to result
                   streamingResults[event.model] = (streamingResults[event.model] || '') + event.content;
                   shouldUpdate = true;
+
+                  // Set up scroll listener on first chunk (DOM should be ready by now)
+                  if (!listenersSetUp.has(event.model)) {
+                    listenersSetUp.add(event.model);
+
+                    // Retry setup with increasing delays until successful
+                    const trySetup = (attempt: number, maxAttempts: number) => {
+                      const delay = attempt * 50; // 50ms, 100ms, 150ms, 200ms
+                      requestAnimationFrame(() => {
+                        setTimeout(() => {
+                          const success = setupScrollListener(event.model);
+                          if (!success && attempt < maxAttempts) {
+                            console.log(`Retrying scroll listener setup for ${event.model} (attempt ${attempt + 1}/${maxAttempts})`);
+                            trySetup(attempt + 1, maxAttempts);
+                          }
+                        }, delay);
+                      });
+                    };
+
+                    // Try up to 4 times with increasing delays
+                    trySetup(1, 4);
+                  }
                 } else if (event.type === 'done') {
                   // Model completed - track it
                   completedModels.add(event.model);
                   console.log(`✅ Streaming complete for ${event.model}, error: ${event.error}`);
                   console.log(`   Progress: ${completedModels.size}/${selectedModels.length} models complete`);
                   shouldUpdate = true;
+
+                  // Clean up scroll listener and pause state for this model
+                  cleanupScrollListener(event.model);
+                  autoScrollPausedRef.current.delete(event.model);
 
                   // Check if ALL models are done - if so, switch to formatted view
                   if (completedModels.size === selectedModels.length) {
@@ -1524,11 +1724,16 @@ function AppContent() {
 
                 // Auto-scroll each conversation card to bottom as content streams in
                 // BUT only for models that are still streaming (not completed yet)
+                // AND respect user's manual scroll position (pause if user scrolled up)
                 // Use requestAnimationFrame for smooth scrolling
                 requestAnimationFrame(() => {
                   Object.keys(streamingResults).forEach(modelId => {
                     // Skip auto-scrolling for completed models so users can scroll through them
                     if (completedModels.has(modelId)) return;
+
+                    // Skip auto-scrolling if user has manually scrolled away from bottom
+                    // Use REF for immediate check without state update delay
+                    if (autoScrollPausedRef.current.has(modelId)) return;
 
                     const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
                     const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
