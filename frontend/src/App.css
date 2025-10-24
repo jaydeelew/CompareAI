@@ -157,6 +157,7 @@
 html {
   overflow-x: hidden;
   width: 100%;
+  overflow-anchor: none; /* Prevent automatic scroll adjustments as content loads */
 }
 
 body {
@@ -175,9 +176,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  width: 100vw;
+  width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 

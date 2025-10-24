@@ -436,21 +436,21 @@ def clean_model_response(text: str) -> str:
     """
     if not text:
         return text
-    
+
     # Only do essential cleanup - frontend handles the rest
     # This dramatically improves response speed (200-500ms saved per response)
-    
+
     # Only remove obviously broken content that ALL models should avoid
     # Remove complete MathML blocks (rarely needed, but fast)
-    text = re.sub(r'<math[^>]*>[\s\S]*?</math>', '', text, flags=re.IGNORECASE)
-    
+    text = re.sub(r"<math[^>]*>[\s\S]*?</math>", "", text, flags=re.IGNORECASE)
+
     # Remove w3.org MathML URLs (most common issue from Google Gemini)
-    text = re.sub(r'https?://www\.w3\.org/\d+/Math/MathML[^>\s]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'www\.w3\.org/\d+/Math/MathML', '', text, flags=re.IGNORECASE)
-    
+    text = re.sub(r"https?://www\.w3\.org/\d+/Math/MathML[^>\s]*>", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"www\.w3\.org/\d+/Math/MathML", "", text, flags=re.IGNORECASE)
+
     # Clean up excessive whitespace
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
     return text.strip()
 
 
@@ -458,7 +458,7 @@ def get_model_max_tokens(model_id: str) -> int:
     """
     Get the appropriate max_tokens limit for each model based on their capabilities.
     This prevents setting max_tokens higher than the model's maximum output capacity.
-    
+
     All current models support 8192 tokens. If a model needs a different limit in the future,
     you can add it to the model_limits dictionary below.
     """
@@ -468,23 +468,117 @@ def get_model_max_tokens(model_id: str) -> int:
         # Add any models with non-standard limits here
         # Example: "some-provider/model-id": 4096,
     }
-    
+
     # Return model-specific limit or default to 8192 for all models
     return model_limits.get(model_id, 8192)
 
 
-def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None) -> str:
+def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None):
+    """
+    Stream OpenRouter responses token-by-token for faster perceived response time.
+    Yields chunks of text as they arrive from the model.
+
+    Supports all OpenRouter providers that have streaming enabled:
+    - OpenAI, Azure, Anthropic, Fireworks, Mancer, Recursal
+    - AnyScale, Lepton, OctoAI, Novita, DeepInfra, Together
+    - Cohere, Hyperbolic, Infermatic, Avian, XAI, Cloudflare
+    - SFCompute, Nineteen, Liquid, Friendli, Chutes, DeepSeek
+    """
     try:
         # Build messages array - use standard format like official AI providers
         messages = []
-        
+
+        # Add a minimal system message only to encourage complete thoughts
+        if not conversation_history:
+            messages.append(
+                {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
+            )
+
+        # Add conversation history if provided
+        if conversation_history:
+            for msg in conversation_history:
+                messages.append({"role": msg.role, "content": msg.content})
+
+        # Add the current prompt as user message
+        messages.append({"role": "user", "content": prompt})
+
+        # Get tier-based max_tokens limit
+        tier_limits = {"brief": 2000, "standard": 4000, "extended": 8192}
+        tier_max_tokens = tier_limits.get(tier, 4000)
+
+        # Don't exceed model's maximum capability
+        model_max_tokens = get_model_max_tokens(model_id)
+        max_tokens = min(tier_max_tokens, model_max_tokens)
+
+        # Enable streaming
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=messages,
+            timeout=INDIVIDUAL_MODEL_TIMEOUT,
+            max_tokens=max_tokens,
+            stream=True,  # Enable streaming!
+        )
+
+        full_content = ""
+        finish_reason = None
+
+        # Iterate through chunks as they arrive
+        for chunk in response:
+            if chunk.choices and len(chunk.choices) > 0:
+                delta = chunk.choices[0].delta
+
+                # Yield content chunks as they arrive
+                if hasattr(delta, "content") and delta.content:
+                    content_chunk = delta.content
+                    full_content += content_chunk
+                    yield content_chunk
+
+                # Capture finish reason from last chunk
+                if chunk.choices[0].finish_reason:
+                    finish_reason = chunk.choices[0].finish_reason
+
+        # After streaming completes, handle finish_reason warnings
+        if finish_reason == "length":
+            tier_messages = {
+                "brief": "\n\n⚠️ **Brief tier limit reached.** Response truncated at 2,000 tokens. Upgrade to Standard (4,000) or Extended (8,000) for longer responses.",
+                "standard": "\n\n⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
+                "extended": "\n\n⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
+            }
+            warning = tier_messages.get(tier, "\n\n⚠️ Response truncated - model reached maximum output length.")
+            yield warning
+        elif finish_reason == "content_filter":
+            yield "\n\n⚠️ **Note:** Response stopped by content filter."
+
+    except Exception as e:
+        error_str = str(e).lower()
+        # Yield error messages in the stream
+        if "timeout" in error_str:
+            yield f"Error: Timeout ({INDIVIDUAL_MODEL_TIMEOUT}s)"
+        elif "rate limit" in error_str or "429" in error_str:
+            yield f"Error: Rate limited"
+        elif "not found" in error_str or "404" in error_str:
+            yield f"Error: Model not available"
+        elif "unauthorized" in error_str or "401" in error_str:
+            yield f"Error: Authentication failed"
+        else:
+            yield f"Error: {str(e)[:100]}"
+
+
+def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None) -> str:
+    """
+    Non-streaming version of OpenRouter call (kept for backward compatibility).
+    For better performance, use call_openrouter_streaming instead.
+    """
+    try:
+        # Build messages array - use standard format like official AI providers
+        messages = []
+
         # Add a minimal system message only to encourage complete thoughts
         # This doesn't force verbosity, just ensures completion
         if not conversation_history:
-            messages.append({
-                "role": "system", 
-                "content": "Provide complete responses. Finish your thoughts and explanations fully."
-            })
+            messages.append(
+                {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
+            )
 
         # Add conversation history if provided (include both user and assistant messages)
         if conversation_history:
@@ -495,45 +589,38 @@ def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversa
         messages.append({"role": "user", "content": prompt})
 
         # Get tier-based max_tokens limit
-        tier_limits = {
-            "brief": 2000,
-            "standard": 4000,
-            "extended": 8192
-        }
+        tier_limits = {"brief": 2000, "standard": 4000, "extended": 8192}
         tier_max_tokens = tier_limits.get(tier, 4000)
-        
+
         # Don't exceed model's maximum capability
         model_max_tokens = get_model_max_tokens(model_id)
         max_tokens = min(tier_max_tokens, model_max_tokens)
-        
+
         response = client.chat.completions.create(
-            model=model_id, 
-            messages=messages, 
-            timeout=INDIVIDUAL_MODEL_TIMEOUT,
-            max_tokens=max_tokens  # Use tier-based limit
+            model=model_id, messages=messages, timeout=INDIVIDUAL_MODEL_TIMEOUT, max_tokens=max_tokens  # Use tier-based limit
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
-        
+
         # Only log issues, not every successful response
-        model_name = model_id.split('/')[-1]
-        
+        model_name = model_id.split("/")[-1]
+
         # Detect incomplete responses heuristically
         incomplete_indicators = [
-            'Therefore:',
-            'In conclusion:',
-            'Finally:',
-            'Thus:',
-            'So:',
-            'Hence:',
-            'Now,',
-            'Next,',
-            'Then,',
-            'Adding these',
-            'Combining',
-            'Putting it all together',
+            "Therefore:",
+            "In conclusion:",
+            "Finally:",
+            "Thus:",
+            "So:",
+            "Hence:",
+            "Now,",
+            "Next,",
+            "Then,",
+            "Adding these",
+            "Combining",
+            "Putting it all together",
         ]
-        
+
         is_likely_incomplete = False
         if content:
             last_30_chars = content.strip()[-30:] if len(content.strip()) > 30 else content.strip()
@@ -541,19 +628,19 @@ def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversa
                 if last_30_chars.endswith(indicator) or last_30_chars.endswith(indicator.lower()):
                     is_likely_incomplete = True
                     break
-        
+
         # Detect and warn about incomplete responses
         if finish_reason == "length":
             # Model hit token limit - response was cut off mid-thought
             tier_messages = {
                 "brief": "⚠️ **Brief tier limit reached.** Response truncated at 2,000 tokens. Upgrade to Standard (4,000) or Extended (8,000) for longer responses.",
                 "standard": "⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
-                "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available."
+                "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
             content = (content or "") + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
         elif finish_reason == "content_filter":
             content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
-        
+
         # Clean up MathML and other unwanted markup before returning
         cleaned_content = clean_model_response(content) if content is not None else "No response generated"
         return cleaned_content
@@ -572,7 +659,9 @@ def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversa
             return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models_batch(prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: list = None) -> Dict[str, str]:
+def run_models_batch(
+    prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: list = None
+) -> Dict[str, str]:
     """Run a batch of models with limited concurrency"""
     results = {}
 
@@ -646,10 +735,10 @@ def test_connection_quality() -> Dict[str, Any]:
 
     try:
         response = client.chat.completions.create(
-            model=test_model, 
-            messages=[{"role": "user", "content": test_prompt}], 
+            model=test_model,
+            messages=[{"role": "user", "content": test_prompt}],
             timeout=10,  # Short timeout for connection test
-            max_tokens=100  # Small limit for connection test
+            max_tokens=100,  # Small limit for connection test
         )
 
         response_time = time.time() - start_time

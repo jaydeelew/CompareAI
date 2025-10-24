@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        #output {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 200px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .stats {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .chunk {
+            display: inline;
+            animation: highlight 0.3s ease;
+        }
+        @keyframes highlight {
+            from {
+                background: #ffff00;
+            }
+            to {
+                background: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Streaming Test</h1>
+    <p>This tests if Server-Sent Events are streaming properly from the backend.</p>
+    
+    <button id="startBtn" onclick="startStreaming()">Start Streaming Test</button>
+    
+    <div class="stats" id="stats">
+        <strong>Status:</strong> <span id="status">Ready</span><br>
+        <strong>Chunks received:</strong> <span id="chunkCount">0</span><br>
+        <strong>Total characters:</strong> <span id="charCount">0</span><br>
+        <strong>Time elapsed:</strong> <span id="timeElapsed">0ms</span>
+    </div>
+    
+    <h2>Output:</h2>
+    <div id="output"></div>
+
+    <script>
+        let startTime;
+        let chunkCount = 0;
+        let charCount = 0;
+        let updateInterval;
+
+        function updateStats() {
+            if (startTime) {
+                const elapsed = Date.now() - startTime;
+                document.getElementById('timeElapsed').textContent = elapsed + 'ms';
+            }
+        }
+
+        async function startStreaming() {
+            const output = document.getElementById('output');
+            const statusEl = document.getElementById('status');
+            const chunkCountEl = document.getElementById('chunkCount');
+            const charCountEl = document.getElementById('charCount');
+            const startBtn = document.getElementById('startBtn');
+            
+            // Reset
+            output.innerHTML = '';
+            chunkCount = 0;
+            charCount = 0;
+            chunkCountEl.textContent = '0';
+            charCountEl.textContent = '0';
+            startBtn.disabled = true;
+            
+            startTime = Date.now();
+            statusEl.textContent = 'Connecting...';
+            statusEl.style.color = 'orange';
+            
+            // Start time update
+            updateInterval = setInterval(updateStats, 100);
+            
+            try {
+                const response = await fetch('http://localhost:8000/compare-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        input_data: "Write a short haiku about streaming AI responses",
+                        models: ["anthropic/claude-3.5-sonnet-20241022"],
+                        tier: "standard",
+                        browser_fingerprint: "test-html-file"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                statusEl.textContent = '✅ Connected - Streaming...';
+                statusEl.style.color = 'green';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        statusEl.textContent = '✅ Streaming Complete!';
+                        statusEl.style.color = 'green';
+                        break;
+                    }
+
+                    // Decode chunk
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Process complete SSE messages
+                    const messages = buffer.split('\n\n');
+                    buffer = messages.pop() || '';
+                    
+                    for (const message of messages) {
+                        if (!message.trim() || !message.startsWith('data: ')) continue;
+                        
+                        try {
+                            const jsonStr = message.replace(/^data: /, '');
+                            const event = JSON.parse(jsonStr);
+                            
+                            if (event.type === 'start') {
+                                output.innerHTML += `<div style="color: #007bff; font-weight: bold;">🎬 Started: ${event.model}</div>\n`;
+                            } else if (event.type === 'chunk') {
+                                const span = document.createElement('span');
+                                span.className = 'chunk';
+                                span.textContent = event.content;
+                                output.appendChild(span);
+                                
+                                chunkCount++;
+                                charCount += event.content.length;
+                                chunkCountEl.textContent = chunkCount;
+                                charCountEl.textContent = charCount;
+                                
+                                // Scroll to bottom
+                                output.scrollTop = output.scrollHeight;
+                            } else if (event.type === 'done') {
+                                output.innerHTML += `\n\n<div style="color: green; font-weight: bold;">✅ Done: ${event.model}</div>\n`;
+                            } else if (event.type === 'complete') {
+                                const elapsed = Date.now() - startTime;
+                                output.innerHTML += `\n<div style="color: #666; font-style: italic;">Total time: ${elapsed}ms</div>`;
+                            }
+                        } catch (e) {
+                            console.error('Parse error:', e, message);
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                statusEl.textContent = '❌ Error: ' + error.message;
+                statusEl.style.color = 'red';
+                output.innerHTML += `\n\n<div style="color: red;">Error: ${error.message}</div>`;
+            } finally {
+                clearInterval(updateInterval);
+                startBtn.disabled = false;
+            }
+        }
+
+        // Show instructions
+        console.log('👋 Click the "Start Streaming Test" button to test SSE streaming!');
+        console.log('If you see chunks appearing in real-time with animation, streaming is working!');
+        console.log('If all text appears at once after a delay, there is a buffering issue.');
+    </script>
+</body>
+</html>
+

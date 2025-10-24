@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -16,6 +17,7 @@ interface CompareResponse {
     models_successful: number;
     models_failed: number;
     timestamp: string;
+    processing_time_ms?: number;
   };
 }
 
@@ -120,6 +122,9 @@ function AppContent() {
   const maxModelsLimit = getMaxModelsForUser();
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
+  
+  // Ref to track if we've scrolled to results section in current comparison
+  const hasScrolledToResultsRef = useRef(false);
 
   // State to trigger verification from another tab
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
@@ -614,9 +619,12 @@ function AppContent() {
     }
   }, [user?.is_verified, error]);
 
-  // Scroll to results section when results are loaded
+  // Scroll to results section when results are loaded (only once per comparison)
   useEffect(() => {
-    if (response && !isFollowUpMode) {
+    if (response && !isFollowUpMode && !hasScrolledToResultsRef.current) {
+      // Mark that we've scrolled for this comparison
+      hasScrolledToResultsRef.current = true;
+      
       // Longer delay to ensure the results section is fully rendered
       setTimeout(() => {
         const resultsSection = document.querySelector('.results-section');
@@ -1282,6 +1290,7 @@ function AppContent() {
     setClosedCards(new Set()); // Clear closed cards for new results
     setProcessingTime(null);
     userCancelledRef.current = false;
+    hasScrolledToResultsRef.current = false; // Reset scroll tracking for new comparison
 
     const startTime = Date.now();
 
@@ -1317,15 +1326,16 @@ function AppContent() {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
-      const res = await fetch(`${API_URL}/compare`, {
+      // Use streaming endpoint for faster perceived response time
+      const res = await fetch(`${API_URL}/compare-stream`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           input_data: input,
           models: selectedModels,
           conversation_history: conversationHistory,
-          browser_fingerprint: browserFingerprint,  // Send fingerprint for rate limiting
-          tier: isExtendedMode ? 'extended' : 'standard'  // Send Extended mode as tier
+          browser_fingerprint: browserFingerprint,
+          tier: isExtendedMode ? 'extended' : 'standard'
         }),
         signal: controller.signal,
       });
@@ -1343,25 +1353,198 @@ function AppContent() {
         throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
       }
 
-      const data = await res.json();
-      const endTime = Date.now();
-      setProcessingTime(endTime - startTime);
+      // Handle streaming response with Server-Sent Events
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      // Initialize results object for streaming updates
+      const streamingResults: { [key: string]: string } = {};
+      const completedModels = new Set<string>(); // Track which models have finished
+      let streamingMetadata: any = null;
+      let lastUpdateTime = Date.now();
+      const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
+      
+      // Set all selected models to 'raw' tab to show streaming content immediately
+      const rawTabs: { [modelId: string]: 'raw' } = {};
+      selectedModels.forEach(modelId => {
+        rawTabs[modelId] = 'raw';
+      });
+      setActiveResultTabs(rawTabs);
+      
+      // Initialize empty conversations immediately so cards appear during streaming
+      if (!isFollowUpMode) {
+        const emptyConversations: ModelConversation[] = selectedModels.map(modelId => ({
+          modelId,
+          messages: [
+            createMessage('user', input, userTimestamp),
+            createMessage('assistant', '', new Date().toISOString()) // Empty assistant message to be filled
+          ]
+        }));
+        setConversations(emptyConversations);
+      }
+      
+      if (reader) {
+        try {
+          let buffer = '';
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            // Decode the chunk and add to buffer
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete SSE messages (separated by \n\n)
+            const messages = buffer.split('\n\n');
+            buffer = messages.pop() || ''; // Keep incomplete message in buffer
+            
+            let shouldUpdate = false;
+            
+            for (const message of messages) {
+              if (!message.trim() || !message.startsWith('data: ')) continue;
+              
+              try {
+                const jsonStr = message.replace(/^data: /, '');
+                const event = JSON.parse(jsonStr);
+                
+                if (event.type === 'start') {
+                  // Model starting - initialize empty result
+                  if (!streamingResults[event.model]) {
+                    streamingResults[event.model] = '';
+                  }
+                  shouldUpdate = true;
+                  console.log(`🎬 Streaming started for ${event.model}`);
+                } else if (event.type === 'chunk') {
+                  // Content chunk arrived - append to result
+                  streamingResults[event.model] = (streamingResults[event.model] || '') + event.content;
+                  shouldUpdate = true;
+                } else if (event.type === 'done') {
+                  // Model completed - track it
+                  completedModels.add(event.model);
+                  console.log(`✅ Streaming complete for ${event.model}, error: ${event.error}`);
+                  console.log(`   Progress: ${completedModels.size}/${selectedModels.length} models complete`);
+                  shouldUpdate = true;
+                  
+                  // Check if ALL models are done - if so, switch to formatted view
+                  if (completedModels.size === selectedModels.length) {
+                    console.log('🎉 All models complete! Switching to formatted view...');
+                    const formattedTabs: { [modelId: string]: 'formatted' } = {};
+                    selectedModels.forEach(modelId => {
+                      formattedTabs[modelId] = 'formatted';
+                    });
+                    setActiveResultTabs(formattedTabs);
+                  }
+                } else if (event.type === 'complete') {
+                  // All models complete - save metadata
+                  streamingMetadata = event.metadata;
+                  const endTime = Date.now();
+                  setProcessingTime(endTime - startTime);
+                  shouldUpdate = true;
+                } else if (event.type === 'error') {
+                  throw new Error(event.message || 'Streaming error occurred');
+                }
+              } catch (parseError) {
+                console.error('Error parsing SSE message:', parseError, message);
+              }
+            }
+            
+            // Throttled UI update - update at most every 50ms for smooth streaming
+            const now = Date.now();
+            if (shouldUpdate && (now - lastUpdateTime >= UPDATE_THROTTLE_MS)) {
+              lastUpdateTime = now;
+              
+              // Force immediate UI update with flushSync to bypass React 18 automatic batching
+              flushSync(() => {
+                // Update response state
+                setResponse({
+                  results: { ...streamingResults },
+                  metadata: {
+                    input_length: input.length,
+                    models_requested: selectedModels.length,
+                    models_successful: 0, // Will be updated on complete
+                    models_failed: 0,
+                    timestamp: new Date().toISOString(),
+                    processing_time_ms: Date.now() - startTime
+                  }
+                });
+                
+                // Update conversations to show streaming text in cards
+                if (!isFollowUpMode) {
+                  setConversations(prevConversations => 
+                    prevConversations.map(conv => {
+                      const content = streamingResults[conv.modelId] || '';
+                      // Update the assistant message content
+                      return {
+                        ...conv,
+                        messages: conv.messages.map((msg, idx) => 
+                          idx === 1 && msg.type === 'assistant' 
+                            ? { ...msg, content } 
+                            : msg
+                        )
+                      };
+                    })
+                  );
+                }
+              });
+            }
+          }
+          
+          // Final update to ensure all content is displayed
+          setResponse({
+            results: { ...streamingResults },
+            metadata: {
+              input_length: input.length,
+              models_requested: selectedModels.length,
+              models_successful: Object.keys(streamingResults).filter(
+                modelId => !streamingResults[modelId].startsWith('Error')
+              ).length,
+              models_failed: Object.keys(streamingResults).filter(
+                modelId => streamingResults[modelId].startsWith('Error')
+              ).length,
+              timestamp: new Date().toISOString(),
+              processing_time_ms: Date.now() - startTime
+            }
+          });
+          
+          // Final conversations update with complete content
+          if (!isFollowUpMode) {
+            setConversations(prevConversations => 
+              prevConversations.map(conv => {
+                const content = streamingResults[conv.modelId] || '';
+                return {
+                  ...conv,
+                  messages: conv.messages.map((msg, idx) => 
+                    idx === 1 && msg.type === 'assistant' 
+                      ? { ...msg, content } 
+                      : msg
+                  )
+                };
+              })
+            );
+          }
+          
+          // Tab switching happens automatically when each model completes (see 'done' event handler above)
+          // No need to switch here - it's already been done dynamically as models finished
+        } finally {
+          reader.releaseLock();
+        }
+      }
 
-      // Filter response results to only include selected models
+      // Set final response with metadata
       const filteredData = {
-        ...data,
-        results: Object.fromEntries(
-          Object.entries(data.results).filter(([modelId]) => selectedModels.includes(modelId))
-        ),
-        metadata: {
-          ...data.metadata,
+        results: streamingResults,
+        metadata: streamingMetadata || {
+          input_length: input.length,
           models_requested: selectedModels.length,
-          models_successful: Object.keys(data.results).filter(modelId =>
-            selectedModels.includes(modelId) && !data.results[modelId].startsWith('Error')
+          models_successful: Object.keys(streamingResults).filter(
+            modelId => !streamingResults[modelId].startsWith('Error')
           ).length,
-          models_failed: Object.keys(data.results).filter(modelId =>
-            selectedModels.includes(modelId) && data.results[modelId].startsWith('Error')
-          ).length
+          models_failed: Object.keys(streamingResults).filter(
+            modelId => streamingResults[modelId].startsWith('Error')
+          ).length,
+          timestamp: new Date().toISOString(),
+          processing_time_ms: Date.now() - startTime
         }
       };
 
@@ -1479,7 +1662,7 @@ function AppContent() {
 
           const updatedConversations = selectedConversations.map(conv => {
             const newUserMessage = createMessage('user', input, userTimestamp);
-            const newAssistantMessage = createMessage('assistant', String(data.results[conv.modelId] || 'Error: No response'), aiTimestamp);
+            const newAssistantMessage = createMessage('assistant', String(filteredData.results[conv.modelId] || 'Error: No response'), aiTimestamp);
             return {
               ...conv,
               messages: [...conv.messages, newUserMessage, newAssistantMessage]
@@ -1495,7 +1678,7 @@ function AppContent() {
         });
       } else {
         // Initialize new conversations
-        initializeConversations(data, userTimestamp);
+        initializeConversations(filteredData, userTimestamp);
         // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
           scrollConversationsToBottom();
@@ -2421,10 +2604,12 @@ function AppContent() {
                                 </div>
                                 <div className="message-content">
                                   {(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? (
+                                    /* Full LaTeX rendering for formatted view */
                                     <LatexRenderer className="result-output">
                                       {message.content}
                                     </LatexRenderer>
                                   ) : (
+                                    /* Raw text for immediate streaming display */
                                     <pre className="result-output raw-output">
                                       {message.content}
                                     </pre>
