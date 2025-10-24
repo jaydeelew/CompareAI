@@ -289,13 +289,23 @@ async def reset_password(reset: PasswordReset, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_user_required)):
+async def get_current_user_info(current_user: User = Depends(get_current_user_required), db: Session = Depends(get_db)):
     """
     Get current authenticated user information.
 
     - Returns user profile data
     - Requires valid access token
     """
+    from datetime import date
+    from ..rate_limiting import check_user_rate_limit, check_extended_tier_limit
+    
+    # Reset usage counts if it's a new day
+    check_user_rate_limit(current_user, db)
+    check_extended_tier_limit(current_user, db)
+    
+    # Refresh the user object to get updated values
+    db.refresh(current_user)
+    
     return current_user
 
 
