@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     subscription_period: str
     daily_usage_count: int
     monthly_overage_count: int
+    mock_mode_enabled: bool = False  # Testing feature for admins
     created_at: datetime
 
     class Config:
@@ -278,6 +279,7 @@ class AdminUserResponse(BaseModel):
     subscription_period: str
     daily_usage_count: int
     monthly_overage_count: int
+    mock_mode_enabled: bool = False  # Testing feature for admins
     created_at: datetime
     updated_at: datetime
 

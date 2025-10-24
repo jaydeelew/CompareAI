@@ -241,8 +241,9 @@
 
 .stats-breakdown {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 2rem;
+  align-items: start;
 }
 
 .breakdown-section {
@@ -250,6 +251,14 @@
   padding: 1.5rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
+  height: 100%;
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
 }
 
 .breakdown-section h3 {
@@ -262,12 +271,6 @@
   gap: 0.5rem;
 }
 
-.breakdown-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
 .breakdown-item {
   display: flex;
   justify-content: space-between;
@@ -277,6 +280,7 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   transition: all 0.2s ease;
+  min-height: 56px;
 }
 
 .breakdown-item:hover {
@@ -289,6 +293,7 @@
   font-weight: 600;
   text-transform: capitalize;
   color: var(--text-primary);
+  font-size: 1rem;
 }
 
 .tier-count,
@@ -627,6 +632,7 @@
 .toggle-btn,
 .verify-btn,
 .reset-usage-btn,
+.mock-mode-btn,
 .delete-btn {
   padding: 0.5rem 0.875rem;
   border: none;
@@ -659,6 +665,16 @@
   color: white;
 }
 
+.mock-mode-btn.enabled {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.mock-mode-btn.disabled {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
 .delete-btn {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
@@ -667,6 +683,7 @@
 .toggle-btn:hover,
 .verify-btn:hover,
 .reset-usage-btn:hover,
+.mock-mode-btn:hover,
 .delete-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);

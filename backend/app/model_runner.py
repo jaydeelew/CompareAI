@@ -5,6 +5,8 @@ import concurrent.futures
 from typing import Dict, List, Any
 import time
 import re
+import tiktoken
+from .mock_responses import stream_mock_response, get_mock_response
 
 load_dotenv()
 
@@ -477,7 +479,74 @@ def get_model_max_tokens(model_id: str) -> int:
     return model_limits.get(model_id, 8192)
 
 
-def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None):
+def estimate_token_count(text: str) -> int:
+    """
+    Estimate token count for text using tiktoken.
+    Falls back to character-based estimation if tiktoken fails.
+    
+    Uses cl100k_base encoding (GPT-4, GPT-3.5-turbo) as a reasonable approximation
+    for most modern LLMs.
+    """
+    try:
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
+    except Exception:
+        # Fallback: rough estimate of 1 token ≈ 4 characters
+        return len(text) // 4
+
+
+def count_conversation_tokens(messages: list) -> int:
+    """
+    Count total tokens in a conversation history.
+    Includes tokens for message formatting overhead.
+    """
+    total_tokens = 0
+    
+    for msg in messages:
+        # Count content tokens
+        if isinstance(msg, dict):
+            content = msg.get('content', '')
+        else:
+            content = msg.content if hasattr(msg, 'content') else ''
+        
+        total_tokens += estimate_token_count(str(content))
+        
+        # Add overhead for message formatting (~4 tokens per message)
+        total_tokens += 4
+    
+    return total_tokens
+
+
+def truncate_conversation_history(conversation_history: list, max_messages: int = 20) -> tuple:
+    """
+    Truncate conversation history to recent messages to manage context window.
+    Returns (truncated_history, was_truncated, original_message_count).
+    
+    Industry best practice (2025): Keep sliding window of recent messages
+    rather than sending entire conversation history.
+    
+    Args:
+        conversation_history: List of conversation messages
+        max_messages: Maximum number of messages to keep (default: 20)
+    
+    Returns:
+        Tuple of (truncated messages, whether truncation occurred, original count)
+    """
+    if not conversation_history:
+        return [], False, 0
+    
+    original_count = len(conversation_history)
+    
+    if original_count <= max_messages:
+        return conversation_history, False, original_count
+    
+    # Keep the most recent max_messages
+    truncated = conversation_history[-max_messages:]
+    
+    return truncated, True, original_count
+
+
+def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None, use_mock: bool = False):
     """
     Stream OpenRouter responses token-by-token for faster perceived response time.
     Yields chunks of text as they arrive from the model.
@@ -487,7 +556,21 @@ def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard"
     - AnyScale, Lepton, OctoAI, Novita, DeepInfra, Together
     - Cohere, Hyperbolic, Infermatic, Avian, XAI, Cloudflare
     - SFCompute, Nineteen, Liquid, Friendli, Chutes, DeepSeek
+    
+    Args:
+        prompt: User prompt text
+        model_id: Model identifier
+        tier: Response tier ('brief', 'standard', or 'extended')
+        conversation_history: Optional conversation history
+        use_mock: If True, return mock responses instead of calling API (admin testing feature)
     """
+    # Mock mode: return pre-defined responses for testing
+    if use_mock:
+        print(f"🎭 Mock mode enabled - returning mock {tier} response for {model_id}")
+        for chunk in stream_mock_response(tier=tier, chunk_size=50):
+            yield chunk
+        return
+    
     try:
         # Build messages array - use standard format like official AI providers
         messages = []
@@ -498,10 +581,26 @@ def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard"
                 {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
             )
 
-        # Add conversation history if provided
+        # Apply context window management (industry best practice 2025)
+        # Truncate conversation history to prevent context overflow and manage costs
+        truncated_history = conversation_history
+        was_truncated = False
+        
         if conversation_history:
-            for msg in conversation_history:
+            truncated_history, was_truncated, original_count = truncate_conversation_history(
+                conversation_history, max_messages=20
+            )
+            
+            # Add truncated conversation history
+            for msg in truncated_history:
                 messages.append({"role": msg.role, "content": msg.content})
+            
+            # If truncated, inform the model about it
+            if was_truncated:
+                messages.append({
+                    "role": "system",
+                    "content": f"Note: Earlier conversation context ({original_count - len(truncated_history)} messages) has been summarized to focus on recent discussion."
+                })
 
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
@@ -568,11 +667,23 @@ def call_openrouter_streaming(prompt: str, model_id: str, tier: str = "standard"
             yield f"Error: {str(e)[:100]}"
 
 
-def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None) -> str:
+def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None, use_mock: bool = False) -> str:
     """
     Non-streaming version of OpenRouter call (kept for backward compatibility).
     For better performance, use call_openrouter_streaming instead.
+    
+    Args:
+        prompt: User prompt text
+        model_id: Model identifier
+        tier: Response tier ('brief', 'standard', or 'extended')
+        conversation_history: Optional conversation history
+        use_mock: If True, return mock responses instead of calling API (admin testing feature)
     """
+    # Mock mode: return pre-defined responses for testing
+    if use_mock:
+        print(f"🎭 Mock mode enabled - returning mock {tier} response for {model_id}")
+        return get_mock_response(tier=tier)
+    
     try:
         # Build messages array - use standard format like official AI providers
         messages = []
@@ -584,10 +695,25 @@ def call_openrouter(prompt: str, model_id: str, tier: str = "standard", conversa
                 {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
             )
 
-        # Add conversation history if provided (include both user and assistant messages)
+        # Apply context window management (industry best practice 2025)
+        truncated_history = conversation_history
+        was_truncated = False
+        
         if conversation_history:
-            for msg in conversation_history:
+            truncated_history, was_truncated, original_count = truncate_conversation_history(
+                conversation_history, max_messages=20
+            )
+            
+            # Add truncated conversation history
+            for msg in truncated_history:
                 messages.append({"role": msg.role, "content": msg.content})
+            
+            # If truncated, inform the model about it
+            if was_truncated:
+                messages.append({
+                    "role": "system",
+                    "content": f"Note: Earlier conversation context ({original_count - len(truncated_history)} messages) has been summarized to focus on recent discussion."
+                })
 
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})

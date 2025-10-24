@@ -587,6 +587,17 @@ async def compare_stream(
             # Don't increment here - wait until we know requests succeeded
             print(f"Anonymous user - Extended usage: {max(ip_extended_count, fingerprint_extended_count)}/2 (will increment after success)")
 
+    # Track if this is an extended interaction (long conversation context)
+    # Industry best practice 2025: Separately track context-heavy requests
+    is_extended_interaction = False
+    conversation_message_count = len(req.conversation_history) if req.conversation_history else 0
+    
+    # Consider it extended if conversation has more than 10 messages (5 exchanges)
+    # This aligns with the context window cost threshold
+    if conversation_message_count > 10:
+        is_extended_interaction = True
+        print(f"📊 Extended interaction detected: {conversation_message_count} messages in history")
+
     # Track start time for processing metrics
     start_time = datetime.now()
 
@@ -612,10 +623,15 @@ async def compare_stream(
                     # Stream the model response - run in executor to avoid blocking
                     chunk_count = 0
                     loop = asyncio.get_running_loop()
+                    
+                    # Check if mock mode is enabled for this user (admin/super-admin only)
+                    use_mock = current_user and current_user.mock_mode_enabled if current_user else False
+                    if use_mock:
+                        print(f"🎭 Mock mode active for user {current_user.email}")
 
                     # Create the generator in a thread-safe way
                     def stream_chunks():
-                        for chunk in call_openrouter_streaming(req.input_data, model_id, req.tier, req.conversation_history):
+                        for chunk in call_openrouter_streaming(req.input_data, model_id, req.tier, req.conversation_history, use_mock):
                             yield chunk
 
                     # Process chunks as they arrive
@@ -686,6 +702,8 @@ async def compare_stream(
                 "models_failed": failed_models,
                 "timestamp": datetime.now().isoformat(),
                 "processing_time_ms": processing_time_ms,
+                "conversation_message_count": conversation_message_count,
+                "is_extended_interaction": is_extended_interaction,
             }
 
             # Log usage to database in background

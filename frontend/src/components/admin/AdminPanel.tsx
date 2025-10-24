@@ -14,6 +14,7 @@ interface AdminUser {
     subscription_period: string;
     daily_usage_count: number;
     monthly_overage_count: number;
+    mock_mode_enabled: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -45,6 +46,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const { user, refreshUser } = useAuth();
     const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
+
+    // Helper function to format tier and role names for display
+    const formatName = (name: string): string => {
+        return name
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
     const [users, setUsers] = useState<AdminUserListResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -287,6 +296,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         } catch (err) {
             console.error('Error resetting usage:', err);
             setError(err instanceof Error ? err.message : 'Failed to reset usage');
+        }
+    };
+
+    const toggleMockMode = async (userId: number) => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch(`/api/admin/users/${userId}/toggle-mock-mode`, {
+                method: 'POST',
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else if (response.status === 400) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Mock mode can only be enabled for admin/super-admin users');
+                } else {
+                    throw new Error(`Failed to toggle mock mode (${response.status})`);
+                }
+            }
+
+            // Refresh both users list and stats
+            await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
+
+            // If toggling own mock mode, refresh user data to update UI
+            if (user && userId === user.id) {
+                await refreshUser();
+            }
+        } catch (err) {
+            console.error('Error toggling mock mode:', err);
+            setError(err instanceof Error ? err.message : 'Failed to toggle mock mode');
         }
     };
 
@@ -533,7 +580,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <div className="breakdown-list">
                                 {Object.entries(stats.users_by_tier).map(([tier, count]) => (
                                     <div key={tier} className="breakdown-item">
-                                        <span className="tier-name">{tier}</span>
+                                        <span className="tier-name">{formatName(tier)}</span>
                                         <span className="tier-count">{count}</span>
                                     </div>
                                 ))}
@@ -545,7 +592,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <div className="breakdown-list">
                                 {Object.entries(stats.users_by_role).map(([role, count]) => (
                                     <div key={role} className="breakdown-item">
-                                        <span className="role-name">{role}</span>
+                                        <span className="role-name">{formatName(role)}</span>
                                         <span className="role-count">{count}</span>
                                     </div>
                                 ))}
@@ -598,7 +645,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <option value="">All Tiers</option>
                             <option value="free">Free</option>
                             <option value="starter">Starter</option>
+                            <option value="starter_plus">Starter+</option>
                             <option value="pro">Pro</option>
+                            <option value="pro_plus">Pro+</option>
                         </select>
 
                         <button
@@ -678,7 +727,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         </td>
                                         <td>
                                             <span title={new Date(userRow.created_at).toLocaleString()}>
-                                                {new Date(userRow.created_at).toLocaleDateString()}
+                                                {(() => {
+                                                    const date = new Date(userRow.created_at);
+                                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                    const day = String(date.getDate()).padStart(2, '0');
+                                                    const year = date.getFullYear();
+                                                    return `${month}/${day}/${year}`;
+                                                })()}
                                             </span>
                                         </td>
                                         <td>
@@ -704,6 +759,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                         title="Reset daily usage to 0"
                                                     >
                                                         Zero Usage
+                                                    </button>
+                                                )}
+                                                {(userRow.role === 'admin' || userRow.role === 'super_admin') && (
+                                                    <button
+                                                        onClick={() => toggleMockMode(userRow.id)}
+                                                        className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
+                                                        title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}`}
+                                                    >
+                                                        🎭 {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
                                                     </button>
                                                 )}
                                                 <button
@@ -923,7 +987,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     >
                                         <option value="free">Free</option>
                                         <option value="starter">Starter</option>
+                                        <option value="starter_plus">Starter+</option>
                                         <option value="pro">Pro</option>
+                                        <option value="pro_plus">Pro+</option>
                                     </select>
                                 </div>
                             </div>

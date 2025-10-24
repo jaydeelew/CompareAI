@@ -1386,6 +1386,17 @@ function AppContent() {
       return;
     }
 
+    // Hard limit: Prevent submissions with conversations that are too long
+    // Industry best practice 2025: Enforce maximum context window to protect costs and maintain quality
+    if (isFollowUpMode && conversations.length > 0) {
+      const messageCount = conversations[0]?.messages.length || 0;
+      if (messageCount >= 24) {
+        setError('This conversation has reached the maximum length (24 messages). Please start a new comparison to continue.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+
     // Check daily usage limit (model-based)
     const modelsNeeded = selectedModels.length;
     if (usageCount >= MAX_DAILY_USAGE) {
@@ -1972,6 +1983,18 @@ function AppContent() {
 
   return (
     <div className="app">
+      {/* Mock Mode Banner - Show when mock mode is enabled for current user */}
+      {user?.mock_mode_enabled && currentView === 'main' && (
+        <div className="mock-mode-banner">
+          <div className="mock-mode-banner-content">
+            <span className="mock-mode-icon">🎭</span>
+            <span className="mock-mode-text">
+              <strong>Mock Mode Active</strong> - Using test responses instead of real API calls
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Admin Panel - Show if user is admin and in admin view */}
       {currentView === 'admin' && user?.is_admin ? (
         <AdminPanel onClose={() => setCurrentView('main')} />
@@ -2209,9 +2232,9 @@ function AppContent() {
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                        disabled={isLoading}
+                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24)}
                         className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                        title={isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                        title={isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
                       >
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2219,6 +2242,160 @@ function AppContent() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
+                  {isFollowUpMode && conversations.length > 0 && (() => {
+                    const messageCount = conversations[0]?.messages.length || 0;
+                    const isExtendedInteraction = messageCount > 10;
+
+                    // Calculate warning level
+                    let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
+                    let warningMessage = '';
+                    let warningIcon = '';
+
+                    if (messageCount >= 24) {
+                      warningLevel = 'critical';
+                      warningIcon = '🚫';
+                      warningMessage = 'Maximum conversation length reached (24 messages). Please start a new comparison for continued assistance.';
+                    } else if (messageCount >= 20) {
+                      warningLevel = 'critical';
+                      warningIcon = '⚠️';
+                      warningMessage = 'Conversation approaching maximum length. Consider starting fresh for best results.';
+                    } else if (messageCount >= 14) {
+                      warningLevel = 'high';
+                      warningIcon = '💡';
+                      warningMessage = 'Long conversation detected. Starting fresh may improve response quality and speed.';
+                    } else if (messageCount >= 10) {
+                      warningLevel = 'medium';
+                      warningIcon = 'ℹ️';
+                      warningMessage = 'Tip: New comparisons often provide more focused responses.';
+                    }
+
+                    return (
+                      <>
+                        {/* Usage Preview - Transparent cost display */}
+                        {messageCount > 0 && (
+                          <div style={{
+                            padding: '0.875rem 1rem',
+                            background: isExtendedInteraction
+                              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(99, 102, 241, 0.12))'
+                              : 'rgba(99, 102, 241, 0.08)',
+                            borderRadius: '12px',
+                            marginTop: '0.75rem',
+                            fontSize: '0.875rem',
+                            border: `1px solid ${isExtendedInteraction ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)'}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              fontWeight: '500'
+                            }}>
+                              <span style={{ color: 'rgba(255, 255, 255, 0.95)' }}>
+                                This follow-up will use:
+                              </span>
+                              <span style={{
+                                color: 'rgba(255, 255, 255, 0.85)',
+                                fontSize: '0.8rem',
+                                background: 'rgba(0, 0, 0, 0.2)',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '6px'
+                              }}>
+                                {messageCount} messages in context
+                              </span>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              gap: '1.5rem',
+                              fontSize: '0.825rem',
+                              color: 'rgba(255, 255, 255, 0.85)'
+                            }}>
+                              <div>
+                                • <strong>{selectedModels.length}</strong> model response{selectedModels.length !== 1 ? 's' : ''}
+                              </div>
+                              {isExtendedInteraction && (
+                                <div style={{ color: 'rgba(199, 210, 254, 1)' }}>
+                                  • <strong>1</strong> extended interaction
+                                </div>
+                              )}
+                            </div>
+                            {isExtendedInteraction && (
+                              <div style={{
+                                fontSize: '0.75rem',
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                fontStyle: 'italic'
+                              }}>
+                                💡 Extended interactions use more context and may count separately toward your daily limit
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Context Warning - Claude-style */}
+                        {warningLevel && (
+                          <div style={{
+                            padding: '0.875rem 1rem',
+                            background: warningLevel === 'critical'
+                              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15))'
+                              : warningLevel === 'high'
+                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15))'
+                                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.12))',
+                            borderRadius: '12px',
+                            marginTop: '0.75rem',
+                            fontSize: '0.875rem',
+                            border: `1px solid ${warningLevel === 'critical'
+                              ? 'rgba(239, 68, 68, 0.3)'
+                              : warningLevel === 'high'
+                                ? 'rgba(251, 191, 36, 0.3)'
+                                : 'rgba(59, 130, 246, 0.25)'
+                              }`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem'
+                          }}>
+                            <span style={{ fontSize: '1.25rem' }}>{warningIcon}</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{
+                                color: 'rgba(255, 255, 255, 0.95)',
+                                marginBottom: '0.25rem',
+                                fontWeight: '500'
+                              }}>
+                                {warningMessage}
+                              </div>
+                              {messageCount < 24 && (
+                                <button
+                                  onClick={handleNewComparison}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.15)',
+                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                    color: 'rgba(255, 255, 255, 0.95)',
+                                    padding: '0.375rem 0.875rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    cursor: 'pointer',
+                                    marginTop: '0.5rem',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                  }}
+                                >
+                                  ✨ Start Fresh Comparison
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Processing time message moved here */}
                   {selectedModels.length > 0 && (

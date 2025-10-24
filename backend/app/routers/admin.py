@@ -64,7 +64,7 @@ async def get_admin_stats(current_user: User = Depends(get_current_admin_user), 
 
     # Users by subscription tier
     users_by_tier = {}
-    for tier in ["free", "starter", "pro"]:
+    for tier in ["free", "starter", "starter_plus", "pro", "pro_plus"]:
         count = db.query(User).filter(User.subscription_tier == tier).count()
         users_by_tier[tier] = count
 
@@ -470,6 +470,50 @@ async def reset_user_usage(
         request=request,
     )
 
+    return AdminUserResponse.from_orm(user)
+
+
+@router.post("/users/{user_id}/toggle-mock-mode", response_model=AdminUserResponse)
+async def toggle_mock_mode(
+    user_id: int, 
+    request: Request, 
+    current_user: User = Depends(require_admin_role("admin")), 
+    db: Session = Depends(get_db)
+):
+    """
+    Toggle mock mode for a user (admin/super-admin only).
+    
+    Mock mode allows testing the application without making real API calls to OpenRouter.
+    This feature is restricted to admin and super-admin users only.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Only admins and super-admins can have mock mode enabled
+    if user.role not in ["admin", "super_admin"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Mock mode can only be enabled for admin and super-admin users"
+        )
+    
+    # Toggle mock mode
+    previous_state = user.mock_mode_enabled
+    user.mock_mode_enabled = not user.mock_mode_enabled
+    db.commit()
+    db.refresh(user)
+    
+    # Log admin action
+    log_admin_action(
+        db=db,
+        admin_user=current_user,
+        action_type="toggle_mock_mode",
+        action_description=f"{'Enabled' if user.mock_mode_enabled else 'Disabled'} mock mode for user {user.email}",
+        target_user_id=user.id,
+        details={"previous_state": previous_state, "new_state": user.mock_mode_enabled},
+        request=request,
+    )
+    
     return AdminUserResponse.from_orm(user)
 
 

@@ -44,6 +44,9 @@ class User(Base):
     role = Column(String(50), default="user")  # 'user', 'moderator', 'admin', 'super_admin'
     is_admin = Column(Boolean, default=False)
     admin_permissions = Column(Text)  # JSON string of specific permissions
+    
+    # Testing features (admin/super_admin only)
+    mock_mode_enabled = Column(Boolean, default=False)  # Use mock responses instead of real API calls
 
     # Payment integration
     stripe_customer_id = Column(String(255), index=True)

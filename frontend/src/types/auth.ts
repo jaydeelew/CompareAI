@@ -15,6 +15,7 @@ export interface User {
     daily_usage_count: number; // MODEL-BASED: counts individual model responses, not comparisons
     daily_extended_usage: number; // Extended tier usage count
     monthly_overage_count: number; // MODEL-BASED: counts overage model responses
+    mock_mode_enabled: boolean; // Testing feature - use mock responses instead of API calls (admin only)
     created_at: string;
 }
 
