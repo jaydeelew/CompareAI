@@ -31,6 +31,8 @@ from .rate_limiting import (
     increment_extended_usage,
     check_anonymous_extended_limit,
     increment_anonymous_extended_usage,
+    decrement_extended_usage,
+    decrement_anonymous_extended_usage,
 )
 from .routers import auth, admin
 
@@ -341,9 +343,8 @@ async def compare(
                     f"Upgrade to a higher tier for more Extended interactions.",
                 )
 
-            # Increment Extended usage
-            increment_extended_usage(current_user, db, count=num_models)
-            print(f"Authenticated user {current_user.email} - Extended usage: {extended_count + num_models}/{extended_limit}")
+            # Don't increment here - wait until we know requests succeeded
+            print(f"Authenticated user {current_user.email} - Extended usage: {extended_count}/{extended_limit} (will increment after success)")
         else:
             # Check Extended tier limit for anonymous users
             ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(f"ip:{client_ip}")
@@ -363,11 +364,8 @@ async def compare(
                     f"Register for a free account to get 5 Extended interactions per day.",
                 )
 
-            # Increment anonymous Extended usage
-            increment_anonymous_extended_usage(f"ip:{client_ip}", count=num_models)
-            if req.browser_fingerprint:
-                increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=num_models)
-            print(f"Anonymous user - Extended usage: {max(ip_extended_count, fingerprint_extended_count) + num_models}/2")
+            # Don't increment here - wait until we know requests succeeded
+            print(f"Anonymous user - Extended usage: {max(ip_extended_count, fingerprint_extended_count)}/2 (will increment after success)")
     # --- END EXTENDED TIER LIMITING ---
 
     # Track start time for processing metrics
@@ -391,6 +389,17 @@ async def compare(
                 successful_models += 1
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
+
+        # NOW increment extended usage - only for successful models in extended tier
+        if req.tier == "extended" and successful_models > 0:
+            if current_user:
+                increment_extended_usage(current_user, db, count=successful_models)
+                print(f"✓ Incremented extended usage for {current_user.email}: +{successful_models} successful models")
+            else:
+                increment_anonymous_extended_usage(f"ip:{client_ip}", count=successful_models)
+                if req.browser_fingerprint:
+                    increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
+                print(f"✓ Incremented anonymous extended usage: +{successful_models} successful models")
 
         # Calculate processing time
         processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -557,7 +566,8 @@ async def compare_stream(
             extended_allowed, extended_count, extended_limit = check_extended_tier_limit(current_user, db)
             if not extended_allowed:
                 raise HTTPException(status_code=429, detail=f"Daily Extended tier limit of {extended_limit} exceeded.")
-            increment_extended_usage(current_user, db, count=num_models)
+            # Don't increment here - wait until we know requests succeeded
+            print(f"Authenticated user {current_user.email} - Extended usage: {extended_count}/{extended_limit} (will increment after success)")
         else:
             ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(f"ip:{client_ip}")
             fingerprint_extended_allowed = True
@@ -574,9 +584,8 @@ async def compare_stream(
                     detail=f"Daily Extended tier limit of 2 exceeded. Register for a free account to get 5 Extended interactions per day.",
                 )
 
-            increment_anonymous_extended_usage(f"ip:{client_ip}", count=num_models)
-            if req.browser_fingerprint:
-                increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=num_models)
+            # Don't increment here - wait until we know requests succeeded
+            print(f"Anonymous user - Extended usage: {max(ip_extended_count, fingerprint_extended_count)}/2 (will increment after success)")
 
     # Track start time for processing metrics
     start_time = datetime.now()
@@ -654,6 +663,17 @@ async def compare_stream(
 
                 # Send done event for this model
                 yield f"data: {json.dumps({'model': model_id, 'type': 'done', 'error': model_error})}\n\n"
+
+            # NOW increment extended usage - only for successful models in extended tier
+            if req.tier == "extended" and successful_models > 0:
+                if current_user:
+                    increment_extended_usage(current_user, db, count=successful_models)
+                    print(f"✓ Incremented extended usage for {current_user.email}: +{successful_models} successful models")
+                else:
+                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=successful_models)
+                    if req.browser_fingerprint:
+                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
+                    print(f"✓ Incremented anonymous extended usage: +{successful_models} successful models")
 
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)

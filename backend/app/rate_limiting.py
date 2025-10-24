@@ -350,3 +350,34 @@ def increment_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
         anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
     
     anonymous_rate_limit_storage[storage_key]["count"] += count
+
+def decrement_extended_usage(user: User, db: Session, count: int = 1) -> None:
+    """
+    Decrement authenticated user's daily Extended usage count.
+    Used when requests fail and should not count against limit.
+    
+    Args:
+        user: Authenticated user object
+        db: Database session
+        count: Number of Extended responses to remove (default: 1)
+    """
+    user.daily_extended_usage = max(0, user.daily_extended_usage - count)
+    user.updated_at = datetime.utcnow()
+    db.commit()
+
+def decrement_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
+    """
+    Decrement anonymous user's Extended usage count.
+    Used when requests fail and should not count against limit.
+    
+    Args:
+        identifier: IP or fingerprint identifier
+        count: Number of Extended responses to remove (default: 1)
+    """
+    storage_key = f"{identifier}_extended"
+    
+    if storage_key in anonymous_rate_limit_storage:
+        anonymous_rate_limit_storage[storage_key]["count"] = max(
+            0, 
+            anonymous_rate_limit_storage[storage_key]["count"] - count
+        )
