@@ -122,7 +122,7 @@ function AppContent() {
   const maxModelsLimit = getMaxModelsForUser();
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
-  
+
   // Ref to track if we've scrolled to results section in current comparison
   const hasScrolledToResultsRef = useRef(false);
 
@@ -624,7 +624,7 @@ function AppContent() {
     if (response && !isFollowUpMode && !hasScrolledToResultsRef.current) {
       // Mark that we've scrolled for this comparison
       hasScrolledToResultsRef.current = true;
-      
+
       // Longer delay to ensure the results section is fully rendered
       setTimeout(() => {
         const resultsSection = document.querySelector('.results-section');
@@ -1356,21 +1356,21 @@ function AppContent() {
       // Handle streaming response with Server-Sent Events
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
-      
+
       // Initialize results object for streaming updates
       const streamingResults: { [key: string]: string } = {};
       const completedModels = new Set<string>(); // Track which models have finished
       let streamingMetadata: any = null;
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
-      
+
       // Set all selected models to 'raw' tab to show streaming content immediately
       const rawTabs: { [modelId: string]: 'raw' } = {};
       selectedModels.forEach(modelId => {
         rawTabs[modelId] = 'raw';
       });
       setActiveResultTabs(rawTabs);
-      
+
       // Initialize empty conversations immediately so cards appear during streaming
       if (!isFollowUpMode) {
         const emptyConversations: ModelConversation[] = selectedModels.map(modelId => ({
@@ -1382,32 +1382,32 @@ function AppContent() {
         }));
         setConversations(emptyConversations);
       }
-      
+
       if (reader) {
         try {
           let buffer = '';
-          
+
           while (true) {
             const { done, value } = await reader.read();
-            
+
             if (done) break;
-            
+
             // Decode the chunk and add to buffer
             buffer += decoder.decode(value, { stream: true });
-            
+
             // Process complete SSE messages (separated by \n\n)
             const messages = buffer.split('\n\n');
             buffer = messages.pop() || ''; // Keep incomplete message in buffer
-            
+
             let shouldUpdate = false;
-            
+
             for (const message of messages) {
               if (!message.trim() || !message.startsWith('data: ')) continue;
-              
+
               try {
                 const jsonStr = message.replace(/^data: /, '');
                 const event = JSON.parse(jsonStr);
-                
+
                 if (event.type === 'start') {
                   // Model starting - initialize empty result
                   if (!streamingResults[event.model]) {
@@ -1425,7 +1425,7 @@ function AppContent() {
                   console.log(`✅ Streaming complete for ${event.model}, error: ${event.error}`);
                   console.log(`   Progress: ${completedModels.size}/${selectedModels.length} models complete`);
                   shouldUpdate = true;
-                  
+
                   // Check if ALL models are done - if so, switch to formatted view
                   if (completedModels.size === selectedModels.length) {
                     console.log('🎉 All models complete! Switching to formatted view...');
@@ -1448,12 +1448,12 @@ function AppContent() {
                 console.error('Error parsing SSE message:', parseError, message);
               }
             }
-            
+
             // Throttled UI update - update at most every 50ms for smooth streaming
             const now = Date.now();
             if (shouldUpdate && (now - lastUpdateTime >= UPDATE_THROTTLE_MS)) {
               lastUpdateTime = now;
-              
+
               // Force immediate UI update with flushSync to bypass React 18 automatic batching
               flushSync(() => {
                 // Update response state
@@ -1468,18 +1468,18 @@ function AppContent() {
                     processing_time_ms: Date.now() - startTime
                   }
                 });
-                
+
                 // Update conversations to show streaming text in cards
                 if (!isFollowUpMode) {
-                  setConversations(prevConversations => 
+                  setConversations(prevConversations =>
                     prevConversations.map(conv => {
                       const content = streamingResults[conv.modelId] || '';
                       // Update the assistant message content
                       return {
                         ...conv,
-                        messages: conv.messages.map((msg, idx) => 
-                          idx === 1 && msg.type === 'assistant' 
-                            ? { ...msg, content } 
+                        messages: conv.messages.map((msg, idx) =>
+                          idx === 1 && msg.type === 'assistant'
+                            ? { ...msg, content }
                             : msg
                         )
                       };
@@ -1487,16 +1487,16 @@ function AppContent() {
                   );
                 } else {
                   // For follow-up mode, append streaming content to existing conversations
-                  setConversations(prevConversations => 
+                  setConversations(prevConversations =>
                     prevConversations.map(conv => {
                       const content = streamingResults[conv.modelId];
                       if (content === undefined) return conv;
-                      
+
                       // Check if we already added the new user message
-                      const hasNewUserMessage = conv.messages.length > 0 && 
+                      const hasNewUserMessage = conv.messages.length > 0 &&
                         conv.messages[conv.messages.length - 1].type === 'user' &&
                         conv.messages[conv.messages.length - 1].content === input;
-                      
+
                       if (!hasNewUserMessage) {
                         // Add user message and empty assistant message
                         return {
@@ -1511,7 +1511,7 @@ function AppContent() {
                         // Update the last assistant message
                         return {
                           ...conv,
-                          messages: conv.messages.map((msg, idx) => 
+                          messages: conv.messages.map((msg, idx) =>
                             idx === conv.messages.length - 1 && msg.type === 'assistant'
                               ? { ...msg, content }
                               : msg
@@ -1521,11 +1521,15 @@ function AppContent() {
                     })
                   );
                 }
-                
+
                 // Auto-scroll each conversation card to bottom as content streams in
+                // BUT only for models that are still streaming (not completed yet)
                 // Use requestAnimationFrame for smooth scrolling
                 requestAnimationFrame(() => {
                   Object.keys(streamingResults).forEach(modelId => {
+                    // Skip auto-scrolling for completed models so users can scroll through them
+                    if (completedModels.has(modelId)) return;
+
                     const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
                     const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
                     if (conversationContent) {
@@ -1536,7 +1540,7 @@ function AppContent() {
               });
             }
           }
-          
+
           // Final update to ensure all content is displayed
           setResponse({
             results: { ...streamingResults },
@@ -1553,24 +1557,24 @@ function AppContent() {
               processing_time_ms: Date.now() - startTime
             }
           });
-          
+
           // Final conversations update with complete content
           if (!isFollowUpMode) {
-            setConversations(prevConversations => 
+            setConversations(prevConversations =>
               prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
                 return {
                   ...conv,
-                  messages: conv.messages.map((msg, idx) => 
-                    idx === 1 && msg.type === 'assistant' 
-                      ? { ...msg, content } 
+                  messages: conv.messages.map((msg, idx) =>
+                    idx === 1 && msg.type === 'assistant'
+                      ? { ...msg, content }
                       : msg
                   )
                 };
               })
             );
           }
-          
+
           // Tab switching happens automatically when each model completes (see 'done' event handler above)
           // No need to switch here - it's already been done dynamically as models finished
         } finally {
