@@ -1485,7 +1485,54 @@ function AppContent() {
                       };
                     })
                   );
+                } else {
+                  // For follow-up mode, append streaming content to existing conversations
+                  setConversations(prevConversations => 
+                    prevConversations.map(conv => {
+                      const content = streamingResults[conv.modelId];
+                      if (content === undefined) return conv;
+                      
+                      // Check if we already added the new user message
+                      const hasNewUserMessage = conv.messages.length > 0 && 
+                        conv.messages[conv.messages.length - 1].type === 'user' &&
+                        conv.messages[conv.messages.length - 1].content === input;
+                      
+                      if (!hasNewUserMessage) {
+                        // Add user message and empty assistant message
+                        return {
+                          ...conv,
+                          messages: [
+                            ...conv.messages,
+                            createMessage('user', input, userTimestamp),
+                            createMessage('assistant', content, new Date().toISOString())
+                          ]
+                        };
+                      } else {
+                        // Update the last assistant message
+                        return {
+                          ...conv,
+                          messages: conv.messages.map((msg, idx) => 
+                            idx === conv.messages.length - 1 && msg.type === 'assistant'
+                              ? { ...msg, content }
+                              : msg
+                          )
+                        };
+                      }
+                    })
+                  );
                 }
+                
+                // Auto-scroll each conversation card to bottom as content streams in
+                // Use requestAnimationFrame for smooth scrolling
+                requestAnimationFrame(() => {
+                  Object.keys(streamingResults).forEach(modelId => {
+                    const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
+                    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+                    if (conversationContent) {
+                      conversationContent.scrollTop = conversationContent.scrollHeight;
+                    }
+                  });
+                });
               });
             }
           }
