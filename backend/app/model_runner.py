@@ -433,6 +433,10 @@ def clean_model_response(text: str) -> str:
     """
     Lightweight cleanup for model responses.
     Heavy cleanup moved to frontend LatexRenderer for better performance.
+    
+    NOTE: This function strips leading/trailing whitespace, which is fine for
+    complete responses but should NOT be used on streaming chunks (it would
+    remove spaces between words at chunk boundaries).
     """
     if not text:
         return text

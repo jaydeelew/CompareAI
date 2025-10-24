@@ -611,13 +611,13 @@ async def compare_stream(
 
                     # Process chunks as they arrive
                     for chunk in stream_chunks():
-                        # Clean the chunk before sending
-                        cleaned_chunk = clean_model_response(chunk) if chunk else ""
-                        model_content += cleaned_chunk
+                        # Don't clean chunks during streaming - cleaning strips whitespace which breaks word boundaries!
+                        # The chunk is sent exactly as received to preserve spaces between words
+                        model_content += chunk
                         chunk_count += 1
 
                         # Send chunk event immediately
-                        chunk_data = f"data: {json.dumps({'model': model_id, 'type': 'chunk', 'content': cleaned_chunk})}\n\n"
+                        chunk_data = f"data: {json.dumps({'model': model_id, 'type': 'chunk', 'content': chunk})}\n\n"
                         yield chunk_data
 
                         # Yield control to event loop to ensure immediate sending
@@ -627,6 +627,10 @@ async def compare_stream(
                         if chunk_count % 10 == 0:
                             print(f"📤 Streamed {chunk_count} chunks for {model_id}, total chars: {len(model_content)}")
 
+                    # Clean the final accumulated content (after streaming is complete)
+                    # This removes MathML junk and excessive whitespace
+                    model_content = clean_model_response(model_content)
+                    
                     # Check if response is an error
                     if model_content.startswith("Error:"):
                         failed_models += 1
