@@ -2769,8 +2769,8 @@ function AppContent() {
                                 <button
                                   className="screenshot-card-btn"
                                   onClick={() => handleScreenshot(conversation.modelId)}
-                                  title="Screenshot message area"
-                                  aria-label={`Screenshot message area for ${model?.name || conversation.modelId}`}
+                                  title="Copy formatted chat history"
+                                  aria-label={`Copy formatted chat history for ${model?.name || conversation.modelId}`}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="2" y="3" width="20" height="14" rx="2" />
@@ -2781,8 +2781,8 @@ function AppContent() {
                                 <button
                                   className="copy-response-btn"
                                   onClick={() => handleCopyResponse(conversation.modelId)}
-                                  title="Copy entire chat history"
-                                  aria-label={`Copy entire chat history from ${model?.name || conversation.modelId}`}
+                                  title="Copy raw chat history"
+                                  aria-label={`Copy raw chat history from ${model?.name || conversation.modelId}`}
                                 >
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
