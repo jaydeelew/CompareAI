@@ -3,12 +3,12 @@
 .auth-form-container {
     max-width: 420px;
     margin: 0 auto;
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
+    padding: 1rem 1.25rem 0.75rem 1.25rem;
 }
 
 .auth-form-header {
     text-align: center;
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.6rem;
 }
 
 .auth-form-header h2 {
@@ -27,13 +27,13 @@
 .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
+    gap: 0.55rem;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.25rem;
 }
 
 .form-group label {
@@ -43,7 +43,7 @@
 }
 
 .form-group input {
-    padding: 0.6rem 0.85rem;
+    padding: 0.5rem 0.85rem;
     font-size: 0.925rem;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
@@ -149,7 +149,7 @@ input:-webkit-autofill:active {
 .form-hint {
     font-size: 0.75rem;
     color: #666;
-    margin-top: 0.15rem;
+    margin-top: 0.1rem;
     line-height: 1.2;
 }
 
@@ -170,7 +170,7 @@ input:-webkit-autofill:active {
 }
 
 .auth-submit-btn {
-    padding: 0.7rem 1.5rem;
+    padding: 0.6rem 1.5rem;
     font-size: 0.925rem;
     font-weight: 600;
     color: white;
@@ -179,7 +179,7 @@ input:-webkit-autofill:active {
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-    margin-top: 0.1rem;
+    margin-top: 0.05rem;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
@@ -198,20 +198,20 @@ input:-webkit-autofill:active {
 }
 
 .auth-form-footer {
-    margin-top: 0.7rem;
+    margin-top: 0.5rem;
     text-align: center;
 }
 
 .auth-form-footer p {
     font-size: 0.8rem;
     color: #666;
-    margin: 0.3rem 0;
+    margin: 0.25rem 0;
 }
 
 .terms-text {
     font-size: 0.7rem !important;
     color: #999 !important;
-    margin-bottom: 0.3rem !important;
+    margin-bottom: 0.2rem !important;
     line-height: 1.3;
 }
 
@@ -327,40 +327,40 @@ input:-webkit-autofill:active {
 /* Responsive */
 @media (max-width: 480px) {
     .auth-form-container {
-        padding: 1rem 1rem 0.85rem 1rem;
+        padding: 0.85rem 1rem 0.7rem 1rem;
     }
 
     .auth-form-header {
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
     }
 
     .auth-form-header h2 {
         font-size: 1.3rem;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.15rem;
     }
 
     .auth-form {
-        gap: 0.65rem;
+        gap: 0.5rem;
     }
 
     .form-group {
-        gap: 0.25rem;
+        gap: 0.2rem;
     }
 
     .auth-submit-btn {
-        padding: 0.65rem 1.25rem;
+        padding: 0.55rem 1.25rem;
         margin-top: 0.05rem;
     }
 
     .auth-form-footer {
-        margin-top: 0.65rem;
+        margin-top: 0.45rem;
     }
 
     .auth-form-footer p {
-        margin: 0.25rem 0;
+        margin: 0.2rem 0;
     }
 
     .terms-text {
-        margin-bottom: 0.25rem !important;
+        margin-bottom: 0.15rem !important;
     }
 }
