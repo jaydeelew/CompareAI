@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -11,6 +11,7 @@ export const VerificationBanner: React.FC = () => {
     const [cooldownRemaining, setCooldownRemaining] = useState(0);
     const [isFadingOut, setIsFadingOut] = useState(false);
     const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
+    const [permanentlyHidden, setPermanentlyHidden] = useState(false);
 
     // Countdown timer for cooldown
     useEffect(() => {
@@ -22,23 +23,59 @@ export const VerificationBanner: React.FC = () => {
         }
     }, [cooldownRemaining]);
 
-    // Monitor user verification status and trigger fade-out animation
+    // Check if banner should be permanently hidden (survives page refresh)
     useEffect(() => {
-        if (user?.is_verified && !isFadingOut) {
-            setIsFadingOut(true);
+        const isHidden = sessionStorage.getItem('verification-banner-hidden') === 'true';
+        if (isHidden) {
+            setPermanentlyHidden(true);
         }
-    }, [user, isFadingOut]);
+    }, []);
 
-    // Trigger entrance animation when user becomes available and is unverified
+    // Listen for verification events
     useEffect(() => {
-        if (user && !user.is_verified && !hasAnimatedIn) {
-            // Small delay to ensure smooth entrance
+        const handleVerificationComplete = () => {
+            setPermanentlyHidden(true);
+            setIsFadingOut(true);
+            sessionStorage.setItem('verification-banner-hidden', 'true');
+        };
+
+        window.addEventListener('verification-complete', handleVerificationComplete);
+        return () => window.removeEventListener('verification-complete', handleVerificationComplete);
+    }, []);
+
+    // Reset state when user changes (new login)
+    useEffect(() => {
+        if (user) {
+            // Only reset if this is a different user
+            const lastUserId = sessionStorage.getItem('last-user-id');
+            if (lastUserId !== user.id.toString()) {
+                sessionStorage.setItem('last-user-id', user.id.toString());
+                sessionStorage.removeItem('verification-banner-hidden');
+                setPermanentlyHidden(false);
+                setIsFadingOut(false);
+                setHasAnimatedIn(false);
+            }
+        }
+    }, [user?.id]);
+
+    // Monitor user verification status
+    useEffect(() => {
+        if (user?.is_verified) {
+            setPermanentlyHidden(true);
+            setIsFadingOut(true);
+            sessionStorage.setItem('verification-banner-hidden', 'true');
+        }
+    }, [user?.is_verified]);
+
+    // Trigger entrance animation
+    useEffect(() => {
+        if (user && !user.is_verified && !hasAnimatedIn && !permanentlyHidden) {
             setTimeout(() => setHasAnimatedIn(true), 50);
         }
-    }, [user, hasAnimatedIn]);
+    }, [user, hasAnimatedIn, permanentlyHidden]);
 
-    // Don't show banner if user is not logged in or if verified
-    if (!user || user.is_verified || isFadingOut) {
+    // Don't show banner if permanently hidden, verified, or fading out
+    if (!user || user.is_verified || isFadingOut || permanentlyHidden) {
         return null;
     }
 

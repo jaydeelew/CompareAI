@@ -97,7 +97,7 @@ const generateBrowserFingerprint = async () => {
 };
 
 function AppContent() {
-  const { isAuthenticated, user, refreshUser } = useAuth();
+  const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -662,11 +662,11 @@ function AppContent() {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`❌ Failed to reset: ${errorData.detail || 'Unknown error'}`);
+        console.error(`Failed to reset: ${errorData.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Reset error:', error);
-      alert('❌ Failed to reset rate limits. Make sure the backend is running.');
+      console.error('Failed to reset rate limits. Make sure the backend is running.');
     }
   };
 
@@ -2119,7 +2119,7 @@ function AppContent() {
 
           {/* Email verification banners - placed between header and main content */}
           {/* Only show VerifyEmail if we're NOT in password reset mode */}
-          {!showPasswordReset && (
+          {!showPasswordReset && !authLoading && (
             <>
               <VerifyEmail onClose={() => { }} externalToken={verificationToken} suppressVerification={suppressVerification} />
               <VerificationBanner />

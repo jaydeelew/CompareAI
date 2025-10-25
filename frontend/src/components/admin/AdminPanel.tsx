@@ -254,7 +254,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 }
             }
 
-            alert('Verification email sent successfully');
+            // Verification email sent successfully
 
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
@@ -445,7 +445,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
 
-            alert('User created successfully!');
+            // User created successfully
         } catch (err) {
             console.error('Error creating user:', err);
             setError(err instanceof Error ? err.message : 'Failed to create user');
@@ -514,7 +514,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             // Refresh both users list and stats
             await Promise.all([fetchUsersInitial(currentPage), fetchStats()]);
 
-            alert('User deleted successfully!');
+            // User deleted successfully
         } catch (err) {
             console.error('Error deleting user:', err);
             setError(err instanceof Error ? err.message : 'Failed to delete user');

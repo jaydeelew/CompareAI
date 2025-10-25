@@ -122,12 +122,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userData = await fetchCurrentUser(data.access_token);
             if (userData) {
                 setUser(userData);
+                setIsLoading(false); // Set loading to false after successful login
             } else {
                 throw new Error('Failed to fetch user data');
             }
         } catch (error) {
             console.error('Login error:', error);
             console.error('Error type:', error instanceof TypeError ? 'Network error' : 'Other error');
+            setIsLoading(false); // Set loading to false even on error
             throw error;
         }
     };
@@ -157,9 +159,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log('Registration successful!');
             saveTokens(responseData.access_token, responseData.refresh_token);
             setUser(responseData.user);
+            setIsLoading(false); // Set loading to false after successful registration
         } catch (error) {
             console.error('Registration error:', error);
             console.error('Error type:', error instanceof TypeError ? 'Network error' : 'Other error');
+            setIsLoading(false); // Set loading to false even on error
             throw error;
         }
     };
@@ -168,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const logout = () => {
         clearTokens();
         setUser(null);
+        setIsLoading(false); // Set loading to false after logout
     };
 
     // Update user data

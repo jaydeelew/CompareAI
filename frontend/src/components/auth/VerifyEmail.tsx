@@ -75,6 +75,8 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                     // Refresh user data first to update verification status (triggers orange banner fade-out)
                     try {
                         await refreshUser();
+                        // Dispatch event to hide verification banner immediately
+                        window.dispatchEvent(new CustomEvent('verification-complete'));
                     } catch (err) {
                         console.log('Could not refresh user data:', err);
                     }
@@ -85,7 +87,7 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                         setMessage('Your account is now fully activated. You can begin to compare AI models!');
                         // Trigger entrance animation
                         setTimeout(() => setHasAnimatedIn(true), 50);
-                    }, 300);
+                    }, 1000); // Increased delay to 1 second to allow orange banner fade-out to complete
                 } else {
                     const error = await response.json();
                     setStatus('error');

@@ -31,7 +31,7 @@ from ..auth import (
     verify_token,
 )
 from ..dependencies import get_current_user_required, get_current_verified_user, get_current_user
-# from ..email_service import send_verification_email, send_password_reset_email
+from ..email_service import send_verification_email, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -79,8 +79,12 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
 
         # Send verification email in background (optional - won't fail if email not configured)
         try:
-            # background_tasks.add_task(send_verification_email, email=new_user.email, token=verification_token)
-            pass
+            if os.environ.get("ENVIRONMENT") == "development":
+                # Development: await to see console output immediately
+                await send_verification_email(email=new_user.email, token=verification_token)
+            else:
+                # Production: background task for non-blocking
+                background_tasks.add_task(send_verification_email, email=new_user.email, token=verification_token)
         except Exception as e:
             print(f"Warning: Could not send verification email: {e}")
             # Continue anyway - email is optional for development
@@ -240,12 +244,10 @@ async def resend_verification(request: ResendVerificationRequest, background_tas
     try:
         if os.environ.get("ENVIRONMENT") == "development":
             # Development: await to see console output immediately
-            # await send_verification_email(email=user.email, token=verification_token)
-            pass
+            await send_verification_email(email=user.email, token=verification_token)
         else:
             # Production: background task for non-blocking
-            # background_tasks.add_task(send_verification_email, email=user.email, token=verification_token)
-            pass
+            background_tasks.add_task(send_verification_email, email=user.email, token=verification_token)
     except Exception as e:
         print(f"Warning: Could not send verification email: {e}")
         # Continue anyway - in development, token is printed to console
