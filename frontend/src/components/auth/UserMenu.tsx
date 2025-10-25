@@ -131,7 +131,7 @@ export const UserMenu: React.FC = () => {
                                     fontWeight: 'normal',
                                     opacity: 0.7,
                                     marginLeft: '0.25rem'
-                                }} title="Follow-ups with >10 messages of context">ℹ️</span>
+                                }} title="Follow-ups with >10 messages of context (same cost, more capacity). Paid tiers can purchase additional extended interactions.">ℹ️</span>
                             </div>
                             <div className="usage-value">
                                 {user.daily_extended_usage || 0} of {getExtendedLimit(user.subscription_tier)} remaining
@@ -145,20 +145,6 @@ export const UserMenu: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                        <div style={{
-                            marginTop: '0.75rem',
-                            padding: '0.625rem',
-                            background: 'rgba(99, 102, 241, 0.08)',
-                            borderRadius: '8px',
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            lineHeight: '1.4'
-                        }}>
-                            <div style={{ fontWeight: '500', marginBottom: '0.25rem', color: '#4b5563' }}>
-                                💡 Context Management
-                            </div>
-                            Conversations auto-limit at 20 messages (backend) and 24 messages (frontend) to optimize quality and costs. Extended interactions (&gt;10 messages) count separately.
-                        </div>
                     </div>
 
                     <div className="user-menu-divider"></div>

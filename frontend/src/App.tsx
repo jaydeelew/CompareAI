@@ -6,7 +6,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
 import { AdminPanel } from './components/admin';
 import { Footer } from './components';
-import FlowerIcon from './components/FlowerIcon';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -121,6 +120,25 @@ function AppContent() {
   };
 
   const maxModelsLimit = getMaxModelsForUser();
+  
+  // Helper function to check if user has reached extended interaction limit
+  const hasReachedExtendedLimit = () => {
+    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+    
+    if (!shouldUseExtendedTier) return false;
+    
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+    const currentExtendedUsage = isAuthenticated && user
+      ? user.daily_extended_usage
+      : extendedUsageCount;
+    
+    // Check if user has enough extended interactions for the number of models selected
+    const extendedInteractionsNeeded = selectedModels.length;
+    return currentExtendedUsage + extendedInteractionsNeeded > extendedLimit;
+  };
+  
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
@@ -1411,8 +1429,11 @@ function AppContent() {
       return;
     }
 
-    // Check Extended tier limit if using Extended tier
-    if (isExtendedMode) {
+    // Check Extended tier limit if using Extended tier (manual toggle OR conversation > 10 messages)
+    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+    
+    if (shouldUseExtendedTier) {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
       const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
 
@@ -1421,15 +1442,18 @@ function AppContent() {
         ? user.daily_extended_usage
         : extendedUsageCount;
 
+      // Extended interactions needed = number of models (each model counts as 1 extended interaction)
+      const extendedInteractionsNeeded = modelsNeeded;
+
       if (currentExtendedUsage >= extendedLimit) {
-        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. Upgrade to a higher tier for more Extended interactions.`);
+        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options and more Extended interactions.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
         return;
       }
 
       // Check if this would exceed the Extended limit
-      if (currentExtendedUsage + modelsNeeded > extendedLimit) {
+      if (currentExtendedUsage + extendedInteractionsNeeded > extendedLimit) {
         const remaining = extendedLimit - currentExtendedUsage;
-        setError(`You have ${remaining} Extended interactions remaining today, but need ${modelsNeeded} for this comparison. Upgrade to a higher tier for more Extended interactions.`);
+        setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
         return;
       }
     }
@@ -1509,6 +1533,10 @@ function AppContent() {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
+      // Determine tier: Extended if manually toggled OR if conversation exceeds 10 messages
+      const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+      const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+
       // Use streaming endpoint for faster perceived response time
       const res = await fetch(`${API_URL}/compare-stream`, {
         method: 'POST',
@@ -1518,7 +1546,7 @@ function AppContent() {
           models: selectedModels,
           conversation_history: conversationHistory,
           browser_fingerprint: browserFingerprint,
-          tier: isExtendedMode ? 'extended' : 'standard'
+          tier: shouldUseExtendedTier ? 'extended' : 'standard'
         }),
         signal: controller.signal,
       });
@@ -2225,17 +2253,17 @@ function AppContent() {
                       <button
                         className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
                         onClick={() => setIsExtendedMode(!isExtendedMode)}
-                        disabled={isLoading}
-                        title={isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
+                        disabled={isLoading || hasReachedExtendedLimit()}
+                        title={hasReachedExtendedLimit() ? 'Extended interaction limit reached - upgrade or purchase more' : isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
                       >
                         E
                       </button>
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24)}
+                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24) || hasReachedExtendedLimit()}
                         className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                        title={isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                        title={hasReachedExtendedLimit() ? 'Extended interaction limit reached - upgrade or purchase more' : isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
                       >
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2278,13 +2306,17 @@ function AppContent() {
                         {messageCount > 0 && (
                           <div style={{
                             padding: '0.875rem 1rem',
-                            background: isExtendedInteraction
-                              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(99, 102, 241, 0.12))'
-                              : 'rgba(99, 102, 241, 0.08)',
+                            background: hasReachedExtendedLimit() 
+                              ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2))'
+                              : isExtendedInteraction
+                                ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(99, 102, 241, 0.12))'
+                                : 'rgba(99, 102, 241, 0.08)',
                             borderRadius: '12px',
                             marginTop: '0.75rem',
                             fontSize: '0.875rem',
-                            border: `1px solid ${isExtendedInteraction ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)'}`,
+                            border: `1px solid ${hasReachedExtendedLimit() 
+                              ? 'rgba(251, 191, 36, 0.4)' 
+                              : isExtendedInteraction ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)'}`,
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '0.5rem'
@@ -2319,17 +2351,21 @@ function AppContent() {
                               </div>
                               {isExtendedInteraction && (
                                 <div style={{ color: 'rgba(199, 210, 254, 1)' }}>
-                                  • <strong>1</strong> extended interaction
+                                  • <strong>{selectedModels.length}</strong> extended interaction{selectedModels.length !== 1 ? 's' : ''}
                                 </div>
                               )}
                             </div>
                             {isExtendedInteraction && (
                               <div style={{
                                 fontSize: '0.75rem',
-                                color: 'rgba(255, 255, 255, 0.7)',
-                                fontStyle: 'italic'
+                                color: hasReachedExtendedLimit() ? 'rgba(251, 191, 36, 0.9)' : 'rgba(255, 255, 255, 0.7)',
+                                fontStyle: 'italic',
+                                fontWeight: hasReachedExtendedLimit() ? '500' : 'normal'
                               }}>
-                                💡 Extended interactions use more context and may count separately toward your daily limit
+                                {hasReachedExtendedLimit() 
+                                  ? '🚫 Extended interaction limit reached - upgrade or purchase more'
+                                  : '💡 Extended interactions use more context capacity but same cost'
+                                }
                               </div>
                             )}
                           </div>
@@ -2398,41 +2434,6 @@ function AppContent() {
                     );
                   })()}
 
-                  {/* Processing time message moved here */}
-                  {selectedModels.length > 0 && (
-                    <div className="processing-time-message">
-                      {(() => {
-                        const count = selectedModels.length;
-
-                        let description;
-
-                        if (count === 1) {
-                          description = "Single model processing";
-                        } else if (count <= 3) {
-                          description = "Small batch processing";
-                        } else if (count <= 6) {
-                          description = "Medium batch processing";
-                        } else {
-                          description = "Large batch processing";
-                        }
-
-                        return (
-                          <>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                              <FlowerIcon filledPetals={count} size={20} />
-                              <span>{count} model{count !== 1 ? 's' : ''} selected • {description}</span>
-                              <FlowerIcon filledPetals={count} size={20} />
-                            </div>
-                            <div style={{ marginTop: '0.25rem' }}>
-                              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                                Processing time depends on your Internet connection and number of models selected
-                              </span>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -2440,6 +2441,118 @@ function AppContent() {
             {error && (
               <div className="error-message">
                 <span>⚠️ {error}</span>
+              </div>
+            )}
+
+            {/* Extended Limit Warning - Prominent warning when limit is reached */}
+            {hasReachedExtendedLimit() && (
+              <div style={{
+                padding: '1rem 1.25rem',
+                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15))',
+                borderRadius: '12px',
+                marginTop: '1rem',
+                fontSize: '0.9rem',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <span style={{ fontSize: '1.25rem' }}>🚫</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.95)',
+                    fontWeight: '600',
+                    marginBottom: '0.25rem'
+                  }}>
+                    Extended Interaction Limit Reached
+                  </div>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.85)',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.4'
+                  }}>
+                    You've used all your extended interactions for today. 
+                    {isAuthenticated ? ` Upgrade to a higher tier for more extended interactions, or purchase additional extended interactions.` : ` Register for a free account to get more extended interactions.`}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {!isAuthenticated && (
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: 'rgba(99, 102, 241, 0.2)',
+                        border: '1px solid rgba(99, 102, 241, 0.4)',
+                        borderRadius: '8px',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontSize: '0.8rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.3)';
+                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)';
+                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+                      }}
+                    >
+                      Register Free
+                    </button>
+                  )}
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => {/* TODO: Implement purchase additional extended interactions */}}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: 'rgba(251, 191, 36, 0.2)',
+                        border: '1px solid rgba(251, 191, 36, 0.4)',
+                        borderRadius: '8px',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontSize: '0.8rem',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)';
+                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.6)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)';
+                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+                      }}
+                    >
+                      Purchase More
+                    </button>
+                  )}
+                  <button
+                    onClick={handleNewComparison}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: 'rgba(34, 197, 94, 0.2)',
+                      border: '1px solid rgba(34, 197, 94, 0.4)',
+                      borderRadius: '8px',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: '0.8rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)';
+                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                    }}
+                  >
+                    Start Fresh
+                  </button>
+                </div>
               </div>
             )}
 

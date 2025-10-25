@@ -15,13 +15,45 @@ from collections import defaultdict
 # Subscription tier configuration - MODEL-BASED PRICING
 # daily_limit = model responses per day (not comparisons)
 # model_limit = max models per comparison (tiered: 3/6/6/9/9)
+# overage_allowed = whether tier can purchase additional interactions beyond daily limit
 # overage_price = price per additional model response (TBD - pricing not yet finalized)
+# extended_overage_price = price per additional extended interaction (TBD - pricing not yet finalized)
 SUBSCRIPTION_CONFIG = {
-    "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False, "overage_price": None},  # Free registered users
-    "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
-    "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True, "overage_price": None},  # Pricing TBD
-    "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
-    "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True, "overage_price": None},  # Pricing TBD
+    "free": {
+        "daily_limit": 20,
+        "model_limit": 3,
+        "overage_allowed": False,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },  # Free registered users
+    "starter": {
+        "daily_limit": 50,
+        "model_limit": 6,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },  # Pricing TBD
+    "starter_plus": {
+        "daily_limit": 100,
+        "model_limit": 6,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },  # Pricing TBD
+    "pro": {
+        "daily_limit": 200,
+        "model_limit": 9,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },  # Pricing TBD
+    "pro_plus": {
+        "daily_limit": 400,
+        "model_limit": 9,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },  # Pricing TBD
 }
 
 # Backwards compatibility - extract limits
@@ -222,16 +254,30 @@ def is_overage_allowed(tier: str) -> bool:
 
 def get_overage_price(tier: str) -> Optional[float]:
     """
-    Get overage price per comparison for a tier.
+    Get overage price per model response for a tier.
 
     Args:
         tier: Subscription tier name
 
     Returns:
-        float: Price per overage comparison, or None if overages not allowed
+        float: Price per overage model response, or None if overages not allowed
     """
     config = SUBSCRIPTION_CONFIG.get(tier, {})
     return config.get("overage_price")
+
+
+def get_extended_overage_price(tier: str) -> Optional[float]:
+    """
+    Get extended overage price per extended interaction for a tier.
+
+    Args:
+        tier: Subscription tier name
+
+    Returns:
+        float: Price per overage extended interaction, or None if overages not allowed
+    """
+    config = SUBSCRIPTION_CONFIG.get(tier, {})
+    return config.get("extended_overage_price")
 
 
 def get_tier_config(tier: str) -> Dict[str, Any]:
@@ -263,23 +309,17 @@ def get_rate_limit_info() -> Dict[str, Any]:
 
 
 # Extended tier usage tracking
-EXTENDED_TIER_LIMITS = {
-    "anonymous": 2,
-    "free": 5,
-    "starter": 10,
-    "starter_plus": 20,
-    "pro": 40,
-    "pro_plus": 80
-}
+EXTENDED_TIER_LIMITS = {"anonymous": 2, "free": 5, "starter": 10, "starter_plus": 20, "pro": 40, "pro_plus": 80}
+
 
 def check_extended_tier_limit(user: User, db: Session) -> Tuple[bool, int, int]:
     """
     Check Extended tier limit for authenticated user.
-    
+
     Args:
         user: Authenticated user object
         db: Database session
-        
+
     Returns:
         tuple: (is_allowed, current_count, daily_limit)
     """
@@ -289,19 +329,20 @@ def check_extended_tier_limit(user: User, db: Session) -> Tuple[bool, int, int]:
         user.daily_extended_usage = 0
         user.extended_usage_reset_date = today
         db.commit()
-    
+
     # Get daily limit based on subscription tier
     daily_limit = EXTENDED_TIER_LIMITS.get(user.subscription_tier, 5)
-    
+
     # Check if user is within limit
     is_allowed = user.daily_extended_usage < daily_limit
-    
+
     return is_allowed, user.daily_extended_usage, daily_limit
+
 
 def increment_extended_usage(user: User, db: Session, count: int = 1) -> None:
     """
     Increment authenticated user's daily Extended usage count.
-    
+
     Args:
         user: Authenticated user object
         db: Database session
@@ -311,51 +352,54 @@ def increment_extended_usage(user: User, db: Session, count: int = 1) -> None:
     user.updated_at = datetime.utcnow()
     db.commit()
 
+
 def check_anonymous_extended_limit(identifier: str) -> Tuple[bool, int]:
     """
     Check Extended tier limit for anonymous user.
-    
+
     Args:
         identifier: IP or fingerprint identifier
-        
+
     Returns:
         tuple: (is_allowed, current_count)
     """
     today = date.today().isoformat()
     storage_key = f"{identifier}_extended"
-    
+
     # Reset if new day
     if anonymous_rate_limit_storage[storage_key]["date"] != today:
         anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
-    
+
     current_count = anonymous_rate_limit_storage[storage_key]["count"]
     daily_limit = EXTENDED_TIER_LIMITS["anonymous"]  # 2 for anonymous users
-    
+
     is_allowed = current_count < daily_limit
-    
+
     return is_allowed, current_count
+
 
 def increment_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
     """
     Increment anonymous user's Extended usage count.
-    
+
     Args:
         identifier: IP or fingerprint identifier
         count: Number of Extended responses to add (default: 1)
     """
     today = date.today().isoformat()
     storage_key = f"{identifier}_extended"
-    
+
     if storage_key not in anonymous_rate_limit_storage:
         anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
-    
+
     anonymous_rate_limit_storage[storage_key]["count"] += count
+
 
 def decrement_extended_usage(user: User, db: Session, count: int = 1) -> None:
     """
     Decrement authenticated user's daily Extended usage count.
     Used when requests fail and should not count against limit.
-    
+
     Args:
         user: Authenticated user object
         db: Database session
@@ -365,19 +409,17 @@ def decrement_extended_usage(user: User, db: Session, count: int = 1) -> None:
     user.updated_at = datetime.utcnow()
     db.commit()
 
+
 def decrement_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
     """
     Decrement anonymous user's Extended usage count.
     Used when requests fail and should not count against limit.
-    
+
     Args:
         identifier: IP or fingerprint identifier
         count: Number of Extended responses to remove (default: 1)
     """
     storage_key = f"{identifier}_extended"
-    
+
     if storage_key in anonymous_rate_limit_storage:
-        anonymous_rate_limit_storage[storage_key]["count"] = max(
-            0, 
-            anonymous_rate_limit_storage[storage_key]["count"] - count
-        )
+        anonymous_rate_limit_storage[storage_key]["count"] = max(0, anonymous_rate_limit_storage[storage_key]["count"] - count)

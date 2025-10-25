@@ -11,6 +11,7 @@
 ### Test 1: Normal Short Conversation (✅ Should work smoothly)
 
 1. **Start fresh comparison**
+
    - Select 2-3 models
    - Enter: "What is machine learning?"
    - Click Compare
@@ -19,7 +20,6 @@
    - "Can you give an example?"
    - "What are the main types?"
    - "Which is most popular?"
-   
 3. **Expected behavior:**
    - ✅ No warnings
    - ✅ No extended interaction indicator
@@ -32,11 +32,12 @@
 1. **Continue from Test 1 OR start fresh**
 
 2. **Follow up until you have 11 messages total** (5-6 exchanges)
+
    - Keep asking follow-up questions
 
 3. **Expected behavior at 11 messages:**
    - ℹ️ Blue info box appears: "Tip: New comparisons often provide more focused responses"
-   - 💜 Purple usage preview shows "1 extended interaction"
+   - 💜 Purple usage preview shows "X extended interactions" (where X = number of models)
    - ✨ "Start Fresh Comparison" button available
    - Submit still works normally
 
@@ -84,26 +85,29 @@
 ### Visual Elements
 
 **Usage Preview Box (appears at message 11+):**
+
 ```
 This follow-up will use:
 • 3 model responses
-• 1 extended interaction [in purple]
-💡 Extended interactions use more context...
+• X extended interactions [in purple] (where X = number of models)
+💡 Extended interactions use more context but same cost...
 ```
 
 **Warning Progression:**
+
 - 10 msgs: Blue info box, gentle tone
-- 14 msgs: Yellow warning, stronger language  
+- 14 msgs: Yellow warning, stronger language
 - 20 msgs: Red warning, urgent tone
 - 24 msgs: Red critical, submit disabled
 
 **UserMenu (click profile):**
+
 ```
 Today's Usage: X model responses
 Extended Interactions: Y of Z remaining [with ℹ️ tooltip]
 
 💡 Context Management
-Conversations auto-limit at 20 messages (backend) 
+Conversations auto-limit at 20 messages (backend)
 and 24 messages (frontend)...
 ```
 
@@ -114,19 +118,22 @@ and 24 messages (frontend)...
 ### Test: Backend actually truncates at 20 messages
 
 1. **Create conversation with 25+ messages in database/state**
+
    - This requires either:
      - Database manipulation, OR
-     - Modified frontend temporarily, OR  
+     - Modified frontend temporarily, OR
      - API tool like Postman
 
 2. **Send follow-up with 25 messages in history**
 
 3. **Check backend logs:**
+
    ```
    Should see: "truncated_history, was_truncated, original_count = (20, True, 25)"
    ```
 
 4. **Check API response metadata:**
+
    ```json
    {
      "conversation_message_count": 25,
@@ -136,7 +143,7 @@ and 24 messages (frontend)...
 
 5. **Check model receives system message:**
    ```
-   "Note: Earlier conversation context (5 messages) 
+   "Note: Earlier conversation context (5 messages)
     has been summarized to focus on recent discussion."
    ```
 
@@ -145,18 +152,22 @@ and 24 messages (frontend)...
 ## 🐛 Known Edge Cases to Test
 
 ### Edge Case 1: Multiple Models with Different Message Counts
+
 **Scenario:** User deselects/reselects models during follow-ups  
 **Expected:** Uses first conversation's message count for warnings
 
 ### Edge Case 2: Rapid Submissions
+
 **Scenario:** User submits follow-ups quickly before state updates  
 **Expected:** Each submission checked independently, no bypass
 
 ### Edge Case 3: Page Refresh at 23 Messages
+
 **Scenario:** User refreshes browser during long conversation  
 **Expected:** Conversation state persists (localStorage), warnings reappear
 
 ### Edge Case 4: Anonymous vs Authenticated Limits
+
 **Scenario:** Anonymous user with 2 extended interactions, authenticated with 5  
 **Expected:** Different limits enforced correctly
 
@@ -167,18 +178,21 @@ and 24 messages (frontend)...
 ### In Browser DevTools
 
 **Console logs to look for:**
+
 ```
 📊 Extended interaction detected: X messages in history
 ✓ Incremented extended usage for user@email.com: +Y models
 ```
 
 **Network tab:**
+
 - Check `/compare-stream` request body includes `conversation_history`
 - Check response metadata includes `conversation_message_count`, `is_extended_interaction`
 
 ### In Backend Logs
 
 **Look for:**
+
 ```
 📤 Streamed chunks for model-id
 Authenticated user user@email.com - Usage: X/Y model responses
@@ -190,6 +204,7 @@ Extended interaction detected: Z messages
 ## ✅ Success Criteria
 
 ### Must Pass:
+
 - [ ] No conversation can exceed 24 messages frontend
 - [ ] Warning appears at 10, 14, 20, 24 message thresholds
 - [ ] Submit button disabled at 24 messages
@@ -200,6 +215,7 @@ Extended interaction detected: Z messages
 - [ ] Extended interaction counted separately in user stats
 
 ### Should Pass:
+
 - [ ] Visual warnings follow color progression (blue → yellow → red)
 - [ ] Messaging is educational, not punitive
 - [ ] Smooth UX, no jarring transitions
@@ -211,21 +227,25 @@ Extended interaction detected: Z messages
 ## 🚨 Troubleshooting
 
 ### Warning not appearing?
+
 - Check `conversations[0]?.messages.length` in browser console
 - Verify `isFollowUpMode` is true
 - Check React state updates
 
 ### Submit not disabled at 24?
+
 - Inspect button's `disabled` prop
 - Check conversation state in React DevTools
 - Verify condition logic
 
 ### Backend not truncating?
+
 - Check `tiktoken` is installed: `pip list | grep tiktoken`
 - Verify import works: `python -c "import tiktoken; print('OK')"`
 - Check backend logs for truncation messages
 
 ### Extended interaction not counting?
+
 - Check metadata in network response
 - Verify user's `daily_extended_usage` field
 - Check backend condition: `conversation_message_count > 10`
@@ -235,6 +255,7 @@ Extended interaction detected: Z messages
 ## 🎯 Quick Verification Commands
 
 ### Check tiktoken installed:
+
 ```bash
 cd backend
 pip list | grep tiktoken
@@ -242,6 +263,7 @@ python -c "import tiktoken; print('tiktoken installed successfully')"
 ```
 
 ### Check frontend builds without errors:
+
 ```bash
 cd frontend
 npm run build
@@ -249,6 +271,7 @@ npm run build
 ```
 
 ### Test API endpoint directly:
+
 ```bash
 curl -X POST http://localhost:8000/compare-stream \
   -H "Content-Type: application/json" \
@@ -274,7 +297,7 @@ Tester: _____________
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 2: Medium Conversation (10-13 messages)  
+### Test 2: Medium Conversation (10-13 messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
@@ -283,7 +306,7 @@ Notes: _____________________
 Notes: _____________________
 
 ### Test 4: Critical (20-23 messages)
-- [ ] Pass  [ ] Fail  
+- [ ] Pass  [ ] Fail
 Notes: _____________________
 
 ### Test 5: Hard Limit (24+ messages)
@@ -320,7 +343,7 @@ User Starts Comparison
     [Messages: 2-10]
     ✅ Normal operation
          ↓
-    Follow-up 6+ 
+    Follow-up 6+
          ↓
     [Messages: 11-13]
     ℹ️ INFO: Gentle suggestion
@@ -351,4 +374,3 @@ User Starts Comparison
 Start with Test 1 and work through sequentially. Each test builds on the previous one. Should take ~15-20 minutes total.
 
 Good luck! 🎉
-
