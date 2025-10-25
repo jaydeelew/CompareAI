@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_DIR="/home/ubuntu/CompareAI"
 BACKUP_DIR="/home/ubuntu/backups"
-LOG_FILE="/var/log/compareai-deploy.log"
+LOG_FILE="/home/ubuntu/compareai-deploy.log"
 
 # Function to log messages
 log() {
