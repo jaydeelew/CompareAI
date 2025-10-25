@@ -4,9 +4,13 @@
 .env.development
 .env.test
 .env.production
+.env.development.local
+.env.test.local
+.env.production.local
 backend/.env
 frontend/.env
 *.env
+.envrc
 
 # Python Backend
 __pycache__/
@@ -32,7 +36,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
+# Python Virtual Environments
 venv/
 env/
 ENV/
@@ -42,40 +46,50 @@ backend/venv/
 .venv/
 .venv.bak/
 
-# Python Testing
+# Python Package Managers
+pipenv
+Pipfile.lock
+poetry.lock
+pyenv
+.python-version
+
+# Python Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
-.nox/
 .coverage.*
-.cache
-nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+.tox/
+.nox/
+nosetests.xml
+coverage/
 
-# Python IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Python Type Checking & Analysis
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
 
-# Node.js Frontend
+# Python Development Tools
+.ipynb_checkpoints
+*.ipynb
+celerybeat-schedule
+*.sage.py
+.spyderproject
+.spyproject
+.ropeproject
+
+# Node.js Frontend Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Frontend Build Outputs
-dist/
-dist-ssr/
-build/
-*.local
+.pnp
+.pnp.js
+jspm_packages/
+bower_components
 
 # Frontend Package Managers
 .npm
@@ -83,6 +97,75 @@ build/
 .yarn-integrity
 .yarn/
 .pnpm-store/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Frontend Build Outputs
+dist/
+dist-ssr/
+build/
+build/Release
+*.local
+
+# Frontend Development Tools
+.vite/
+vite.config.js.timestamp-*
+.turbo/
+.parcel-cache
+.grunt
+.lock-wscript
+
+# Frontend Framework Builds
+.next/
+out/
+.nuxt/
+.output/
+.svelte-kit/
+.astro/
+.remix/
+storybook-static/
+.out
+.storybook-out
+
+# Frontend Testing & Coverage
+test-results/
+playwright-report/
+playwright/.cache/
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+.nyc_output
+*.lcov
+
+# Frontend Logs & Runtime
+logs/
+*.log
+*.log.*
+server.log
+dev.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Frontend Cache & Temporary
+.cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.node_repl_history
+*.tgz
+tmp/
+temp/
 
 # AI/ML Model Files (Large files)
 *.pkl
@@ -98,22 +181,22 @@ build/
 *.safetensors
 models/
 model_cache/
+models_cache/
 transformers_cache/
-.cache/
+api_cache/
 huggingface/
+openrouter_models.json
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
 
 # Docker
 .dockerignore
 docker-compose.override.yml
 .docker/
 docker-data/
-
-# Logs
-logs/
-*.log
-*.log.*
-server.log
-dev.log
 
 # OS Generated Files
 .DS_Store
@@ -131,39 +214,42 @@ Thumbs.db
 *.swo
 *~
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
 # Backup Files
 *.bak
 *.backup
 *.old
 
 # IDE and Editor Files
+.vscode/
 .vscode/settings.json
 .vscode/launch.json
 .vscode/tasks.json
+.vscode-test
 .idea/
 *.sublime-project
 *.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Local Configuration
 config.local.*
 settings.local.*
+.local/
+local/
 
-# Security
+# Security & Certificates
 *.pem
 *.key
 *.crt
 *.p12
 *.pfx
-# SSL Certificates
-/etc/letsencrypt/
-/var/lib/letsencrypt/
 ssl/
 certs/
+/etc/letsencrypt/
+/var/lib/letsencrypt/
 
 # Monitoring and Analytics
 .sentryclirc
@@ -172,102 +258,18 @@ certs/
 # Documentation Build
 docs/_build/
 site/
-
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
 /site
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# Local development
-.local/
-local/
-.envrc
-
-# Vite
-.vite/
-vite.config.js.timestamp-*
 
 # TypeScript
 *.tsbuildinfo
 
-# ESLint
-.eslintcache
-
-# Prettier
+# ESLint & Prettier
 .prettierignore
 
-# Turbo
-.turbo/
-
-# Next.js (if ever used)
-.next/
-out/
-
-# Nuxt.js (if ever used)
-.nuxt/
-.output/
-
-# SvelteKit (if ever used)
-.svelte-kit/
-
-# Astro (if ever used)
-.astro/
-
-# Remix (if ever used)
-.remix/
-
-# Storybook
-storybook-static/
-
-# Playwright
-test-results/
-playwright-report/
-playwright/.cache/
-
-# Cypress
-cypress/videos/
-cypress/screenshots/
-cypress/downloads/
-
-# Jest
-coverage/
-
-# Webpack
+# Webpack & Bundlers
 .webpack/
-
-# Rollup
 .rollup.cache/
-
-# Parcel
-.parcel-cache/
-
-# Snowpack
 .snowpack/
-
-# Microbundle
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
 
 # Optional npm cache directory
 .npm
@@ -307,4 +309,4 @@ coverage/
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
-.pnp.* 
+.pnp.*
