@@ -11,6 +11,10 @@ import json
 from collections import defaultdict
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import authentication modules
 from .database import get_db, Base, engine
