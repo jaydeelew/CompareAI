@@ -8,6 +8,7 @@ user registration, login, email verification, and password resets.
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+import os
 from ..database import get_db
 from ..models import User, UserPreference
 from ..schemas import (
@@ -30,7 +31,7 @@ from ..auth import (
     verify_token,
 )
 from ..dependencies import get_current_user_required, get_current_verified_user, get_current_user
-from ..email_service import send_verification_email, send_password_reset_email
+# from ..email_service import send_verification_email, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -78,7 +79,8 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
 
         # Send verification email in background (optional - won't fail if email not configured)
         try:
-            background_tasks.add_task(send_verification_email, email=new_user.email, token=verification_token)
+            # background_tasks.add_task(send_verification_email, email=new_user.email, token=verification_token)
+            pass
         except Exception as e:
             print(f"Warning: Could not send verification email: {e}")
             # Continue anyway - email is optional for development
@@ -233,8 +235,20 @@ async def resend_verification(request: ResendVerificationRequest, background_tas
     user.verification_token_expires = datetime.utcnow() + timedelta(hours=24)
     db.commit()
 
-    # Send email in background
-    background_tasks.add_task(send_verification_email, email=user.email, token=verification_token)
+    # In development, await the email function to see console output immediately
+    # In production, use background task for non-blocking email sending
+    try:
+        if os.environ.get("ENVIRONMENT") == "development":
+            # Development: await to see console output immediately
+            # await send_verification_email(email=user.email, token=verification_token)
+            pass
+        else:
+            # Production: background task for non-blocking
+            # background_tasks.add_task(send_verification_email, email=user.email, token=verification_token)
+            pass
+    except Exception as e:
+        print(f"Warning: Could not send verification email: {e}")
+        # Continue anyway - in development, token is printed to console
 
     return {"message": "Verification email sent"}
 
@@ -260,8 +274,18 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
     user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
     db.commit()
 
-    # Send email in background
-    background_tasks.add_task(send_password_reset_email, email=user.email, token=reset_token)
+    # In development, await the email function to see console output immediately
+    # In production, use background task for non-blocking email sending
+    try:
+        if os.environ.get("ENVIRONMENT") == "development":
+            # Development: await to see console output immediately
+            await send_password_reset_email(email=user.email, token=reset_token)
+        else:
+            # Production: background task for non-blocking
+            background_tasks.add_task(send_password_reset_email, email=user.email, token=reset_token)
+    except Exception as e:
+        print(f"Warning: Could not send password reset email: {e}")
+        # Continue anyway - in development, token is printed to console
 
     return {"message": "Password reset email sent"}
 
@@ -288,6 +312,12 @@ async def reset_password(reset: PasswordReset, db: Session = Depends(get_db)):
     return {"message": "Password reset successfully", "email": user.email}
 
 
+@router.get("/test")
+async def test_endpoint():
+    """Test endpoint to verify basic functionality."""
+    return {"message": "Auth router is working"}
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user_required), db: Session = Depends(get_db)):
     """
@@ -296,16 +326,6 @@ async def get_current_user_info(current_user: User = Depends(get_current_user_re
     - Returns user profile data
     - Requires valid access token
     """
-    from datetime import date
-    from ..rate_limiting import check_user_rate_limit, check_extended_tier_limit
-    
-    # Reset usage counts if it's a new day
-    check_user_rate_limit(current_user, db)
-    check_extended_tier_limit(current_user, db)
-    
-    # Refresh the user object to get updated values
-    db.refresh(current_user)
-    
     return current_user
 
 

@@ -5,8 +5,8 @@ This module defines all data models for API requests and responses.
 """
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Dict
+from datetime import datetime, date
 
 
 # ============================================================================
@@ -58,8 +58,12 @@ class UserResponse(BaseModel):
     subscription_period: str
     daily_usage_count: int
     monthly_overage_count: int
-    mock_mode_enabled: bool = False  # Testing feature for admins
+    mock_mode_enabled: Optional[bool] = False  # Testing feature for admins
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    usage_reset_date: Optional[date] = None
+    extended_usage_reset_date: Optional[date] = None
+    daily_extended_usage: int = 0
 
     class Config:
         from_attributes = True
@@ -279,9 +283,9 @@ class AdminUserResponse(BaseModel):
     subscription_period: str
     daily_usage_count: int
     monthly_overage_count: int
-    mock_mode_enabled: bool = False  # Testing feature for admins
+    mock_mode_enabled: Optional[bool] = False  # Testing feature for admins
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -362,8 +366,8 @@ class AdminStatsResponse(BaseModel):
     total_users: int
     active_users: int
     verified_users: int
-    users_by_tier: dict[str, int]
-    users_by_role: dict[str, int]
+    users_by_tier: Dict[str, int]
+    users_by_role: Dict[str, int]
     recent_registrations: int  # Last 7 days
     total_usage_today: int
     admin_actions_today: int

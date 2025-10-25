@@ -15,11 +15,21 @@ The Mock Mode feature allows admin and super-admin users to test the CompareAI a
 
 ## 🔒 Security & Access Control
 
-Mock mode can **only** be enabled for users with the following roles:
-- `admin`
-- `super_admin`
+Mock mode access depends on the environment:
 
-Attempting to enable mock mode for regular users or moderators will result in an error. This ensures that only trusted administrators can use this testing feature.
+### Development Mode
+
+- **Admins can enable Mock mode for any user** - Perfect for testing with different user types
+- Regular users can have Mock mode enabled by admins for testing purposes
+- This allows comprehensive testing of the application with various user roles
+
+### Production Mode
+
+- **Admins can only enable Mock mode for admin and super-admin users**
+- Regular users cannot have Mock mode enabled
+- This ensures that only trusted administrators can use this testing feature in production
+
+The system automatically detects the environment using the `ENVIRONMENT` environment variable.
 
 ## 📦 Installation & Setup
 
@@ -33,6 +43,7 @@ python migrate_mock_mode.py
 ```
 
 This migration will:
+
 - Add the `mock_mode_enabled` boolean field to the `users` table
 - Set default value to `FALSE` for all existing users
 - Verify the migration was successful
@@ -56,9 +67,11 @@ python -m uvicorn app.main:app --reload
 
 1. Log in as an admin or super-admin user
 2. Navigate to the Admin Panel
-3. Find the user you want to enable mock mode for (must be admin/super-admin)
+3. Find the user you want to enable mock mode for
 4. Click the "🎭 Mock OFF" button
 5. The button will change to "🎭 Mock ON" (green) indicating mock mode is active
+
+**Note:** In development mode, admins can enable Mock mode for any user (including regular users). In production mode, admins can only enable Mock mode for admin and super-admin users.
 
 ### Disabling Mock Mode
 
@@ -81,16 +94,19 @@ Once mock mode is enabled for your user:
 The system includes two types of mock responses:
 
 ### Standard Response (Tier: 'standard')
+
 - **Length**: ~500-800 tokens
 - **Use Case**: Testing standard-length responses
 - **Content**: Comprehensive answer with multiple sections
 
 ### Extended Response (Tier: 'extended')
-- **Length**: ~1200-1500 tokens  
+
+- **Length**: ~1200-1500 tokens
 - **Use Case**: Testing extended-length responses
 - **Content**: Detailed answer with extensive sections, examples, and analysis
 
 ### Brief Response (Tier: 'brief')
+
 - **Length**: ~200-300 tokens
 - **Use Case**: Testing brief responses
 - **Content**: Truncated version of standard response
@@ -108,15 +124,18 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 ### Backend Implementation
 
 #### Model Runner (`backend/app/model_runner.py`)
+
 - Modified `call_openrouter_streaming()` to accept `use_mock` parameter
 - Modified `call_openrouter()` to accept `use_mock` parameter
 - When `use_mock=True`, returns mock responses from `mock_responses.py`
 
 #### Main API (`backend/app/main.py`)
+
 - `/compare-stream` endpoint checks `current_user.mock_mode_enabled`
 - Passes `use_mock` flag to model runner functions
 
 #### Admin API (`backend/app/routers/admin.py`)
+
 - New endpoint: `POST /admin/users/{user_id}/toggle-mock-mode`
 - Validates user role (admin/super-admin only)
 - Logs action in audit trail
@@ -125,12 +144,14 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 ### Frontend Implementation
 
 #### Admin Panel (`frontend/src/components/admin/AdminPanel.tsx`)
+
 - New `toggleMockMode()` function
 - Mock mode button visible only for admin/super-admin users
 - Visual indicator: Green for enabled, Gray for disabled
 - Tooltip shows current status
 
 #### Type Definitions
+
 - Updated `User` interface in `frontend/src/types/auth.ts`
 - Updated `AdminUser` interface in `AdminPanel.tsx`
 - Updated `UserResponse` and `AdminUserResponse` schemas in `backend/app/schemas.py`
@@ -138,6 +159,7 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 ## 🧪 Testing Scenarios
 
 ### Scenario 1: Test Different Response Lengths
+
 1. Enable mock mode
 2. Submit a comparison with "Standard" tier
 3. Verify you receive ~500-800 token responses
@@ -145,6 +167,7 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 5. Verify you receive ~1200-1500 token responses
 
 ### Scenario 2: Test Multiple Models
+
 1. Enable mock mode
 2. Select 5-9 different models
 3. Submit a comparison
@@ -152,6 +175,7 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 5. Verify streaming behavior works correctly
 
 ### Scenario 3: Test UI Behavior
+
 1. Enable mock mode
 2. Test various UI features:
    - Model selection
@@ -161,6 +185,7 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
    - Follow-up conversations
 
 ### Scenario 4: Test Error Handling
+
 1. Enable mock mode
 2. Verify no actual API errors occur
 3. Test application behavior with "failed" models (if implemented)
@@ -168,12 +193,14 @@ ALTER TABLE users ADD COLUMN mock_mode_enabled BOOLEAN DEFAULT FALSE;
 ## 📊 Monitoring & Logging
 
 When mock mode is active, the backend logs include:
+
 ```
 🎭 Mock mode active for user {email}
 🎭 Mock mode enabled - returning mock {tier} response for {model_id}
 ```
 
 All mock mode toggles are logged in the `admin_action_logs` table with:
+
 - `action_type`: "toggle_mock_mode"
 - `action_description`: "Enabled/Disabled mock mode for user {email}"
 - `details`: JSON with previous and new state
@@ -200,23 +227,27 @@ Potential improvements to consider:
 ## 🐛 Troubleshooting
 
 ### Mock Mode Button Not Appearing
+
 - Verify the user has `admin` or `super_admin` role
 - Check browser console for JavaScript errors
 - Refresh the admin panel
 
 ### Mock Mode Not Working
+
 - Verify the migration was run successfully
 - Check backend logs for mock mode activation messages
 - Verify user's `mock_mode_enabled` field is `TRUE` in database
 - Restart the backend server
 
 ### Cannot Enable Mock Mode
+
 - Error: "Mock mode can only be enabled for admin/super-admin users"
   - Solution: User must have `admin` or `super_admin` role
 - Error: "Authentication required"
   - Solution: Log in again with admin credentials
 
 ### Migration Failed
+
 - Check database connection
 - Verify you have database write permissions
 - Check if column already exists: `SELECT mock_mode_enabled FROM users LIMIT 1;`
@@ -224,6 +255,7 @@ Potential improvements to consider:
 ## 📚 Related Files
 
 ### Backend
+
 - `/backend/app/models.py` - User model with `mock_mode_enabled` field
 - `/backend/app/mock_responses.py` - Mock response content
 - `/backend/app/model_runner.py` - Model execution with mock support
@@ -233,6 +265,7 @@ Potential improvements to consider:
 - `/backend/migrate_mock_mode.py` - Database migration script
 
 ### Frontend
+
 - `/frontend/src/components/admin/AdminPanel.tsx` - Admin UI with toggle button
 - `/frontend/src/components/admin/AdminPanel.css` - Styling for mock mode button
 - `/frontend/src/types/auth.ts` - User type definitions
@@ -261,6 +294,7 @@ Before deploying to production:
 ## 📞 Support
 
 For issues or questions about mock mode:
+
 1. Check this documentation
 2. Review backend logs for error messages
 3. Check admin action logs for audit trail
@@ -271,4 +305,3 @@ For issues or questions about mock mode:
 **Last Updated**: October 2025  
 **Version**: 1.0.0  
 **Author**: CompareAI Development Team
-

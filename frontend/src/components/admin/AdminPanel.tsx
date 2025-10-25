@@ -63,6 +63,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [selectedTier, setSelectedTier] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showSelfDeleteModal, setShowSelfDeleteModal] = useState(false);
     const [showTierChangeModal, setShowTierChangeModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState<{ id: number; email: string } | null>(null);
     const [tierChangeData, setTierChangeData] = useState<{ userId: number; email: string; currentTier: string; newTier: string } | null>(null);
@@ -452,26 +453,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     };
 
     const handleDeleteClick = (userId: number, email: string) => {
-        setUserToDelete({ id: userId, email });
-        setShowDeleteModal(true);
+        // Check if user is trying to delete themselves
+        if (user && user.id === userId) {
+            setUserToDelete({ id: userId, email });
+            setShowSelfDeleteModal(true);
+        } else {
+            setUserToDelete({ id: userId, email });
+            setShowDeleteModal(true);
+        }
     };
 
     const handleDeleteConfirm = async () => {
         if (!userToDelete) return;
 
+        console.log('Attempting to delete user:', userToDelete);
+        console.log('User ID:', userToDelete.id);
+        console.log('User Email:', userToDelete.email);
+
         try {
             const headers = getAuthHeaders();
+            console.log('Auth headers:', headers);
+            
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
 
-            const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
+            const deleteUrl = `/api/admin/users/${userToDelete.id}`;
+            console.log('Delete URL:', deleteUrl);
+
+            const response = await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers
             });
 
+            console.log('Delete response status:', response.status);
+            console.log('Delete response ok:', response.ok);
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                console.log('Error response data:', errorData);
+                console.log('Error status:', response.status);
+                
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
                 } else if (response.status === 403) {
@@ -503,6 +525,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
     const handleDeleteCancel = () => {
         setShowDeleteModal(false);
+        setUserToDelete(null);
+    };
+
+    const handleSelfDeleteCancel = () => {
+        setShowSelfDeleteModal(false);
         setUserToDelete(null);
     };
 
@@ -761,11 +788,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                         Zero Usage
                                                     </button>
                                                 )}
-                                                {(userRow.role === 'admin' || userRow.role === 'super_admin') && (
+                                                {/* Mock mode toggle - available for any user in development mode, admin/super-admin in production */}
+                                                {(import.meta.env.DEV || userRow.role === 'admin' || userRow.role === 'super_admin') && (
                                                     <button
                                                         onClick={() => toggleMockMode(userRow.id)}
                                                         className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
-                                                        title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}`}
+                                                        title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}${import.meta.env.DEV ? ' (Dev Mode)' : ''}`}
                                                     >
                                                         🎭 {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
                                                     </button>
@@ -852,6 +880,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 onClick={handleDeleteConfirm}
                             >
                                 Delete User
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Self-Deletion Warning Modal */}
+            {showSelfDeleteModal && userToDelete && (
+                <div className="modal-overlay" onClick={handleSelfDeleteCancel}>
+                    <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>🚫 Cannot Delete Self</h2>
+                            <button
+                                className="modal-close-btn"
+                                onClick={handleSelfDeleteCancel}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="delete-modal-body">
+                            <p className="warning-text">
+                                You cannot delete your own account. This action is not allowed for security reasons.
+                            </p>
+                            <div className="user-to-delete">
+                                <strong>Email:</strong> {userToDelete.email}
+                            </div>
+                            <p className="delete-note">
+                                <strong>Note:</strong> Super Admins cannot delete themselves. If you need to delete your account, please contact another Super Admin or use the account deletion feature in your profile settings.
+                            </p>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={handleSelfDeleteCancel}
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

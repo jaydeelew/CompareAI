@@ -8,7 +8,7 @@ and token generation for email verification and password resets.
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Tuple
 import os
 import secrets
 import bcrypt
@@ -148,7 +148,7 @@ def generate_verification_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def validate_password_strength(password: str) -> tuple[bool, str]:
+def validate_password_strength(password: str) -> Tuple[bool, str]:
     """
     Validate password meets strength requirements.
 

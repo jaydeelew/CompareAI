@@ -44,7 +44,7 @@ class User(Base):
     role = Column(String(50), default="user")  # 'user', 'moderator', 'admin', 'super_admin'
     is_admin = Column(Boolean, default=False)
     admin_permissions = Column(Text)  # JSON string of specific permissions
-    
+
     # Testing features (admin/super_admin only)
     mock_mode_enabled = Column(Boolean, default=False)  # Use mock responses instead of real API calls
 
@@ -56,7 +56,7 @@ class User(Base):
     usage_reset_date = Column(Date, default=func.current_date())
     monthly_overage_count = Column(Integer, default=0)  # Track overage model responses for billing
     overage_reset_date = Column(Date, default=func.current_date())  # Reset monthly
-    
+
     # Extended tier usage tracking
     daily_extended_usage = Column(Integer, default=0)  # Number of Extended tier responses used today
     extended_usage_reset_date = Column(Date, default=func.current_date())
@@ -149,7 +149,7 @@ class UsageLog(Base):
     __tablename__ = "usage_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True)  # NULL for anonymous users
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # NULL for anonymous users
 
     # Request details
     ip_address = Column(String(45))  # IPv4 or IPv6
@@ -232,7 +232,7 @@ class AdminActionLog(Base):
     __tablename__ = "admin_action_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    admin_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
+    admin_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     target_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Action details

@@ -25,7 +25,8 @@ from ..schemas import (
 )
 from ..dependencies import get_current_admin_user, require_admin_role
 from ..auth import get_password_hash
-from ..email_service import send_verification_email
+
+# from ..email_service import send_verification_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -271,36 +272,80 @@ async def delete_user(
 ):
     """Delete a user (super admin only)."""
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        print(f"Delete user request: user_id={user_id}, current_user_id={current_user.id}")
 
-    # Prevent self-deletion
-    if user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(f"User not found: {user_id}")
+            raise HTTPException(status_code=404, detail="User not found")
 
-    # Prevent deletion of other super admins
-    if user.role == "super_admin" and current_user.role != "super_admin":
-        raise HTTPException(status_code=403, detail="Cannot delete super admin accounts")
+        # Prevent self-deletion
+        if user_id == current_user.id:
+            print(f"Self-deletion attempt blocked: {user_id}")
+            raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
-    # Log admin action before deletion
-    log_admin_action(
-        db=db,
-        admin_user=current_user,
-        action_type="user_delete",
-        action_description=f"Deleted user {user.email}",
-        target_user_id=user.id,
-        details={
+        # Note: Since this endpoint requires super_admin role, super-admins can delete other super-admins
+        # The only restriction is self-deletion, which is handled above
+
+        print(f"Deleting user: {user.email} (ID: {user.id})")
+        print(f"Current user (admin): {current_user.email} (ID: {current_user.id})")
+
+        # Store user details for logging before deletion
+        user_details = {
             "email": user.email,
             "role": user.role,
             "subscription_tier": user.subscription_tier,
             "created_at": user.created_at.isoformat(),
-        },
-        request=request,
-    )
+        }
+        user_email = user.email
+        user_id_to_log = user.id
 
-    db.delete(user)
-    db.commit()
+        # Log admin action BEFORE deletion (so we can reference the target user)
+        try:
+            ip_address = None
+            user_agent = None
+            if request:
+                try:
+                    ip_address = request.client.host if hasattr(request, "client") and request.client else None
+                except:
+                    ip_address = None
+                try:
+                    user_agent = request.headers.get("user-agent")
+                except:
+                    user_agent = None
+
+            log_entry = AdminActionLog(
+                admin_user_id=current_user.id,
+                target_user_id=user.id,  # Reference the user being deleted
+                action_type="user_delete",
+                action_description=f"Deleted user {user_email}",
+                details=json.dumps(user_details),
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            db.add(log_entry)
+            db.commit()
+            print(f"Admin action logged successfully")
+        except Exception as e:
+            print(f"Warning: Could not log admin action: {e}")
+            # Continue anyway - logging failure shouldn't prevent user deletion
+
+        # Delete the user after logging
+        db.delete(user)
+        db.commit()
+        print(f"User deleted successfully: {user_email}")
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as they are expected
+        raise
+    except Exception as e:
+        print(f"Unexpected error in delete_user: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.post("/users/{user_id}/reset-password", status_code=status.HTTP_200_OK)
@@ -475,45 +520,46 @@ async def reset_user_usage(
 
 @router.post("/users/{user_id}/toggle-mock-mode", response_model=AdminUserResponse)
 async def toggle_mock_mode(
-    user_id: int, 
-    request: Request, 
-    current_user: User = Depends(require_admin_role("admin")), 
-    db: Session = Depends(get_db)
+    user_id: int, request: Request, current_user: User = Depends(require_admin_role("admin")), db: Session = Depends(get_db)
 ):
     """
-    Toggle mock mode for a user (admin/super-admin only).
-    
+    Toggle mock mode for a user.
+
+    In development mode: Admins can enable mock mode for any user (including regular users).
+    In production mode: Admins can only enable mock mode for admin and super-admin users.
+
     Mock mode allows testing the application without making real API calls to OpenRouter.
-    This feature is restricted to admin and super-admin users only.
     """
+    import os
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Only admins and super-admins can have mock mode enabled
-    if user.role not in ["admin", "super_admin"]:
-        raise HTTPException(
-            status_code=400, 
-            detail="Mock mode can only be enabled for admin and super-admin users"
-        )
-    
+
+    # In development mode, admins can enable mock mode for any user
+    # In production mode, admins can only enable mock mode for admin and super-admin users
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+
+    if not is_development and user.role not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=400, detail="Mock mode can only be enabled for admin and super-admin users in production")
+
     # Toggle mock mode
     previous_state = user.mock_mode_enabled
     user.mock_mode_enabled = not user.mock_mode_enabled
     db.commit()
     db.refresh(user)
-    
+
     # Log admin action
     log_admin_action(
         db=db,
         admin_user=current_user,
         action_type="toggle_mock_mode",
-        action_description=f"{'Enabled' if user.mock_mode_enabled else 'Disabled'} mock mode for user {user.email}",
+        action_description=f"{'Enabled' if user.mock_mode_enabled else 'Disabled'} mock mode for user {user.email} (dev_mode: {is_development})",
         target_user_id=user.id,
-        details={"previous_state": previous_state, "new_state": user.mock_mode_enabled},
+        details={"previous_state": previous_state, "new_state": user.mock_mode_enabled, "development_mode": is_development},
         request=request,
     )
-    
+
     return AdminUserResponse.from_orm(user)
 
 
@@ -523,26 +569,26 @@ async def change_user_tier(
     tier_data: dict,
     request: Request,
     current_user: User = Depends(require_admin_role("super_admin")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Change user's subscription tier. Super admin only."""
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Validate tier
     new_tier = tier_data.get("subscription_tier")
     valid_tiers = ["free", "starter", "starter_plus", "pro", "pro_plus"]
     if new_tier not in valid_tiers:
         raise HTTPException(status_code=400, detail=f"Invalid tier. Must be one of: {', '.join(valid_tiers)}")
-    
+
     # Store previous tier for logging
     previous_tier = user.subscription_tier
-    
+
     # Update tier
     user.subscription_tier = new_tier
-    
+
     # Update subscription status based on tier
     if new_tier == "free":
         user.subscription_status = "active"
@@ -550,10 +596,10 @@ async def change_user_tier(
         # Keep existing status for paid tiers, or set to active if it was free
         if user.subscription_status not in ["active", "cancelled", "expired"]:
             user.subscription_status = "active"
-    
+
     db.commit()
     db.refresh(user)
-    
+
     # Log admin action
     log_admin_action(
         db=db,
@@ -564,5 +610,5 @@ async def change_user_tier(
         details={"previous_tier": previous_tier, "new_tier": new_tier},
         request=request,
     )
-    
+
     return AdminUserResponse.from_orm(user)

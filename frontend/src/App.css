@@ -59,6 +59,13 @@
   text-align: center;
 }
 
+.dev-mode-indicator {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  font-weight: 400;
+  font-style: italic;
+}
+
 .mock-mode-text strong {
   font-weight: 700;
   margin-right: 0.375rem;

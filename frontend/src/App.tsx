@@ -1990,6 +1990,7 @@ function AppContent() {
             <span className="mock-mode-icon">🎭</span>
             <span className="mock-mode-text">
               <strong>Mock Mode Active</strong> - Using test responses instead of real API calls
+              {import.meta.env.DEV && <span className="dev-mode-indicator"> (Dev Mode)</span>}
             </span>
           </div>
         </div>

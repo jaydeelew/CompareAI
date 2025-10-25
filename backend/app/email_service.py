@@ -262,8 +262,20 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
 
     # Get tier benefits
     benefits = {
-        "starter": ["50 model responses per day", "6 models max per comparison", "Email support (48-hour response)", "Usage analytics", "30 days chat history"],
-        "starter_plus": ["100 model responses per day", "6 models max per comparison", "Email support (48-hour response)", "Usage analytics", "30 days chat history"],
+        "starter": [
+            "50 model responses per day",
+            "6 models max per comparison",
+            "Email support (48-hour response)",
+            "Usage analytics",
+            "30 days chat history",
+        ],
+        "starter_plus": [
+            "100 model responses per day",
+            "6 models max per comparison",
+            "Email support (48-hour response)",
+            "Usage analytics",
+            "30 days chat history",
+        ],
         "pro": [
             "200 model responses per day",
             "9 models max per comparison",

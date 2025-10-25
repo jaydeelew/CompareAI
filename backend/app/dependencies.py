@@ -106,16 +106,13 @@ def get_current_user_required(
 
 def get_current_verified_user(current_user: User = Depends(get_current_user_required)) -> User:
     """
-    Require user to have verified email.
-
-    Args:
-        current_user: Current authenticated user
+    Get current authenticated user with verified email.
 
     Returns:
-        User: Current verified user
+        User: Current authenticated user with verified email
 
     Raises:
-        HTTPException: If email not verified
+        HTTPException: If user email is not verified
     """
     if not current_user.is_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email verification required")
@@ -127,7 +124,7 @@ def check_subscription_tier(required_tier: str):
     Dependency factory to check if user has required subscription tier.
 
     Args:
-        required_tier: Minimum required tier ('free', 'starter', 'starter_plus', 'pro', 'pro_plus')
+        required_tier: Required subscription tier
 
     Returns:
         Dependency function that validates subscription tier
@@ -140,7 +137,8 @@ def check_subscription_tier(required_tier: str):
 
         if user_tier_level < required_tier_level:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"This feature requires {required_tier} subscription or higher"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This feature requires {required_tier} subscription or higher",
             )
         return current_user
 
@@ -170,6 +168,7 @@ def require_admin_role(required_role: str = "admin"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail=f"This feature requires {required_role} role or higher"
             )
+
         return current_user
 
     return dependency
