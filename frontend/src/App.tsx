@@ -626,6 +626,7 @@ function AppContent() {
   const userCancelledRef = useRef(false);
   const followUpJustActivatedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastAlignedRoundRef = useRef<number>(0); // Track which round was last aligned
   const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
   const modelsSectionRef = useRef<HTMLDivElement>(null);
   const compareButtonRef = useRef<HTMLButtonElement>(null);
@@ -854,6 +855,67 @@ function AppContent() {
       lastScrollTopRef.current.clear();
     };
   }, []);
+
+  // Align "You" sections across all model cards after each round completes
+  useEffect(() => {
+    if (conversations.length === 0) return;
+
+    // Get the current round number
+    const firstConversation = conversations[0];
+    const currentRound = firstConversation?.messages.filter(m => m.type === 'user').length || 0;
+    
+    // Check if this round has already been aligned
+    if (currentRound <= lastAlignedRoundRef.current) return;
+    
+    // Check if all models have completed this round
+    const allModelsComplete = conversations.every(conv => {
+      const userMessages = conv.messages.filter(m => m.type === 'user').length;
+      const aiMessages = conv.messages.filter(m => m.type === 'assistant').length;
+      return userMessages === currentRound && aiMessages === currentRound;
+    });
+    
+    if (!allModelsComplete) return;
+    
+    console.log(`Round ${currentRound} complete - aligning "You" sections`);
+    
+    // Wait for DOM to settle, then align scroll positions
+    setTimeout(() => {
+      const cards = document.querySelectorAll('.result-card.conversation-card');
+      if (cards.length === 0) return;
+      
+      // Find the maximum offsetTop for the latest "You" section across all cards
+      let maxOffsetTop = 0;
+      const scrollData: { element: HTMLElement; targetOffsetTop: number }[] = [];
+      
+      cards.forEach((card) => {
+        const conversationContent = card.querySelector('.conversation-content') as HTMLElement;
+        if (!conversationContent) return;
+        
+        const userMessages = conversationContent.querySelectorAll('.conversation-message.user');
+        if (userMessages.length === 0) return;
+        
+        const lastUserMessage = userMessages[userMessages.length - 1] as HTMLElement;
+        const offsetTop = lastUserMessage.offsetTop;
+        
+        maxOffsetTop = Math.max(maxOffsetTop, offsetTop);
+        scrollData.push({ element: conversationContent, targetOffsetTop: offsetTop });
+      });
+      
+      console.log(`Max offsetTop for round ${currentRound}: ${maxOffsetTop}px`);
+      
+      // Scroll all cards to align the "You" section at the same position
+      scrollData.forEach(({ element }, index) => {
+        element.scrollTo({
+          top: maxOffsetTop,
+          behavior: 'smooth'
+        });
+        console.log(`Card ${index}: Scrolled to ${maxOffsetTop}px to align "You" section`);
+      });
+      
+      // Mark this round as aligned
+      lastAlignedRoundRef.current = currentRound;
+    }, 500); // Wait for content to settle
+  }, [conversations]);
 
   // Track mouse position over models section with throttling for better performance
   useEffect(() => {
@@ -1493,6 +1555,7 @@ function AppContent() {
     autoScrollPausedRef.current.clear(); // Clear auto-scroll pause ref
     userInteractingRef.current.clear(); // Clear user interaction tracking
     lastScrollTopRef.current.clear(); // Clear scroll position tracking
+    lastAlignedRoundRef.current = 0; // Reset round alignment tracking
 
     // Clean up any existing scroll listeners from previous comparison
     scrollListenersRef.current.forEach((_listener, modelId) => {
