@@ -727,30 +727,11 @@ function AppContent() {
     timestamp: customTimestamp || new Date().toISOString()
   });
 
-  // Helper function to initialize conversations from response
-  const initializeConversations = (response: CompareResponse, userTimestamp: string) => {
-    const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
-
-    const newConversations: ModelConversation[] = Object.entries(response.results).map(([modelId, output]) => ({
-      modelId,
-      messages: [
-        createMessage('user', input, userTimestamp),
-        createMessage('assistant', String(output), aiTimestamp) // AI response gets current timestamp
-      ]
-    }));
-    setConversations(newConversations);
-
-    // Initialize tabs to default 'formatted' view for all new conversations
-    const initialTabs: { [modelId: string]: 'formatted' | 'raw' } = {};
-    Object.keys(response.results).forEach(modelId => {
-      initialTabs[modelId] = 'formatted';
-    });
-    setActiveResultTabs(initialTabs);
-  };
+  // Removed unused 'initializeConversations' function.
 
   // Helper function to switch tabs for a specific conversation
   const switchResultTab = (modelId: string, tab: 'formatted' | 'raw') => {
-    setActiveResultTabs(prev => ({
+    setActiveResultTabs((prev: { [key: string]: 'formatted' | 'raw' }) => ({
       ...prev,
       [modelId]: tab
     }));
@@ -835,13 +816,17 @@ function AppContent() {
 
   // Cleanup scroll listeners on unmount
   useEffect(() => {
+    // Capture ref values at mount time
+    const scrollListeners = scrollListenersRef.current;
+    const userInteracting = userInteractingRef.current;
+    const lastScrollTop = lastScrollTopRef.current;
+    
     return () => {
       // Clean up all scroll listeners when component unmounts
-      const listeners = scrollListenersRef.current;
-      listeners.forEach((_listener, modelId) => {
+      scrollListeners.forEach((_listener, modelId) => {
         const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
         const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
-        const listenerSet = listeners.get(modelId);
+        const listenerSet = scrollListeners.get(modelId);
 
         if (conversationContent && listenerSet) {
           conversationContent.removeEventListener('scroll', listenerSet.scroll);
@@ -850,9 +835,9 @@ function AppContent() {
           conversationContent.removeEventListener('mousedown', listenerSet.mousedown);
         }
       });
-      scrollListenersRef.current.clear();
-      userInteractingRef.current.clear();
-      lastScrollTopRef.current.clear();
+      scrollListeners.clear();
+      userInteracting.clear();
+      lastScrollTop.clear();
     };
   }, []);
 
