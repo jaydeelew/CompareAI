@@ -1857,7 +1857,7 @@ body {
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-primary);
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .provider-dropdown:hover {
@@ -1873,7 +1873,7 @@ body {
   background: var(--bg-secondary);
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   font-family: inherit;
 }
 
