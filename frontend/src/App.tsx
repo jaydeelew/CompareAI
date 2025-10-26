@@ -409,7 +409,22 @@ function AppContent() {
     lastScrollTopRef.current.set(modelId, conversationContent.scrollTop);
 
     // Handle mouse wheel - immediate indication of user interaction
-    const handleWheel = () => {
+    const handleWheel = (e: WheelEvent) => {
+      const isAtTop = conversationContent.scrollTop === 0;
+      const isAtBottom = isScrolledToBottom(conversationContent);
+      
+      // If at top and scrolling up, or at bottom and scrolling down, manually scroll the window
+      if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+        // Manually scroll the window to allow continuation of scrolling beyond card boundaries
+        window.scrollBy({
+          top: e.deltaY * 0.5, // Scale down the scroll amount slightly for smoother UX
+          left: 0,
+          behavior: 'auto'
+        });
+        // Continue to let the event propagate naturally as well
+        return;
+      }
+      
       // IMMEDIATELY pause auto-scroll when user scrolls
       autoScrollPausedRef.current.add(modelId);
 
@@ -423,7 +438,7 @@ function AppContent() {
         }
         // If not at bottom, keep it paused (already set above)
         userInteractingRef.current.delete(modelId);
-      }, 150);
+      }, 75);
     };
 
     // Handle touch start - immediate indication of user interaction
@@ -441,7 +456,7 @@ function AppContent() {
         }
         // If not at bottom, keep it paused (already set above)
         userInteractingRef.current.delete(modelId);
-      }, 150);
+      }, 75);
     };
 
     // Handle mousedown on scrollbar - user is clicking/dragging scrollbar
@@ -458,7 +473,7 @@ function AppContent() {
           autoScrollPausedRef.current.delete(modelId);
         }
         userInteractingRef.current.delete(modelId);
-      }, 150);
+      }, 75);
     };
 
     // Handle scroll event - detect if scrolling upward (user interaction)
@@ -707,7 +722,7 @@ function AppContent() {
 
   // Auto-scroll control state - tracks which models have auto-scroll paused by user
   const autoScrollPausedRef = useRef<Set<string>>(new Set()); // Ref for immediate access without state delay
-  const scrollListenersRef = useRef<Map<string, { scroll: () => void; wheel: () => void; touchstart: () => void; mousedown: () => void }>>(new Map());
+  const scrollListenersRef = useRef<Map<string, { scroll: () => void; wheel: (e: WheelEvent) => void; touchstart: () => void; mousedown: () => void }>>(new Map());
   const userInteractingRef = useRef<Set<string>>(new Set()); // Track which models user is actively interacting with
   const lastScrollTopRef = useRef<Map<string, number>>(new Map()); // Track last scroll position to detect user scrolling
 
