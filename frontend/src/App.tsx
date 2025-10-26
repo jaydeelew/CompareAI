@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -726,8 +725,6 @@ function AppContent() {
     content,
     timestamp: customTimestamp || new Date().toISOString()
   });
-
-  // Removed unused 'initializeConversations' function.
 
   // Helper function to switch tabs for a specific conversation
   const switchResultTab = (modelId: string, tab: 'formatted' | 'raw') => {
@@ -1759,20 +1756,20 @@ function AppContent() {
             if (shouldUpdate && (now - lastUpdateTime >= UPDATE_THROTTLE_MS)) {
               lastUpdateTime = now;
 
-              // Force immediate UI update with flushSync to bypass React 18 automatic batching
-              flushSync(() => {
-                // Update response state
-                setResponse({
-                  results: { ...streamingResults },
-                  metadata: {
-                    input_length: input.length,
-                    models_requested: selectedModels.length,
-                    models_successful: 0, // Will be updated on complete
-                    models_failed: 0,
-                    timestamp: new Date().toISOString(),
-                    processing_time_ms: Date.now() - startTime
-                  }
-                });
+              // Use regular state update instead of flushSync to allow smooth scrolling
+              // React 18 will batch these updates automatically for better performance
+              // Update response state
+              setResponse({
+                results: { ...streamingResults },
+                metadata: {
+                  input_length: input.length,
+                  models_requested: selectedModels.length,
+                  models_successful: 0, // Will be updated on complete
+                  models_failed: 0,
+                  timestamp: new Date().toISOString(),
+                  processing_time_ms: Date.now() - startTime
+                }
+              });
 
                 // Update conversations to show streaming text in cards
                 if (!isFollowUpMode) {
@@ -1861,25 +1858,24 @@ function AppContent() {
                   );
                 }
 
-                // Auto-scroll each conversation card to bottom as content streams in
-                // BUT only for models that are still streaming (not completed yet)
-                // AND respect user's manual scroll position (pause if user scrolled up)
-                // Use requestAnimationFrame for smooth scrolling
-                requestAnimationFrame(() => {
-                  Object.keys(streamingResults).forEach(modelId => {
-                    // Skip auto-scrolling for completed models so users can scroll through them
-                    if (completedModels.has(modelId)) return;
+              // Auto-scroll each conversation card to bottom as content streams in
+              // BUT only for models that are still streaming (not completed yet)
+              // AND respect user's manual scroll position (pause if user scrolled up)
+              // Use requestAnimationFrame for smooth scrolling
+              requestAnimationFrame(() => {
+                Object.keys(streamingResults).forEach(modelId => {
+                  // Skip auto-scrolling for completed models so users can scroll through them
+                  if (completedModels.has(modelId)) return;
 
-                    // Skip auto-scrolling if user has manually scrolled away from bottom
-                    // Use REF for immediate check without state update delay
-                    if (autoScrollPausedRef.current.has(modelId)) return;
+                  // Skip auto-scrolling if user has manually scrolled away from bottom
+                  // Use REF for immediate check without state update delay
+                  if (autoScrollPausedRef.current.has(modelId)) return;
 
-                    const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
-                    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
-                    if (conversationContent) {
-                      conversationContent.scrollTop = conversationContent.scrollHeight;
-                    }
-                  });
+                  const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
+                  const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+                  if (conversationContent) {
+                    conversationContent.scrollTop = conversationContent.scrollHeight;
+                  }
                 });
               });
             }
@@ -2792,26 +2788,6 @@ function AppContent() {
                   </div>
                 </div>
               </div>
-
-              {/* Warning for reaching limit */}
-              {selectedModels.length >= maxModelsLimit && (
-                <div className="warning-message" style={{
-                  background: '#fff3cd',
-                  border: '1px solid #ffeaa7',
-                  color: '#856404',
-                  padding: '0.75rem',
-                  borderRadius: '8px',
-                  marginBottom: '1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <span>⚠️</span>
-                  <span>
-                    You've reached the maximum of {maxModelsLimit} models allowed for your {!isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'Free'} tier.
-                  </span>
-                </div>
-              )}
 
               {!isModelsHidden && (
                 <>
