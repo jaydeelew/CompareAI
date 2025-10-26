@@ -2503,16 +2503,6 @@ function AppContent() {
                     <h3 className="capability-title">Formatted Math</h3>
                     <p className="capability-description">Render LaTeX equations beautifully</p>
                   </div>
-
-                  <div className="capability-tile">
-                    <div className="capability-icon">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                      </svg>
-                    </div>
-                    <h3 className="capability-title">Concurrent Processing</h3>
-                    <p className="capability-description">Get all responses simultaneously</p>
-                  </div>
                 </div>
 
                 <div className="hero-input-section">
