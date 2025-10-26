@@ -623,74 +623,130 @@ async def compare_stream(
     async def generate_stream():
         """
         Generator function that yields SSE-formatted events.
-        Streams responses from all requested models sequentially.
+        Streams responses from all requested models concurrently for maximum performance.
+
+        Modern async/await pattern (2025 best practices):
+        - Concurrent execution via asyncio.create_task
+        - Queue-based chunk collection with asyncio.Queue
+        - Graceful error handling per model
+        - Non-blocking I/O throughout
         """
         successful_models = 0
         failed_models = 0
         results_dict = {}
 
+        # Check if mock mode is enabled for this user
+        is_development = os.environ.get("ENVIRONMENT") == "development"
+        use_mock = False
+        if current_user and current_user.mock_mode_enabled:
+            if is_development or current_user.role in ["admin", "super_admin"]:
+                use_mock = True
+
+        if use_mock:
+            print(f"🎭 Mock mode active for user {current_user.email} (dev_mode: {is_development})")
+
         try:
-            # Stream each model's response
+            # Send all start events at once (concurrent processing begins simultaneously)
             for model_id in req.models:
-                # Send start event for this model
                 yield f"data: {json.dumps({'model': model_id, 'type': 'start'})}\n\n"
 
+            # Create queue for chunk collection from all models
+            chunk_queue = asyncio.Queue()
+
+            async def stream_single_model(model_id: str):
+                """
+                Stream a single model's response asynchronously.
+                Runs in parallel with other models for optimal performance.
+                Uses asyncio-friendly approach with thread-safe queue communication.
+                """
                 model_content = ""
-                model_error = False
+                chunk_count = 0
 
                 try:
-                    # Stream the model response - run in executor to avoid blocking
-                    chunk_count = 0
-                    loop = asyncio.get_running_loop()
+                    # Run synchronous streaming in a thread, push chunks to queue as they arrive
+                    loop = asyncio.get_event_loop()
 
-                    # Check if mock mode is enabled for this user
-                    # In development mode: available for any user
-                    # In production mode: only for admin/super-admin users
-                    import os
+                    def process_stream_to_queue():
+                        """
+                        Process streaming response in thread pool.
+                        Push chunks to async queue in real-time for true streaming.
+                        """
+                        content = ""
+                        count = 0
+                        try:
+                            for chunk in call_openrouter_streaming(
+                                req.input_data, model_id, req.tier, req.conversation_history, use_mock
+                            ):
+                                content += chunk
+                                count += 1
 
-                    is_development = os.environ.get("ENVIRONMENT") == "development"
+                                # Push chunk to async queue (thread-safe)
+                                asyncio.run_coroutine_threadsafe(
+                                    chunk_queue.put({"type": "chunk", "model": model_id, "content": chunk, "chunk_count": count}),
+                                    loop,
+                                )
 
-                    use_mock = False
-                    if current_user and current_user.mock_mode_enabled:
-                        if is_development or current_user.role in ["admin", "super_admin"]:
-                            use_mock = True
+                                # Log progress every 10 chunks
+                                if count % 10 == 0:
+                                    print(f"📤 Streaming chunk {count} for {model_id}")
 
-                    if use_mock:
-                        print(f"🎭 Mock mode active for user {current_user.email} (dev_mode: {is_development})")
+                            return content, False  # content, is_error
 
-                    # Create the generator in a thread-safe way
-                    def stream_chunks():
-                        for chunk in call_openrouter_streaming(
-                            req.input_data, model_id, req.tier, req.conversation_history, use_mock
-                        ):
-                            yield chunk
+                        except Exception as e:
+                            error_msg = f"Error: {str(e)[:100]}"
+                            # Push error as chunk
+                            asyncio.run_coroutine_threadsafe(
+                                chunk_queue.put({"type": "chunk", "model": model_id, "content": error_msg}), loop
+                            )
+                            return error_msg, True  # error_msg, is_error
 
-                    # Process chunks as they arrive
-                    for chunk in stream_chunks():
-                        # Don't clean chunks during streaming - cleaning strips whitespace which breaks word boundaries!
-                        # The chunk is sent exactly as received to preserve spaces between words
-                        model_content += chunk
-                        chunk_count += 1
+                    # Run streaming in executor (allows true concurrent execution)
+                    full_content, is_error = await loop.run_in_executor(None, process_stream_to_queue)
 
-                        # Send chunk event immediately
-                        chunk_data = f"data: {json.dumps({'model': model_id, 'type': 'chunk', 'content': chunk})}\n\n"
-                        yield chunk_data
+                    # Clean the final accumulated content (unless it's an error)
+                    if not is_error:
+                        model_content = clean_model_response(full_content)
+                    else:
+                        model_content = full_content
 
-                        # Yield control to event loop to ensure immediate sending
-                        await asyncio.sleep(0)
+                    # Final check if response is an error
+                    is_error = is_error or model_content.startswith("Error:")
 
-                        # Log every 10th chunk for debugging
-                        if chunk_count % 10 == 0:
-                            print(f"📤 Streamed {chunk_count} chunks for {model_id}, total chars: {len(model_content)}")
+                    return {"model": model_id, "content": model_content, "error": is_error}
 
-                    # Clean the final accumulated content (after streaming is complete)
-                    # This removes MathML junk and excessive whitespace
-                    model_content = clean_model_response(model_content)
+                except Exception as e:
+                    # Handle model-specific errors gracefully
+                    error_msg = f"Error: {str(e)[:100]}"
 
-                    # Check if response is an error
-                    if model_content.startswith("Error:"):
+                    # Put error in queue as chunk
+                    await chunk_queue.put({"type": "chunk", "model": model_id, "content": error_msg})
+
+                    return {"model": model_id, "content": error_msg, "error": True}
+
+            # Create tasks for all models to run concurrently
+            tasks = [asyncio.create_task(stream_single_model(model_id)) for model_id in req.models]
+
+            # Process chunks and completed tasks concurrently
+            pending_tasks = set(tasks)
+
+            while pending_tasks or not chunk_queue.empty():
+                # Wait for either a chunk or a task completion
+                done_tasks = set()
+
+                # Check for completed tasks without blocking
+                for task in list(pending_tasks):
+                    if task.done():
+                        done_tasks.add(task)
+                        pending_tasks.remove(task)
+
+                # Process completed tasks
+                for task in done_tasks:
+                    result = await task
+                    model_id = result["model"]
+
+                    # Update statistics
+                    if result["error"]:
                         failed_models += 1
-                        model_error = True
                         model_stats[model_id]["failure"] += 1
                         model_stats[model_id]["last_error"] = datetime.now().isoformat()
                     else:
@@ -698,18 +754,25 @@ async def compare_stream(
                         model_stats[model_id]["success"] += 1
                         model_stats[model_id]["last_success"] = datetime.now().isoformat()
 
-                    results_dict[model_id] = model_content
+                    results_dict[model_id] = result["content"]
 
-                except Exception as e:
-                    # Handle model-specific errors
-                    error_msg = f"Error: {str(e)[:100]}"
-                    results_dict[model_id] = error_msg
-                    failed_models += 1
-                    model_error = True
-                    yield f"data: {json.dumps({'model': model_id, 'type': 'chunk', 'content': error_msg})}\n\n"
+                    # Send done event for this model
+                    yield f"data: {json.dumps({'model': model_id, 'type': 'done', 'error': result['error']})}\n\n"
 
-                # Send done event for this model
-                yield f"data: {json.dumps({'model': model_id, 'type': 'done', 'error': model_error})}\n\n"
+                # Process available chunks from queue
+                while not chunk_queue.empty():
+                    try:
+                        chunk_data = await asyncio.wait_for(chunk_queue.get(), timeout=0.001)
+
+                        if chunk_data["type"] == "chunk":
+                            # Don't clean chunks during streaming - preserves whitespace
+                            yield f"data: {json.dumps({'model': chunk_data['model'], 'type': 'chunk', 'content': chunk_data['content']})}\n\n"
+                    except asyncio.TimeoutError:
+                        break
+
+                # Small yield to prevent tight loop and allow other operations
+                if pending_tasks:
+                    await asyncio.sleep(0.01)  # 10ms yield
 
             # NOW increment extended usage - only for successful models in extended tier
             if req.tier == "extended" and successful_models > 0:

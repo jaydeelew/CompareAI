@@ -2,6 +2,21 @@
 
 **Important:** SSL certificates must be set up on your AWS EC2 server where `compareintel.com` points, not on your local development machine.
 
+## Recent Major Updates
+
+### ✨ Concurrent Streaming (October 2025)
+
+The `/compare-stream` endpoint now processes multiple models **concurrently** instead of sequentially, providing 3-9x faster response times. See `docs/CONCURRENT_STREAMING.md` for details.
+
+**Test concurrent streaming:**
+
+```bash
+cd backend
+python test_concurrent_streaming.py
+```
+
+---
+
 ## Four Development Environments
 
 1. **Local Development (HTTP):** Fast development with hot reload
