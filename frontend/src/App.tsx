@@ -382,10 +382,17 @@ function AppContent() {
   // Returns true if successful, false if element not found
   const setupScrollListener = (modelId: string): boolean => {
     const safeId = getSafeId(modelId);
-    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+    const expectedId = `conversation-content-${safeId}`;
+    console.log(`[SetupScrollListener] Looking for element with ID: ${expectedId}`);
+    
+    const conversationContent = document.querySelector(`#${expectedId}`) as HTMLElement;
 
     if (!conversationContent) {
       console.log(`⚠️ Scroll listener setup failed for ${modelId}: element not found yet`);
+      // Debug: let's see what elements actually exist
+      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
+      console.log(`[SetupScrollListener] Available conversation elements (${allConversations.length}):`);
+      allConversations.forEach((el) => console.log(`  - ${el.id}`));
       return false;
     }
 
@@ -470,6 +477,71 @@ function AppContent() {
 
       // Update last scroll position
       lastScrollTopRef.current.set(modelId, currentScrollTop);
+
+      // If scroll lock is enabled, sync this scroll to all other cards
+      console.log(`[Scroll ${modelId}] Scroll event - scrollTop: ${currentScrollTop}, lock enabled: ${isScrollLockedRef.current}, syncingFrom: ${syncingFromElementRef.current ? syncingFromElementRef.current.id : 'null'}`);
+      
+      if (!isScrollLockedRef.current) {
+        console.log(`[Scroll ${modelId}] Lock disabled, skipping sync`);
+        return;
+      }
+      
+      // If we're already in a sync operation, skip this event
+      // This prevents infinite loops when programmatic scrolls trigger scroll events
+      if (syncingFromElementRef.current !== null) {
+        console.log(`[Scroll ${modelId}] In sync operation, syncingFrom: ${syncingFromElementRef.current.id}, current: ${conversationContent.id}`);
+        // If this element is NOT the one initiating the sync, it was programmatically scrolled - skip
+        if (syncingFromElementRef.current !== conversationContent) {
+          console.log(`[Scroll ${modelId}] Skipping - this is a programmatic scroll`);
+          return;
+        }
+        console.log(`[Scroll ${modelId}] This is the initiating element, continuing`);
+        // If this IS the element initiating the sync, allow it through (user might be scrolling more)
+      }
+      
+      console.log(`[Sync ${modelId}] Starting sync operation`);
+      
+      // Mark this element as the one initiating the sync
+      syncingFromElementRef.current = conversationContent;
+      console.log(`[Sync ${modelId}] Set syncingFromElement to: ${conversationContent.id}`);
+      
+      // Get all conversation content elements
+      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
+      console.log(`[Sync ${modelId}] Found ${allConversations.length} conversation elements`);
+      
+      // Store the scroll position as a percentage to account for different content heights
+      const scrollHeight = conversationContent.scrollHeight - conversationContent.clientHeight;
+      const scrollPercentage = scrollHeight > 0 ? conversationContent.scrollTop / scrollHeight : 0;
+      console.log(`[Sync ${modelId}] Scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${conversationContent.scrollTop}, scrollHeight: ${scrollHeight})`);
+      
+      // Sync all other cards
+      let syncCount = 0;
+      allConversations.forEach((element) => {
+        const el = element as HTMLElement;
+        console.log(`[Sync ${modelId}] Checking element: ${el.id}, isSelf: ${el === conversationContent}`);
+        // Don't sync to the element that triggered this scroll
+        if (el !== conversationContent) {
+          const targetScrollHeight = el.scrollHeight - el.clientHeight;
+          const beforeScrollTop = el.scrollTop;
+          if (targetScrollHeight > 0) {
+            const targetScrollTop = scrollPercentage * targetScrollHeight;
+            console.log(`[Sync ${modelId}] Syncing ${el.id} from ${beforeScrollTop} to ${targetScrollTop} (${(scrollPercentage * 100).toFixed(1)}% of ${targetScrollHeight})`);
+            el.scrollTop = targetScrollTop;
+            console.log(`[Sync ${modelId}] ${el.id} after sync - scrollTop: ${el.scrollTop}`);
+            syncCount++;
+          } else {
+            console.log(`[Sync ${modelId}] Skipping ${el.id} - no scrollable content`);
+          }
+        }
+      });
+      
+      console.log(`[Sync ${modelId}] Synced ${syncCount} elements, will reset flag in 300ms`);
+      
+      // Reset the flag after a delay to allow all programmatic scroll events to complete
+      setTimeout(() => {
+        console.log(`[Sync ${modelId}] Resetting syncingFromElement flag`);
+        syncingFromElementRef.current = null;
+      }, 300);
     };
 
     // Add all listeners
@@ -485,7 +557,7 @@ function AppContent() {
       mousedown: handleMouseDown
     });
 
-    console.log(`✅ Scroll listener setup successful for ${modelId}`);
+    console.log(`✅ Scroll listener setup successful for ${modelId} on element ${conversationContent.id}`);
     return true;
   };
 
@@ -647,6 +719,96 @@ function AppContent() {
 
   // Tab switching state - tracks active tab for each conversation
   const [activeResultTabs, setActiveResultTabs] = useState<{ [modelId: string]: 'formatted' | 'raw' }>({});
+
+  // Scroll lock state - when enabled, all model result cards scroll together
+  const [isScrollLocked, setIsScrollLocked] = useState(false);
+  const isScrollLockedRef = useRef(false); // Ref to allow listeners to access current state without closure issues
+  const syncingFromElementRef = useRef<HTMLElement | null>(null); // Element currently initiating a sync (prevents infinite scroll loops)
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    console.log(`[ScrollLock] State changed - isScrollLocked: ${isScrollLocked}, conversations: ${conversations.length}`);
+    isScrollLockedRef.current = isScrollLocked;
+    
+    // When scroll lock is enabled, align all cards to the first card's scroll position
+    if (isScrollLocked && conversations.length > 0) {
+      console.log(`[ScrollLock] Enabling scroll lock - aligning all cards to first card`);
+      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
+      console.log(`[ScrollLock] Found ${allConversations.length} conversation elements`);
+      if (allConversations.length > 0) {
+        const firstCard = allConversations[0] as HTMLElement;
+        console.log(`[ScrollLock] First card: ${firstCard.id}`);
+        
+        // Mark the first card as the sync source
+        syncingFromElementRef.current = firstCard;
+        console.log(`[ScrollLock] Set syncingFromElement to: ${firstCard.id}`);
+        
+        const firstScrollHeight = firstCard.scrollHeight - firstCard.clientHeight;
+        const scrollPercentage = firstScrollHeight > 0 ? firstCard.scrollTop / firstScrollHeight : 0;
+        console.log(`[ScrollLock] First card scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${firstCard.scrollTop}, scrollHeight: ${firstScrollHeight})`);
+        
+        // Sync all other cards to the first card's scroll percentage
+        allConversations.forEach((element, index) => {
+          if (index > 0) {
+            const el = element as HTMLElement;
+            const targetScrollHeight = el.scrollHeight - el.clientHeight;
+            if (targetScrollHeight > 0) {
+              const beforeScrollTop = el.scrollTop;
+              const targetScrollTop = scrollPercentage * targetScrollHeight;
+              console.log(`[ScrollLock] Syncing ${el.id} from ${beforeScrollTop} to ${targetScrollTop}`);
+              el.scrollTop = targetScrollTop;
+              console.log(`[ScrollLock] ${el.id} after sync - scrollTop: ${el.scrollTop}`);
+            }
+          }
+        });
+        
+        // Reset after alignment is complete
+        setTimeout(() => {
+          console.log(`[ScrollLock] Resetting syncingFromElement flag after initial alignment`);
+          syncingFromElementRef.current = null;
+        }, 100);
+      }
+    } else if (!isScrollLocked) {
+      console.log(`[ScrollLock] Disabling scroll lock`);
+    }
+  }, [isScrollLocked, conversations]);
+
+  // Setup scroll listeners when conversations are rendered
+  useEffect(() => {
+    console.log(`[ScrollSetup] Conversations changed, count: ${conversations.length}`);
+    conversations.forEach((conversation) => {
+      // Check if listener is already set up
+      if (!scrollListenersRef.current.has(conversation.modelId)) {
+        console.log(`[ScrollSetup] Setting up listener for ${conversation.modelId}`);
+        const maxAttempts = 5;
+        let attempt = 0;
+        
+        const trySetup = () => {
+          attempt++;
+          const success = setupScrollListener(conversation.modelId);
+          if (!success && attempt < maxAttempts) {
+            console.log(`[ScrollSetup] Retrying for ${conversation.modelId} (attempt ${attempt})`);
+            setTimeout(trySetup, 100 * attempt);
+          }
+        };
+        
+        // Try immediately
+        trySetup();
+      } else {
+        console.log(`[ScrollSetup] Listener already set up for ${conversation.modelId}`);
+      }
+    });
+    
+    // Clean up listeners for models that are no longer in conversations
+    const activeModelIds = new Set(conversations.map(c => c.modelId));
+    scrollListenersRef.current.forEach((_, modelId) => {
+      if (!activeModelIds.has(modelId)) {
+        console.log(`[ScrollSetup] Cleaning up listener for removed model: ${modelId}`);
+        cleanupScrollListener(modelId);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations]);
 
   // Developer reset function
   const resetUsage = async () => {
@@ -1724,8 +1886,7 @@ function AppContent() {
                   console.log(`   Completed at: ${modelCompletionTimes[event.model]}`);
                   shouldUpdate = true;
 
-                  // Clean up scroll listener and pause state for this model
-                  cleanupScrollListener(event.model);
+                  // Clean up pause state for this model (but keep scroll listeners for scroll lock feature)
                   autoScrollPausedRef.current.delete(event.model);
 
                   // Check if ALL models are done - if so, switch to formatted view
@@ -3022,6 +3183,53 @@ function AppContent() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                   <h2 style={{ margin: 0 }}>Comparison Results</h2>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    {/* Scroll Lock Toggle */}
+                    <button
+                      onClick={() => {
+                        console.log(`[ScrollLock Button] Toggling scroll lock from ${isScrollLocked} to ${!isScrollLocked}`);
+                        setIsScrollLocked(!isScrollLocked);
+                      }}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
+                        background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
+                        color: isScrollLocked ? 'white' : '#666',
+                        borderRadius: 'var(--radius-md)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                      title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
+                      onMouseOver={(e) => {
+                        if (!isScrollLocked) {
+                          e.currentTarget.style.borderColor = '#999';
+                          e.currentTarget.style.color = '#333';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (!isScrollLocked) {
+                          e.currentTarget.style.borderColor = '#cccccc';
+                          e.currentTarget.style.color = '#666';
+                        }
+                      }}
+                    >
+                      {isScrollLocked ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                          <line x1="7" y1="11" x2="7" y2="7" />
+                        </svg>
+                      )}
+                      <span>{isScrollLocked ? 'Unlock' : 'Lock'}</span>
+                    </button>
                     {!isFollowUpMode && (
                       <button
                         onClick={handleFollowUp}
