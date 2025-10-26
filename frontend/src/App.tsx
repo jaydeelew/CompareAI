@@ -2728,8 +2728,8 @@ function AppContent() {
                 </div>
               </div>
 
-              {/* Warning for approaching limit */}
-              {selectedModels.length >= maxModelsLimit - 1 && selectedModels.length < maxModelsLimit && (
+              {/* Warning for reaching limit */}
+              {selectedModels.length >= maxModelsLimit && (
                 <div className="warning-message" style={{
                   background: '#fff3cd',
                   border: '1px solid #ffeaa7',
@@ -2743,7 +2743,7 @@ function AppContent() {
                 }}>
                   <span>⚠️</span>
                   <span>
-                    You've selected {selectedModels.length} models. Maximum {maxModelsLimit} allowed for your {!isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'Free'} tier.
+                    You've reached the maximum of {maxModelsLimit} models allowed for your {!isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'Free'} tier.
                   </span>
                 </div>
               )}
