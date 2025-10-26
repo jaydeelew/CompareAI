@@ -1571,6 +1571,8 @@ function AppContent() {
       // Initialize results object for streaming updates
       const streamingResults: { [key: string]: string } = {};
       const completedModels = new Set<string>(); // Track which models have finished
+      const modelStartTimes: { [key: string]: string } = {}; // Track when each model starts
+      const modelCompletionTimes: { [key: string]: string } = {}; // Track when each model completes
       let streamingMetadata: CompareResponse['metadata'] | null = null;
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
@@ -1587,10 +1589,14 @@ function AppContent() {
         const emptyConversations: ModelConversation[] = selectedModels.map(modelId => ({
           modelId,
           messages: [
-            createMessage('user', input, userTimestamp),
-            createMessage('assistant', '', new Date().toISOString()) // Empty assistant message to be filled
+            createMessage('user', input, userTimestamp), // Placeholder user timestamp, will be updated when model starts
+            createMessage('assistant', '', userTimestamp) // Placeholder AI timestamp, will be updated when model completes
           ]
         }));
+        console.log('🚀 Initializing conversations with placeholder timestamps:', {
+          userTimestamp: new Date(userTimestamp).toLocaleTimeString(),
+          models: selectedModels
+        });
         setConversations(emptyConversations);
       }
 
@@ -1623,12 +1629,14 @@ function AppContent() {
                 const event = JSON.parse(jsonStr);
 
                 if (event.type === 'start') {
-                  // Model starting - initialize empty result
+                  // Model starting - initialize empty result and track start time
                   if (!streamingResults[event.model]) {
                     streamingResults[event.model] = '';
                   }
+                  // Record when this specific model started processing (when query was sent to OpenRouter)
+                  modelStartTimes[event.model] = new Date().toISOString();
                   shouldUpdate = true;
-                  console.log(`🎬 Streaming started for ${event.model}`);
+                  console.log(`🎬 Streaming started for ${event.model} at ${modelStartTimes[event.model]}`);
                 } else if (event.type === 'chunk') {
                   // Content chunk arrived - append to result
                   streamingResults[event.model] = (streamingResults[event.model] || '') + event.content;
@@ -1656,10 +1664,12 @@ function AppContent() {
                     trySetup(1, 4);
                   }
                 } else if (event.type === 'done') {
-                  // Model completed - track it
+                  // Model completed - track it and record completion time
                   completedModels.add(event.model);
+                  modelCompletionTimes[event.model] = new Date().toISOString();
                   console.log(`✅ Streaming complete for ${event.model}, error: ${event.error}`);
                   console.log(`   Progress: ${completedModels.size}/${selectedModels.length} models complete`);
+                  console.log(`   Completed at: ${modelCompletionTimes[event.model]}`);
                   shouldUpdate = true;
 
                   // Clean up scroll listener and pause state for this model
@@ -1714,14 +1724,38 @@ function AppContent() {
                   setConversations(prevConversations =>
                     prevConversations.map(conv => {
                       const content = streamingResults[conv.modelId] || '';
-                      // Update the assistant message content
+                      const startTime = modelStartTimes[conv.modelId];
+                      const completionTime = modelCompletionTimes[conv.modelId];
+                      
+                      // Update both user and assistant message timestamps with individual model times
+                      if (startTime) {
+                        console.log(`📝 Applying start time for ${conv.modelId}: ${new Date(startTime).toLocaleTimeString()}`);
+                      }
+                      if (completionTime) {
+                        console.log(`📝 Applying completion time for ${conv.modelId}: ${new Date(completionTime).toLocaleTimeString()}`);
+                      }
+                      
                       return {
                         ...conv,
-                        messages: conv.messages.map((msg, idx) =>
-                          idx === 1 && msg.type === 'assistant'
-                            ? { ...msg, content }
-                            : msg
-                        )
+                        messages: conv.messages.map((msg, idx) => {
+                          if (idx === 0 && msg.type === 'user') {
+                            // Update user timestamp with model start time if available
+                            const newTimestamp = startTime || msg.timestamp;
+                            return { 
+                              ...msg, 
+                              timestamp: newTimestamp
+                            };
+                          } else if (idx === 1 && msg.type === 'assistant') {
+                            // Update assistant message content and timestamp
+                            const newTimestamp = completionTime || msg.timestamp;
+                            return { 
+                              ...msg, 
+                              content,
+                              timestamp: newTimestamp
+                            };
+                          }
+                          return msg;
+                        })
                       };
                     })
                   );
@@ -1739,21 +1773,28 @@ function AppContent() {
 
                       if (!hasNewUserMessage) {
                         // Add user message and empty assistant message
+                        const startTime = modelStartTimes[conv.modelId];
+                        const completionTime = modelCompletionTimes[conv.modelId];
                         return {
                           ...conv,
                           messages: [
                             ...conv.messages,
-                            createMessage('user', input, userTimestamp),
-                            createMessage('assistant', content, new Date().toISOString())
+                            createMessage('user', input, startTime || userTimestamp), // Use model start time if available
+                            createMessage('assistant', content, completionTime || new Date().toISOString())
                           ]
                         };
                       } else {
-                        // Update the last assistant message
+                        // Update the last assistant message with completion time if available
+                        const completionTime = modelCompletionTimes[conv.modelId];
                         return {
                           ...conv,
                           messages: conv.messages.map((msg, idx) =>
                             idx === conv.messages.length - 1 && msg.type === 'assistant'
-                              ? { ...msg, content }
+                              ? { 
+                                  ...msg, 
+                                  content,
+                                  timestamp: completionTime || msg.timestamp
+                                }
                               : msg
                           )
                         };
@@ -1805,16 +1846,38 @@ function AppContent() {
 
           // Final conversations update with complete content
           if (!isFollowUpMode) {
+            console.log('🏁 Final conversation update - model times:', {
+              startTimes: modelStartTimes,
+              completionTimes: modelCompletionTimes
+            });
+            
             setConversations(prevConversations =>
               prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
+                const startTime = modelStartTimes[conv.modelId];
+                const completionTime = modelCompletionTimes[conv.modelId];
+                
+                console.log(`🏁 Final update for ${conv.modelId}:`, {
+                  startTime: startTime ? new Date(startTime).toLocaleTimeString() : 'none',
+                  completionTime: completionTime ? new Date(completionTime).toLocaleTimeString() : 'none'
+                });
+                
                 return {
                   ...conv,
-                  messages: conv.messages.map((msg, idx) =>
-                    idx === 1 && msg.type === 'assistant'
-                      ? { ...msg, content }
-                      : msg
-                  )
+                  messages: conv.messages.map((msg, idx) => {
+                    if (idx === 0 && msg.type === 'user') {
+                      // Update user message timestamp with model start time
+                      return { ...msg, timestamp: startTime || msg.timestamp };
+                    } else if (idx === 1 && msg.type === 'assistant') {
+                      // Update assistant message timestamp with model completion time
+                      return { 
+                        ...msg, 
+                        content,
+                        timestamp: completionTime || msg.timestamp
+                      };
+                    }
+                    return msg;
+                  })
                 };
               })
             );
@@ -1973,8 +2036,10 @@ function AppContent() {
           return updatedConversations;
         });
       } else {
-        // Initialize new conversations
-        initializeConversations(filteredData, userTimestamp);
+        // For initial comparison (non-follow-up), conversations were already initialized during streaming
+        // with individual model timestamps. Don't reinitialize here as it would override them!
+        console.log('✅ Initial comparison complete - conversations already set up with individual timestamps');
+        
         // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
           scrollConversationsToBottom();
