@@ -1518,12 +1518,19 @@ function AppContent() {
       // For follow-up mode, we send the complete conversation history (both user and assistant messages)
       // This matches how official AI chat interfaces work and provides proper context
       const conversationHistory = isFollowUpMode && conversations.length > 0
-        ? conversations
-          .filter(conv => selectedModels.includes(conv.modelId))
-          .find(conv => conv.messages.length > 0)?.messages.map(msg => ({
-            role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          })) || []
+        ? (() => {
+            // Get the first conversation that has messages and is for a selected model
+            const selectedConversations = conversations.filter(conv => 
+              selectedModels.includes(conv.modelId) && conv.messages.length > 0
+            );
+            if (selectedConversations.length === 0) return [];
+            
+            // Use the first selected conversation's messages
+            return selectedConversations[0].messages.map(msg => ({
+              role: msg.type === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+          })()
         : [];
 
       // Prepare headers with auth token if available
@@ -1767,9 +1774,12 @@ function AppContent() {
                       if (content === undefined) return conv;
 
                       // Check if we already added the new user message
-                      const hasNewUserMessage = conv.messages.length > 0 &&
-                        conv.messages[conv.messages.length - 1].type === 'user' &&
-                        conv.messages[conv.messages.length - 1].content === input;
+                      // Look for the most recent user message that matches the current input
+                      const hasNewUserMessage = conv.messages.some((msg, idx) => 
+                        msg.type === 'user' && 
+                        msg.content === input && 
+                        idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
+                      );
 
                       if (!hasNewUserMessage) {
                         // Add user message and empty assistant message
@@ -1875,6 +1885,30 @@ function AppContent() {
                         content,
                         timestamp: completionTime || msg.timestamp
                       };
+                    }
+                    return msg;
+                  })
+                };
+              })
+            );
+          } else {
+            // For follow-up mode, just update timestamps on the last assistant messages
+            console.log('🏁 Final follow-up conversation update - model times:', {
+              startTimes: modelStartTimes,
+              completionTimes: modelCompletionTimes
+            });
+            
+            setConversations(prevConversations =>
+              prevConversations.map(conv => {
+                const completionTime = modelCompletionTimes[conv.modelId];
+                if (!completionTime) return conv;
+                
+                return {
+                  ...conv,
+                  messages: conv.messages.map((msg, idx) => {
+                    // Update the last assistant message timestamp with completion time
+                    if (idx === conv.messages.length - 1 && msg.type === 'assistant') {
+                      return { ...msg, timestamp: completionTime };
                     }
                     return msg;
                   })
@@ -2010,31 +2044,14 @@ function AppContent() {
 
       // Initialize or update conversations
       if (isFollowUpMode) {
-        // Add new messages to existing conversations, but only for currently selected models
-        const aiTimestamp = new Date().toISOString(); // Capture AI timestamp when response is received
-        console.log('Follow-up - User timestamp:', userTimestamp);
-        console.log('Follow-up - AI timestamp:', aiTimestamp);
-
-        setConversations(prevConversations => {
-          // Filter to only keep conversations for selected models, and update them
-          const selectedConversations = prevConversations.filter(conv => selectedModels.includes(conv.modelId));
-
-          const updatedConversations = selectedConversations.map(conv => {
-            const newUserMessage = createMessage('user', input, userTimestamp);
-            const newAssistantMessage = createMessage('assistant', String(filteredData.results[conv.modelId] || 'Error: No response'), aiTimestamp);
-            return {
-              ...conv,
-              messages: [...conv.messages, newUserMessage, newAssistantMessage]
-            };
-          });
-
-          // Scroll all conversations to show the last user message after state update
-          setTimeout(() => {
-            scrollConversationsToBottom();
-          }, 600);
-
-          return updatedConversations;
-        });
+        // For follow-up mode, messages were already added during streaming
+        // Just scroll to show the results
+        console.log('✅ Follow-up complete - messages already added during streaming');
+        
+        // Scroll conversations to show the last user message
+        setTimeout(() => {
+          scrollConversationsToBottom();
+        }, 600);
       } else {
         // For initial comparison (non-follow-up), conversations were already initialized during streaming
         // with individual model timestamps. Don't reinitialize here as it would override them!
