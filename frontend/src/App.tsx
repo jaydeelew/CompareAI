@@ -1433,6 +1433,17 @@ function AppContent() {
       }
     }
 
+    // Track if we couldn't select all models for the provider
+    let couldNotSelectAll = false;
+
+    if (!allProviderModelsSelected && !isFollowUpMode) {
+      // Calculate how many models we can actually add
+      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(id)).length;
+      const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider);
+      const modelsToAdd = providerModelIds.slice(0, remainingSlots);
+      couldNotSelectAll = modelsToAdd.length < providerModelIds.length;
+    }
+
     setSelectedModels(prev => {
       const newSelection = new Set(prev);
 
@@ -1460,6 +1471,16 @@ function AppContent() {
 
       return Array.from(newSelection);
     });
+
+    // Show warning if not all models could be selected due to tier limit
+    if (couldNotSelectAll && !allProviderModelsSelected && !isFollowUpMode) {
+      const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
+      setError(`Your ${tierName} tier allows a maximum of ${maxModelsLimit} models per comparison. Not all models from ${provider} could be selected.`);
+      setTimeout(() => {
+        setError(null);
+      }, 10000);
+      return;
+    }
 
     // Clear any previous error when successfully adding models (only when selecting, not deselecting)
     if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
