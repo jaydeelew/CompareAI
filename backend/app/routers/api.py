@@ -441,16 +441,16 @@ async def compare(
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
 
-        # NOW increment extended usage - only for successful models in extended tier
+        # NOW increment extended usage - only count 1 per request regardless of model count
         if req.tier == "extended" and successful_models > 0:
             if current_user:
-                increment_extended_usage(current_user, db, count=successful_models)
-                print(f"✓ Incremented extended usage for {current_user.email}: +{successful_models} successful models")
+                increment_extended_usage(current_user, db, count=1)
+                print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
             else:
-                increment_anonymous_extended_usage(f"ip:{client_ip}", count=successful_models)
+                increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
                 if req.browser_fingerprint:
-                    increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-                print(f"✓ Incremented anonymous extended usage: +{successful_models} successful models")
+                    increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+                print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
 
         # Calculate processing time
         processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -820,16 +820,16 @@ async def compare_stream(
                 if pending_tasks:
                     await asyncio.sleep(0.01)  # 10ms yield
 
-            # NOW increment extended usage - only for successful models in extended tier
+            # NOW increment extended usage - only count 1 per request regardless of model count
             if req.tier == "extended" and successful_models > 0:
                 if current_user:
-                    increment_extended_usage(current_user, db, count=successful_models)
-                    print(f"✓ Incremented extended usage for {current_user.email}: +{successful_models} successful models")
+                    increment_extended_usage(current_user, db, count=1)
+                    print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
                 else:
-                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=successful_models)
+                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
                     if req.browser_fingerprint:
-                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-                    print(f"✓ Incremented anonymous extended usage: +{successful_models} successful models")
+                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+                    print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
 
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)

@@ -1381,7 +1381,7 @@ function AppContent() {
   };
 
   // Helper function to check extended interaction limits
-  const checkExtendedInteractionLimit = async (numberOfModels: number): Promise<{ canProceed: boolean; errorMessage?: string }> => {
+  const checkExtendedInteractionLimit = async (): Promise<{ canProceed: boolean; errorMessage?: string }> => {
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
     const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
 
@@ -1422,10 +1422,10 @@ function AppContent() {
       }
     }
 
-    // Check if the selection would exceed the limit
-    if (currentExtendedUsage + numberOfModels > extendedLimit) {
+    // Check if the request would exceed the limit (1 extended interaction per request)
+    if (currentExtendedUsage + 1 > extendedLimit) {
       const remaining = extendedLimit - currentExtendedUsage;
-      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${numberOfModels} for this selection. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Deselect model(s), use Standard Mode, or upgrade to a higher tier.`}`;
+      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today. ${userTier === 'free' ? 'Upgrade to a paid tier for more Extended interactions.' : `Upgrade to a higher tier for more Extended interactions.`}`;
       return { canProceed: false, errorMessage: errorMsg };
     }
 
@@ -1456,15 +1456,9 @@ function AppContent() {
         return;
       }
     } else {
-      // Calculate how many models would be selected after this operation
-      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(id)).length;
-      const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider);
-      const modelsToAdd = providerModelIds.slice(0, remainingSlots);
-      const finalSelectionCount = selectedModels.length - alreadySelectedFromProvider + modelsToAdd.length;
-
       // Check extended interaction limit if extended mode is on and we're selecting
       if (isExtendedMode && !allProviderModelsSelected && !isFollowUpMode) {
-        const check = await checkExtendedInteractionLimit(finalSelectionCount);
+        const check = await checkExtendedInteractionLimit();
         if (!check.canProceed) {
           setError(check.errorMessage!);
           setTimeout(() => {
@@ -1534,7 +1528,7 @@ function AppContent() {
   const handleExtendedModeToggle = async () => {
     // If toggling ON, check if current model selection would exceed extended interaction limit
     if (!isExtendedMode && selectedModels.length > 0) {
-      const check = await checkExtendedInteractionLimit(selectedModels.length);
+      const check = await checkExtendedInteractionLimit();
       if (!check.canProceed) {
         setError(check.errorMessage!);
         setTimeout(() => {
@@ -1599,7 +1593,7 @@ function AppContent() {
 
       // Check extended interaction limit if extended mode is on
       if (isExtendedMode) {
-        const check = await checkExtendedInteractionLimit(selectedModels.length + 1);
+        const check = await checkExtendedInteractionLimit();
         if (!check.canProceed) {
           setError(check.errorMessage!);
           setTimeout(() => {
@@ -1855,15 +1849,28 @@ function AppContent() {
     }
 
     const modelsNeeded = selectedModels.length;
-    if (currentUsageCount >= MAX_DAILY_USAGE) {
+
+    // Determine user tier and their regular limit
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+    const REGULAR_LIMITS: { [key: string]: number } = {
+      anonymous: 10,
+      free: 20,
+      starter: 50,
+      starter_plus: 100,
+      pro: 200,
+      pro_plus: 400
+    };
+    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+
+    if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
-      setError('You\'ve reached your daily limit of 10 model responses. Sign up for a free account to get 20 model responses per day!');
+      setError(`You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ''}`);
       return;
     }
 
     // Check if this comparison would exceed the limit
-    if (currentUsageCount + modelsNeeded > MAX_DAILY_USAGE) {
-      const remaining = MAX_DAILY_USAGE - currentUsageCount;
+    if (currentUsageCount + modelsNeeded > regularLimit) {
+      const remaining = regularLimit - currentUsageCount;
       // If we updated the usage count, ensure state propagates before showing error
       if (currentUsageCount !== usageCount) {
         // Update localStorage synchronously so banner can read it
@@ -1876,7 +1883,7 @@ function AppContent() {
         await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
       }
       // IMPORTANT: The state and localStorage are now updated with currentUsageCount
-      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison. Sign up for a free account to get 20 model responses per day!`);
+      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ''}`);
       return;
     }
 
@@ -1917,8 +1924,8 @@ function AppContent() {
         }
       }
 
-      // Extended interactions needed = number of models (each model counts as 1 extended interaction)
-      const extendedInteractionsNeeded = modelsNeeded;
+      // Extended interactions needed = 1 per request (regardless of number of models)
+      const extendedInteractionsNeeded = 1;
 
       if (currentExtendedUsage >= extendedLimit) {
         setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options and more Extended interactions.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
