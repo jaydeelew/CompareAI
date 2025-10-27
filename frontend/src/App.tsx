@@ -1840,7 +1840,7 @@ function AppContent() {
         await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
       }
       // IMPORTANT: The state and localStorage are now updated with currentUsageCount
-      setError(`You have ${remaining} model responses remaining today, but need ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
+      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
       return;
     }
 
