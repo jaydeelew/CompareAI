@@ -1666,15 +1666,40 @@ function AppContent() {
     }
 
     // Check daily usage limit (model-based)
+    // First, sync with backend to ensure we have the latest usage count
+    let currentUsageCount = usageCount;
+    if (browserFingerprint) {
+      try {
+        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const latestCount = data.fingerprint_usage_count || data.ip_usage_count || 0;
+          currentUsageCount = latestCount;
+          // Update state to keep it in sync
+          if (latestCount !== usageCount) {
+            setUsageCount(latestCount);
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_usage', JSON.stringify({
+              count: latestCount,
+              date: today
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync usage count before check:', error);
+        // Continue with current state if fetch fails
+      }
+    }
+
     const modelsNeeded = selectedModels.length;
-    if (usageCount >= MAX_DAILY_USAGE) {
+    if (currentUsageCount >= MAX_DAILY_USAGE) {
       setError('You\'ve reached your daily limit of 10 model responses. Register for a free account to get 20 model responses per day!');
       return;
     }
 
     // Check if this comparison would exceed the limit
-    if (usageCount + modelsNeeded > MAX_DAILY_USAGE) {
-      const remaining = MAX_DAILY_USAGE - usageCount;
+    if (currentUsageCount + modelsNeeded > MAX_DAILY_USAGE) {
+      const remaining = MAX_DAILY_USAGE - currentUsageCount;
       setError(`You have ${remaining} model responses remaining today, but need ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
       return;
     }
@@ -1687,10 +1712,34 @@ function AppContent() {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
       const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
 
-      // Use server data for authenticated users, localStorage for anonymous users
-      const currentExtendedUsage = isAuthenticated && user
+      // Sync extended usage from backend before checking limit
+      let currentExtendedUsage = isAuthenticated && user
         ? user.daily_extended_usage
         : extendedUsageCount;
+
+      // For anonymous users, try to sync from backend
+      if (!isAuthenticated && browserFingerprint) {
+        try {
+          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
+          if (response.ok) {
+            const data = await response.json();
+            const latestExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+            if (latestExtendedCount !== undefined) {
+              currentExtendedUsage = latestExtendedCount;
+              // Update state to keep it in sync
+              setExtendedUsageCount(latestExtendedCount);
+              const today = new Date().toDateString();
+              localStorage.setItem('compareai_extended_usage', JSON.stringify({
+                count: latestExtendedCount,
+                date: today
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Failed to sync extended usage count before check:', error);
+          // Continue with current state if fetch fails
+        }
+      }
 
       // Extended interactions needed = number of models (each model counts as 1 extended interaction)
       const extendedInteractionsNeeded = modelsNeeded;
@@ -3122,7 +3171,7 @@ function AppContent() {
               }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                   {usageCount < MAX_DAILY_USAGE ? (
-                    `${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Register for 20 free per day`
+                    `${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Sign up for 20 free per day`
                   ) : (
                     'Daily limit reached! Register for a free account to get 20 model responses per day.'
                   )}
