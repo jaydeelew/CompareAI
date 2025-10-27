@@ -76,6 +76,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         is_active: true,
         is_verified: false
     });
+    const [appSettings, setAppSettings] = useState<{ anonymous_mock_mode_enabled: boolean; is_development: boolean } | null>(null);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -103,6 +104,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         } catch (err) {
             console.error('Error fetching admin stats:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+        }
+    }, [getAuthHeaders]);
+
+    const fetchAppSettings = useCallback(async () => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch('/api/admin/settings', {
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to fetch app settings (${response.status})`);
+                }
+            }
+
+            const data = await response.json();
+            setAppSettings(data);
+        } catch (err) {
+            console.error('Error fetching app settings:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch app settings');
         }
     }, [getAuthHeaders]);
 
@@ -152,7 +182,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             setError(null); // Clear any previous errors
 
             try {
-                await Promise.all([fetchStats(), fetchUsersInitial(currentPage)]);
+                await Promise.all([fetchStats(), fetchUsersInitial(currentPage), fetchAppSettings()]);
             } catch (err) {
                 console.error('Error loading admin data:', err);
             } finally {
@@ -161,7 +191,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         };
 
         loadData();
-    }, [currentPage, user?.is_admin, fetchStats, fetchUsersInitial]);
+    }, [currentPage, user?.is_admin, fetchStats, fetchUsersInitial, fetchAppSettings]);
 
     const handleManualSearch = async () => {
         try {
@@ -297,6 +327,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         } catch (err) {
             console.error('Error resetting usage:', err);
             setError(err instanceof Error ? err.message : 'Failed to reset usage');
+        }
+    };
+
+    const toggleAnonymousMockMode = async () => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch('/api/admin/settings/toggle-anonymous-mock-mode', {
+                method: 'POST',
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to toggle anonymous mock mode (${response.status})`);
+                }
+            }
+
+            // Refresh app settings
+            await fetchAppSettings();
+        } catch (err) {
+            console.error('Error toggling anonymous mock mode:', err);
+            setError(err instanceof Error ? err.message : 'Failed to toggle anonymous mock mode');
         }
     };
 
@@ -473,7 +533,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         try {
             const headers = getAuthHeaders();
             console.log('Auth headers:', headers);
-            
+
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
@@ -493,7 +553,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 const errorData = await response.json().catch(() => ({}));
                 console.log('Error response data:', errorData);
                 console.log('Error status:', response.status);
-                
+
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');
                 } else if (response.status === 403) {
@@ -624,6 +684,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Application Settings - Development Only */}
+            {appSettings && appSettings.is_development && (
+                <div className="admin-stats" style={{ marginBottom: '2rem' }}>
+                    <h2>Application Settings (Development Mode)</h2>
+                    <div className="stats-grid">
+                        <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+                            <h3 style={{ marginBottom: '0.5rem' }}>Anonymous User Mock Mode</h3>
+                            <p style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#ff6b00', textAlign: 'center', fontWeight: 'bold' }}>
+                                ⚠️ Development Only Feature
+                            </p>
+                            <button
+                                onClick={toggleAnonymousMockMode}
+                                className={`mock-mode-btn ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'}`}
+                                title={`Anonymous mock mode is ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'} - ${appSettings.anonymous_mock_mode_enabled ? 'Anonymous users get mock responses' : 'Anonymous users use real API calls'}`}
+                                style={{
+                                    padding: '0.75rem 1.5rem',
+                                    fontSize: '1rem',
+                                    cursor: 'pointer',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: 'bold',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                🎭 Anonymous Mock {appSettings.anonymous_mock_mode_enabled ? 'ON' : 'OFF'}
+                            </button>
+                            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#666', textAlign: 'center' }}>
+                                {appSettings.anonymous_mock_mode_enabled
+                                    ? 'Anonymous users will receive mock responses'
+                                    : 'Anonymous users will use real API calls'}
+                            </p>
                         </div>
                     </div>
                 </div>

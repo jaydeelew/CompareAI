@@ -248,3 +248,19 @@ class AdminActionLog(Base):
     # Relationships
     admin_user = relationship("User", foreign_keys=[admin_user_id], backref="admin_actions_performed")
     target_user = relationship("User", foreign_keys=[target_user_id], backref="admin_actions_received")
+
+
+class AppSettings(Base):
+    """Global application settings managed by admins."""
+
+    __tablename__ = "app_settings"
+
+    # Single row table - only one settings row should exist
+    id = Column(Integer, primary_key=True, default=1)
+
+    # Mock mode settings
+    anonymous_mock_mode_enabled = Column(Boolean, default=False)  # Enable mock mode for all anonymous users
+
+    # Timestamps
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

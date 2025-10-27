@@ -17,7 +17,7 @@ import json
 import os
 
 from ..model_runner import OPENROUTER_MODELS, MODELS_BY_PROVIDER, run_models, call_openrouter_streaming, clean_model_response
-from ..models import User, UsageLog
+from ..models import User, UsageLog, AppSettings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..rate_limiting import (
@@ -646,12 +646,22 @@ async def compare_stream(
         # Check if mock mode is enabled for this user
         is_development = os.environ.get("ENVIRONMENT") == "development"
         use_mock = False
-        if current_user and current_user.mock_mode_enabled:
-            if is_development or current_user.role in ["admin", "super_admin"]:
-                use_mock = True
-
-        if use_mock:
-            print(f"🎭 Mock mode active for user {current_user.email} (dev_mode: {is_development})")
+        
+        if current_user:
+            # Check if mock mode is enabled for this authenticated user
+            if current_user.mock_mode_enabled:
+                if is_development or current_user.role in ["admin", "super_admin"]:
+                    use_mock = True
+            if use_mock:
+                print(f"🎭 Mock mode active for user {current_user.email} (dev_mode: {is_development})")
+        else:
+            # Check if global anonymous mock mode is enabled (development only)
+            is_development = os.environ.get("ENVIRONMENT") == "development"
+            if is_development:
+                settings = db.query(AppSettings).first()
+                if settings and settings.anonymous_mock_mode_enabled:
+                    use_mock = True
+                    print(f"🎭 Anonymous mock mode active (global setting)")
 
         try:
             # Send all start events at once (concurrent processing begins simultaneously)

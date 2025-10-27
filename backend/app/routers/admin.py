@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import json
 
 from ..database import get_db
-from ..models import User, AdminActionLog
+from ..models import User, AdminActionLog, AppSettings
 from ..schemas import (
     AdminUserResponse,
     AdminUserCreate,
@@ -612,3 +612,97 @@ async def change_user_tier(
     )
 
     return AdminUserResponse.from_orm(user)
+
+
+@router.get("/settings")
+async def get_app_settings(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+    """
+    Get global application settings.
+    
+    Returns current settings like anonymous mock mode status.
+    In development mode only.
+    """
+    import os
+    
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+    
+    settings = db.query(AppSettings).first()
+    
+    # If no settings exist yet, create default ones
+    if not settings:
+        settings = AppSettings(
+            anonymous_mock_mode_enabled=False
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    
+    return {
+        "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled if is_development else False,
+        "is_development": is_development
+    }
+
+
+@router.post("/settings/toggle-anonymous-mock-mode")
+async def toggle_anonymous_mock_mode(
+    request: Request,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db)
+):
+    """
+    Toggle mock mode for anonymous users.
+    
+    This is a global setting that affects all anonymous (unregistered) users.
+    When enabled, all anonymous requests will return mock responses instead of
+    calling the OpenRouter API.
+    
+    Only available in development environment.
+    """
+    import os
+    
+    # Check if in development mode
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+    
+    # Prevent toggling in production
+    if not is_development:
+        raise HTTPException(
+            status_code=403, 
+            detail="Anonymous mock mode is only available in development environment"
+        )
+    
+    settings = db.query(AppSettings).first()
+    
+    # If no settings exist yet, create default ones
+    if not settings:
+        settings = AppSettings(
+            anonymous_mock_mode_enabled=False
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    
+    # Toggle the setting
+    previous_state = settings.anonymous_mock_mode_enabled
+    settings.anonymous_mock_mode_enabled = not settings.anonymous_mock_mode_enabled
+    db.commit()
+    db.refresh(settings)
+    
+    # Log admin action
+    log_admin_action(
+        db=db,
+        admin_user=current_user,
+        action_type="toggle_anonymous_mock_mode",
+        action_description=f"{'Enabled' if settings.anonymous_mock_mode_enabled else 'Disabled'} anonymous mock mode (dev_mode: {is_development})",
+        target_user_id=None,
+        details={
+            "previous_state": previous_state,
+            "new_state": settings.anonymous_mock_mode_enabled,
+            "development_mode": is_development
+        },
+        request=request,
+    )
+    
+    return {
+        "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
+        "message": f"Anonymous mock mode is now {'enabled' if settings.anonymous_mock_mode_enabled else 'disabled'}"
+    }
