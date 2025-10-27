@@ -1338,11 +1338,63 @@ function AppContent() {
     });
   };
 
+  // Helper function to check extended interaction limits
+  const checkExtendedInteractionLimit = async (numberOfModels: number): Promise<{ canProceed: boolean; errorMessage?: string }> => {
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+
+    // Get current extended usage
+    let currentExtendedUsage = isAuthenticated && user
+      ? user.daily_extended_usage
+      : extendedUsageCount;
+
+    // For anonymous users, try to sync from backend
+    if (!isAuthenticated && browserFingerprint) {
+      try {
+        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const latestExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+          if (latestExtendedCount !== undefined) {
+            currentExtendedUsage = latestExtendedCount;
+            setExtendedUsageCount(latestExtendedCount);
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              count: latestExtendedCount,
+              date: today
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync extended usage count:', error);
+      }
+    }
+
+    // For authenticated users, refresh to get latest usage
+    if (isAuthenticated) {
+      try {
+        await refreshUser();
+        currentExtendedUsage = user?.daily_extended_usage || 0;
+      } catch (error) {
+        console.error('Failed to refresh user data:', error);
+      }
+    }
+
+    // Check if the selection would exceed the limit
+    if (currentExtendedUsage + numberOfModels > extendedLimit) {
+      const remaining = extendedLimit - currentExtendedUsage;
+      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${numberOfModels} for this selection. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Deselect a model, use Standard Mode, or upgrade to a higher tier.`}`;
+      return { canProceed: false, errorMessage: errorMsg };
+    }
+
+    return { canProceed: true };
+  };
+
   const collapseAllDropdowns = () => {
     setOpenDropdowns(new Set());
   };
 
-  const toggleAllForProvider = (provider: string) => {
+  const toggleAllForProvider = async (provider: string) => {
     const providerModels = modelsByProvider[provider] || [];
     const providerModelIds = providerModels.map(model => model.id);
 
@@ -1360,6 +1412,24 @@ function AppContent() {
           setError(null);
         }, 5000);
         return;
+      }
+    } else {
+      // Calculate how many models would be selected after this operation
+      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(id)).length;
+      const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider);
+      const modelsToAdd = providerModelIds.slice(0, remainingSlots);
+      const finalSelectionCount = selectedModels.length - alreadySelectedFromProvider + modelsToAdd.length;
+
+      // Check extended interaction limit if extended mode is on and we're selecting
+      if (isExtendedMode && !allProviderModelsSelected && !isFollowUpMode) {
+        const check = await checkExtendedInteractionLimit(finalSelectionCount);
+        if (!check.canProceed) {
+          setError(check.errorMessage!);
+          setTimeout(() => {
+            setError(null);
+          }, 6000);
+          return;
+        }
       }
     }
 
@@ -1398,7 +1468,24 @@ function AppContent() {
   };
 
 
-  const handleModelToggle = (modelId: string) => {
+  const handleExtendedModeToggle = async () => {
+    // If toggling ON, check if current model selection would exceed extended interaction limit
+    if (!isExtendedMode && selectedModels.length > 0) {
+      const check = await checkExtendedInteractionLimit(selectedModels.length);
+      if (!check.canProceed) {
+        setError(check.errorMessage!);
+        setTimeout(() => {
+          setError(null);
+        }, 6000);
+        return;
+      }
+    }
+
+    // Toggle extended mode
+    setIsExtendedMode(!isExtendedMode);
+  };
+
+  const handleModelToggle = async (modelId: string) => {
     if (selectedModels.includes(modelId)) {
       // Check if this is the last selected model - only prevent in follow-up mode
       if (selectedModels.length === 1 && isFollowUpMode) {
@@ -1445,6 +1532,18 @@ function AppContent() {
             (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models.' : '';
         setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
         return;
+      }
+
+      // Check extended interaction limit if extended mode is on
+      if (isExtendedMode) {
+        const check = await checkExtendedInteractionLimit(selectedModels.length + 1);
+        if (!check.canProceed) {
+          setError(check.errorMessage!);
+          setTimeout(() => {
+            setError(null);
+          }, 6000);
+          return;
+        }
       }
 
       setSelectedModels(prev => [...prev, modelId]);
@@ -2658,7 +2757,7 @@ function AppContent() {
                       )}
                       <button
                         className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
-                        onClick={() => setIsExtendedMode(!isExtendedMode)}
+                        onClick={handleExtendedModeToggle}
                         disabled={isLoading}
                         title={isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
                       >
