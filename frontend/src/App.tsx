@@ -2602,10 +2602,96 @@ function AppContent() {
                     </div>
                   </div>
 
+                  {/* Usage Preview - Regular Mode */}
+                  {!isFollowUpMode && selectedModels.length > 0 && input.trim() && (() => {
+                    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+                    
+                    // Define regular limits for each tier
+                    const REGULAR_LIMITS: { [key: string]: number } = {
+                      anonymous: 10,
+                      free: 20,
+                      starter: 50,
+                      starter_plus: 100,
+                      pro: 200,
+                      pro_plus: 400
+                    };
+                    
+                    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+                    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+                    
+                    // Calculate current usage
+                    const currentRegularUsage = isAuthenticated && user
+                      ? user.daily_usage_count
+                      : usageCount;
+                    const currentExtendedUsage = isAuthenticated && user
+                      ? user.daily_extended_usage
+                      : extendedUsageCount;
+                    
+                    // For new comparisons, extended mode is based on isExtendedMode flag
+                    const isExtendedInteraction = isExtendedMode;
+                    
+                    // Calculate what will be used
+                    const regularToUse = selectedModels.length;
+                    const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
+                    
+                    // Calculate remaining
+                    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
+                    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
+                    
+                    return (
+                      <div style={{
+                        marginTop: '0.5rem',
+                        fontSize: '0.825rem',
+                        color: 'rgba(255, 255, 255, 0.85)'
+                      }}>
+                        <span>
+                          Using <strong>{regularToUse}</strong> of <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                        </span>
+                        {isExtendedInteraction && (
+                          <span style={{ marginLeft: '0.75rem' }}>
+                            • Using <strong>{extendedToUse}</strong> of <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
                   {isFollowUpMode && conversations.length > 0 && (() => {
                     const messageCount = conversations[0]?.messages.length || 0;
                     const isExtendedInteraction = isExtendedMode || messageCount > 10;
+
+                    // Calculate usage limits and remaining
+                    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+                    
+                    // Define regular limits for each tier
+                    const REGULAR_LIMITS: { [key: string]: number } = {
+                      anonymous: 10,
+                      free: 20,
+                      starter: 50,
+                      starter_plus: 100,
+                      pro: 200,
+                      pro_plus: 400
+                    };
+                    
+                    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+                    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+                    
+                    // Get current usage
+                    const currentRegularUsage = isAuthenticated && user
+                      ? user.daily_usage_count
+                      : usageCount;
+                    const currentExtendedUsage = isAuthenticated && user
+                      ? user.daily_extended_usage
+                      : extendedUsageCount;
+                    
+                    // Calculate what will be used
+                    const regularToUse = selectedModels.length;
+                    const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
+                    
+                    // Calculate remaining
+                    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
+                    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
 
                     // Calculate warning level
                     let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
@@ -2632,71 +2718,20 @@ function AppContent() {
 
                     return (
                       <>
-                        {/* Usage Preview - Transparent cost display */}
+                        {/* Usage Preview - Simple text line */}
                         {messageCount > 0 && (
                           <div style={{
-                            padding: '0.875rem 1rem',
-                            background: hasReachedExtendedLimit() 
-                              ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2))'
-                              : isExtendedInteraction
-                                ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(99, 102, 241, 0.12))'
-                                : 'rgba(99, 102, 241, 0.08)',
-                            borderRadius: '12px',
-                            marginTop: '0.75rem',
-                            fontSize: '0.875rem',
-                            border: `1px solid ${hasReachedExtendedLimit() 
-                              ? 'rgba(251, 191, 36, 0.4)' 
-                              : isExtendedInteraction ? 'rgba(139, 92, 246, 0.25)' : 'rgba(99, 102, 241, 0.2)'}`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem'
+                            marginTop: '0.5rem',
+                            fontSize: '0.825rem',
+                            color: 'rgba(255, 255, 255, 0.85)'
                           }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              fontWeight: '500'
-                            }}>
-                              <span style={{ color: 'rgba(255, 255, 255, 0.95)' }}>
-                                This follow-up will use:
-                              </span>
-                              <span style={{
-                                color: 'rgba(255, 255, 255, 0.85)',
-                                fontSize: '0.8rem',
-                                background: 'rgba(0, 0, 0, 0.2)',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '6px'
-                              }}>
-                                {messageCount} messages in context
-                              </span>
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              gap: '1.5rem',
-                              fontSize: '0.825rem',
-                              color: 'rgba(255, 255, 255, 0.85)'
-                            }}>
-                              <div>
-                                • <strong>{selectedModels.length}</strong> model response{selectedModels.length !== 1 ? 's' : ''}
-                              </div>
-                              {isExtendedInteraction && (
-                                <div style={{ color: 'rgba(199, 210, 254, 1)' }}>
-                                  • <strong>{selectedModels.length}</strong> extended interaction{selectedModels.length !== 1 ? 's' : ''}
-                                </div>
-                              )}
-                            </div>
+                            <span>
+                              Using <strong>{regularToUse}</strong> of <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                            </span>
                             {isExtendedInteraction && (
-                              <div style={{
-                                fontSize: '0.75rem',
-                                color: hasReachedExtendedLimit() ? 'rgba(251, 191, 36, 0.9)' : 'rgba(255, 255, 255, 0.7)',
-                                fontStyle: 'italic',
-                                fontWeight: hasReachedExtendedLimit() ? '500' : 'normal'
-                              }}>
-                                {hasReachedExtendedLimit() 
-                                  ? '🚫 Extended interaction limit reached - upgrade or purchase more'
-                                  : '💡 Extended interactions use more context capacity but same cost'
-                                }
-                              </div>
+                              <span style={{ marginLeft: '0.75rem' }}>
+                                • Using <strong>{extendedToUse}</strong> of <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
+                              </span>
                             )}
                           </div>
                         )}
