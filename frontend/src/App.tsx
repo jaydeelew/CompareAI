@@ -125,24 +125,6 @@ function AppContent() {
 
   const maxModelsLimit = getMaxModelsForUser();
 
-  // Helper function to check if user has reached extended interaction limit
-  const hasReachedExtendedLimit = () => {
-    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
-
-    if (!shouldUseExtendedTier) return false;
-
-    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
-    const currentExtendedUsage = isAuthenticated && user
-      ? user.daily_extended_usage
-      : extendedUsageCount;
-
-    // Check if user has enough extended interactions for the number of models selected
-    const extendedInteractionsNeeded = selectedModels.length;
-    return currentExtendedUsage + extendedInteractionsNeeded > extendedLimit;
-  };
-
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
@@ -2628,17 +2610,17 @@ function AppContent() {
                       <button
                         className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
                         onClick={() => setIsExtendedMode(!isExtendedMode)}
-                        disabled={isLoading || hasReachedExtendedLimit()}
-                        title={hasReachedExtendedLimit() ? 'Extended interaction limit reached - upgrade or purchase more' : isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
+                        disabled={isLoading}
+                        title={isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
                       >
                         E
                       </button>
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24) || hasReachedExtendedLimit()}
+                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24)}
                         className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                        title={hasReachedExtendedLimit() ? 'Extended interaction limit reached - upgrade or purchase more' : isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                        title={isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
                       >
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2854,117 +2836,6 @@ function AppContent() {
               </div>
             )}
 
-            {/* Extended Limit Warning - Prominent warning when limit is reached */}
-            {hasReachedExtendedLimit() && (
-              <div style={{
-                padding: '1rem 1.25rem',
-                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15))',
-                borderRadius: '12px',
-                marginTop: '1rem',
-                fontSize: '0.9rem',
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem'
-              }}>
-                <span style={{ fontSize: '1.25rem' }}>🚫</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.95)',
-                    fontWeight: '600',
-                    marginBottom: '0.25rem'
-                  }}>
-                    Extended Interaction Limit Reached
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    fontSize: '0.85rem',
-                    lineHeight: '1.4'
-                  }}>
-                    You've used all your extended interactions for today.
-                    {isAuthenticated ? ` Upgrade to a higher tier for more extended interactions, or purchase additional extended interactions.` : ` Register for a free account to get more extended interactions.`}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {!isAuthenticated && (
-                    <button
-                      onClick={() => setIsAuthModalOpen(true)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: 'rgba(99, 102, 241, 0.2)',
-                        border: '1px solid rgba(99, 102, 241, 0.4)',
-                        borderRadius: '8px',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.8rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.3)';
-                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)';
-                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
-                      }}
-                    >
-                      Register Free
-                    </button>
-                  )}
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => {/* TODO: Implement purchase additional extended interactions */ }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: 'rgba(251, 191, 36, 0.2)',
-                        border: '1px solid rgba(251, 191, 36, 0.4)',
-                        borderRadius: '8px',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.8rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.3)';
-                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.6)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(251, 191, 36, 0.2)';
-                        e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.4)';
-                      }}
-                    >
-                      Purchase More
-                    </button>
-                  )}
-                  <button
-                    onClick={handleNewComparison}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: 'rgba(34, 197, 94, 0.2)',
-                      border: '1px solid rgba(34, 197, 94, 0.4)',
-                      borderRadius: '8px',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.8rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)';
-                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
-                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-                    }}
-                  >
-                    Start Fresh
-                  </button>
-                </div>
-              </div>
-            )}
 
             <section className="models-section" ref={modelsSectionRef}>
               <div
