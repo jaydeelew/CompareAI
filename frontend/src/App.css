@@ -217,6 +217,17 @@
   box-sizing: border-box;
 }
 
+/* Global button outline removal - prevent black outlines on any button state */
+button,
+button:focus,
+button:focus-visible,
+button:active,
+button:hover,
+button:visited {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 html {
   overflow-x: hidden;
   width: 100%;

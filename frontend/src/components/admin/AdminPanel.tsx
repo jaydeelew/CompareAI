@@ -710,7 +710,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontWeight: 'bold',
-                                    transition: 'all 0.3s ease'
+                                    transition: 'all 0.3s ease',
+                                    outline: 'none'
                                 }}
                             >
                                 🎭 Anonymous Mock {appSettings.anonymous_mock_mode_enabled ? 'ON' : 'OFF'}

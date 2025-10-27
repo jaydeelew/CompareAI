@@ -1383,7 +1383,7 @@ function AppContent() {
     // Check if the selection would exceed the limit
     if (currentExtendedUsage + numberOfModels > extendedLimit) {
       const remaining = extendedLimit - currentExtendedUsage;
-      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${numberOfModels} for this selection. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Deselect a model, use Standard Mode, or upgrade to a higher tier.`}`;
+      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${numberOfModels} for this selection. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Deselect model(s), use Standard Mode, or upgrade to a higher tier.`}`;
       return { canProceed: false, errorMessage: errorMsg };
     }
 
@@ -1795,14 +1795,9 @@ function AppContent() {
           const data = await response.json();
           const latestCount = data.fingerprint_usage_count || data.ip_usage_count || 0;
           currentUsageCount = latestCount;
-          // Update state to keep it in sync
+          // Update state to keep it in sync - will update banner and localStorage below if needed
           if (latestCount !== usageCount) {
             setUsageCount(latestCount);
-            const today = new Date().toDateString();
-            localStorage.setItem('compareai_usage', JSON.stringify({
-              count: latestCount,
-              date: today
-            }));
           }
         }
       } catch (error) {
@@ -1813,6 +1808,7 @@ function AppContent() {
 
     const modelsNeeded = selectedModels.length;
     if (currentUsageCount >= MAX_DAILY_USAGE) {
+      // Use the synced count for the error message to match what we just set in state
       setError('You\'ve reached your daily limit of 10 model responses. Register for a free account to get 20 model responses per day!');
       return;
     }
@@ -1820,6 +1816,18 @@ function AppContent() {
     // Check if this comparison would exceed the limit
     if (currentUsageCount + modelsNeeded > MAX_DAILY_USAGE) {
       const remaining = MAX_DAILY_USAGE - currentUsageCount;
+      // If we updated the usage count, ensure state propagates before showing error
+      if (currentUsageCount !== usageCount) {
+        // Update localStorage synchronously so banner can read it
+        localStorage.setItem('compareai_usage', JSON.stringify({
+          count: currentUsageCount,
+          date: new Date().toDateString()
+        }));
+        // Wait for React to process the state update
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
+      }
+      // IMPORTANT: The state and localStorage are now updated with currentUsageCount
       setError(`You have ${remaining} model responses remaining today, but need ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
       return;
     }
@@ -1872,6 +1880,17 @@ function AppContent() {
       // Check if this would exceed the Extended limit
       if (currentExtendedUsage + extendedInteractionsNeeded > extendedLimit) {
         const remaining = extendedLimit - currentExtendedUsage;
+        // If we updated the extended usage count, ensure state propagates before showing error
+        if (!isAuthenticated && currentExtendedUsage !== extendedUsageCount) {
+          // Update localStorage synchronously
+          localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            count: currentExtendedUsage,
+            date: new Date().toDateString()
+          }));
+          // Wait for React to process the state update
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
+        }
         setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
         return;
       }
@@ -1985,7 +2004,7 @@ function AppContent() {
 
         // Special handling for rate limit errors (429)
         if (res.status === 429) {
-          throw new Error(errorData.detail || 'Daily comparison limit exceeded. Please try again tomorrow.');
+          throw new Error(errorData.detail || 'Daily comparison limit reached. Please try again tomorrow.');
         }
 
         throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
@@ -3364,7 +3383,8 @@ function AppContent() {
                         fontWeight: '500',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        gap: '0.5rem',
+                        outline: 'none'
                       }}
                       title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
                       onMouseOver={(e) => {

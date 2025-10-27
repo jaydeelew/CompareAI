@@ -1,5 +1,15 @@
 /* Modern Admin Panel Styles - Matching App Design System */
 
+/* Global button outline removal for admin panel */
+button,
+button:focus,
+button:focus-visible,
+button:active,
+button:hover {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .admin-panel {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -354,6 +364,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  outline: none !important;
 }
 
 .create-user-btn::before {
@@ -362,9 +373,12 @@
   font-weight: 800;
 }
 
-.create-user-btn:hover {
+.create-user-btn:hover,
+.create-user-btn:focus,
+.create-user-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+  outline: none !important;
 }
 
 /* Search and Filters */
@@ -431,6 +445,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  outline: none !important;
 }
 
 .search-btn::before {
@@ -438,9 +453,12 @@
   font-size: 1rem;
 }
 
-.search-btn:hover {
+.search-btn:hover,
+.search-btn:focus,
+.search-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+  outline: none !important;
 }
 
 /* Users Table */
@@ -643,6 +661,8 @@
   transition: all 0.2s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .toggle-btn.activate {
@@ -687,6 +707,21 @@
 .delete-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+  outline: none !important;
+}
+
+.toggle-btn:focus,
+.verify-btn:focus,
+.reset-usage-btn:focus,
+.mock-mode-btn:focus,
+.delete-btn:focus,
+.toggle-btn:active,
+.verify-btn:active,
+.reset-usage-btn:active,
+.mock-mode-btn:active,
+.delete-btn:active {
+  outline: none !important;
+  box-shadow: var(--shadow-md) !important;
 }
 
 /* Pagination */
@@ -712,11 +747,15 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: var(--shadow-sm);
+  outline: none !important;
 }
 
-.page-btn:hover:not(:disabled) {
+.page-btn:hover:not(:disabled),
+.page-btn:focus,
+.page-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+  outline: none !important;
 }
 
 .page-btn:disabled {
@@ -725,6 +764,7 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  outline: none !important;
 }
 
 .page-info {
@@ -1030,11 +1070,15 @@
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  outline: none !important;
 }
 
-.cancel-btn:hover {
+.cancel-btn:hover,
+.cancel-btn:focus,
+.cancel-btn:active {
   background: var(--bg-primary);
   transform: translateY(-1px);
+  outline: none !important;
 }
 
 .submit-btn {
@@ -1047,11 +1091,15 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-md);
+  outline: none !important;
 }
 
-.submit-btn:hover {
+.submit-btn:hover,
+.submit-btn:focus,
+.submit-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+  outline: none !important;
 }
 
 /* Delete Modal Specific Styles */
@@ -1111,12 +1159,16 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-md);
+  outline: none !important;
 }
 
-.delete-confirm-btn:hover {
+.delete-confirm-btn:hover,
+.delete-confirm-btn:focus,
+.delete-confirm-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   background: linear-gradient(135deg, #b91c1c, #991b1b);
+  outline: none !important;
 }
 
 /* Tier Change Modal Specific Styles */
@@ -1185,11 +1237,15 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-md);
+  outline: none !important;
 }
 
-.tier-change-confirm-btn:hover {
+.tier-change-confirm-btn:hover,
+.tier-change-confirm-btn:focus,
+.tier-change-confirm-btn:active {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+  outline: none !important;
 }
 
 /* Modal Responsive Design */
