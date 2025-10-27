@@ -1205,46 +1205,52 @@ function AppContent() {
       const fingerprint = await generateBrowserFingerprint();
       setBrowserFingerprint(fingerprint);
 
-      // Sync usage count with backend
+      // Sync usage count with backend (only for anonymous users)
       try {
-        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
-        if (response.ok) {
-          const data = await response.json();
-          const usageCount = data.fingerprint_usage_count || data.ip_usage_count || 0;
-          setUsageCount(usageCount);
+        if (isAuthenticated && user) {
+          // For authenticated users, use the user object directly
+          setUsageCount(user.daily_usage_count);
+        } else {
+          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
+          if (response.ok) {
+            const data = await response.json();
+            // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
+            const usageCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0;
+            setUsageCount(usageCount);
 
-          // Sync extended usage from backend if available
-          const extendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
-          if (extendedCount !== undefined) {
-            setExtendedUsageCount(extendedCount);
-          }
+            // Sync extended usage from backend if available
+            const extendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+            if (extendedCount !== undefined) {
+              setExtendedUsageCount(extendedCount);
+            }
 
-          // Update localStorage to match backend
-          const today = new Date().toDateString();
-          localStorage.setItem('compareai_usage', JSON.stringify({
-            count: usageCount,
-            date: today
-          }));
-
-          // Update extended usage in localStorage if synced from backend
-          if (extendedCount !== undefined) {
-            localStorage.setItem('compareai_extended_usage', JSON.stringify({
-              count: extendedCount,
+            // Update localStorage to match backend
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_usage', JSON.stringify({
+              count: usageCount,
               date: today
             }));
-          }
-        } else {
-          // Fallback to localStorage if backend is unavailable
-          const savedUsage = localStorage.getItem('compareai_usage');
-          const today = new Date().toDateString();
 
-          if (savedUsage) {
-            const usage = JSON.parse(savedUsage);
-            if (usage.date === today) {
-              setUsageCount(usage.count || 0);
-            } else {
-              // New day, reset usage
-              setUsageCount(0);
+            // Update extended usage in localStorage if synced from backend
+            if (extendedCount !== undefined) {
+              localStorage.setItem('compareai_extended_usage', JSON.stringify({
+                count: extendedCount,
+                date: today
+              }));
+            }
+          } else {
+            // Fallback to localStorage if backend is unavailable
+            const savedUsage = localStorage.getItem('compareai_usage');
+            const today = new Date().toDateString();
+
+            if (savedUsage) {
+              const usage = JSON.parse(savedUsage);
+              if (usage.date === today) {
+                setUsageCount(usage.count || 0);
+              } else {
+                // New day, reset usage
+                setUsageCount(0);
+              }
             }
           }
         }
@@ -1788,12 +1794,18 @@ function AppContent() {
     // Check daily usage limit (model-based)
     // First, sync with backend to ensure we have the latest usage count
     let currentUsageCount = usageCount;
-    if (browserFingerprint) {
+
+    // For authenticated users, use the user object's daily_usage_count
+    if (isAuthenticated && user) {
+      currentUsageCount = user.daily_usage_count;
+    } else if (browserFingerprint) {
+      // For anonymous users, sync from backend
       try {
         const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
         if (response.ok) {
           const data = await response.json();
-          const latestCount = data.fingerprint_usage_count || data.ip_usage_count || 0;
+          // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
+          const latestCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0;
           currentUsageCount = latestCount;
           // Update state to keep it in sync - will update banner and localStorage below if needed
           if (latestCount !== usageCount) {

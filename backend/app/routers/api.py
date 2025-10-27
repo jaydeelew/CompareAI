@@ -330,7 +330,7 @@ async def compare(
                 models_available = max(0, daily_limit - usage_count)
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. "
+                    detail=f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. "
                     f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity and overage options.",
                 )
 
