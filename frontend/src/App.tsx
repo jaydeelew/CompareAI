@@ -1196,14 +1196,29 @@ function AppContent() {
         const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
         if (response.ok) {
           const data = await response.json();
-          setUsageCount(data.fingerprint_usage_count || data.ip_usage_count || 0);
+          const usageCount = data.fingerprint_usage_count || data.ip_usage_count || 0;
+          setUsageCount(usageCount);
+
+          // Sync extended usage from backend if available
+          const extendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+          if (extendedCount !== undefined) {
+            setExtendedUsageCount(extendedCount);
+          }
 
           // Update localStorage to match backend
           const today = new Date().toDateString();
           localStorage.setItem('compareai_usage', JSON.stringify({
-            count: data.fingerprint_usage_count || data.ip_usage_count || 0,
+            count: usageCount,
             date: today
           }));
+
+          // Update extended usage in localStorage if synced from backend
+          if (extendedCount !== undefined) {
+            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              count: extendedCount,
+              date: today
+            }));
+          }
         } else {
           // Fallback to localStorage if backend is unavailable
           const savedUsage = localStorage.getItem('compareai_usage');
@@ -2190,19 +2205,38 @@ function AppContent() {
             console.log('Usage count synced from backend:', newCount);
             setUsageCount(newCount);
 
+            // Sync extended usage from backend if available
+            const newExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+            if (newExtendedCount !== undefined) {
+              console.log('Extended usage count synced from backend:', newExtendedCount);
+              setExtendedUsageCount(newExtendedCount);
+            }
+
             // Update localStorage to match backend
             const today = new Date().toDateString();
             localStorage.setItem('compareai_usage', JSON.stringify({
               count: newCount,
               date: today
             }));
+
+            // Update extended usage in localStorage if synced from backend
+            if (newExtendedCount !== undefined) {
+              localStorage.setItem('compareai_extended_usage', JSON.stringify({
+                count: newExtendedCount,
+                date: today
+              }));
+            }
           } else {
             // Fallback to local increment if backend sync fails
             const newUsageCount = usageCount + selectedModels.length;
             setUsageCount(newUsageCount);
 
+            // Calculate if this was an extended interaction
+            const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+            const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+
             // Update Extended usage if using Extended tier
-            if (isExtendedMode) {
+            if (shouldUseExtendedTier) {
               const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
               setExtendedUsageCount(newExtendedUsageCount);
             }
@@ -2214,7 +2248,7 @@ function AppContent() {
             }));
 
             // Store Extended usage separately
-            if (isExtendedMode) {
+            if (shouldUseExtendedTier) {
               localStorage.setItem('compareai_extended_usage', JSON.stringify({
                 count: extendedUsageCount + selectedModels.length,
                 date: today
@@ -2227,8 +2261,12 @@ function AppContent() {
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
 
+          // Calculate if this was an extended interaction
+          const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+          const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+
           // Update Extended usage if using Extended tier
-          if (isExtendedMode) {
+          if (shouldUseExtendedTier) {
             const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
             setExtendedUsageCount(newExtendedUsageCount);
           }
@@ -2240,7 +2278,7 @@ function AppContent() {
           }));
 
           // Store Extended usage separately
-          if (isExtendedMode) {
+          if (shouldUseExtendedTier) {
             localStorage.setItem('compareai_extended_usage', JSON.stringify({
               count: extendedUsageCount + selectedModels.length,
               date: today
@@ -2567,7 +2605,7 @@ function AppContent() {
                   {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
                   {isFollowUpMode && conversations.length > 0 && (() => {
                     const messageCount = conversations[0]?.messages.length || 0;
-                    const isExtendedInteraction = messageCount > 10;
+                    const isExtendedInteraction = isExtendedMode || messageCount > 10;
 
                     // Calculate warning level
                     let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;

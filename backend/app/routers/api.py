@@ -23,6 +23,7 @@ from ..dependencies import get_current_user
 from ..rate_limiting import (
     get_user_usage_stats,
     get_anonymous_usage_stats,
+    get_anonymous_extended_usage_stats,
     anonymous_rate_limit_storage,
     check_user_rate_limit,
     increment_user_usage,
@@ -135,14 +136,21 @@ async def get_rate_limit_status(
         # Anonymous user - return IP/fingerprint-based usage
         client_ip = get_client_ip(request)
         usage_stats = get_anonymous_usage_stats(f"ip:{client_ip}")
+        extended_stats = get_anonymous_extended_usage_stats(f"ip:{client_ip}")
 
         result = {**usage_stats, "authenticated": False, "ip_address": client_ip}
+        result.update(extended_stats)
 
         # Include fingerprint stats if provided
         if fingerprint:
             fp_stats = get_anonymous_usage_stats(f"fp:{fingerprint}")
             result["fingerprint_usage"] = fp_stats["daily_usage"]
             result["fingerprint_remaining"] = fp_stats["remaining_usage"]
+
+            # Include extended fingerprint stats
+            fp_extended_stats = get_anonymous_extended_usage_stats(f"fp:{fingerprint}")
+            result["fingerprint_extended_usage"] = fp_extended_stats["daily_extended_usage"]
+            result["fingerprint_extended_remaining"] = fp_extended_stats["remaining_extended_usage"]
 
         return result
 

@@ -423,3 +423,26 @@ def decrement_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
 
     if storage_key in anonymous_rate_limit_storage:
         anonymous_rate_limit_storage[storage_key]["count"] = max(0, anonymous_rate_limit_storage[storage_key]["count"] - count)
+
+
+def get_anonymous_extended_usage_stats(identifier: str) -> Dict[str, Any]:
+    """
+    Get Extended tier usage statistics for anonymous user.
+
+    Args:
+        identifier: IP or fingerprint identifier
+
+    Returns:
+        dict: Extended usage statistics including daily usage, limit, and remaining
+    """
+    _, current_count = check_anonymous_extended_limit(identifier)
+    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]  # 2 for anonymous users
+    remaining = max(0, daily_limit - current_count)
+
+    return {
+        "daily_extended_usage": current_count,
+        "daily_extended_limit": daily_limit,
+        "remaining_extended_usage": remaining,
+        "subscription_tier": "anonymous",
+        "usage_reset_date": date.today().isoformat(),
+    }
