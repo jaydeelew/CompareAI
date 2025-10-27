@@ -64,11 +64,8 @@ def get_password_hash(password: str) -> str:
         password_bytes = password.encode("utf-8")
         salt = bcrypt.gensalt(rounds=12)
         hashed = bcrypt.hashpw(password_bytes, salt)
-        print(f"Successfully hashed password (length: {len(password)} chars)")
         return hashed.decode("utf-8")
     except Exception as e:
-        print(f"Error hashing password: {e}")
-        print(f"Password length: {len(password)} chars, {len(password.encode('utf-8'))} bytes")
         raise
 
 
@@ -125,16 +122,13 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(f"Token verified. Payload: {payload}")
 
         # Verify token type
         if payload.get("type") != token_type:
-            print(f"Token type mismatch. Expected: {token_type}, Got: {payload.get('type')}")
             return None
 
         return payload
-    except JWTError as e:
-        print(f"JWT verification error: {e}")
+    except JWTError:
         return None
 
 

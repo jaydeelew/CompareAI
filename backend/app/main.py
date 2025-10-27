@@ -66,8 +66,6 @@ def get_tier_max_tokens(tier: str) -> int:
     return TIER_LIMITS.get(tier, TIER_LIMITS["standard"])["output_tokens"]
 
 
-print(f"Starting in {os.environ.get('ENVIRONMENT', 'production')} mode")
-
 app = FastAPI(title="CompareAI API", version="1.0.0")
 
 
@@ -80,9 +78,7 @@ async def startup_event():
     """
     try:
         Base.metadata.create_all(bind=engine, checkfirst=True)
-        print("Database tables initialized successfully")
-    except Exception as e:
-        print(f"Database initialization error: {e}")
+    except Exception:
         # Let the application continue, as tables may already exist
         pass
 
