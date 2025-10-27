@@ -6,9 +6,11 @@ import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } f
 import { AdminPanel } from './components/admin';
 import { Footer } from './components';
 
-// Always use relative /api path for the proxy to work correctly
-// The Vite dev server will proxy /api/* to http://127.0.0.1:8000/api/*
-const API_URL = '/api';
+// API URL with smart fallback:
+// - Uses VITE_API_URL from environment if set
+// - Defaults to '/api' which works with Vite proxy in development
+// - In production, set VITE_API_URL to full backend URL if no proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface CompareResponse {
   results: { [key: string]: string };

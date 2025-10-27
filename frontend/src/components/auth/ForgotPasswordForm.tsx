@@ -6,8 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import './AuthForms.css';
 
-// Always use relative /api path for the proxy to work correctly
-const API_URL = '/api';
+// API URL with smart fallback
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface ForgotPasswordFormProps {
     onSuccess?: () => void;
