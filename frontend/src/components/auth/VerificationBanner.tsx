@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+// Always use relative /api path for the proxy to work correctly
+const API_BASE_URL = '/api';
 const RESEND_COOLDOWN_SECONDS = 60; // 1 minute cooldown between requests
 
 export const VerificationBanner: React.FC = () => {

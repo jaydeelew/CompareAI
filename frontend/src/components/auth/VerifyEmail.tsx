@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthForms.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api';
+// Always use relative /api path for the proxy to work correctly
+const API_BASE_URL = '/api';
 
 interface VerifyEmailProps {
     onClose: () => void;

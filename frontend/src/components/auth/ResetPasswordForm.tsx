@@ -6,7 +6,8 @@
 import React, { useState } from 'react';
 import './AuthForms.css';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Always use relative /api path for the proxy to work correctly
+const API_URL = '/api';
 
 interface ResetPasswordFormProps {
     token: string;

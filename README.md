@@ -114,14 +114,47 @@ See [DEV_WORKFLOW.md](DEV_WORKFLOW.md) for detailed deployment workflows.
 
 ## Key API Endpoints
 
+All endpoints are prefixed with `/api`:
+
+**Authentication:**
 ```
-POST /auth/register              # Create account
-POST /auth/login                 # Get JWT tokens
-POST /auth/verify-email          # Verify email with token
-POST /compare                    # Compare AI models (rate limited)
-GET  /models                     # List all available models
-GET  /rate-limit-status          # Check usage status
-GET  /model-stats                # Performance metrics
+POST /api/auth/register              # Create account
+POST /api/auth/login                  # Get JWT tokens  
+POST /api/auth/refresh                # Refresh access token
+POST /api/auth/verify-email           # Verify email with token
+POST /api/auth/resend-verification    # Resend verification email
+POST /api/auth/forgot-password        # Request password reset
+POST /api/auth/reset-password         # Reset password with token
+POST /api/auth/logout                 # Logout (invalidate tokens)
+GET  /api/auth/me                     # Get current user info
+DELETE /api/auth/delete-account       # Delete user account
+```
+
+**Core AI Comparison:**
+```
+POST /api/compare                     # Compare AI models (rate limited)
+POST /api/compare-stream              # Streaming comparison (SSE)
+GET  /api/models                      # List all available models
+GET  /api/rate-limit-status           # Check usage status
+GET  /api/model-stats                 # Performance metrics
+POST /api/dev/reset-rate-limit        # Reset limits (dev only)
+```
+
+**Admin (requires admin privileges):**
+```
+GET    /api/admin/stats                        # System statistics
+GET    /api/admin/users                        # List all users
+GET    /api/admin/users/{user_id}              # Get user details
+POST   /api/admin/users                        # Create new user
+PUT    /api/admin/users/{user_id}              # Update user
+DELETE /api/admin/users/{user_id}              # Delete user
+POST   /api/admin/users/{user_id}/toggle-active        # Toggle user active status
+POST   /api/admin/users/{user_id}/reset-usage          # Reset user usage
+POST   /api/admin/users/{user_id}/toggle-mock-mode     # Toggle mock mode
+POST   /api/admin/users/{user_id}/change-tier          # Change subscription tier
+POST   /api/admin/users/{user_id}/send-verification    # Resend verification
+POST   /api/admin/users/{user_id}/reset-password       # Admin password reset
+GET    /api/admin/action-logs                   # View admin action logs
 ```
 
 ## Configuration

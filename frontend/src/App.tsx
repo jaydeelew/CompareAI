@@ -6,7 +6,9 @@ import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } f
 import { AdminPanel } from './components/admin';
 import { Footer } from './components';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Always use relative /api path for the proxy to work correctly
+// The Vite dev server will proxy /api/* to http://127.0.0.1:8000/api/*
+const API_URL = '/api';
 
 interface CompareResponse {
   results: { [key: string]: string };
@@ -119,25 +121,25 @@ function AppContent() {
   };
 
   const maxModelsLimit = getMaxModelsForUser();
-  
+
   // Helper function to check if user has reached extended interaction limit
   const hasReachedExtendedLimit = () => {
     const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
     const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
-    
+
     if (!shouldUseExtendedTier) return false;
-    
+
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
     const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
     const currentExtendedUsage = isAuthenticated && user
       ? user.daily_extended_usage
       : extendedUsageCount;
-    
+
     // Check if user has enough extended interactions for the number of models selected
     const extendedInteractionsNeeded = selectedModels.length;
     return currentExtendedUsage + extendedInteractionsNeeded > extendedLimit;
   };
-  
+
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
@@ -384,7 +386,7 @@ function AppContent() {
     const safeId = getSafeId(modelId);
     const expectedId = `conversation-content-${safeId}`;
     console.log(`[SetupScrollListener] Looking for element with ID: ${expectedId}`);
-    
+
     const conversationContent = document.querySelector(`#${expectedId}`) as HTMLElement;
 
     if (!conversationContent) {
@@ -412,7 +414,7 @@ function AppContent() {
     const handleWheel = (e: WheelEvent) => {
       const isAtTop = conversationContent.scrollTop === 0;
       const isAtBottom = isScrolledToBottom(conversationContent);
-      
+
       // If at top and scrolling up, or at bottom and scrolling down, manually scroll the window
       if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
         // Manually scroll the window to allow continuation of scrolling beyond card boundaries
@@ -424,7 +426,7 @@ function AppContent() {
         // Continue to let the event propagate naturally as well
         return;
       }
-      
+
       // IMMEDIATELY pause auto-scroll when user scrolls
       autoScrollPausedRef.current.add(modelId);
 
@@ -495,12 +497,12 @@ function AppContent() {
 
       // If scroll lock is enabled, sync this scroll to all other cards
       console.log(`[Scroll ${modelId}] Scroll event - scrollTop: ${currentScrollTop}, lock enabled: ${isScrollLockedRef.current}, syncingFrom: ${syncingFromElementRef.current ? syncingFromElementRef.current.id : 'null'}`);
-      
+
       if (!isScrollLockedRef.current) {
         console.log(`[Scroll ${modelId}] Lock disabled, skipping sync`);
         return;
       }
-      
+
       // If we're already in a sync operation, skip this event
       // This prevents infinite loops when programmatic scrolls trigger scroll events
       if (syncingFromElementRef.current !== null) {
@@ -513,22 +515,22 @@ function AppContent() {
         console.log(`[Scroll ${modelId}] This is the initiating element, continuing`);
         // If this IS the element initiating the sync, allow it through (user might be scrolling more)
       }
-      
+
       console.log(`[Sync ${modelId}] Starting sync operation`);
-      
+
       // Mark this element as the one initiating the sync
       syncingFromElementRef.current = conversationContent;
       console.log(`[Sync ${modelId}] Set syncingFromElement to: ${conversationContent.id}`);
-      
+
       // Get all conversation content elements
       const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
       console.log(`[Sync ${modelId}] Found ${allConversations.length} conversation elements`);
-      
+
       // Store the scroll position as a percentage to account for different content heights
       const scrollHeight = conversationContent.scrollHeight - conversationContent.clientHeight;
       const scrollPercentage = scrollHeight > 0 ? conversationContent.scrollTop / scrollHeight : 0;
       console.log(`[Sync ${modelId}] Scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${conversationContent.scrollTop}, scrollHeight: ${scrollHeight})`);
-      
+
       // Sync all other cards
       let syncCount = 0;
       allConversations.forEach((element) => {
@@ -549,9 +551,9 @@ function AppContent() {
           }
         }
       });
-      
+
       console.log(`[Sync ${modelId}] Synced ${syncCount} elements, will reset flag in 300ms`);
-      
+
       // Reset the flag after a delay to allow all programmatic scroll events to complete
       setTimeout(() => {
         console.log(`[Sync ${modelId}] Resetting syncingFromElement flag`);
@@ -739,12 +741,12 @@ function AppContent() {
   const [isScrollLocked, setIsScrollLocked] = useState(false);
   const isScrollLockedRef = useRef(false); // Ref to allow listeners to access current state without closure issues
   const syncingFromElementRef = useRef<HTMLElement | null>(null); // Element currently initiating a sync (prevents infinite scroll loops)
-  
+
   // Keep ref in sync with state
   useEffect(() => {
     console.log(`[ScrollLock] State changed - isScrollLocked: ${isScrollLocked}, conversations: ${conversations.length}`);
     isScrollLockedRef.current = isScrollLocked;
-    
+
     // When scroll lock is enabled, align all cards to the first card's scroll position
     if (isScrollLocked && conversations.length > 0) {
       console.log(`[ScrollLock] Enabling scroll lock - aligning all cards to first card`);
@@ -753,15 +755,15 @@ function AppContent() {
       if (allConversations.length > 0) {
         const firstCard = allConversations[0] as HTMLElement;
         console.log(`[ScrollLock] First card: ${firstCard.id}`);
-        
+
         // Mark the first card as the sync source
         syncingFromElementRef.current = firstCard;
         console.log(`[ScrollLock] Set syncingFromElement to: ${firstCard.id}`);
-        
+
         const firstScrollHeight = firstCard.scrollHeight - firstCard.clientHeight;
         const scrollPercentage = firstScrollHeight > 0 ? firstCard.scrollTop / firstScrollHeight : 0;
         console.log(`[ScrollLock] First card scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${firstCard.scrollTop}, scrollHeight: ${firstScrollHeight})`);
-        
+
         // Sync all other cards to the first card's scroll percentage
         allConversations.forEach((element, index) => {
           if (index > 0) {
@@ -776,7 +778,7 @@ function AppContent() {
             }
           }
         });
-        
+
         // Reset after alignment is complete
         setTimeout(() => {
           console.log(`[ScrollLock] Resetting syncingFromElement flag after initial alignment`);
@@ -797,7 +799,7 @@ function AppContent() {
         console.log(`[ScrollSetup] Setting up listener for ${conversation.modelId}`);
         const maxAttempts = 5;
         let attempt = 0;
-        
+
         const trySetup = () => {
           attempt++;
           const success = setupScrollListener(conversation.modelId);
@@ -806,14 +808,14 @@ function AppContent() {
             setTimeout(trySetup, 100 * attempt);
           }
         };
-        
+
         // Try immediately
         trySetup();
       } else {
         console.log(`[ScrollSetup] Listener already set up for ${conversation.modelId}`);
       }
     });
-    
+
     // Clean up listeners for models that are no longer in conversations
     const activeModelIds = new Set(conversations.map(c => c.modelId));
     scrollListenersRef.current.forEach((_, modelId) => {
@@ -994,7 +996,7 @@ function AppContent() {
     const scrollListeners = scrollListenersRef.current;
     const userInteracting = userInteractingRef.current;
     const lastScrollTop = lastScrollTopRef.current;
-    
+
     return () => {
       // Clean up all scroll listeners when component unmounts
       scrollListeners.forEach((_listener, modelId) => {
@@ -1022,46 +1024,46 @@ function AppContent() {
     // Get the current round number
     const firstConversation = conversations[0];
     const currentRound = firstConversation?.messages.filter(m => m.type === 'user').length || 0;
-    
+
     // Check if this round has already been aligned
     if (currentRound <= lastAlignedRoundRef.current) return;
-    
+
     // Check if all models have completed this round
     const allModelsComplete = conversations.every(conv => {
       const userMessages = conv.messages.filter(m => m.type === 'user').length;
       const aiMessages = conv.messages.filter(m => m.type === 'assistant').length;
       return userMessages === currentRound && aiMessages === currentRound;
     });
-    
+
     if (!allModelsComplete) return;
-    
+
     console.log(`Round ${currentRound} complete - aligning "You" sections`);
-    
+
     // Wait for DOM to settle, then align scroll positions
     setTimeout(() => {
       const cards = document.querySelectorAll('.result-card.conversation-card');
       if (cards.length === 0) return;
-      
+
       // Find the maximum offsetTop for the latest "You" section across all cards
       let maxOffsetTop = 0;
       const scrollData: { element: HTMLElement; targetOffsetTop: number }[] = [];
-      
+
       cards.forEach((card) => {
         const conversationContent = card.querySelector('.conversation-content') as HTMLElement;
         if (!conversationContent) return;
-        
+
         const userMessages = conversationContent.querySelectorAll('.conversation-message.user');
         if (userMessages.length === 0) return;
-        
+
         const lastUserMessage = userMessages[userMessages.length - 1] as HTMLElement;
         const offsetTop = lastUserMessage.offsetTop;
-        
+
         maxOffsetTop = Math.max(maxOffsetTop, offsetTop);
         scrollData.push({ element: conversationContent, targetOffsetTop: offsetTop });
       });
-      
+
       console.log(`Max offsetTop for round ${currentRound}: ${maxOffsetTop}px`);
-      
+
       // Scroll all cards to align the "You" section at the same position
       scrollData.forEach(({ element }, index) => {
         element.scrollTo({
@@ -1070,7 +1072,7 @@ function AppContent() {
         });
         console.log(`Card ${index}: Scrolled to ${maxOffsetTop}px to align "You" section`);
       });
-      
+
       // Mark this round as aligned
       lastAlignedRoundRef.current = currentRound;
     }, 500); // Wait for content to settle
@@ -1668,7 +1670,7 @@ function AppContent() {
     // Check Extended tier limit if using Extended tier (manual toggle OR conversation > 10 messages)
     const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
     const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
-    
+
     if (shouldUseExtendedTier) {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
       const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
@@ -1756,18 +1758,18 @@ function AppContent() {
       // This matches how official AI chat interfaces work and provides proper context
       const conversationHistory = isFollowUpMode && conversations.length > 0
         ? (() => {
-            // Get the first conversation that has messages and is for a selected model
-            const selectedConversations = conversations.filter(conv => 
-              selectedModels.includes(conv.modelId) && conv.messages.length > 0
-            );
-            if (selectedConversations.length === 0) return [];
-            
-            // Use the first selected conversation's messages
-            return selectedConversations[0].messages.map(msg => ({
-              role: msg.type === 'user' ? 'user' : 'assistant',
-              content: msg.content
-            }));
-          })()
+          // Get the first conversation that has messages and is for a selected model
+          const selectedConversations = conversations.filter(conv =>
+            selectedModels.includes(conv.modelId) && conv.messages.length > 0
+          );
+          if (selectedConversations.length === 0) return [];
+
+          // Use the first selected conversation's messages
+          return selectedConversations[0].messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }));
+        })()
         : [];
 
       // Prepare headers with auth token if available
@@ -1962,92 +1964,92 @@ function AppContent() {
                 }
               });
 
-                // Update conversations to show streaming text in cards
-                if (!isFollowUpMode) {
-                  setConversations(prevConversations =>
-                    prevConversations.map(conv => {
-                      const content = streamingResults[conv.modelId] || '';
+              // Update conversations to show streaming text in cards
+              if (!isFollowUpMode) {
+                setConversations(prevConversations =>
+                  prevConversations.map(conv => {
+                    const content = streamingResults[conv.modelId] || '';
+                    const startTime = modelStartTimes[conv.modelId];
+                    const completionTime = modelCompletionTimes[conv.modelId];
+
+                    // Update both user and assistant message timestamps with individual model times
+                    if (startTime) {
+                      console.log(`📝 Applying start time for ${conv.modelId}: ${new Date(startTime).toLocaleTimeString()}`);
+                    }
+                    if (completionTime) {
+                      console.log(`📝 Applying completion time for ${conv.modelId}: ${new Date(completionTime).toLocaleTimeString()}`);
+                    }
+
+                    return {
+                      ...conv,
+                      messages: conv.messages.map((msg, idx) => {
+                        if (idx === 0 && msg.type === 'user') {
+                          // Update user timestamp with model start time if available
+                          const newTimestamp = startTime || msg.timestamp;
+                          return {
+                            ...msg,
+                            timestamp: newTimestamp
+                          };
+                        } else if (idx === 1 && msg.type === 'assistant') {
+                          // Update assistant message content and timestamp
+                          const newTimestamp = completionTime || msg.timestamp;
+                          return {
+                            ...msg,
+                            content,
+                            timestamp: newTimestamp
+                          };
+                        }
+                        return msg;
+                      })
+                    };
+                  })
+                );
+              } else {
+                // For follow-up mode, append streaming content to existing conversations
+                setConversations(prevConversations =>
+                  prevConversations.map(conv => {
+                    const content = streamingResults[conv.modelId];
+                    if (content === undefined) return conv;
+
+                    // Check if we already added the new user message
+                    // Look for the most recent user message that matches the current input
+                    const hasNewUserMessage = conv.messages.some((msg, idx) =>
+                      msg.type === 'user' &&
+                      msg.content === input &&
+                      idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
+                    );
+
+                    if (!hasNewUserMessage) {
+                      // Add user message and empty assistant message
                       const startTime = modelStartTimes[conv.modelId];
                       const completionTime = modelCompletionTimes[conv.modelId];
-                      
-                      // Update both user and assistant message timestamps with individual model times
-                      if (startTime) {
-                        console.log(`📝 Applying start time for ${conv.modelId}: ${new Date(startTime).toLocaleTimeString()}`);
-                      }
-                      if (completionTime) {
-                        console.log(`📝 Applying completion time for ${conv.modelId}: ${new Date(completionTime).toLocaleTimeString()}`);
-                      }
-                      
                       return {
                         ...conv,
-                        messages: conv.messages.map((msg, idx) => {
-                          if (idx === 0 && msg.type === 'user') {
-                            // Update user timestamp with model start time if available
-                            const newTimestamp = startTime || msg.timestamp;
-                            return { 
-                              ...msg, 
-                              timestamp: newTimestamp
-                            };
-                          } else if (idx === 1 && msg.type === 'assistant') {
-                            // Update assistant message content and timestamp
-                            const newTimestamp = completionTime || msg.timestamp;
-                            return { 
-                              ...msg, 
-                              content,
-                              timestamp: newTimestamp
-                            };
-                          }
-                          return msg;
-                        })
+                        messages: [
+                          ...conv.messages,
+                          createMessage('user', input, startTime || userTimestamp), // Use model start time if available
+                          createMessage('assistant', content, completionTime || new Date().toISOString())
+                        ]
                       };
-                    })
-                  );
-                } else {
-                  // For follow-up mode, append streaming content to existing conversations
-                  setConversations(prevConversations =>
-                    prevConversations.map(conv => {
-                      const content = streamingResults[conv.modelId];
-                      if (content === undefined) return conv;
-
-                      // Check if we already added the new user message
-                      // Look for the most recent user message that matches the current input
-                      const hasNewUserMessage = conv.messages.some((msg, idx) => 
-                        msg.type === 'user' && 
-                        msg.content === input && 
-                        idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
-                      );
-
-                      if (!hasNewUserMessage) {
-                        // Add user message and empty assistant message
-                        const startTime = modelStartTimes[conv.modelId];
-                        const completionTime = modelCompletionTimes[conv.modelId];
-                        return {
-                          ...conv,
-                          messages: [
-                            ...conv.messages,
-                            createMessage('user', input, startTime || userTimestamp), // Use model start time if available
-                            createMessage('assistant', content, completionTime || new Date().toISOString())
-                          ]
-                        };
-                      } else {
-                        // Update the last assistant message with completion time if available
-                        const completionTime = modelCompletionTimes[conv.modelId];
-                        return {
-                          ...conv,
-                          messages: conv.messages.map((msg, idx) =>
-                            idx === conv.messages.length - 1 && msg.type === 'assistant'
-                              ? { 
-                                  ...msg, 
-                                  content,
-                                  timestamp: completionTime || msg.timestamp
-                                }
-                              : msg
-                          )
-                        };
-                      }
-                    })
-                  );
-                }
+                    } else {
+                      // Update the last assistant message with completion time if available
+                      const completionTime = modelCompletionTimes[conv.modelId];
+                      return {
+                        ...conv,
+                        messages: conv.messages.map((msg, idx) =>
+                          idx === conv.messages.length - 1 && msg.type === 'assistant'
+                            ? {
+                              ...msg,
+                              content,
+                              timestamp: completionTime || msg.timestamp
+                            }
+                            : msg
+                        )
+                      };
+                    }
+                  })
+                );
+              }
 
               // Auto-scroll each conversation card to bottom as content streams in
               // BUT only for models that are still streaming (not completed yet)
@@ -2095,18 +2097,18 @@ function AppContent() {
               startTimes: modelStartTimes,
               completionTimes: modelCompletionTimes
             });
-            
+
             setConversations(prevConversations =>
               prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
                 const startTime = modelStartTimes[conv.modelId];
                 const completionTime = modelCompletionTimes[conv.modelId];
-                
+
                 console.log(`🏁 Final update for ${conv.modelId}:`, {
                   startTime: startTime ? new Date(startTime).toLocaleTimeString() : 'none',
                   completionTime: completionTime ? new Date(completionTime).toLocaleTimeString() : 'none'
                 });
-                
+
                 return {
                   ...conv,
                   messages: conv.messages.map((msg, idx) => {
@@ -2115,8 +2117,8 @@ function AppContent() {
                       return { ...msg, timestamp: startTime || msg.timestamp };
                     } else if (idx === 1 && msg.type === 'assistant') {
                       // Update assistant message timestamp with model completion time
-                      return { 
-                        ...msg, 
+                      return {
+                        ...msg,
                         content,
                         timestamp: completionTime || msg.timestamp
                       };
@@ -2132,12 +2134,12 @@ function AppContent() {
               startTimes: modelStartTimes,
               completionTimes: modelCompletionTimes
             });
-            
+
             setConversations(prevConversations =>
               prevConversations.map(conv => {
                 const completionTime = modelCompletionTimes[conv.modelId];
                 if (!completionTime) return conv;
-                
+
                 return {
                   ...conv,
                   messages: conv.messages.map((msg, idx) => {
@@ -2305,7 +2307,7 @@ function AppContent() {
         // For follow-up mode, messages were already added during streaming
         // Just scroll to show the results
         console.log('✅ Follow-up complete - messages already added during streaming');
-        
+
         // Scroll conversations to show the last user message
         setTimeout(() => {
           scrollConversationsToBottom();
@@ -2314,7 +2316,7 @@ function AppContent() {
         // For initial comparison (non-follow-up), conversations were already initialized during streaming
         // with individual model timestamps. Don't reinitialize here as it would override them!
         console.log('✅ Initial comparison complete - conversations already set up with individual timestamps');
-        
+
         // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
           scrollConversationsToBottom();
@@ -2605,7 +2607,7 @@ function AppContent() {
                   {/* Usage Preview - Regular Mode */}
                   {!isFollowUpMode && selectedModels.length > 0 && input.trim() && (() => {
                     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                    
+
                     // Define regular limits for each tier
                     const REGULAR_LIMITS: { [key: string]: number } = {
                       anonymous: 10,
@@ -2615,10 +2617,10 @@ function AppContent() {
                       pro: 200,
                       pro_plus: 400
                     };
-                    
+
                     const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
                     const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
-                    
+
                     // Calculate current usage
                     const currentRegularUsage = isAuthenticated && user
                       ? user.daily_usage_count
@@ -2626,18 +2628,18 @@ function AppContent() {
                     const currentExtendedUsage = isAuthenticated && user
                       ? user.daily_extended_usage
                       : extendedUsageCount;
-                    
+
                     // For new comparisons, extended mode is based on isExtendedMode flag
                     const isExtendedInteraction = isExtendedMode;
-                    
+
                     // Calculate what will be used
                     const regularToUse = selectedModels.length;
                     const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
-                    
+
                     // Calculate remaining
                     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
                     const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
-                    
+
                     return (
                       <div style={{
                         marginTop: '0.5rem',
@@ -2663,7 +2665,7 @@ function AppContent() {
 
                     // Calculate usage limits and remaining
                     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                    
+
                     // Define regular limits for each tier
                     const REGULAR_LIMITS: { [key: string]: number } = {
                       anonymous: 10,
@@ -2673,10 +2675,10 @@ function AppContent() {
                       pro: 200,
                       pro_plus: 400
                     };
-                    
+
                     const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
                     const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
-                    
+
                     // Get current usage
                     const currentRegularUsage = isAuthenticated && user
                       ? user.daily_usage_count
@@ -2684,11 +2686,11 @@ function AppContent() {
                     const currentExtendedUsage = isAuthenticated && user
                       ? user.daily_extended_usage
                       : extendedUsageCount;
-                    
+
                     // Calculate what will be used
                     const regularToUse = selectedModels.length;
                     const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
-                    
+
                     // Calculate remaining
                     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
                     const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
@@ -2836,7 +2838,7 @@ function AppContent() {
                     fontSize: '0.85rem',
                     lineHeight: '1.4'
                   }}>
-                    You've used all your extended interactions for today. 
+                    You've used all your extended interactions for today.
                     {isAuthenticated ? ` Upgrade to a higher tier for more extended interactions, or purchase additional extended interactions.` : ` Register for a free account to get more extended interactions.`}
                   </div>
                 </div>
@@ -2869,7 +2871,7 @@ function AppContent() {
                   )}
                   {isAuthenticated && (
                     <button
-                      onClick={() => {/* TODO: Implement purchase additional extended interactions */}}
+                      onClick={() => {/* TODO: Implement purchase additional extended interactions */ }}
                       style={{
                         padding: '0.5rem 1rem',
                         background: 'rgba(251, 191, 36, 0.2)',
