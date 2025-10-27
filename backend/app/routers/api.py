@@ -106,6 +106,8 @@ def log_usage_to_db(usage_log: UsageLog, db: Session):
     except Exception as e:
         print(f"Failed to log usage to database: {e}")
         db.rollback()
+    finally:
+        db.close()
 
 
 @router.get("/models")
@@ -144,7 +146,7 @@ async def get_anonymous_mock_mode_status(db: Session = Depends(get_db)):
 
 @router.get("/rate-limit-status")
 async def get_rate_limit_status(
-    request: Request, fingerprint: Optional[str] = None, current_user: Optional[User] = Depends(get_current_user)
+    request: Request, fingerprint: Optional[str] = None, current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """
     Get current rate limit status for the client.
@@ -153,6 +155,8 @@ async def get_rate_limit_status(
     """
     if current_user:
         # Authenticated user - return subscription-based usage
+        # Refresh user data from database to get latest usage counts
+        db.refresh(current_user)
         usage_stats = get_user_usage_stats(current_user)
         return {
             **usage_stats,
@@ -334,15 +338,12 @@ async def compare(
                     f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity and overage options.",
                 )
 
-        # Increment authenticated user usage by number of models
-        increment_user_usage(current_user, db, count=num_models)
-
+        # Don't increment here - wait until we know if requests succeeded
+        # Will be incremented below based on successful_models count
         if is_overage:
             print(
-                f"Authenticated user {current_user.email} - Overage: {current_user.monthly_overage_count} model responses this month"
+                f"Authenticated user {current_user.email} - Overage requested"
             )
-        else:
-            print(f"Authenticated user {current_user.email} - Usage: {usage_count + num_models}/{daily_limit} model responses")
     else:
         # Anonymous user - check IP/fingerprint limits (model response based)
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
@@ -370,11 +371,9 @@ async def compare(
                 f"Sign up for a free account (20 model responses/day) to continue.",
             )
 
-        # Increment anonymous usage by number of models
-        increment_anonymous_usage(f"ip:{client_ip}", count=num_models)
-        if req.browser_fingerprint:
-            increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=num_models)
-        print(f"Anonymous user - IP: {client_ip} ({ip_count + num_models}/10 model responses)")
+        # Don't increment here - wait until we know if requests succeeded
+        # Will be incremented below based on successful_models count
+        print(f"Anonymous user - IP: {client_ip} (checking limits)")
     # --- END HYBRID RATE LIMITING ---
 
     # --- EXTENDED TIER LIMITING ---
@@ -419,12 +418,35 @@ async def compare(
             )
     # --- END EXTENDED TIER LIMITING ---
 
+    # Check if mock mode is enabled for this user
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+    use_mock = False
+    
+    if current_user:
+        # Check if mock mode is enabled for this authenticated user
+        if current_user.mock_mode_enabled and is_development:
+            use_mock = True
+            print(f"🎭 Mock mode active for user {current_user.email}")
+    else:
+        # Check if global anonymous mock mode is enabled (development only)
+        if is_development:
+            settings = db.query(AppSettings).first()
+            if settings and settings.anonymous_mock_mode_enabled:
+                use_mock = True
+                print(f"🎭 Anonymous mock mode active (global setting)")
+
     # Track start time for processing metrics
     start_time = datetime.now()
 
     try:
-        loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.tier, req.conversation_history)
+        if use_mock:
+            # Mock mode: Create fake successful results
+            results = {}
+            for model_id in req.models:
+                results[model_id] = f"[MOCK MODE] This is a test response for {model_id}. Mock mode is enabled for testing."
+        else:
+            loop = asyncio.get_running_loop()
+            results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.tier, req.conversation_history)
 
         # Count successful vs failed models
         successful_models = 0
@@ -441,16 +463,31 @@ async def compare(
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
 
-        # NOW increment extended usage - only count 1 per request regardless of model count
-        if req.tier == "extended" and successful_models > 0:
+        # NOW increment usage counts - only for successful models
+        # In mock mode, all models are considered successful for counting purposes
+        if successful_models > 0:
+            # Increment regular usage count
             if current_user:
-                increment_extended_usage(current_user, db, count=1)
-                print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
+                increment_user_usage(current_user, db, count=successful_models)
+                print(f"✓ Incremented regular usage for {current_user.email}: +{successful_models} model responses")
             else:
-                increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
+                increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                 if req.browser_fingerprint:
-                    increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
-                print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
+                    increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
+                print(f"✓ Incremented anonymous regular usage: +{successful_models} model responses")
+            
+            # Increment extended usage - only count 1 per request regardless of model count
+            if req.tier == "extended":
+                if current_user:
+                    increment_extended_usage(current_user, db, count=1)
+                    print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
+                else:
+                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
+                    if req.browser_fingerprint:
+                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+                    print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
+        elif failed_models > 0:
+            print(f"✗ No successful models - not counting against user limits ({failed_models} failed)")
 
         # Calculate processing time
         processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -583,8 +620,8 @@ async def compare_stream(
                     f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity.",
                 )
 
-        increment_user_usage(current_user, db, count=num_models)
-        print(f"Authenticated user {current_user.email} - Usage: {usage_count + num_models}/{daily_limit} model responses")
+        # Don't increment here - wait until we know if requests succeeded
+        print(f"Authenticated user {current_user.email} - Checking limits")
     else:
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
         fingerprint_allowed = True
@@ -606,10 +643,8 @@ async def compare_stream(
                 detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}.",
             )
 
-        increment_anonymous_usage(f"ip:{client_ip}", count=num_models)
-        if req.browser_fingerprint:
-            increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=num_models)
-        print(f"Anonymous user - IP: {client_ip} ({ip_count + num_models}/10 model responses)")
+        # Don't increment here - wait until we know if requests succeeded
+        print(f"Anonymous user - IP: {client_ip} (checking limits)")
 
     # --- EXTENDED TIER LIMITING (same as regular endpoint) ---
     if req.tier == "extended":
@@ -655,6 +690,9 @@ async def compare_stream(
 
     # Track start time for processing metrics
     start_time = datetime.now()
+    
+    # Store user ID for use inside generator (avoid session detachment issues)
+    user_id = current_user.id if current_user else None
 
     async def generate_stream():
         """
@@ -820,16 +858,48 @@ async def compare_stream(
                 if pending_tasks:
                     await asyncio.sleep(0.01)  # 10ms yield
 
-            # NOW increment extended usage - only count 1 per request regardless of model count
-            if req.tier == "extended" and successful_models > 0:
-                if current_user:
-                    increment_extended_usage(current_user, db, count=1)
-                    print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
+            # NOW increment usage counts - only for successful models
+            # In mock mode, all models are considered successful for counting purposes
+            # Create a fresh database session to avoid detachment issues
+            from ..database import SessionLocal
+            
+            if successful_models > 0:
+                # Increment regular usage count
+                if user_id:
+                    # Create new session and query user fresh
+                    increment_db = SessionLocal()
+                    try:
+                        increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
+                        if increment_user_obj:
+                            increment_user_usage(increment_user_obj, increment_db, count=successful_models)
+                            print(f"✓ Incremented regular usage for {increment_user_obj.email}: +{successful_models} model responses")
+                    finally:
+                        increment_db.close()
                 else:
-                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
+                    increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                     if req.browser_fingerprint:
-                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
-                    print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
+                        increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
+                    print(f"✓ Incremented anonymous regular usage: +{successful_models} model responses")
+                
+                # Increment extended usage - only count 1 per request regardless of model count
+                if req.tier == "extended":
+                    if user_id:
+                        # Create new session for extended increment
+                        increment_db = SessionLocal()
+                        try:
+                            increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
+                            if increment_user_obj:
+                                increment_extended_usage(increment_user_obj, increment_db, count=1)
+                                print(f"✓ Incremented extended usage for {increment_user_obj.email}: +1 extended interaction")
+                        finally:
+                            increment_db.close()
+                    else:
+                        increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
+                        if req.browser_fingerprint:
+                            increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+                        print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
+            elif failed_models > 0:
+                print(f"✗ No successful models - not counting against user limits ({failed_models} failed)")
 
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -848,7 +918,7 @@ async def compare_stream(
 
             # Log usage to database in background
             usage_log = UsageLog(
-                user_id=current_user.id if current_user else None,
+                user_id=user_id,
                 ip_address=client_ip,
                 browser_fingerprint=req.browser_fingerprint,
                 models_used=json.dumps(req.models),
@@ -861,7 +931,9 @@ async def compare_stream(
                 is_overage=is_overage,
                 overage_charge=overage_charge,
             )
-            background_tasks.add_task(log_usage_to_db, usage_log, db)
+            # Create new session for background task
+            log_db = SessionLocal()
+            background_tasks.add_task(log_usage_to_db, usage_log, log_db)
 
             # Send completion event with metadata
             yield f"data: {json.dumps({'type': 'complete', 'metadata': metadata})}\n\n"

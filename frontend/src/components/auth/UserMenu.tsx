@@ -134,7 +134,7 @@ export const UserMenu: React.FC = () => {
                                 }} title="Follow-ups with >10 messages of context (same cost, more capacity). Paid tiers can purchase additional extended interactions.">ℹ️</span>
                             </div>
                             <div className="usage-value">
-                                {user.daily_extended_usage || 0} of {getExtendedLimit(user.subscription_tier)} remaining
+                                {Math.max(0, getExtendedLimit(user.subscription_tier) - (user.daily_extended_usage || 0))} of {getExtendedLimit(user.subscription_tier)} remaining
                             </div>
                         </div>
                         {user.monthly_overage_count > 0 && (

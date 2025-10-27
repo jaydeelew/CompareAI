@@ -101,9 +101,12 @@ def increment_user_usage(user: User, db: Session, count: int = 1) -> None:
         db: Database session
         count: Number of model responses to add (default: 1)
     """
+    old_count = user.daily_usage_count
     user.daily_usage_count += count
     user.updated_at = datetime.utcnow()
     db.commit()
+    db.refresh(user)  # Refresh to ensure we have the latest state
+    print(f"[increment_user_usage] User {user.email}: {old_count} -> {user.daily_usage_count} (added {count})")
 
 
 def check_anonymous_rate_limit(identifier: str) -> Tuple[bool, int]:
@@ -160,15 +163,22 @@ def get_user_usage_stats(user: User) -> Dict[str, Any]:
         user: Authenticated user object
 
     Returns:
-        dict: Usage statistics including daily usage, limit, and remaining
+        dict: Usage statistics including daily usage, limit, remaining, and extended usage
     """
     daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
     remaining = max(0, daily_limit - user.daily_usage_count)
+    
+    # Get extended tier limits
+    extended_limit = EXTENDED_TIER_LIMITS.get(user.subscription_tier, 5)
+    extended_remaining = max(0, extended_limit - user.daily_extended_usage)
 
     return {
         "daily_usage": user.daily_usage_count,
         "daily_limit": daily_limit,
         "remaining_usage": remaining,
+        "daily_extended_usage": user.daily_extended_usage,
+        "daily_extended_limit": extended_limit,
+        "remaining_extended_usage": extended_remaining,
         "subscription_tier": user.subscription_tier,
         "usage_reset_date": user.usage_reset_date.isoformat(),
     }
@@ -348,9 +358,12 @@ def increment_extended_usage(user: User, db: Session, count: int = 1) -> None:
         db: Database session
         count: Number of Extended responses to add (default: 1)
     """
+    old_count = user.daily_extended_usage
     user.daily_extended_usage += count
     user.updated_at = datetime.utcnow()
     db.commit()
+    db.refresh(user)  # Refresh to ensure we have the latest state
+    print(f"[increment_extended_usage] User {user.email}: {old_count} -> {user.daily_extended_usage} (added {count})")
 
 
 def check_anonymous_extended_limit(identifier: str) -> Tuple[bool, int]:

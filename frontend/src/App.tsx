@@ -2446,7 +2446,15 @@ function AppContent() {
         // Refresh user data if authenticated to update usage count
         if (isAuthenticated) {
           try {
+            console.log('[App] Before refreshUser - user data:', {
+              daily_usage_count: user?.daily_usage_count,
+              daily_extended_usage: user?.daily_extended_usage
+            });
             await refreshUser();
+            console.log('[App] After refreshUser - user data:', {
+              daily_usage_count: user?.daily_usage_count,
+              daily_extended_usage: user?.daily_extended_usage
+            });
           } catch (error) {
             console.error('Failed to refresh user data:', error);
           }
@@ -2492,9 +2500,9 @@ function AppContent() {
             const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
             const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
 
-            // Update Extended usage if using Extended tier
+            // Update Extended usage if using Extended tier (1 per request, not per model)
             if (shouldUseExtendedTier) {
-              const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
+              const newExtendedUsageCount = extendedUsageCount + 1;
               setExtendedUsageCount(newExtendedUsageCount);
             }
 
@@ -2504,10 +2512,10 @@ function AppContent() {
               date: today
             }));
 
-            // Store Extended usage separately
+            // Store Extended usage separately (1 per request, not per model)
             if (shouldUseExtendedTier) {
               localStorage.setItem('compareai_extended_usage', JSON.stringify({
-                count: extendedUsageCount + selectedModels.length,
+                count: extendedUsageCount + 1,
                 date: today
               }));
             }
@@ -2522,9 +2530,9 @@ function AppContent() {
           const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
           const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
 
-          // Update Extended usage if using Extended tier
+          // Update Extended usage if using Extended tier (1 per request, not per model)
           if (shouldUseExtendedTier) {
-            const newExtendedUsageCount = extendedUsageCount + selectedModels.length;
+            const newExtendedUsageCount = extendedUsageCount + 1;
             setExtendedUsageCount(newExtendedUsageCount);
           }
 
@@ -2534,10 +2542,10 @@ function AppContent() {
             date: today
           }));
 
-          // Store Extended usage separately
+          // Store Extended usage separately (1 per request, not per model)
           if (shouldUseExtendedTier) {
             localStorage.setItem('compareai_extended_usage', JSON.stringify({
-              count: extendedUsageCount + selectedModels.length,
+              count: extendedUsageCount + 1,
               date: today
             }));
           }
@@ -2957,7 +2965,7 @@ function AppContent() {
 
                     // Calculate what will be used
                     const regularToUse = selectedModels.length;
-                    const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
+                    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
 
                     // Calculate remaining
                     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
@@ -3010,7 +3018,7 @@ function AppContent() {
 
                     // Calculate what will be used
                     const regularToUse = selectedModels.length;
-                    const extendedToUse = isExtendedInteraction ? selectedModels.length : 0;
+                    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
 
                     // Calculate remaining
                     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);

@@ -283,6 +283,7 @@ class AdminUserResponse(BaseModel):
     subscription_period: str
     daily_usage_count: int
     monthly_overage_count: int
+    daily_extended_usage: int = 0  # Extended tier usage tracking
     mock_mode_enabled: Optional[bool] = False  # Testing feature for admins
     created_at: datetime
     updated_at: Optional[datetime] = None

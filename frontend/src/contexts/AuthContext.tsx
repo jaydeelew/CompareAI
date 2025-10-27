@@ -184,11 +184,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Refresh user data from server
     const refreshUser = async () => {
         const accessToken = getAccessToken();
-        if (!accessToken) return;
+        if (!accessToken) {
+            console.log('[AuthContext] No access token available for refresh');
+            return;
+        }
 
+        console.log('[AuthContext] Refreshing user data...');
         const userData = await fetchCurrentUser(accessToken);
         if (userData) {
+            console.log('[AuthContext] User data refreshed:', {
+                email: userData.email,
+                daily_usage_count: userData.daily_usage_count,
+                daily_extended_usage: userData.daily_extended_usage
+            });
             setUser(userData);
+        } else {
+            console.log('[AuthContext] Failed to fetch user data');
         }
     };
 

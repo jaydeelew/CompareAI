@@ -327,7 +327,12 @@ async def get_current_user_info(current_user: User = Depends(get_current_user_re
 
     - Returns user profile data
     - Requires valid access token
+    - Refreshes user data from database to get latest usage counts
     """
+    # Refresh the user object from the database to get the latest data
+    # This is important after usage increments in /compare endpoint
+    db.refresh(current_user)
+    print(f"[/auth/me] Returning user data for {current_user.email}: daily_usage={current_user.daily_usage_count}, extended_usage={current_user.daily_extended_usage}")
     return current_user
 
 
