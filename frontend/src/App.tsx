@@ -886,6 +886,42 @@ function AppContent() {
     }
   }, [isAuthenticated, user]);
 
+  // Automatically disable extended mode when limits are reached
+  useEffect(() => {
+    if (!isExtendedMode) return; // Only check if extended mode is on
+
+    // Define regular limits for each tier
+    const REGULAR_LIMITS: { [key: string]: number } = {
+      anonymous: 10,
+      free: 20,
+      starter: 50,
+      starter_plus: 100,
+      pro: 200,
+      pro_plus: 400
+    };
+
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+
+    // Calculate current usage
+    const currentRegularUsage = isAuthenticated && user
+      ? user.daily_usage_count
+      : usageCount;
+    const currentExtendedUsage = isAuthenticated && user
+      ? user.daily_extended_usage
+      : extendedUsageCount;
+
+    const regularRemaining = regularLimit - currentRegularUsage;
+    const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
+    const hasNoRemainingRegularResponses = regularRemaining <= 0;
+
+    // Auto-disable if limits reached
+    if (hasNoRemainingRegularResponses || hasReachedExtendedLimit) {
+      setIsExtendedMode(false);
+    }
+  }, [isExtendedMode, isAuthenticated, user, usageCount, extendedUsageCount]);
+
   // Tier recommendation function
   const getExtendedRecommendation = (inputText: string): boolean => {
     if (!inputText.trim()) return false;
@@ -2807,14 +2843,69 @@ function AppContent() {
                           </svg>
                         </button>
                       )}
-                      <button
-                        className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
-                        onClick={handleExtendedModeToggle}
-                        disabled={isLoading}
-                        title={isExtendedMode ? 'Disable Extended mode (Standard: 5K chars, 4K tokens)' : 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis'}
-                      >
-                        E
-                      </button>
+                      {(() => {
+                        // Check if user has reached daily limits
+                        const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+
+                        // Define regular limits for each tier
+                        const REGULAR_LIMITS: { [key: string]: number } = {
+                          anonymous: 10,
+                          free: 20,
+                          starter: 50,
+                          starter_plus: 100,
+                          pro: 200,
+                          pro_plus: 400
+                        };
+
+                        const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+                        const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+
+                        // Calculate current usage
+                        const currentRegularUsage = isAuthenticated && user
+                          ? user.daily_usage_count
+                          : usageCount;
+                        const currentExtendedUsage = isAuthenticated && user
+                          ? user.daily_extended_usage
+                          : extendedUsageCount;
+
+                        const regularRemaining = regularLimit - currentRegularUsage;
+                        const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
+                        const hasNoRemainingRegularResponses = regularRemaining <= 0;
+
+                        const handleClick = (e: React.MouseEvent) => {
+                          if ((hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isExtendedMode) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return;
+                          }
+                          handleExtendedModeToggle();
+                        };
+
+                        const getTitle = () => {
+                          if (isExtendedMode) {
+                            return 'Disable Extended mode (Standard: 5K chars, 4K tokens)';
+                          }
+                          if (hasNoRemainingRegularResponses) {
+                            return 'No remaining model responses today. Register for a free account to get 20 model responses per day!';
+                          }
+                          if (hasReachedExtendedLimit) {
+                            return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
+                          }
+                          return 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis';
+                        };
+
+                        return (
+                          <button
+                            className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
+                            onClick={handleClick}
+                            disabled={isLoading}
+                            style={(hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isLoading ? { cursor: 'not-allowed' } : undefined}
+                            title={getTitle()}
+                          >
+                            E
+                          </button>
+                        );
+                      })()}
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
@@ -2872,11 +2963,11 @@ function AppContent() {
                         color: 'rgba(255, 255, 255, 0.85)'
                       }}>
                         <span>
-                          Using <strong>{regularToUse}</strong> of <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                          Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
                           <span style={{ marginLeft: '0.75rem' }}>
-                            • Using <strong>{extendedToUse}</strong> of <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
+                            • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
                           </span>
                         )}
                       </div>
@@ -2953,11 +3044,11 @@ function AppContent() {
                             color: 'rgba(255, 255, 255, 0.85)'
                           }}>
                             <span>
-                              Using <strong>{regularToUse}</strong> of <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                              Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
                               <span style={{ marginLeft: '0.75rem' }}>
-                                • Using <strong>{extendedToUse}</strong> of <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
+                                • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
                               </span>
                             )}
                           </div>
