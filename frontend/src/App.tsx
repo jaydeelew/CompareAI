@@ -1590,7 +1590,7 @@ function AppContent() {
       // Check limit before adding (only in normal mode)
       if (selectedModels.length >= maxModelsLimit) {
         const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
-        const upgradeMsg = tierName === 'Anonymous' ? ' Register for a free account to get 3 models.' :
+        const upgradeMsg = tierName === 'Anonymous' ? ' Sign up for a free account to get 3 models.' :
           tierName === 'free' ? ' Upgrade to Starter for 6 models or Pro for 9 models.' :
             (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models.' : '';
         setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
@@ -1857,7 +1857,7 @@ function AppContent() {
     const modelsNeeded = selectedModels.length;
     if (currentUsageCount >= MAX_DAILY_USAGE) {
       // Use the synced count for the error message to match what we just set in state
-      setError('You\'ve reached your daily limit of 10 model responses. Register for a free account to get 20 model responses per day!');
+      setError('You\'ve reached your daily limit of 10 model responses. Sign up for a free account to get 20 model responses per day!');
       return;
     }
 
@@ -1876,7 +1876,7 @@ function AppContent() {
         await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
       }
       // IMPORTANT: The state and localStorage are now updated with currentUsageCount
-      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison. Register for a free account to get 20 model responses per day!`);
+      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison. Sign up for a free account to get 20 model responses per day!`);
       return;
     }
 
@@ -2886,7 +2886,7 @@ function AppContent() {
                             return 'Disable Extended mode (Standard: 5K chars, 4K tokens)';
                           }
                           if (hasNoRemainingRegularResponses) {
-                            return 'No remaining model responses today. Register for a free account to get 20 model responses per day!';
+                            return 'No remaining model responses today. Sign up for a free account to get 20 model responses per day!';
                           }
                           if (hasReachedExtendedLimit) {
                             return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
@@ -2966,9 +2966,7 @@ function AppContent() {
                           Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
-                          <span style={{ marginLeft: '0.75rem' }}>
-                            • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
-                          </span>
+                          <span> • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                         )}
                       </div>
                     );
@@ -3047,9 +3045,7 @@ function AppContent() {
                               Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
-                              <span style={{ marginLeft: '0.75rem' }}>
-                                • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}
-                              </span>
+                              <span> • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                             )}
                           </div>
                         )}
@@ -3415,7 +3411,7 @@ function AppContent() {
                   {usageCount < MAX_DAILY_USAGE ? (
                     `${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Sign up for 20 free per day`
                   ) : (
-                    'Daily limit reached! Register for a free account to get 20 model responses per day.'
+                    'Daily limit reached! Sign up for a free account to get 20 model responses per day.'
                   )}
                 </div>
 

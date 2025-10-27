@@ -285,7 +285,7 @@ async def compare(
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
         if tier_name == "anonymous":
-            upgrade_message = " Register for a free account to compare up to 3 models."
+            upgrade_message = " Sign up for a free account to compare up to 3 models."
         elif tier_name == "free":
             upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
         elif tier_name in ["starter", "starter_plus"]:
@@ -358,7 +358,7 @@ async def compare(
             raise HTTPException(
                 status_code=429,
                 detail=f"Daily limit of 10 model responses exceeded. You have {models_available} remaining and need {num_models}. "
-                f"Register for a free account (20 model responses/day) to continue.",
+                f"Sign up for a free account (20 model responses/day) to continue.",
             )
 
         # Check if this request would exceed the limit
@@ -367,7 +367,7 @@ async def compare(
             raise HTTPException(
                 status_code=429,
                 detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
-                f"Register for a free account (20 model responses/day) to continue.",
+                f"Sign up for a free account (20 model responses/day) to continue.",
             )
 
         # Increment anonymous usage by number of models
@@ -410,7 +410,7 @@ async def compare(
                 raise HTTPException(
                     status_code=429,
                     detail=f"Daily Extended tier limit of 2 exceeded. You have {extended_available} Extended interactions remaining. "
-                    f"Register for a free account to get 5 Extended interactions per day.",
+                    f"Sign up for a free account to get 5 Extended interactions per day.",
                 )
 
             # Don't increment here - wait until we know requests succeeded
@@ -544,7 +544,7 @@ async def compare_stream(
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
         if tier_name == "anonymous":
-            upgrade_message = " Register for a free account to compare up to 3 models."
+            upgrade_message = " Sign up for a free account to compare up to 3 models."
         elif tier_name == "free":
             upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
         elif tier_name in ["starter", "starter_plus"]:
@@ -596,7 +596,7 @@ async def compare_stream(
             models_available = max(0, 10 - max(ip_count, fingerprint_count))
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit of 10 model responses exceeded. Register for a free account (20 model responses/day) to continue.",
+                detail=f"Daily limit of 10 model responses exceeded. Sign up for a free account (20 model responses/day) to continue.",
             )
 
         if ip_count + num_models > 10 or (req.browser_fingerprint and fingerprint_count + num_models > 10):
@@ -634,7 +634,7 @@ async def compare_stream(
             if not ip_extended_allowed or (req.browser_fingerprint and not fingerprint_extended_allowed):
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Daily Extended tier limit of 2 exceeded. Register for a free account to get 5 Extended interactions per day.",
+                    detail=f"Daily Extended tier limit of 2 exceeded. Sign up for a free account to get 5 Extended interactions per day.",
                 )
 
             # Don't increment here - wait until we know requests succeeded
