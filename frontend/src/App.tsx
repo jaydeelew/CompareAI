@@ -1427,7 +1427,7 @@ function AppContent() {
           setError(check.errorMessage!);
           setTimeout(() => {
             setError(null);
-          }, 6000);
+          }, 10000);
           return;
         }
       }
@@ -1476,7 +1476,7 @@ function AppContent() {
         setError(check.errorMessage!);
         setTimeout(() => {
           setError(null);
-        }, 6000);
+        }, 10000);
         return;
       }
     }
@@ -1541,7 +1541,7 @@ function AppContent() {
           setError(check.errorMessage!);
           setTimeout(() => {
             setError(null);
-          }, 6000);
+          }, 10000);
           return;
         }
       }
