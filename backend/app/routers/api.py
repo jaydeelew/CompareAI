@@ -114,6 +114,34 @@ async def get_available_models():
     return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
 
 
+@router.get("/anonymous-mock-mode-status")
+async def get_anonymous_mock_mode_status(db: Session = Depends(get_db)):
+    """
+    Public endpoint to check if anonymous mock mode is enabled.
+    Only returns status in development environment.
+    """
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+    
+    if not is_development:
+        return {"anonymous_mock_mode_enabled": False, "is_development": False}
+    
+    settings = db.query(AppSettings).first()
+    
+    # If no settings exist yet, create default ones
+    if not settings:
+        settings = AppSettings(
+            anonymous_mock_mode_enabled=False
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    
+    return {
+        "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
+        "is_development": True
+    }
+
+
 @router.get("/rate-limit-status")
 async def get_rate_limit_status(
     request: Request, fingerprint: Optional[str] = None, current_user: Optional[User] = Depends(get_current_user)

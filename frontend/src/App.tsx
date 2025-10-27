@@ -102,6 +102,7 @@ function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
 
   // Get max models based on user tier
   const getMaxModelsForUser = () => {
@@ -300,6 +301,33 @@ function AppContent() {
       channel.close();
     };
   }, []);
+
+  // Fetch anonymous mock mode setting for anonymous users (development only)
+  useEffect(() => {
+    const fetchAnonymousMockModeSetting = async () => {
+      // Only fetch for anonymous users in development mode
+      if (isAuthenticated || !import.meta.env.DEV) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/anonymous-mock-mode-status`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.is_development && data.anonymous_mock_mode_enabled) {
+            setAnonymousMockModeEnabled(true);
+          } else {
+            setAnonymousMockModeEnabled(false);
+          }
+        }
+      } catch (error) {
+        // Silently fail - this is a development-only feature
+        console.log('Could not fetch anonymous mock mode setting:', error);
+      }
+    };
+
+    fetchAnonymousMockModeSetting();
+  }, [isAuthenticated]);
 
   // Screenshot handler for message area only
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -2363,6 +2391,19 @@ function AppContent() {
             <span className="mock-mode-text">
               <strong>Mock Mode Active</strong> - Using test responses instead of real API calls
               {import.meta.env.DEV && <span className="dev-mode-indicator"> (Dev Mode)</span>}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Anonymous Mock Mode Banner - Show when anonymous mock mode is enabled (development only) */}
+      {!user && anonymousMockModeEnabled && currentView === 'main' && (
+        <div className="mock-mode-banner">
+          <div className="mock-mode-banner-content">
+            <span className="mock-mode-icon">🎭</span>
+            <span className="mock-mode-text">
+              <strong>Anonymous Mock Mode Active</strong> - Using test responses instead of real API calls
+              <span className="dev-mode-indicator"> (Dev Mode)</span>
             </span>
           </div>
         </div>

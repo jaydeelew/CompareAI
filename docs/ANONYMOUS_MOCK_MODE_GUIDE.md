@@ -12,6 +12,7 @@ The Anonymous User Mock Mode feature allows admins to enable mock responses for 
 - **Cost-Free Testing**: Test anonymous user flows without API costs
 - **Admin Control**: Only admins can enable/disable this setting
 - **Instant Responses**: Mock responses return immediately
+- **Visual Feedback**: Banner displayed at top of app when anonymous mock mode is active
 - **Audit Trail**: All changes are logged in the admin action log
 
 ## How to Use
@@ -36,10 +37,11 @@ Once anonymous mock mode is enabled:
 
 1. Log out or use an incognito window
 2. Navigate to the main CompareAI interface (as an anonymous user)
-3. Select any models you want to test
-4. Enter a prompt and submit
-5. The system will return pre-defined mock responses instead of calling OpenRouter
-6. Backend console will show: `🎭 Anonymous mock mode active (global setting)`
+3. You should see a green banner at the top: "🎭 Anonymous Mock Mode Active - Using test responses instead of real API calls (Dev Mode)"
+4. Select any models you want to test
+5. Enter a prompt and submit
+6. The system will return pre-defined mock responses instead of calling OpenRouter
+7. Backend console will show: `🎭 Anonymous mock mode active (global setting)`
 
 ## Technical Details
 
