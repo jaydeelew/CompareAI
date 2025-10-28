@@ -52,16 +52,19 @@ Both `call_openrouter_streaming()` and `call_openrouter()` now:
 - Inform the model when context was truncated
 - Transparent to the API consumer
 
-#### 4. Extended Interaction Tracking (`backend/app/main.py`)
+#### 4. Extended Interaction Tracking (`backend/app/routers/api.py`)
 
 ```python
-# Track conversations with >10 messages separately
-is_extended_interaction = conversation_message_count > 10
+# Track conversations with >6 messages separately
+# Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
+# So 6+ messages is a more reasonable threshold for context-heavy requests
+is_extended_interaction = conversation_message_count > 6
 ```
 
 - Tracks context-heavy requests separately
 - Metadata returned to frontend: `conversation_message_count`, `is_extended_interaction`
 - Aligns with context management thresholds (same cost, more context capacity)
+- Threshold set at 6+ messages because extended mode provides ~2x token capacity
 
 ---
 
@@ -73,7 +76,7 @@ is_extended_interaction = conversation_message_count > 10
 
 - Shows: "This follow-up will use: X model responses • X extended interactions"
 - Displays message count in context
-- Highlights when interaction becomes "extended" (>10 messages)
+- Highlights when interaction becomes "extended" (>6 messages)
 - Purple gradient styling for extended interactions
 - Educational tooltip about extended interaction counting
 
@@ -83,6 +86,7 @@ is_extended_interaction = conversation_message_count > 10
 
 | Message Count | Level    | Icon | Message                                                                    | Action                |
 | ------------- | -------- | ---- | -------------------------------------------------------------------------- | --------------------- |
+| 6-9           | Info     | ℹ️   | "Using extended context mode for this conversation"                        | Inform user           |
 | 10-13         | Medium   | ℹ️   | "Tip: New comparisons often provide more focused responses"                | Suggest fresh start   |
 | 14-19         | High     | 💡   | "Long conversation detected. Starting fresh may improve quality and speed" | Encourage fresh start |
 | 20-23         | Critical | ⚠️   | "Conversation approaching maximum length. Consider starting fresh"         | Strong encouragement  |
@@ -125,17 +129,18 @@ Added context management info card:
 
 | Threshold       | Purpose                     | Cost Impact                  | Reasoning                                            |
 | --------------- | --------------------------- | ---------------------------- | ---------------------------------------------------- |
-| **10 messages** | Extended interaction starts | Same cost, more context      | Natural inflection point where context becomes heavy |
-| **14 messages** | High warning                | Same cost, more context      | User should seriously consider fresh start           |
-| **20 messages** | Backend truncation          | Same cost, context capped    | Backend automatically truncates to this length       |
-| **24 messages** | Frontend hard limit         | Same cost, prevents overflow | Absolute maximum, forces new comparison              |
+| **6 messages**   | Extended interaction starts | Same cost, more context      | Extended mode doubles capacity (~2x), equivalent to ~2 message context |
+| **10 messages**  | Medium warning              | Same cost, more context      | User should consider fresh start                     |
+| **14 messages**  | High warning                | Same cost, more context      | User should seriously consider fresh start           |
+| **20 messages**  | Backend truncation          | Same cost, context capped    | Backend automatically truncates to this length       |
+| **24 messages**  | Frontend hard limit         | Same cost, prevents overflow | Absolute maximum, forces new comparison              |
 
 ### Industry Comparison
 
 - **ChatGPT:** Soft encouragement around 15-20 messages, no hard limit (unlimited subscription)
 - **Claude:** Warnings around 10-15 messages, context window indicators
 - **Perplexity:** Separate "follow-up search" tracking from initial searches
-- **CompareAI:** Hybrid of Claude (warnings) + Perplexity (separate tracking)
+- **CompareAI:** Extended mode at 6+ messages (equivalent to ~2x token capacity), progressive warnings at 6, 10, 14, 20, 24 messages
 
 ---
 
@@ -178,9 +183,12 @@ Total for 20 follow-ups: $1.00 (user charged per model response)
 
 ```
 User starts conversation with 3 models:
-- Messages 1-10: Normal tracking, warnings appear
-- Message 11+: Marked as "extended interaction", separate limit
+- Messages 1-6: Normal tracking
+- Messages 7-9: Info warning about extended context mode
+- Messages 10-13: Medium warning to consider fresh start
+- Messages 14-19: High warning encouraging fresh start
 - Message 20: Backend truncates to 20 messages (context capped)
+- Messages 20-23: Critical warning approaching limit
 - Message 24: Frontend prevents submission
 Total cost controlled: Max 20 messages × $0.05 = $1.00
 ```

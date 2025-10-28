@@ -84,7 +84,7 @@
 
 ### Visual Elements
 
-**Usage Preview Box (appears at message 11+):**
+**Usage Preview Box (appears at message 7+):**
 
 ```
 This follow-up will use:
@@ -95,6 +95,7 @@ This follow-up will use:
 
 **Warning Progression:**
 
+- 6 msgs: Blue info box, "Using extended context mode"
 - 10 msgs: Blue info box, gentle tone
 - 14 msgs: Yellow warning, stronger language
 - 20 msgs: Red warning, urgent tone
@@ -206,9 +207,9 @@ Extended interaction detected: Z messages
 ### Must Pass:
 
 - [ ] No conversation can exceed 24 messages frontend
-- [ ] Warning appears at 10, 14, 20, 24 message thresholds
+- [ ] Warning appears at 6, 10, 14, 20, 24 message thresholds
 - [ ] Submit button disabled at 24 messages
-- [ ] Usage preview shows extended interaction at >10 messages
+- [ ] Usage preview shows extended interaction at >6 messages
 - [ ] "Start Fresh" button works correctly
 - [ ] UserMenu shows context management info
 - [ ] Backend truncates to 20 messages
@@ -293,23 +294,27 @@ curl -X POST http://localhost:8000/compare-stream \
 Date: _____________
 Tester: _____________
 
-### Test 1: Short Conversation (0-9 messages)
+### Test 1: Short Conversation (0-5 messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 2: Medium Conversation (10-13 messages)
+### Test 2: Extended Mode Actives (6-9 messages)
+- [ ] Pass  [ ] Fail
+Notes: Extended context mode should trigger, info message appears
+
+### Test 3: Medium Conversation (10-13 messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 3: Long Conversation (14-19 messages)
+### Test 4: Long Conversation (14-19 messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 4: Critical (20-23 messages)
+### Test 5: Critical (20-23 messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 5: Hard Limit (24+ messages)
+### Test 6: Hard Limit (24+ messages)
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 

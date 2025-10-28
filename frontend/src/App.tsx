@@ -1896,9 +1896,11 @@ function AppContent() {
       return;
     }
 
-    // Check Extended tier limit if using Extended tier (manual toggle OR conversation > 10 messages)
+    // Check Extended tier limit if using Extended tier (manual toggle OR conversation > 6 messages)
+    // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
+    // So 6+ messages is a more reasonable threshold for context-heavy requests
     const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
 
     if (shouldUseExtendedTier) {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
@@ -2043,9 +2045,11 @@ function AppContent() {
         headers['Authorization'] = `Bearer ${accessToken}`;
       }
 
-      // Determine tier: Extended if manually toggled OR if conversation exceeds 10 messages
+      // Determine tier: Extended if manually toggled OR if conversation exceeds 6 messages
+      // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
+      // So 6+ messages is a more reasonable threshold for context-heavy requests
       const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-      const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+      const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
 
       // Use streaming endpoint for faster perceived response time
       const res = await fetch(`${API_URL}/compare-stream`, {
@@ -2507,7 +2511,7 @@ function AppContent() {
 
             // Calculate if this was an extended interaction
             const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-            const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+            const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
 
             // Update Extended usage if using Extended tier (1 per request, not per model)
             if (shouldUseExtendedTier) {
@@ -2537,7 +2541,7 @@ function AppContent() {
 
           // Calculate if this was an extended interaction
           const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-          const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 10);
+          const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
 
           // Update Extended usage if using Extended tier (1 per request, not per model)
           if (shouldUseExtendedTier) {
@@ -3028,7 +3032,7 @@ function AppContent() {
                   {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
                   {isFollowUpMode && conversations.length > 0 && (() => {
                     const messageCount = conversations[0]?.messages.length || 0;
-                    const isExtendedInteraction = isExtendedMode || messageCount > 10;
+                    const isExtendedInteraction = isExtendedMode || messageCount > 6;
 
                     // Calculate usage limits and remaining
                     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
@@ -3083,6 +3087,10 @@ function AppContent() {
                       warningLevel = 'medium';
                       warningIcon = 'ℹ️';
                       warningMessage = 'Tip: New comparisons often provide more focused responses.';
+                    } else if (messageCount >= 6) {
+                      warningLevel = 'info';
+                      warningIcon = 'ℹ️';
+                      warningMessage = 'Using extended context mode for this conversation.';
                     }
 
                     return (

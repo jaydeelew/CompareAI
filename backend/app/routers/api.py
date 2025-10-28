@@ -682,9 +682,10 @@ async def compare_stream(
     is_extended_interaction = False
     conversation_message_count = len(req.conversation_history) if req.conversation_history else 0
 
-    # Consider it extended if conversation has more than 10 messages (5 exchanges)
-    # This aligns with the context window cost threshold
-    if conversation_message_count > 10:
+    # Consider it extended if conversation has more than 6 messages (3 exchanges)
+    # Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
+    # So 6+ messages is a more reasonable threshold for context-heavy requests
+    if conversation_message_count > 6:
         is_extended_interaction = True
         print(f"📊 Extended interaction detected: {conversation_message_count} messages in history")
 
