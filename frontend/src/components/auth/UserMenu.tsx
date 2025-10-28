@@ -126,12 +126,6 @@ export const UserMenu: React.FC = () => {
                         <div className="usage-info">
                             <div className="usage-label">
                                 Extended Interactions
-                                <span style={{
-                                    fontSize: '0.7rem',
-                                    fontWeight: 'normal',
-                                    opacity: 0.7,
-                                    marginLeft: '0.25rem'
-                                }} title="Follow-ups with >10 messages of context (same cost, more capacity). Paid tiers can purchase additional extended interactions.">ℹ️</span>
                             </div>
                             <div className="usage-value">
                                 {Math.max(0, getExtendedLimit(user.subscription_tier) - (user.daily_extended_usage || 0))} of {getExtendedLimit(user.subscription_tier)} remaining
