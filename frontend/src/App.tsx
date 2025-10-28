@@ -3023,7 +3023,7 @@ function AppContent() {
                           Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
-                          <span> • <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                          <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
                         )}
                       </div>
                     );
@@ -3106,7 +3106,7 @@ function AppContent() {
                               Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
-                              <span> • <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                              <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
                             )}
                           </div>
                         )}
@@ -3139,7 +3139,7 @@ function AppContent() {
                                 marginBottom: '0.25rem',
                                 fontWeight: '500'
                               }}>
-                                {warningMessage}
+                                <span style={{ marginRight: '0.5rem' }}>{warningIcon}</span>{warningMessage}
                               </div>
                               {messageCount < 24 && (
                                 <button
