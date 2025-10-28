@@ -166,6 +166,10 @@ docker compose -f docker-compose.ssl.yml down
 # Deploy with SSL
 docker compose -f docker-compose.ssl.yml up -d --build
 
+# For a clean build - Better when you've made critical config changes
+docker compose -f docker-compose.prod.yml build --no-cache nginx
+docker compose -f docker-compose.prod.yml up -d
+
 # Verify deployment
 docker compose -f docker-compose.ssl.yml ps
 docker compose -f docker-compose.ssl.yml logs -f
