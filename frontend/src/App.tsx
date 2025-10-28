@@ -1873,7 +1873,7 @@ function AppContent() {
 
     if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
-      setError(`You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ''}`);
+      setError(`You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
       return;
     }
 
@@ -1892,7 +1892,7 @@ function AppContent() {
         await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
       }
       // IMPORTANT: The state and localStorage are now updated with currentUsageCount
-      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ''}`);
+      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
       return;
     }
 
@@ -2939,7 +2939,7 @@ function AppContent() {
                             return 'Disable Extended mode (Standard: 5K chars, 4K tokens)';
                           }
                           if (hasNoRemainingRegularResponses) {
-                            return 'No remaining model responses today. Sign up for a free account to get 20 model responses per day!';
+                            return `No remaining model responses today.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`;
                           }
                           if (hasReachedExtendedLimit) {
                             return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
