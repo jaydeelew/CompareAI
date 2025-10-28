@@ -2866,7 +2866,7 @@ function AppContent() {
                           WebkitBackgroundClip: 'text',
                           backgroundClip: 'text'
                         }}>
-                          {conversations.length > 0 ? (conversations[0]?.messages.length || 0) : 0} message context
+                          {conversations.length > 0 ? (conversations[0]?.messages.length || 0) + (input.trim() ? 1 : 0) : 0} message context
                         </span>
                       </>
                     ) : (
