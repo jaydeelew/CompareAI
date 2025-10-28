@@ -3019,7 +3019,7 @@ function AppContent() {
                           Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
-                          <span> • Selected <strong>{extendedToUse}</strong> {extendedToUse === 1 ? 'model' : 'models'} with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                          <span> • <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                         )}
                       </div>
                     );
@@ -3098,7 +3098,7 @@ function AppContent() {
                               Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
-                              <span> • Selected <strong>{extendedToUse}</strong> {extendedToUse === 1 ? 'model' : 'models'} with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                              <span> • <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                             )}
                           </div>
                         )}
