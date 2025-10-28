@@ -1032,11 +1032,14 @@ function AppContent() {
 
   // Trigger card visibility check when models are selected (especially for mobile)
   useEffect(() => {
-    if (selectedModels.length > 0 && !isModelsHidden) {
-      // Simply show the card when models are selected and section is visible
+    if (selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode) {
+      // Simply show the card when models are selected and section is visible and not in follow-up mode
       setShowDoneSelectingCard(true);
+    } else if (isFollowUpMode || selectedModels.length === 0) {
+      // Hide the card when entering follow-up mode or when no models are selected
+      setShowDoneSelectingCard(false);
     }
-  }, [selectedModels.length, isModelsHidden]);
+  }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
 
   // Cleanup scroll listeners on unmount
   useEffect(() => {
@@ -1146,7 +1149,8 @@ function AppContent() {
       // 1. Mouse is over the section
       // 2. At least one model is selected
       // 3. Models section is not collapsed
-      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden;
+      // 4. Not in follow-up mode
+      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode;
 
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
@@ -1195,7 +1199,12 @@ function AppContent() {
         window.cancelAnimationFrame(rafId);
       }
     };
-  }, [selectedModels.length, isModelsHidden]);
+  }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
+
+  // Hide "Done Selecting?" card when switching modes
+  useEffect(() => {
+    setShowDoneSelectingCard(false);
+  }, [isFollowUpMode]);
 
   // Handle scroll tracking to stop animations
   useEffect(() => {
