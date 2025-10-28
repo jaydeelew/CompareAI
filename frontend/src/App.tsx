@@ -3016,10 +3016,10 @@ function AppContent() {
                         color: 'rgba(255, 255, 255, 0.85)'
                       }}>
                         <span>
-                          Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                          Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
-                          <span> • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                          <span> • Selected <strong>{extendedToUse}</strong> {extendedToUse === 1 ? 'model' : 'models'} with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                         )}
                       </div>
                     );
@@ -3095,10 +3095,10 @@ function AppContent() {
                             color: 'rgba(255, 255, 255, 0.85)'
                           }}>
                             <span>
-                              Selected <strong>{regularToUse}</strong> with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                              Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
-                              <span> • Selected <strong>{extendedToUse}</strong> with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
+                              <span> • Selected <strong>{extendedToUse}</strong> {extendedToUse === 1 ? 'model' : 'models'} with <strong>{extendedRemaining}</strong> remaining extended model response{extendedRemaining !== 1 ? 's' : ''}</span>
                             )}
                           </div>
                         )}
