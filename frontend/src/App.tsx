@@ -3125,7 +3125,6 @@ function AppContent() {
                             alignItems: 'center',
                             gap: '0.75rem'
                           }}>
-                            <span style={{ fontSize: '1.25rem' }}>{warningIcon}</span>
                             <div style={{ flex: 1 }}>
                               <div style={{
                                 color: 'rgba(255, 255, 255, 0.95)',
