@@ -3045,7 +3045,7 @@ function AppContent() {
                         color: 'rgba(255, 255, 255, 0.85)'
                       }}>
                         <span>
-                          Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
                           <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
@@ -3128,7 +3128,7 @@ function AppContent() {
                             color: 'rgba(255, 255, 255, 0.85)'
                           }}>
                             <span>
-                              Selected <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+                              <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
                               <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
