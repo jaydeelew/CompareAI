@@ -1819,10 +1819,24 @@ function AppContent() {
       return;
     }
 
+    // Check input length against tier limits
+    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
+    const tierLimit = shouldUseExtendedTier ? 15000 : 5000; // Extended: 15K chars, Standard: 5K chars
+
+    if (input.length > tierLimit) {
+      const tierName = shouldUseExtendedTier ? 'Extended' : 'Standard';
+      const upgradeMsg = shouldUseExtendedTier
+        ? ' Your input has exceeded the Extended tier limit.'
+        : ' Enable Extended mode for up to 15,000 characters, or reduce your input.';
+      setError(`${tierName} tier limit exceeded. Maximum ${tierLimit.toLocaleString()} characters allowed, but your input has ${input.length.toLocaleString()} characters.${upgradeMsg}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     // Hard limit: Prevent submissions with conversations that are too long
     // Industry best practice 2025: Enforce maximum context window to protect costs and maintain quality
     if (isFollowUpMode && conversations.length > 0) {
-      const messageCount = conversations[0]?.messages.length || 0;
       if (messageCount >= 24) {
         setError('This conversation has reached the maximum length (24 messages). Please start a new comparison to continue.');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1899,8 +1913,7 @@ function AppContent() {
     // Check Extended tier limit if using Extended tier (manual toggle OR conversation > 6 messages)
     // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
     // So 6+ messages is a more reasonable threshold for context-heavy requests
-    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
+    // Reuse messageCount and shouldUseExtendedTier declared above
 
     if (shouldUseExtendedTier) {
       const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
@@ -2048,8 +2061,7 @@ function AppContent() {
       // Determine tier: Extended if manually toggled OR if conversation exceeds 6 messages
       // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
       // So 6+ messages is a more reasonable threshold for context-heavy requests
-      const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-      const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
+      // Reuse messageCount and shouldUseExtendedTier declared above
 
       // Use streaming endpoint for faster perceived response time
       const res = await fetch(`${API_URL}/compare-stream`, {
@@ -2509,9 +2521,7 @@ function AppContent() {
             const newUsageCount = usageCount + selectedModels.length;
             setUsageCount(newUsageCount);
 
-            // Calculate if this was an extended interaction
-            const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-            const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
+            // Calculate if this was an extended interaction - reuse variables from above
 
             // Update Extended usage if using Extended tier (1 per request, not per model)
             if (shouldUseExtendedTier) {
@@ -2539,9 +2549,7 @@ function AppContent() {
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
 
-          // Calculate if this was an extended interaction
-          const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-          const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount > 6);
+          // Calculate if this was an extended interaction - reuse variables from above
 
           // Update Extended usage if using Extended tier (1 per request, not per model)
           if (shouldUseExtendedTier) {
@@ -2966,9 +2974,26 @@ function AppContent() {
                       <button
                         ref={compareButtonRef}
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                        disabled={isLoading || (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24)}
+                        disabled={(() => {
+                          // Check if input exceeds tier limit
+                          const msgCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+                          const usesExtendedTier = isExtendedMode || (isFollowUpMode && msgCount > 6);
+                          const tierLimit = usesExtendedTier ? 15000 : 5000;
+                          const exceedsLimit = input.length > tierLimit;
+
+                          return isLoading ||
+                            exceedsLimit ||
+                            (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24);
+                        })()}
                         className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                        title={isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24 ? 'Maximum conversation length reached - start a new comparison' : isFollowUpMode ? 'Continue conversation' : 'Compare models'}
+                        title={(() => {
+                          const msgCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+                          if (msgCount >= 24) return 'Maximum conversation length reached - start a new comparison';
+                          const usesExtendedTier = isExtendedMode || (isFollowUpMode && msgCount > 6);
+                          const tierLimit = usesExtendedTier ? 15000 : 5000;
+                          if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
+                          return isFollowUpMode ? 'Continue conversation' : 'Compare models';
+                        })()}
                       >
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
