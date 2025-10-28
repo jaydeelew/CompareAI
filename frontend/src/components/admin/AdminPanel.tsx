@@ -76,6 +76,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         is_active: true,
         is_verified: false
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [appSettings, setAppSettings] = useState<{ anonymous_mock_mode_enabled: boolean; is_development: boolean } | null>(null);
 
     const fetchStats = useCallback(async () => {
@@ -500,6 +501,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 is_active: true,
                 is_verified: false
             });
+            setShowPassword(false);
             setShowCreateModal(false);
 
             // Refresh both users list and stats
@@ -1084,13 +1086,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
             {/* Create User Modal */}
             {showCreateModal && (
-                <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+                <div className="modal-overlay" onClick={() => {
+                    setShowCreateModal(false);
+                    setShowPassword(false);
+                }}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>Create New User</h2>
                             <button
                                 className="modal-close-btn"
-                                onClick={() => setShowCreateModal(false)}
+                                onClick={() => {
+                                    setShowCreateModal(false);
+                                    setShowPassword(false);
+                                }}
                             >
                                 ×
                             </button>
@@ -1111,15 +1119,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                             <div className="form-group">
                                 <label htmlFor="password">Password *</label>
-                                <input
-                                    id="password"
-                                    type="password"
-                                    value={createUserData.password}
-                                    onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
-                                    required
-                                    minLength={12}
-                                    placeholder="Min 12 chars, uppercase, number, special char"
-                                />
+                                <div className="password-input-wrapper">
+                                    <input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={createUserData.password}
+                                        onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
+                                        required
+                                        minLength={12}
+                                        placeholder="Min 12 chars, uppercase, number, special char"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        title={showPassword ? "Hide password" : "Show password"}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? "🔒" : "👁️"}
+                                    </button>
+                                </div>
                                 <small className="form-hint">
                                     Must be at least 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{ };':\"|,.&lt;&gt;/?)
                                 </small>
@@ -1197,7 +1216,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 <button
                                     type="button"
                                     className="cancel-btn"
-                                    onClick={() => setShowCreateModal(false)}
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setShowPassword(false);
+                                    }}
                                 >
                                     Cancel
                                 </button>

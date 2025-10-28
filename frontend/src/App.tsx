@@ -2822,7 +2822,48 @@ function AppContent() {
                 </div>
 
                 <div className="hero-input-section">
-                  <h2>{isFollowUpMode ? 'Follow Up' : 'Enter Your Prompt'}</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    {isFollowUpMode ? (
+                      <>
+                        <h2 style={{ margin: 0 }}>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Follow Up Mode
+                        </h2>
+                        <button
+                          onClick={handleNewComparison}
+                          className="textarea-icon-button new-inquiry-button"
+                          title="Exit follow up mode"
+                          disabled={isLoading}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            minWidth: '32px',
+                            padding: 0
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                          </svg>
+                        </button>
+                        <span style={{
+                          fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
+                          fontWeight: 700,
+                          color: 'transparent',
+                          textAlign: 'center',
+                          margin: 0,
+                          letterSpacing: '-0.025em',
+                          textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                          background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)',
+                          WebkitBackgroundClip: 'text',
+                          backgroundClip: 'text'
+                        }}>
+                          {conversations.length > 0 ? (conversations[0]?.messages.length || 0) : 0} message context
+                        </span>
+                      </>
+                    ) : (
+                      <h2>Enter Your Prompt</h2>
+                    )}
+                  </div>
                   <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
                     <textarea
                       ref={textareaRef}
@@ -2846,18 +2887,6 @@ function AppContent() {
                       rows={1}
                     />
                     <div className="textarea-actions">
-                      {isFollowUpMode && (
-                        <button
-                          onClick={handleNewComparison}
-                          className="textarea-icon-button new-inquiry-button"
-                          title="Exit follow up mode"
-                          disabled={isLoading}
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                          </svg>
-                        </button>
-                      )}
                       {(() => {
                         // Check if user has reached daily limits
                         const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
