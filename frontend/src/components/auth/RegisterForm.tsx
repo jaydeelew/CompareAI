@@ -162,7 +162,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         <div className="auth-form-container">
             <div className="auth-form-header">
                 <h2>Create Account</h2>
-                <p>Get 10 daily comparisons for free</p>
+                <p>Get 20 daily comparisons for free</p>
             </div>
 
             <form onSubmit={handleSubmit} className="auth-form" autoComplete="off">

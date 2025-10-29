@@ -3227,7 +3227,14 @@ function AppContent() {
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                     {isFollowUpMode
                       ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
-                      : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous)' : user?.subscription_tier ? ` (${user.subscription_tier.charAt(0).toUpperCase() + user.subscription_tier.slice(1)})` : ''}`
+                      : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous Tier)' : user?.subscription_tier ? (() => {
+                        const parts = user.subscription_tier.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1));
+                        // Replace "Plus" with "+" when it appears after another word
+                        const formatted = parts.length > 1 && parts[1] === 'Plus'
+                          ? parts[0] + '+'
+                          : parts.join(' ');
+                        return ` (${formatted} Tier)`;
+                      })() : ''}`
                     }
                   </p>
                 </div>
