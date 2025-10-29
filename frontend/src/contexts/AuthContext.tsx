@@ -174,6 +174,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearTokens();
         setUser(null);
         setIsLoading(false); // Set loading to false after logout
+        // Refresh the webpage after logout
+        window.location.reload();
     };
 
     // Update user data
