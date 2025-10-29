@@ -167,8 +167,8 @@ docker compose -f docker-compose.ssl.yml down
 docker compose -f docker-compose.ssl.yml up -d --build
 
 # For a clean build - Better when you've made critical config changes
-docker compose -f docker-compose.prod.yml build --no-cache
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.ssl.yml build --no-cache
+docker compose -f docker-compose.ssl.yml up -d
 
 # Verify deployment
 docker compose -f docker-compose.ssl.yml ps
