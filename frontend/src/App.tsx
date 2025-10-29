@@ -42,6 +42,7 @@ interface Model {
   description: string;
   category: string;
   provider: string;
+  available?: boolean; // Optional field - if false, model is not available for selection
 }
 
 interface ModelsByProvider {
@@ -3407,7 +3408,9 @@ function AppContent() {
                                 {models.map((model) => {
                                   const isSelected = selectedModels.includes(model.id);
                                   const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                                  const isDisabled = (selectedModels.length >= maxModelsLimit && !isSelected) ||
+                                  const isUnavailable = model.available === false;
+                                  const isDisabled = isUnavailable ||
+                                    (selectedModels.length >= maxModelsLimit && !isSelected) ||
                                     (isFollowUpMode && !isSelected && !wasOriginallySelected);
                                   return (
                                     <label
@@ -3445,6 +3448,21 @@ function AppContent() {
                                               }}
                                             >
                                               Not in conversation
+                                            </span>
+                                          )}
+                                          {isUnavailable && (
+                                            <span
+                                              style={{
+                                                fontSize: '0.7rem',
+                                                marginLeft: '0.5rem',
+                                                padding: '0.125rem 0.375rem',
+                                                background: 'rgba(245, 158, 11, 0.2)',
+                                                color: '#d97706',
+                                                borderRadius: '4px',
+                                                fontWeight: '500'
+                                              }}
+                                            >
+                                              Coming Soon
                                             </span>
                                           )}
                                         </h4>
