@@ -1360,7 +1360,7 @@ function AppContent() {
     };
 
     fetchModels();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Initializes on mount; auth changes handled separately
 
   // Reset page state when user logs out
   useEffect(() => {
