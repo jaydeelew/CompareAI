@@ -349,7 +349,9 @@ class AdminActionLogResponse(BaseModel):
 
     id: int
     admin_user_id: int
-    target_user_id: Optional[int]
+    admin_user_email: Optional[str] = None
+    target_user_id: Optional[int] = None
+    target_user_email: Optional[str] = None
     action_type: str
     action_description: str
     details: Optional[str]

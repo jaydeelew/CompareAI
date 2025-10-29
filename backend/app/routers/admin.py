@@ -433,8 +433,12 @@ async def get_action_logs(
     db: Session = Depends(get_db),
 ):
     """Get admin action logs."""
+    from sqlalchemy.orm import joinedload
 
-    query = db.query(AdminActionLog)
+    query = db.query(AdminActionLog).options(
+        joinedload(AdminActionLog.admin_user),
+        joinedload(AdminActionLog.target_user)
+    )
 
     # Apply filters
     if action_type:
@@ -450,7 +454,25 @@ async def get_action_logs(
     offset = (page - 1) * per_page
     logs = query.order_by(desc(AdminActionLog.created_at)).offset(offset).limit(per_page).all()
 
-    return [AdminActionLogResponse.from_orm(log) for log in logs]
+    # Build response with user emails
+    result = []
+    for log in logs:
+        log_dict = {
+            "id": log.id,
+            "admin_user_id": log.admin_user_id,
+            "admin_user_email": log.admin_user.email if log.admin_user else None,
+            "target_user_id": log.target_user_id,
+            "target_user_email": log.target_user.email if log.target_user else None,
+            "action_type": log.action_type,
+            "action_description": log.action_description,
+            "details": log.details,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "created_at": log.created_at,
+        }
+        result.append(AdminActionLogResponse(**log_dict))
+
+    return result
 
 
 @router.post("/users/{user_id}/toggle-active", response_model=AdminUserResponse)

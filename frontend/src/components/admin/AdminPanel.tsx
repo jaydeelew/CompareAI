@@ -38,14 +38,39 @@ interface AdminUserListResponse {
     total_pages: number;
 }
 
+interface AdminActionLog {
+    id: number;
+    admin_user_id: number;
+    admin_user_email: string | null;
+    target_user_id: number | null;
+    target_user_email: string | null;
+    action_type: string;
+    action_description: string;
+    details: string | null;
+    ip_address: string | null;
+    user_agent: string | null;
+    created_at: string;
+}
+
 interface AdminPanelProps {
     onClose?: () => void;
 }
+
+type AdminTab = 'users' | 'logs';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const { user, refreshUser } = useAuth();
     const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
+    const [activeTab, setActiveTab] = useState<AdminTab>('users');
+    const [actionLogs, setActionLogs] = useState<AdminActionLog[]>([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [logsPage, setLogsPage] = useState(1);
+    const [logsPerPage] = useState(50);
+    const [logsSearchTerm, setLogsSearchTerm] = useState('');
+    const [selectedActionType, setSelectedActionType] = useState('');
+    const [selectedLog, setSelectedLog] = useState<AdminActionLog | null>(null);
+    const [showLogDetailModal, setShowLogDetailModal] = useState(false);
 
     // Helper function to format tier and role names for display
     const formatName = (name: string): string => {
@@ -136,6 +161,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             setError(err instanceof Error ? err.message : 'Failed to fetch app settings');
         }
     }, [getAuthHeaders]);
+
+    const fetchActionLogs = useCallback(async (page = 1, actionType?: string) => {
+        try {
+            setLogsLoading(true);
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const params = new URLSearchParams({
+                page: page.toString(),
+                per_page: logsPerPage.toString()
+            });
+
+            if (actionType) {
+                params.append('action_type', actionType);
+            }
+
+            const response = await fetch(`/api/admin/action-logs?${params}`, {
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to fetch action logs (${response.status})`);
+                }
+            }
+
+            const data = await response.json();
+            setActionLogs(data);
+        } catch (err) {
+            console.error('Error fetching action logs:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch action logs');
+        } finally {
+            setLogsLoading(false);
+        }
+    }, [getAuthHeaders, logsPerPage]);
+
+    useEffect(() => {
+        if (activeTab === 'logs' && user?.is_admin) {
+            fetchActionLogs(logsPage, selectedActionType || undefined);
+        }
+    }, [activeTab, logsPage, selectedActionType, user?.is_admin, fetchActionLogs]);
 
     const fetchUsersInitial = useCallback(async (page = 1) => {
         try {
@@ -691,8 +763,196 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
             )}
 
+            {/* Tabs Navigation */}
+            <div className="admin-tabs">
+                <button
+                    className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('users')}
+                >
+                    👥 Users
+                </button>
+                <button
+                    className={`admin-tab ${activeTab === 'logs' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('logs')}
+                >
+                    📋 Action Logs
+                </button>
+            </div>
+
+            {/* Logs Section */}
+            {activeTab === 'logs' && (
+                <div className="logs-management">
+                    <div className="logs-management-header">
+                        <h2>Admin Action Logs</h2>
+                        <button
+                            className="refresh-logs-btn"
+                            onClick={() => fetchActionLogs(logsPage, selectedActionType || undefined)}
+                            disabled={logsLoading}
+                        >
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    {/* Logs Search and Filters */}
+                    <div className="logs-search-form">
+                        <div className="logs-search-controls">
+                            <input
+                                type="text"
+                                placeholder="Search by description..."
+                                value={logsSearchTerm}
+                                onChange={(e) => setLogsSearchTerm(e.target.value)}
+                                className="search-input"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        setLogsPage(1);
+                                        fetchActionLogs(1, selectedActionType || undefined);
+                                    }
+                                }}
+                            />
+
+                            <select
+                                value={selectedActionType}
+                                onChange={(e) => {
+                                    setSelectedActionType(e.target.value);
+                                    setLogsPage(1);
+                                    fetchActionLogs(1, e.target.value || undefined);
+                                }}
+                                className="filter-select"
+                            >
+                                <option value="">All Action Types</option>
+                                <option value="user_create">User Create</option>
+                                <option value="user_update">User Update</option>
+                                <option value="user_delete">User Delete</option>
+                                <option value="password_reset">Password Reset</option>
+                                <option value="send_verification">Send Verification</option>
+                                <option value="toggle_active">Toggle Active</option>
+                                <option value="reset_usage">Reset Usage</option>
+                                <option value="toggle_mock_mode">Toggle Mock Mode</option>
+                                <option value="change_tier">Change Tier</option>
+                                <option value="toggle_anonymous_mock_mode">Toggle Anonymous Mock Mode</option>
+                            </select>
+
+                            <button
+                                type="button"
+                                className="search-btn"
+                                onClick={() => {
+                                    setLogsPage(1);
+                                    fetchActionLogs(1, selectedActionType || undefined);
+                                }}
+                                disabled={logsLoading}
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Logs Table */}
+                    {logsLoading ? (
+                        <div className="loading-message">Loading logs...</div>
+                    ) : actionLogs.length === 0 ? (
+                        <div className="empty-state">
+                            <p>No logs found.</p>
+                        </div>
+                    ) : (
+                        <div className="logs-table-container">
+                            <table className="logs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Action Type</th>
+                                        <th>Description</th>
+                                        <th>Admin</th>
+                                        <th>Target User</th>
+                                        <th>IP Address</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {actionLogs
+                                        .filter(log =>
+                                            !logsSearchTerm ||
+                                            log.action_description.toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
+                                            log.action_type.toLowerCase().includes(logsSearchTerm.toLowerCase())
+                                        )
+                                        .map((log) => (
+                                            <tr key={log.id}>
+                                                <td>
+                                                    <span title={new Date(log.created_at).toLocaleString()}>
+                                                        {new Date(log.created_at).toLocaleDateString()} {new Date(log.created_at).toLocaleTimeString()}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className={`action-type-badge action-${log.action_type}`}>
+                                                        {log.action_type.replace(/_/g, ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="log-description">
+                                                    {log.action_description}
+                                                </td>
+                                                <td>
+                                                    <span className="log-user-email">{log.admin_user_email || 'Unknown'}</span>
+                                                </td>
+                                                <td>
+                                                    {log.target_user_email ? (
+                                                        <span className="log-user-email">{log.target_user_email}</span>
+                                                    ) : (
+                                                        <span className="log-na">N/A</span>
+                                                    )}
+                                                </td>
+                                                <td className="log-ip">{log.ip_address || 'N/A'}</td>
+                                                <td>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedLog(log);
+                                                            setShowLogDetailModal(true);
+                                                        }}
+                                                        className="view-details-btn"
+                                                    >
+                                                        View Details
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+
+                            {/* Logs Pagination */}
+                            <div className="pagination">
+                                <button
+                                    onClick={() => {
+                                        if (logsPage > 1) {
+                                            setLogsPage(logsPage - 1);
+                                            fetchActionLogs(logsPage - 1, selectedActionType || undefined);
+                                        }
+                                    }}
+                                    disabled={logsPage === 1 || logsLoading}
+                                    className="page-btn"
+                                >
+                                    Previous
+                                </button>
+
+                                <span className="page-info">
+                                    Page {logsPage}
+                                </span>
+
+                                <button
+                                    onClick={() => {
+                                        setLogsPage(logsPage + 1);
+                                        fetchActionLogs(logsPage + 1, selectedActionType || undefined);
+                                    }}
+                                    disabled={actionLogs.length < logsPerPage || logsLoading}
+                                    className="page-btn"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Application Settings - Development Only */}
-            {appSettings && appSettings.is_development && (
+            {appSettings && appSettings.is_development && activeTab === 'users' && (
                 <div className="admin-stats" style={{ marginBottom: '2rem' }}>
                     <h2>Application Settings (Development Mode)</h2>
                     <div className="stats-grid">
@@ -729,215 +989,217 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             )}
 
             {/* User Management */}
-            <div className="user-management">
-                <div className="user-management-header">
-                    <h2>User Management</h2>
-                    <button
-                        className="create-user-btn"
-                        onClick={() => setShowCreateModal(true)}
-                    >
-                        Create User
-                    </button>
-                </div>
-
-                {/* Search and Filters */}
-                <div className="search-form">
-                    <div className="search-controls">
-                        <input
-                            type="text"
-                            placeholder="Search by email..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                        />
-
-                        <select
-                            value={selectedRole}
-                            onChange={(e) => setSelectedRole(e.target.value)}
-                            className="filter-select"
-                        >
-                            <option value="">All Roles</option>
-                            <option value="user">User</option>
-                            <option value="moderator">Moderator</option>
-                            <option value="admin">Admin</option>
-                            <option value="super_admin">Super Admin</option>
-                        </select>
-
-                        <select
-                            value={selectedTier}
-                            onChange={(e) => setSelectedTier(e.target.value)}
-                            className="filter-select"
-                        >
-                            <option value="">All Tiers</option>
-                            <option value="free">Free</option>
-                            <option value="starter">Starter</option>
-                            <option value="starter_plus">Starter+</option>
-                            <option value="pro">Pro</option>
-                            <option value="pro_plus">Pro+</option>
-                        </select>
-
+            {activeTab === 'users' && (
+                <div className="user-management">
+                    <div className="user-management-header">
+                        <h2>User Management</h2>
                         <button
-                            type="button"
-                            className="search-btn"
-                            onClick={handleManualSearch}
+                            className="create-user-btn"
+                            onClick={() => setShowCreateModal(true)}
                         >
-                            Search
+                            Create User
                         </button>
                     </div>
-                </div>
 
-                {/* Users Table */}
-                {users && (
-                    <div className="users-table-container">
-                        <table className="users-table">
-                            <thead>
-                                <tr>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Tier</th>
-                                    <th>Status</th>
-                                    <th>Verified</th>
-                                    <th>Usage</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.users.map((userRow) => (
-                                    <tr key={userRow.id}>
-                                        <td>{userRow.email}</td>
-                                        <td>
-                                            <span className={`role-badge role-${userRow.role}`}>
-                                                {userRow.role}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {user?.role === 'super_admin' ? (
-                                                <select
-                                                    value={userRow.subscription_tier}
-                                                    onChange={(e) => handleTierChangeClick(userRow.id, userRow.email, userRow.subscription_tier, e.target.value)}
-                                                    className="tier-select"
-                                                    title="Change subscription tier (Super Admin only)"
-                                                >
-                                                    <option value="free">Free</option>
-                                                    <option value="starter">Starter</option>
-                                                    <option value="starter_plus">Starter+</option>
-                                                    <option value="pro">Pro</option>
-                                                    <option value="pro_plus">Pro+</option>
-                                                </select>
-                                            ) : (
-                                                <span className={`tier-badge tier-${userRow.subscription_tier}`}>
-                                                    {userRow.subscription_tier}
+                    {/* Search and Filters */}
+                    <div className="search-form">
+                        <div className="search-controls">
+                            <input
+                                type="text"
+                                placeholder="Search by email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="search-input"
+                            />
+
+                            <select
+                                value={selectedRole}
+                                onChange={(e) => setSelectedRole(e.target.value)}
+                                className="filter-select"
+                            >
+                                <option value="">All Roles</option>
+                                <option value="user">User</option>
+                                <option value="moderator">Moderator</option>
+                                <option value="admin">Admin</option>
+                                <option value="super_admin">Super Admin</option>
+                            </select>
+
+                            <select
+                                value={selectedTier}
+                                onChange={(e) => setSelectedTier(e.target.value)}
+                                className="filter-select"
+                            >
+                                <option value="">All Tiers</option>
+                                <option value="free">Free</option>
+                                <option value="starter">Starter</option>
+                                <option value="starter_plus">Starter+</option>
+                                <option value="pro">Pro</option>
+                                <option value="pro_plus">Pro+</option>
+                            </select>
+
+                            <button
+                                type="button"
+                                className="search-btn"
+                                onClick={handleManualSearch}
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Users Table */}
+                    {users && (
+                        <div className="users-table-container">
+                            <table className="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Tier</th>
+                                        <th>Status</th>
+                                        <th>Verified</th>
+                                        <th>Usage</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {users.users.map((userRow) => (
+                                        <tr key={userRow.id}>
+                                            <td>{userRow.email}</td>
+                                            <td>
+                                                <span className={`role-badge role-${userRow.role}`}>
+                                                    {userRow.role}
                                                 </span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge ${userRow.is_active ? 'active' : 'inactive'}`}>
-                                                {userRow.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`verified-badge ${userRow.is_verified ? 'verified' : 'unverified'}`}>
-                                                {userRow.is_verified ? '✓' : '✗'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="usage-info">
-                                                <span className="usage-count">{userRow.daily_usage_count} today</span>
-                                                {userRow.monthly_overage_count > 0 && (
-                                                    <span className="overage-count">
-                                                        {userRow.monthly_overage_count} overages
+                                            </td>
+                                            <td>
+                                                {user?.role === 'super_admin' ? (
+                                                    <select
+                                                        value={userRow.subscription_tier}
+                                                        onChange={(e) => handleTierChangeClick(userRow.id, userRow.email, userRow.subscription_tier, e.target.value)}
+                                                        className="tier-select"
+                                                        title="Change subscription tier (Super Admin only)"
+                                                    >
+                                                        <option value="free">Free</option>
+                                                        <option value="starter">Starter</option>
+                                                        <option value="starter_plus">Starter+</option>
+                                                        <option value="pro">Pro</option>
+                                                        <option value="pro_plus">Pro+</option>
+                                                    </select>
+                                                ) : (
+                                                    <span className={`tier-badge tier-${userRow.subscription_tier}`}>
+                                                        {userRow.subscription_tier}
                                                     </span>
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span title={new Date(userRow.created_at).toLocaleString()}>
-                                                {(() => {
-                                                    const date = new Date(userRow.created_at);
-                                                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                                                    const day = String(date.getDate()).padStart(2, '0');
-                                                    const year = date.getFullYear();
-                                                    return `${month}/${day}/${year}`;
-                                                })()}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="action-buttons">
-                                                <button
-                                                    onClick={() => toggleUserActive(userRow.id)}
-                                                    className={`toggle-btn ${userRow.is_active ? 'deactivate' : 'activate'}`}
-                                                >
-                                                    {userRow.is_active ? 'Deactivate' : 'Activate'}
-                                                </button>
-                                                {!userRow.is_verified && (
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge ${userRow.is_active ? 'active' : 'inactive'}`}>
+                                                    {userRow.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`verified-badge ${userRow.is_verified ? 'verified' : 'unverified'}`}>
+                                                    {userRow.is_verified ? '✓' : '✗'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="usage-info">
+                                                    <span className="usage-count">{userRow.daily_usage_count} today</span>
+                                                    {userRow.monthly_overage_count > 0 && (
+                                                        <span className="overage-count">
+                                                            {userRow.monthly_overage_count} overages
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span title={new Date(userRow.created_at).toLocaleString()}>
+                                                    {(() => {
+                                                        const date = new Date(userRow.created_at);
+                                                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                        const day = String(date.getDate()).padStart(2, '0');
+                                                        const year = date.getFullYear();
+                                                        return `${month}/${day}/${year}`;
+                                                    })()}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="action-buttons">
                                                     <button
-                                                        onClick={() => sendVerification(userRow.id)}
-                                                        className="verify-btn"
+                                                        onClick={() => toggleUserActive(userRow.id)}
+                                                        className={`toggle-btn ${userRow.is_active ? 'deactivate' : 'activate'}`}
                                                     >
-                                                        Send Verification
+                                                        {userRow.is_active ? 'Deactivate' : 'Activate'}
                                                     </button>
-                                                )}
-                                                {userRow.daily_usage_count > 0 && (
+                                                    {!userRow.is_verified && (
+                                                        <button
+                                                            onClick={() => sendVerification(userRow.id)}
+                                                            className="verify-btn"
+                                                        >
+                                                            Send Verification
+                                                        </button>
+                                                    )}
+                                                    {userRow.daily_usage_count > 0 && (
+                                                        <button
+                                                            onClick={() => resetUsage(userRow.id)}
+                                                            className="reset-usage-btn"
+                                                            title="Reset daily usage to 0"
+                                                        >
+                                                            Zero Usage
+                                                        </button>
+                                                    )}
+                                                    {/* Mock mode toggle - available for any user in development mode, admin/super-admin in production */}
+                                                    {(import.meta.env.DEV || userRow.role === 'admin' || userRow.role === 'super_admin') && (
+                                                        <button
+                                                            onClick={() => toggleMockMode(userRow.id)}
+                                                            className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
+                                                            title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}${import.meta.env.DEV ? ' (Dev Mode)' : ''}`}
+                                                        >
+                                                            🎭 {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
+                                                        </button>
+                                                    )}
                                                     <button
-                                                        onClick={() => resetUsage(userRow.id)}
-                                                        className="reset-usage-btn"
-                                                        title="Reset daily usage to 0"
+                                                        onClick={() => handleDeleteClick(userRow.id, userRow.email)}
+                                                        className="delete-btn"
+                                                        title="Delete user (Super Admin only)"
                                                     >
-                                                        Zero Usage
+                                                        Delete
                                                     </button>
-                                                )}
-                                                {/* Mock mode toggle - available for any user in development mode, admin/super-admin in production */}
-                                                {(import.meta.env.DEV || userRow.role === 'admin' || userRow.role === 'super_admin') && (
-                                                    <button
-                                                        onClick={() => toggleMockMode(userRow.id)}
-                                                        className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
-                                                        title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}${import.meta.env.DEV ? ' (Dev Mode)' : ''}`}
-                                                    >
-                                                        🎭 {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDeleteClick(userRow.id, userRow.email)}
-                                                    className="delete-btn"
-                                                    title="Delete user (Super Admin only)"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
 
-                        {/* Pagination */}
-                        {users.total_pages > 1 && (
-                            <div className="pagination">
-                                <button
-                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                    className="page-btn"
-                                >
-                                    Previous
-                                </button>
+                            {/* Pagination */}
+                            {users.total_pages > 1 && (
+                                <div className="pagination">
+                                    <button
+                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="page-btn"
+                                    >
+                                        Previous
+                                    </button>
 
-                                <span className="page-info">
-                                    Page {currentPage} of {users.total_pages}
-                                </span>
+                                    <span className="page-info">
+                                        Page {currentPage} of {users.total_pages}
+                                    </span>
 
-                                <button
-                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                    disabled={currentPage === users.total_pages}
-                                    className="page-btn"
-                                >
-                                    Next
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                                    <button
+                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                        disabled={currentPage === users.total_pages}
+                                        className="page-btn"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && userToDelete && (
@@ -1231,6 +1493,112 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Log Detail Modal */}
+            {showLogDetailModal && selectedLog && (
+                <div className="modal-overlay" onClick={() => {
+                    setShowLogDetailModal(false);
+                    setSelectedLog(null);
+                }}>
+                    <div className="modal-content log-detail-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Log Details</h2>
+                            <button
+                                className="modal-close-btn"
+                                onClick={() => {
+                                    setShowLogDetailModal(false);
+                                    setSelectedLog(null);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="log-detail-body">
+                            <div className="log-detail-section">
+                                <h3>Basic Information</h3>
+                                <div className="log-detail-grid">
+                                    <div className="log-detail-item">
+                                        <strong>Log ID:</strong>
+                                        <span>{selectedLog.id}</span>
+                                    </div>
+                                    <div className="log-detail-item">
+                                        <strong>Timestamp:</strong>
+                                        <span>{new Date(selectedLog.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <div className="log-detail-item">
+                                        <strong>Action Type:</strong>
+                                        <span className={`action-type-badge action-${selectedLog.action_type}`}>
+                                            {selectedLog.action_type.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                    <div className="log-detail-item">
+                                        <strong>Description:</strong>
+                                        <span>{selectedLog.action_description}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="log-detail-section">
+                                <h3>User Information</h3>
+                                <div className="log-detail-grid">
+                                    <div className="log-detail-item">
+                                        <strong>Admin User:</strong>
+                                        <span className="log-user-email-main">{selectedLog.admin_user_email || 'Unknown'}</span>
+                                    </div>
+                                    <div className="log-detail-item">
+                                        <strong>Target User:</strong>
+                                        <span className="log-user-email-main">{selectedLog.target_user_email || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="log-detail-section">
+                                <h3>Request Information</h3>
+                                <div className="log-detail-grid">
+                                    <div className="log-detail-item full-width">
+                                        <strong>IP Address:</strong>
+                                        <span>{selectedLog.ip_address || 'N/A'}</span>
+                                    </div>
+                                    <div className="log-detail-item full-width">
+                                        <strong>User Agent:</strong>
+                                        <span className="log-user-agent">{selectedLog.user_agent || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {selectedLog.details && (
+                                <div className="log-detail-section">
+                                    <h3>Details (JSON)</h3>
+                                    <pre className="log-details-json">
+                                        {(() => {
+                                            try {
+                                                const parsed = JSON.parse(selectedLog.details);
+                                                return JSON.stringify(parsed, null, 2);
+                                            } catch {
+                                                return selectedLog.details;
+                                            }
+                                        })()}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={() => {
+                                    setShowLogDetailModal(false);
+                                    setSelectedLog(null);
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
