@@ -34,14 +34,14 @@ MODELS_BY_PROVIDER = {
         {
             "id": "anthropic/claude-haiku-4.5",
             "name": "Claude Haiku 4.5",
-            "description": "Anthropic's fastest and most efficient model, delivering near-instant responses. Optimized for high-volume tasks like code reviews, bug fixes, and production-grade content generation",
+            "description": "Anthropic's fastest and most efficient model, delivering near-instant responses. Optimized for high-volume tasks",
             "category": "Language",
             "provider": "Anthropic",
         },
         {
             "id": "anthropic/claude-opus-4.1",
             "name": "Claude Opus 4.1",
-            "description": "Anthropic's most advanced model, benchmarked as the world's best coding model. Excels in complex reasoning, code generation, and mathematical problem-solving with minimal oversight",
+            "description": "Anthropic's most advanced model, benchmarked as the world's best coding model",
             "category": "Language/Code",
             "provider": "Anthropic",
         },
@@ -55,7 +55,7 @@ MODELS_BY_PROVIDER = {
         {
             "id": "anthropic/claude-3.7-sonnet",
             "name": "Claude 3.7 Sonnet",
-            "description": "Anthropic's Claude 3.7 Sonnet with improved reasoning, coding, and mathematical capabilities. Note: This is an earlier version - Claude 4.5 Sonnet offers newer capabilities",
+            "description": "Anthropic's Claude 3.7 Sonnet with improved reasoning, coding, and mathematical capabilities",
             "category": "Language/Reasoning",
             "provider": "Anthropic",
         },
@@ -258,7 +258,7 @@ MODELS_BY_PROVIDER = {
         {
             "id": "openai/gpt-5-mini",
             "name": "GPT-5 Mini",
-            "description": "GPT-5 Mini is a compact version of GPT-5 with enhanced coding abilities, designed for lighter-weight reasoning tasks with reduced latency and cost",
+            "description": "GPT-5 Mini is a compact version of GPT-5 with enhanced coding abilities, designed for lighter-weight reasoning",
             "category": "Language",
             "provider": "OpenAI",
         },

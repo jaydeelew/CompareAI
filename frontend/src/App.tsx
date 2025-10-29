@@ -3342,174 +3342,177 @@ function AppContent() {
                       <p>Debug info: modelsByProvider keys: {JSON.stringify(Object.keys(modelsByProvider))}</p>
                     </div>
                   ) : (
-                    <div className="provider-dropdowns">
-                      {Object.entries(modelsByProvider).map(([provider, models]) => {
-                        const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
-                        return (
-                          <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
-                            <button
-                              className="provider-header"
-                              onClick={() => toggleDropdown(provider)}
-                              aria-expanded={openDropdowns.has(provider)}
-                            >
-                              <div className="provider-left">
-                                <span className="provider-name">{provider}</span>
-                                <span className="provider-count">
-                                  {(() => {
-                                    const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                    return `${selectedCount} of ${models.length} selected`;
-                                  })()}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                {(() => {
-                                  const providerModels = modelsByProvider[provider] || [];
-                                  // Filter out unavailable models (where available === false)
-                                  const availableProviderModels = providerModels.filter(model => model.available !== false);
-                                  const providerModelIds = availableProviderModels.map(model => model.id);
-                                  const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
-                                  const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
-                                  const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
-                                  const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
-                                    (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
-
-                                  return (
-                                    <div
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!isDisabled) {
-                                          toggleAllForProvider(provider);
-                                        }
-                                      }}
-                                      style={{
-                                        padding: '0.25rem 0.5rem',
-                                        fontSize: '1.2rem',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
-                                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                        opacity: isDisabled ? 0.5 : 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        transition: 'color 0.2s ease'
-                                      }}
-                                      title={isDisabled ?
-                                        (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
-                                        allProviderModelsSelected ? `Deselect All` : `Select All`}
-                                    >
-                                      ✱
-                                    </div>
-                                  );
-                                })()}
-                                <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
-                                  ▼
-                                </span>
-                              </div>
-                            </button>
-
-                            {openDropdowns.has(provider) && (
-                              <div className="provider-models">
-                                {models.map((model) => {
-                                  const isSelected = selectedModels.includes(model.id);
-                                  const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                                  const isUnavailable = model.available === false;
-                                  const isDisabled = isUnavailable ||
-                                    (selectedModels.length >= maxModelsLimit && !isSelected) ||
-                                    (isFollowUpMode && !isSelected && !wasOriginallySelected);
-                                  return (
-                                    <label
-                                      key={model.id}
-                                      className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                                      style={{
-                                        opacity: isDisabled ? 0.5 : 1,
-                                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                        position: 'relative'
-                                      }}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        disabled={isDisabled}
-                                        onChange={() => !isDisabled && handleModelToggle(model.id)}
-                                        className="model-checkbox"
-                                        style={{
-                                          borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
-                                        }}
-                                      />
-                                      <div className="model-info">
-                                        <h4>
-                                          {model.name}
-                                          {isFollowUpMode && !isSelected && !wasOriginallySelected && (
-                                            <span
-                                              style={{
-                                                fontSize: '0.7rem',
-                                                marginLeft: '0.5rem',
-                                                padding: '0.125rem 0.375rem',
-                                                background: 'rgba(156, 163, 175, 0.2)',
-                                                color: '#6b7280',
-                                                borderRadius: '4px',
-                                                fontWeight: '500'
-                                              }}
-                                            >
-                                              Not in conversation
-                                            </span>
-                                          )}
-                                          {isUnavailable && (
-                                            <span
-                                              style={{
-                                                fontSize: '0.7rem',
-                                                marginLeft: '0.5rem',
-                                                padding: '0.125rem 0.375rem',
-                                                background: 'rgba(245, 158, 11, 0.2)',
-                                                color: '#d97706',
-                                                borderRadius: '4px',
-                                                fontWeight: '500'
-                                              }}
-                                            >
-                                              Coming Soon
-                                            </span>
-                                          )}
-                                        </h4>
-                                        <p>{model.description}</p>
-                                      </div>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Selected Models Cards */}
-                  {selectedModels.length > 0 && (
-                    <div className="selected-models-section">
-                      <h3>Selected Models ({selectedModels.length})</h3>
-                      <div className="selected-models-grid">
-                        {selectedModels.map((modelId) => {
-                          const model = allModels.find(m => m.id === modelId);
-                          if (!model) return null;
-
+                    <div className="models-selection-layout">
+                      <div className="provider-dropdowns">
+                        {Object.entries(modelsByProvider).map(([provider, models]) => {
+                          const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
                           return (
-                            <div key={modelId} className="selected-model-card">
-                              <div className="selected-model-header">
-                                <h4>{model.name}</h4>
-                                <button
-                                  className="remove-model-btn"
-                                  onClick={() => handleModelToggle(modelId)}
-                                  aria-label={`Remove ${model.name}`}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              <p className="selected-model-provider">{model.provider}</p>
-                              <p className="selected-model-description">{model.description}</p>
+                            <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
+                              <button
+                                className="provider-header"
+                                onClick={() => toggleDropdown(provider)}
+                                aria-expanded={openDropdowns.has(provider)}
+                              >
+                                <div className="provider-left">
+                                  <span className="provider-name">{provider}</span>
+                                  <span className="provider-count">
+                                    {(() => {
+                                      const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                      return `${selectedCount} of ${models.length} selected`;
+                                    })()}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  {(() => {
+                                    const providerModels = modelsByProvider[provider] || [];
+                                    // Filter out unavailable models (where available === false)
+                                    const availableProviderModels = providerModels.filter(model => model.available !== false);
+                                    const providerModelIds = availableProviderModels.map(model => model.id);
+                                    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
+                                    const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+                                    const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
+                                    const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
+                                      (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
+
+                                    return (
+                                      <div
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isDisabled) {
+                                            toggleAllForProvider(provider);
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          fontSize: '1.2rem',
+                                          border: 'none',
+                                          background: 'transparent',
+                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
+                                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                          opacity: isDisabled ? 0.5 : 1,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          transition: 'color 0.2s ease'
+                                        }}
+                                        title={isDisabled ?
+                                          (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
+                                          allProviderModelsSelected ? `Deselect All` : `Select All`}
+                                      >
+                                        ✱
+                                      </div>
+                                    );
+                                  })()}
+                                  <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                                    ▼
+                                  </span>
+                                </div>
+                              </button>
+
+                              {openDropdowns.has(provider) && (
+                                <div className="provider-models">
+                                  {models.map((model) => {
+                                    const isSelected = selectedModels.includes(model.id);
+                                    const wasOriginallySelected = originalSelectedModels.includes(model.id);
+                                    const isUnavailable = model.available === false;
+                                    const isDisabled = isUnavailable ||
+                                      (selectedModels.length >= maxModelsLimit && !isSelected) ||
+                                      (isFollowUpMode && !isSelected && !wasOriginallySelected);
+                                    return (
+                                      <label
+                                        key={model.id}
+                                        className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                        style={{
+                                          opacity: isDisabled ? 0.5 : 1,
+                                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                          position: 'relative'
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          disabled={isDisabled}
+                                          onChange={() => !isDisabled && handleModelToggle(model.id)}
+                                          className="model-checkbox"
+                                          style={{
+                                            borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
+                                          }}
+                                        />
+                                        <div className="model-info">
+                                          <h4>
+                                            {model.name}
+                                            {isFollowUpMode && !isSelected && !wasOriginallySelected && (
+                                              <span
+                                                style={{
+                                                  fontSize: '0.7rem',
+                                                  marginLeft: '0.5rem',
+                                                  padding: '0.125rem 0.375rem',
+                                                  background: 'rgba(156, 163, 175, 0.2)',
+                                                  color: '#6b7280',
+                                                  borderRadius: '4px',
+                                                  fontWeight: '500'
+                                                }}
+                                              >
+                                                Not in conversation
+                                              </span>
+                                            )}
+                                            {isUnavailable && (
+                                              <span
+                                                style={{
+                                                  fontSize: '0.7rem',
+                                                  marginLeft: '0.5rem',
+                                                  padding: '0.125rem 0.375rem',
+                                                  background: 'rgba(245, 158, 11, 0.2)',
+                                                  color: '#d97706',
+                                                  borderRadius: '4px',
+                                                  fontWeight: '500'
+                                                }}
+                                              >
+                                                Coming Soon
+                                              </span>
+                                            )}
+                                          </h4>
+                                          <p>{model.description}</p>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
+
+                      {/* Selected Models Cards */}
+                      {selectedModels.length > 0 && (
+                        <div className="selected-models-section">
+                          <h3>Selected Models ({selectedModels.length})</h3>
+                          <div
+                            className="selected-models-grid"
+                          >
+                            {selectedModels.map((modelId) => {
+                              const model = allModels.find(m => m.id === modelId);
+                              if (!model) return null;
+
+                              return (
+                                <div key={modelId} className="selected-model-card">
+                                  <div className="selected-model-header">
+                                    <h4>{model.name}</h4>
+                                    <button
+                                      className="remove-model-btn"
+                                      onClick={() => handleModelToggle(modelId)}
+                                      aria-label={`Remove ${model.name}`}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                  <p className="selected-model-description">{model.description}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
