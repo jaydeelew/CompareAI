@@ -724,6 +724,7 @@ function AppContent() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedModelsGridRef = useRef<HTMLDivElement>(null);
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -1373,6 +1374,36 @@ function AppContent() {
 
     fetchModels();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Initializes on mount; auth changes handled separately
+
+  // Setup scroll chaining for selected models grid
+  useEffect(() => {
+    const grid = selectedModelsGridRef.current;
+    if (!grid) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const isAtTop = grid.scrollTop === 0;
+      const isAtBottom = grid.scrollHeight - grid.scrollTop - grid.clientHeight < 1;
+
+      // If at top and scrolling up, or at bottom and scrolling down, manually scroll the window
+      if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+        // Prevent default to stop the grid from trying to scroll
+        e.preventDefault();
+        // Manually scroll the window to allow continuation of scrolling beyond grid boundaries
+        window.scrollBy({
+          top: e.deltaY * 0.5, // Scale down the scroll amount slightly for smoother UX
+          left: 0,
+          behavior: 'auto'
+        });
+        return;
+      }
+    };
+
+    grid.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      grid.removeEventListener('wheel', handleWheel);
+    };
+  }, [selectedModels.length]); // Re-run when selected models change
 
   // Reset page state when user logs out
   useEffect(() => {
@@ -3488,6 +3519,7 @@ function AppContent() {
                         <div className="selected-models-section">
                           <h3>Selected Models ({selectedModels.length})</h3>
                           <div
+                            ref={selectedModelsGridRef}
                             className="selected-models-grid"
                           >
                             {selectedModels.map((modelId) => {
