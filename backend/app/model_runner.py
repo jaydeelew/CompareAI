@@ -25,6 +25,13 @@ BATCH_SIZE = 9  # Process all 9 models in single batch for optimal performance
 MODELS_BY_PROVIDER = {
     "Anthropic": [
         {
+            "id": "anthropic/claude-opus-4.1",
+            "name": "Claude Opus 4.1",
+            "description": "Anthropic's most advanced model, benchmarked as the world's best coding model. Excels in complex reasoning, code generation, and mathematical problem-solving with minimal oversight",
+            "category": "Language/Code",
+            "provider": "Anthropic",
+        },
+        {
             "id": "anthropic/claude-sonnet-4.5",
             "name": "Claude Sonnet 4.5",
             "description": "Anthropic's latest Claude Sonnet 4.5 with enhanced coding and reasoning capabilities",
@@ -36,6 +43,20 @@ MODELS_BY_PROVIDER = {
             "name": "Claude 4 Sonnet",
             "description": "Anthropic's Claude Sonnet 4 with advanced reasoning capabilities and enhanced performance",
             "category": "Language",
+            "provider": "Anthropic",
+        },
+        {
+            "id": "anthropic/claude-haiku-4.5",
+            "name": "Claude Haiku 4.5",
+            "description": "Anthropic's fastest and most efficient model, delivering near-instant responses. Optimized for high-volume tasks like code reviews, bug fixes, and production-grade content generation",
+            "category": "Language",
+            "provider": "Anthropic",
+        },
+        {
+            "id": "anthropic/claude-3.7-sonnet",
+            "name": "Claude 3.7 Sonnet",
+            "description": "Anthropic's Claude 3.7 Sonnet with improved reasoning, coding, and mathematical capabilities. Note: This is an earlier version - Claude 4.5 Sonnet offers newer capabilities",
+            "category": "Language/Reasoning",
             "provider": "Anthropic",
         },
     ],
