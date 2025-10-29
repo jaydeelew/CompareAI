@@ -1459,7 +1459,9 @@ function AppContent() {
 
   const toggleAllForProvider = async (provider: string) => {
     const providerModels = modelsByProvider[provider] || [];
-    const providerModelIds = providerModels.map(model => model.id);
+    // Filter out unavailable models (where available === false)
+    const availableProviderModels = providerModels.filter(model => model.available !== false);
+    const providerModelIds = availableProviderModels.map(model => model.id);
 
     // Check if all provider models are currently selected
     const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
@@ -3362,7 +3364,9 @@ function AppContent() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => {
                                   const providerModels = modelsByProvider[provider] || [];
-                                  const providerModelIds = providerModels.map(model => model.id);
+                                  // Filter out unavailable models (where available === false)
+                                  const availableProviderModels = providerModels.filter(model => model.available !== false);
+                                  const providerModelIds = availableProviderModels.map(model => model.id);
                                   const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
                                   const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
                                   const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
