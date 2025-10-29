@@ -3510,6 +3510,8 @@ function AppContent() {
                                 </div>
                               );
                             })}
+                            {/* Spacer to push cards to bottom when they don't fill the space */}
+                            <div className="selected-models-spacer"></div>
                           </div>
                         </div>
                       )}

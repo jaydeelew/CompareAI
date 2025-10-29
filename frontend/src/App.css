@@ -2025,24 +2025,28 @@ body {
   color: var(--text-primary);
   margin-bottom: 1rem;
   margin-top: 0;
+  flex-shrink: 0;
+  /* Title doesn't shrink */
 }
 
 .selected-models-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.625rem;
   /* Reduced gap for more compact layout */
   flex: 1 1 0;
-  /* Grow and shrink, base size 0 */
+  /* Grow and shrink to fill remaining space */
   min-height: 0;
   /* Critical: allow flex child to shrink below content size */
-  max-height: 100%;
-  /* Constrain to available space */
   overflow-y: auto;
   /* Enable scrolling when content exceeds available space */
-  grid-auto-rows: auto;
-  /* Cards size naturally based on content */
-  grid-template-columns: 1fr;
-  /* Always one column */
+}
+
+/* Spacer element to push cards to bottom when they don't fill the space */
+.selected-models-spacer {
+  flex: 1 1 0;
+  /* Grow to fill remaining space */
+  min-height: 0;
 }
 
 /* Themed scrollbar for Chrome, Safari and Opera - matching website gradient */
