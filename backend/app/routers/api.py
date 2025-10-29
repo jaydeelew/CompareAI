@@ -771,9 +771,6 @@ async def compare_stream(
                                     loop,
                                 )
 
-                                # Log progress every 10 chunks
-                                if count % 10 == 0:
-                                    print(f"📤 Streaming chunk {count} for {model_id}")
 
                             return content, False  # content, is_error
 

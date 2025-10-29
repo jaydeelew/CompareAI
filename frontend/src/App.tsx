@@ -519,7 +519,7 @@ function AppContent() {
       // This prevents infinite loops when programmatic scrolls trigger scroll events
       if (syncingFromElementRef.current !== null) {
         console.log(`[Scroll ${modelId}] In sync operation, syncingFrom: ${syncingFromElementRef.current.id}, current: ${conversationContent.id}`);
-        
+
         // If a different element is trying to scroll, check if it's user-initiated
         if (syncingFromElementRef.current !== conversationContent) {
           // Check if enough time has passed since the last sync to allow new user scrolling
@@ -597,7 +597,6 @@ function AppContent() {
       mousedown: handleMouseDown
     });
 
-    console.log(`✅ Scroll listener setup successful for ${modelId} on element ${conversationContent.id}`);
     return true;
   };
 
@@ -2175,7 +2174,6 @@ function AppContent() {
                   // Record when this specific model started processing (when query was sent to OpenRouter)
                   modelStartTimes[event.model] = new Date().toISOString();
                   shouldUpdate = true;
-                  console.log(`🎬 Streaming started for ${event.model} at ${modelStartTimes[event.model]}`);
                 } else if (event.type === 'chunk') {
                   // Content chunk arrived - append to result
                   streamingResults[event.model] = (streamingResults[event.model] || '') + event.content;
@@ -2206,9 +2204,6 @@ function AppContent() {
                   // Model completed - track it and record completion time
                   completedModels.add(event.model);
                   modelCompletionTimes[event.model] = new Date().toISOString();
-                  console.log(`✅ Streaming complete for ${event.model}, error: ${event.error}`);
-                  console.log(`   Progress: ${completedModels.size}/${selectedModels.length} models complete`);
-                  console.log(`   Completed at: ${modelCompletionTimes[event.model]}`);
                   shouldUpdate = true;
 
                   // Clean up pause state for this model (but keep scroll listeners for scroll lock feature)
@@ -2603,7 +2598,6 @@ function AppContent() {
       if (isFollowUpMode) {
         // For follow-up mode, messages were already added during streaming
         // Just scroll to show the results
-        console.log('✅ Follow-up complete - messages already added during streaming');
 
         // Scroll conversations to show the last user message
         setTimeout(() => {
@@ -2612,7 +2606,6 @@ function AppContent() {
       } else {
         // For initial comparison (non-follow-up), conversations were already initialized during streaming
         // with individual model timestamps. Don't reinitialize here as it would override them!
-        console.log('✅ Initial comparison complete - conversations already set up with individual timestamps');
 
         // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
