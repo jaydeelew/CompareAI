@@ -2023,6 +2023,7 @@ function AppContent() {
     userInteractingRef.current.clear(); // Clear user interaction tracking
     lastScrollTopRef.current.clear(); // Clear scroll position tracking
     lastAlignedRoundRef.current = 0; // Reset round alignment tracking
+    setIsScrollLocked(false); // Reset scroll lock for new comparison
 
     // Clean up any existing scroll listeners from previous comparison
     scrollListenersRef.current.forEach((_listener, modelId) => {
