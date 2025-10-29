@@ -515,23 +515,34 @@ function AppContent() {
         return;
       }
 
-      // If we're already in a sync operation, skip this event
+      // If we're already in a sync operation, check if this is a new user scroll
       // This prevents infinite loops when programmatic scrolls trigger scroll events
       if (syncingFromElementRef.current !== null) {
         console.log(`[Scroll ${modelId}] In sync operation, syncingFrom: ${syncingFromElementRef.current.id}, current: ${conversationContent.id}`);
-        // If this element is NOT the one initiating the sync, it was programmatically scrolled - skip
+        
+        // If a different element is trying to scroll, check if it's user-initiated
         if (syncingFromElementRef.current !== conversationContent) {
-          console.log(`[Scroll ${modelId}] Skipping - this is a programmatic scroll`);
-          return;
+          // Check if enough time has passed since the last sync to allow new user scrolling
+          const timeSinceLastSync = Date.now() - lastSyncTimeRef.current;
+          if (timeSinceLastSync < 100) {
+            // Very recent sync - likely programmatic, skip it
+            console.log(`[Scroll ${modelId}] Skipping - too soon after last sync (${timeSinceLastSync}ms)`);
+            return;
+          } else {
+            // Enough time has passed, this is likely a new user scroll on a different pane
+            console.log(`[Scroll ${modelId}] New user scroll detected on different pane (${timeSinceLastSync}ms since last sync), resetting sync flag`);
+            syncingFromElementRef.current = null;
+          }
+        } else {
+          console.log(`[Scroll ${modelId}] This is the initiating element, continuing`);
         }
-        console.log(`[Scroll ${modelId}] This is the initiating element, continuing`);
-        // If this IS the element initiating the sync, allow it through (user might be scrolling more)
       }
 
       console.log(`[Sync ${modelId}] Starting sync operation`);
 
       // Mark this element as the one initiating the sync
       syncingFromElementRef.current = conversationContent;
+      lastSyncTimeRef.current = Date.now();
       console.log(`[Sync ${modelId}] Set syncingFromElement to: ${conversationContent.id}`);
 
       // Get all conversation content elements
@@ -753,6 +764,7 @@ function AppContent() {
   const [isScrollLocked, setIsScrollLocked] = useState(false);
   const isScrollLockedRef = useRef(false); // Ref to allow listeners to access current state without closure issues
   const syncingFromElementRef = useRef<HTMLElement | null>(null); // Element currently initiating a sync (prevents infinite scroll loops)
+  const lastSyncTimeRef = useRef<number>(0); // Timestamp of last sync to differentiate user scrolls from programmatic scrolls
 
   // Keep ref in sync with state
   useEffect(() => {
