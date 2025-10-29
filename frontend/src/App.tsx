@@ -3597,6 +3597,7 @@ function AppContent() {
                         }
                       }}
                     >
+                      <span>Scroll</span>
                       {isScrollLocked ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
@@ -3608,7 +3609,6 @@ function AppContent() {
                           <line x1="7" y1="11" x2="7" y2="7" />
                         </svg>
                       )}
-                      <span>{isScrollLocked ? 'Unlock' : 'Lock'}</span>
                     </button>
                     {!isFollowUpMode && (
                       <button
