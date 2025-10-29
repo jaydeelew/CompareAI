@@ -3517,7 +3517,6 @@ function AppContent() {
                       {/* Selected Models Cards */}
                       {selectedModels.length > 0 && (
                         <div className="selected-models-section">
-                          <h3>Selected Models ({selectedModels.length})</h3>
                           <div
                             ref={selectedModelsGridRef}
                             className="selected-models-grid"

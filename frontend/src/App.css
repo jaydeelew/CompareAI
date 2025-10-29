@@ -4272,21 +4272,32 @@ body {
   .models-selection-layout {
     flex-direction: column;
     gap: 1.5rem;
+    align-items: stretch;
+    /* Reset to allow natural flow */
   }
 
   .selected-models-section {
     width: 100%;
     min-width: unset;
     height: auto;
+    align-self: auto;
+    /* Reset align-self */
   }
 
   .selected-models-grid {
     max-height: none;
-    overflow-y: hidden;
+    overflow-y: visible;
+    flex: 0 1 auto;
+    /* Don't grow, just take needed space */
   }
 
   .selected-models-grid .selected-model-card {
     height: auto !important;
+  }
+
+  .selected-models-spacer {
+    display: none;
+    /* Hide spacer on narrow screens */
   }
 }
 
@@ -4354,23 +4365,29 @@ body {
   .models-selection-layout {
     flex-direction: column;
     gap: 1.5rem;
+    align-items: stretch;
   }
 
   .selected-models-section {
     width: 100%;
     min-width: unset;
     height: auto;
+    align-self: auto;
   }
 
   .selected-models-grid {
-    grid-template-rows: auto;
     max-height: none;
     overflow-y: visible;
+    flex: 0 1 auto;
   }
 
   .selected-models-grid .selected-model-card {
     min-height: auto;
     height: auto !important;
+  }
+
+  .selected-models-spacer {
+    display: none;
   }
 
   .models-grid,
