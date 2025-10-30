@@ -668,6 +668,12 @@ body {
   z-index: 1;
 }
 
+/* Shrink icon glyph while preserving the container's spacing */
+.capability-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .capability-tile:hover .capability-icon {
   transform: scale(1.1);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(168, 85, 247, 0.3) 100%);
@@ -986,8 +992,9 @@ body {
   }
 
   .hero-capabilities {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
+    gap: 0.5rem; /* preserve distance between tiles */
     max-width: 100%;
     padding: 0 0.5rem;
   }
@@ -1012,6 +1019,7 @@ body {
   }
 
   .capability-tile {
+    width: 76px; /* narrower tile width on mobile */
     padding: 0.5rem;
   }
 
