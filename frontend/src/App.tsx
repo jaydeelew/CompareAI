@@ -1230,6 +1230,13 @@ function AppContent() {
     setShowDoneSelectingCard(false);
   }, [isFollowUpMode]);
 
+  // Hide "Done Selecting?" card when models section is collapsed
+  useEffect(() => {
+    if (isModelsHidden) {
+      setShowDoneSelectingCard(false);
+    }
+  }, [isModelsHidden]);
+
   // Handle scroll tracking to stop animations
   useEffect(() => {
     const handleScroll = () => {
