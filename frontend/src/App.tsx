@@ -3276,18 +3276,42 @@ function AppContent() {
                       }}
                       disabled={selectedModels.length === 0 || isFollowUpMode}
                       style={{
-                        padding: '0.5rem 0.75rem',
+                        padding: 0,
                         fontSize: '0.75rem',
-                        border: '1px solid #dc2626',
+                        border: 'none',
                         background: 'transparent',
                         color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626',
                         borderRadius: '6px',
                         cursor: (selectedModels.length === 0 || isFollowUpMode) ? 'not-allowed' : 'pointer',
-                        opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1
+                        opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: 'var(--models-header-control-height)',
+                        aspectRatio: '1 / 1'
                       }}
-                      title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selected models'}
+                      title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
+                      aria-label={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
                     >
-                      Clear All
+                      {/* Square with X icon (deselect all) */}
+                      <svg
+                        viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                        style={{ height: '100%', width: '100%' }}
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <rect
+                          x="5" y="5" width="14" height="14"
+                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626'}
+                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                        <path
+                          d="M9 9l6 6M15 9l-6 6"
+                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626'}
+                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                     <button
                       onClick={(e) => {
@@ -3295,19 +3319,38 @@ function AppContent() {
                         collapseAllDropdowns();
                       }}
                       disabled={openDropdowns.size === 0}
-                      title={"Collapse all dropdowns"}
+                      title={"Collapse all model providers"}
+                      aria-label={"Collapse all model providers"}
                       style={{
-                        padding: '0.5rem 0.75rem',
+                        padding: 0,
                         fontSize: '0.75rem',
-                        border: '1px solid #3b82f6',
+                        border: 'none',
                         background: 'transparent',
                         color: openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6',
                         borderRadius: '6px',
                         cursor: openDropdowns.size === 0 ? 'not-allowed' : 'pointer',
-                        opacity: openDropdowns.size === 0 ? 0.5 : 1
+                        opacity: openDropdowns.size === 0 ? 0.5 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: 'var(--models-header-control-height)',
+                        aspectRatio: '1 / 1'
                       }}
                     >
-                      Collapse All
+                      {/* Double chevrons up icon (collapse all) */}
+                      <svg
+                        viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                        style={{ height: '100%', width: '100%' }}
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <path
+                          d="M7 13l5-5 5 5M7 18l5-5 5 5"
+                          stroke={openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6'}
+                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                   </div>
                   <div className="models-header-right">
