@@ -210,6 +210,8 @@
   --vh: 100vh;
   /* Responsive page side gutter: never disappears, scales with viewport */
   --page-gutter: clamp(8px, 3vw, 24px);
+  /* Consistent height for models header controls */
+  --models-header-control-height: 36px;
 }
 
 /* Reset and base styles */
@@ -552,6 +554,9 @@ body {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --models-header-control-height: 32px;
+  }
   .hero-title-second-line {
     display: block;
   }
@@ -1695,6 +1700,16 @@ body {
   display: flex;
   gap: 1rem;
   align-items: center;
+}
+
+/* Keep header controls equal height across layouts */
+.models-header-buttons button,
+.models-count-indicator,
+.models-toggle-arrow {
+  height: var(--models-header-control-height);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .input-section:hover,
