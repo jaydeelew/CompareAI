@@ -3295,6 +3295,7 @@ function AppContent() {
                         collapseAllDropdowns();
                       }}
                       disabled={openDropdowns.size === 0}
+                      title={"Collapse all dropdowns"}
                       style={{
                         padding: '0.5rem 0.75rem',
                         fontSize: '0.75rem',
