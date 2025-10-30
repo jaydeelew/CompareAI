@@ -537,6 +537,17 @@ body {
   pointer-events: none;
 }
 
+/* Enable controlled line break in hero title on mobile */
+.hero-title-second-line {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .hero-title-second-line {
+    display: block;
+  }
+}
+
 @keyframes conicRotate {
   0% {
     transform: rotate(0deg);

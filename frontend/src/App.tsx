@@ -2841,7 +2841,7 @@ function AppContent() {
           <main className="app-main">
             <div className="hero-section">
               <div className="hero-content">
-                <h2 className="hero-title">Compare AI Models Side by Side</h2>
+                <h2 className="hero-title">Compare AI Models{" "}<span className="hero-title-second-line">Side by Side</span></h2>
                 <p className="hero-subtitle">Get concurrent responses from multiple AI models to find the best solution for your needs</p>
 
                 <div className="hero-capabilities">
