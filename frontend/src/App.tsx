@@ -101,6 +101,17 @@ const generateBrowserFingerprint = async () => {
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
+  // Track wide layout to coordinate header control alignment with toggle
+  const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth > 1000; // match CSS breakpoint
+  });
+
+  useEffect(() => {
+    const handleResize = () => setIsWideLayout(window.innerWidth > 1000);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
@@ -3248,6 +3259,14 @@ function AppContent() {
               <div
                 className="models-section-header"
                 onClick={() => setIsModelsHidden(!isModelsHidden)}
+                style={{
+                  // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
+                  paddingRight: isWideLayout
+                    ? (selectedModels.length === 0
+                      ? '0' // align to the section's right edge when no models are selected
+                      : 'calc(340px + 2rem + 2.5rem)')
+                    : undefined
+                }}
               >
                 <div className="models-header-title">
                   <h2 style={{ margin: 0 }}>
@@ -3267,7 +3286,13 @@ function AppContent() {
                     }
                   </p>
                 </div>
-                <div className="models-header-controls">
+                <div
+                  className="models-header-controls"
+                  style={{
+                    marginTop: (selectedModels.length === 0 && isWideLayout) ? 0 : undefined,
+                    justifyContent: (selectedModels.length === 0 && isWideLayout) ? 'flex-end' : undefined
+                  }}
+                >
                   <div className="models-header-buttons">
                     <button
                       onClick={(e) => {
@@ -3371,35 +3396,70 @@ function AppContent() {
                     >
                       {selectedModels.length} of {maxModelsLimit} selected
                     </div>
-                    <button
-                      className="models-toggle-arrow"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsModelsHidden(!isModelsHidden);
-                      }}
-                      style={{
-                        padding: '0.5rem',
-                        fontSize: '1.25rem',
-                        border: 'none',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--primary-color)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '36px',
-                        height: '36px',
-                        fontWeight: 'bold'
-                      }}
-                      title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-                    >
-                      {isModelsHidden ? '▼' : '▲'}
-                    </button>
+                    {(selectedModels.length === 0 && isWideLayout) && (
+                      <button
+                        className="models-toggle-arrow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsModelsHidden(!isModelsHidden);
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          fontSize: '1.25rem',
+                          border: 'none',
+                          outline: 'none',
+                          boxShadow: 'none',
+                          background: 'var(--bg-primary)',
+                          color: 'var(--primary-color)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          fontWeight: 'bold'
+                        }}
+                        title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                      >
+                        {isModelsHidden ? '▼' : '▲'}
+                      </button>
+                    )}
                   </div>
                 </div>
+                {!(selectedModels.length === 0 && isWideLayout) && (
+                  <button
+                    className="models-toggle-arrow"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsModelsHidden(!isModelsHidden);
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      fontSize: '1.25rem',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      background: 'var(--bg-primary)',
+                      color: 'var(--primary-color)',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '36px',
+                      height: '36px',
+                      fontWeight: 'bold',
+                      position: 'absolute',
+                      top: '1rem',
+                      right: '1rem',
+                      zIndex: 10
+                    }}
+                    title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                  >
+                    {isModelsHidden ? '▼' : '▲'}
+                  </button>
+                )}
               </div>
 
               {!isModelsHidden && (

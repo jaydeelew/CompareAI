@@ -557,6 +557,7 @@ body {
   :root {
     --models-header-control-height: 32px;
   }
+
   .hero-title-second-line {
     display: block;
   }
@@ -1019,7 +1020,8 @@ body {
   .hero-capabilities {
     grid-template-columns: repeat(3, auto);
     justify-content: center;
-    gap: 0.5rem; /* preserve distance between tiles */
+    gap: 0.5rem;
+    /* preserve distance between tiles */
     max-width: 100%;
     padding: 0 0.5rem;
   }
@@ -1044,7 +1046,8 @@ body {
   }
 
   .capability-tile {
-    width: 76px; /* narrower tile width on mobile */
+    width: 76px;
+    /* narrower tile width on mobile */
     padding: 0.5rem;
   }
 
@@ -1675,10 +1678,13 @@ body {
 /* Models section header */
 .models-section-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 1.5rem;
   cursor: pointer;
+  position: relative;
+  padding-right: 2.5rem;
+  /* Space for toggle button */
 }
 
 .models-header-title {
@@ -1689,6 +1695,7 @@ body {
   display: flex;
   gap: 1rem;
   align-items: center;
+  margin-top: 1.5rem;
 }
 
 .models-header-buttons {
@@ -4313,6 +4320,24 @@ body {
   }
 }
 
+/* Wide screens - align header controls with left column */
+@media (min-width: 1001px) {
+
+  /* Reserve space for the selected models column (340px) + gap (2rem) + toggle button (2.5rem) */
+  .models-section-header {
+    padding-right: calc(340px + 2rem + 2.5rem);
+    box-sizing: border-box;
+  }
+
+  .models-header-controls {
+    margin-left: auto;
+    /* push controls to the right edge of provider column */
+    flex: 0 0 auto;
+    /* do not stretch; hug content */
+    justify-content: flex-end;
+  }
+}
+
 /* Medium/narrow screens - stack layout */
 @media (max-width: 1000px) {
   .models-selection-layout {
@@ -4374,6 +4399,8 @@ body {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
+    padding-right: 2.5rem;
+    /* Space for toggle button */
   }
 
   .models-header-title {
@@ -4392,12 +4419,14 @@ body {
 
   .models-header-buttons {
     order: 1;
-    display: contents; /* make individual buttons flex items of parent */
+    display: contents;
+    /* make individual buttons flex items of parent */
   }
 
   .models-header-right {
     order: 2;
-    display: contents; /* expose count indicator (and hide arrow below) */
+    display: contents;
+    /* expose count indicator (and hide arrow below) */
   }
 
   .models-count-indicator {
@@ -4410,7 +4439,8 @@ body {
   }
 
   .models-toggle-arrow {
-    display: none; /* show exactly three items on phone widths */
+    top: 1rem;
+    right: var(--page-gutter);
   }
 
   /* Make the two buttons fill grid like thirds, allow shrinking when counter needs space */
