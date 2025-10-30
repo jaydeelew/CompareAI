@@ -208,6 +208,8 @@
   /* Viewport width that accounts for scrollbar */
   --vw: 100vw;
   --vh: 100vh;
+  /* Responsive page side gutter: never disappears, scales with viewport */
+  --page-gutter: clamp(8px, 3vw, 24px);
 }
 
 /* Reset and base styles */
@@ -1620,7 +1622,7 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--page-gutter);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1820,7 +1822,7 @@ body {
 /* Responsive Design for Main Content */
 @media (max-width: 768px) {
   .app-main {
-    padding: 0;
+    padding: 0 var(--page-gutter);
     gap: 1.5rem;
   }
 
@@ -1831,15 +1833,15 @@ body {
   .action-section,
   .results-section,
   .loading-section {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
   }
 
   .input-section,
   .models-section,
   .action-section,
   .results-section {
-    padding: 1.5rem 0.75rem;
+    padding: 1.5rem var(--page-gutter);
     max-width: none;
   }
 
@@ -4284,7 +4286,7 @@ body {
 /* Responsive */
 @media (max-width: 1200px) {
   .app-main {
-    padding: 2rem 2vw;
+    padding: 2rem var(--page-gutter);
   }
 
   .input-section,
@@ -4292,7 +4294,7 @@ body {
   .action-section,
   .results-section {
     max-width: 100vw;
-    padding: 1.5rem 1vw;
+    padding: 1.5rem var(--page-gutter);
   }
 }
 
@@ -4336,7 +4338,7 @@ body {
   }
 
   .app-main {
-    padding: 0;
+    padding: 0 var(--page-gutter);
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
@@ -4346,7 +4348,7 @@ body {
   .models-section,
   .action-section,
   .results-section {
-    padding: 1rem 0.5vw;
+    padding: 1rem var(--page-gutter);
     border-radius: 8px;
     width: 100%;
     max-width: 100%;
