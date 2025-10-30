@@ -233,6 +233,7 @@ html {
   width: 100%;
   overflow-anchor: none;
   /* Prevent automatic scroll adjustments as content loads */
+  margin: 0;
 }
 
 body {
@@ -245,6 +246,7 @@ body {
   color: var(--text-primary);
   overflow-x: hidden;
   width: 100%;
+  margin: 0;
 }
 
 .app {
@@ -496,6 +498,11 @@ body {
   overflow: hidden;
   display: block;
   transition: margin-top 0.5s ease-out;
+  /* Make the hero full-bleed across the viewport, regardless of parent padding */
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 
 .hero-section::before {
@@ -4358,25 +4365,30 @@ body {
 
   .models-header-controls {
     order: 2;
-    flex-direction: column;
-    gap: 0.75rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 
   .models-header-buttons {
     order: 1;
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .models-header-right {
     order: 2;
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.75rem;
+    width: auto;
+    justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .models-count-indicator {
-    flex: 1;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .models-toggle-arrow {
