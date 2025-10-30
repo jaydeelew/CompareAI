@@ -3268,8 +3268,11 @@ function AppContent() {
                 onClick={() => setIsModelsHidden(!isModelsHidden)}
                 style={{
                   // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
+                  // When collapsed, reserve space for the toggle button (36px width + 1rem right + 1rem gap)
                   paddingRight: isWideLayout
-                    ? (selectedModels.length === 0
+                    ? (isModelsHidden
+                      ? 'calc(36px + 2rem)' // space for toggle button (36px width + 1rem right + 1rem gap) when collapsed
+                      : selectedModels.length === 0
                       ? '0' // align to the section's right edge when no models are selected
                       : 'calc(340px + 2rem + 2.5rem)')
                     : undefined
@@ -3296,8 +3299,9 @@ function AppContent() {
                 <div
                   className="models-header-controls"
                   style={{
-                    marginTop: (selectedModels.length === 0 && isWideLayout) ? 0 : undefined,
-                    justifyContent: (selectedModels.length === 0 && isWideLayout) ? 'flex-end' : undefined
+                    marginTop: (isModelsHidden && isWideLayout && selectedModels.length > 0) ? '1rem' : ((isModelsHidden || selectedModels.length === 0) && isWideLayout) ? 0 : undefined,
+                    justifyContent: (isModelsHidden || (selectedModels.length === 0 && isWideLayout)) ? 'flex-end' : undefined,
+                    alignSelf: (isModelsHidden && isWideLayout && selectedModels.length > 0) ? 'flex-start' : undefined
                   }}
                 >
                   <div className="models-header-buttons">
