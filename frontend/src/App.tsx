@@ -3265,17 +3265,18 @@ function AppContent() {
             <section className="models-section" ref={modelsSectionRef}>
               <div
                 className="models-section-header"
+                data-has-models={selectedModels.length > 0 && isWideLayout ? 'true' : undefined}
                 onClick={() => setIsModelsHidden(!isModelsHidden)}
                 style={{
                   // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
-                  // When collapsed, reserve space for the toggle button (36px width + 1rem right + 1rem gap)
-                  paddingRight: isWideLayout
-                    ? (isModelsHidden
-                      ? 'calc(36px + 2rem)' // space for toggle button (36px width + 1rem right + 1rem gap) when collapsed
-                      : selectedModels.length === 0
-                      ? '0' // align to the section's right edge when no models are selected
-                      : 'calc(340px + 2rem + 2.5rem)')
-                    : undefined
+                  // Keep padding consistent whether collapsed or not when models are selected
+                  // Force the padding-right value to ensure it overrides CSS media query
+                  ...(isWideLayout && selectedModels.length > 0 ? { 
+                    paddingRight: 'calc(340px + 2rem + 2.5rem)',
+                  } : {}),
+                  ...(isWideLayout && selectedModels.length === 0 ? {
+                    paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0'
+                  } : {})
                 }}
               >
                 <div className="models-header-title">
@@ -3299,9 +3300,13 @@ function AppContent() {
                 <div
                   className="models-header-controls"
                   style={{
-                    marginTop: (isModelsHidden && isWideLayout && selectedModels.length > 0) ? '1rem' : ((isModelsHidden || selectedModels.length === 0) && isWideLayout) ? 0 : undefined,
-                    justifyContent: (isModelsHidden || (selectedModels.length === 0 && isWideLayout)) ? 'flex-end' : undefined,
-                    alignSelf: (isModelsHidden && isWideLayout && selectedModels.length > 0) ? 'flex-start' : undefined
+                    marginTop: (selectedModels.length === 0 && isWideLayout) ? 0 : undefined,
+                    justifyContent: isWideLayout ? 'flex-end' : undefined,
+                    alignSelf: isWideLayout ? 'flex-start' : undefined,
+                    marginLeft: isWideLayout ? 'auto' : undefined,
+                    position: isWideLayout ? 'absolute' : undefined,
+                    top: isWideLayout ? '1rem' : undefined,
+                    right: isWideLayout ? 'calc(2.5rem)' : undefined
                   }}
                 >
                   <div className="models-header-buttons">

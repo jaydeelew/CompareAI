@@ -4324,7 +4324,8 @@ body {
 @media (min-width: 1001px) {
 
   /* Reserve space for the selected models column (340px) + gap (2rem) + toggle button (2.5rem) */
-  .models-section-header {
+  /* When models are selected, inline styles control padding to keep it consistent when collapsed */
+  .models-section-header:not([data-has-models]) {
     padding-right: calc(340px + 2rem + 2.5rem);
     box-sizing: border-box;
   }
