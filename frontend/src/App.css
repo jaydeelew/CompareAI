@@ -284,6 +284,8 @@ body {
   max-width: none;
   margin: 0;
   height: 60px;
+  flex-wrap: nowrap;
+  overflow: visible;
 }
 
 .nav-brand {
@@ -345,6 +347,8 @@ body {
   align-items: center;
   gap: 0.5rem;
   margin-right: 1rem;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .nav-button {
@@ -432,6 +436,8 @@ body {
   height: 40px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-button-text:hover {
@@ -464,6 +470,8 @@ body {
   height: 40px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-button-primary:hover {
@@ -482,13 +490,6 @@ body {
 .nav-button-primary:focus {
   border: none !important;
   outline: none !important;
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-right: 1rem;
 }
 
 /* Hero Section - Modern 2025 Design */
@@ -999,6 +1000,56 @@ body {
     color: #374151;
     font-weight: 600;
     opacity: 1;
+  }
+
+  .nav-brand {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: calc(100% - 140px);
+  }
+
+  .nav-brand .brand-text h1 {
+    font-size: 1.125rem;
+  }
+
+  .nav-button-text,
+  .nav-button-primary {
+    white-space: nowrap !important;
+    font-size: 0.75rem !important;
+    min-width: 70px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0.5rem 0.875rem !important;
+    line-height: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    word-break: keep-all !important;
+    word-wrap: normal !important;
+    text-overflow: clip !important;
+    text-wrap: nowrap !important;
+  }
+
+  .nav-button-text *,
+  .nav-button-primary * {
+    white-space: nowrap !important;
+  }
+
+  .nav-button-primary {
+    min-width: 75px !important;
+    padding: 0.5rem 1rem !important;
+  }
+
+  .nav-actions {
+    gap: 0.375rem !important;
+    flex-shrink: 0 !important;
+    min-width: 0;
+  }
+
+  .navbar {
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
   }
 
   .hero-section {
@@ -4544,6 +4595,60 @@ body {
   .error-message {
     width: calc(100% - 1rem);
   }
+
+  .nav-brand {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: calc(100% - 130px);
+  }
+
+  .nav-brand .brand-text h1 {
+    font-size: 1rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.5625rem;
+  }
+
+  .nav-button-text,
+  .nav-button-primary {
+    white-space: nowrap !important;
+    font-size: 0.65rem !important;
+    min-width: 65px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0.5rem 0.75rem !important;
+    line-height: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    word-break: keep-all !important;
+    word-wrap: normal !important;
+    text-overflow: clip !important;
+    text-wrap: nowrap !important;
+  }
+
+  .nav-button-text *,
+  .nav-button-primary * {
+    white-space: nowrap !important;
+  }
+
+  .nav-button-primary {
+    min-width: 70px !important;
+    padding: 0.5rem 0.875rem !important;
+  }
+
+  .nav-actions {
+    gap: 0.25rem !important;
+    flex-shrink: 0 !important;
+    min-width: 0;
+  }
+
+  .navbar {
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+  }
 }
 
 /* Build info footer */
@@ -4955,6 +5060,104 @@ body {
 
 .custom-select-option.selected {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Force prevent text wrapping in nav buttons - highest priority at end of file */
+button.nav-button-text,
+button.nav-button-primary {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  min-width: max-content !important;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+  }
+  
+  .nav-brand {
+    flex-shrink: 1 !important;
+    min-width: 0;
+    max-width: calc(100% - 150px) !important;
+  }
+
+  button.nav-button-text,
+  button.nav-button-primary {
+    white-space: nowrap !important;
+    font-size: 0.7rem !important;
+    min-width: 70px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0.5rem 0.875rem !important;
+    line-height: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    word-break: keep-all !important;
+    word-wrap: normal !important;
+    overflow-wrap: normal !important;
+    text-overflow: clip !important;
+    text-wrap: nowrap !important;
+  }
+
+  button.nav-button-text *,
+  button.nav-button-primary * {
+    white-space: nowrap !important;
+  }
+
+  button.nav-button-primary {
+    min-width: 75px !important;
+    padding: 0.5rem 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+  }
+  
+  .nav-brand {
+    flex-shrink: 1 !important;
+    min-width: 0;
+    max-width: calc(100% - 140px) !important;
+  }
+
+  button.nav-button-text,
+  button.nav-button-primary {
+    white-space: nowrap !important;
+    font-size: 0.65rem !important;
+    min-width: 65px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0.5rem 0.75rem !important;
+    line-height: 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    word-break: keep-all !important;
+    word-wrap: normal !important;
+    overflow-wrap: normal !important;
+    text-overflow: clip !important;
+    text-wrap: nowrap !important;
+  }
+
+  button.nav-button-text *,
+  button.nav-button-primary * {
+    white-space: nowrap !important;
+  }
+
+  button.nav-button-primary {
+    min-width: 70px !important;
+    padding: 0.5rem 0.875rem !important;
+  }
 }
 
 .custom-select-option.disabled {
