@@ -3306,7 +3306,7 @@ function AppContent() {
                     marginLeft: isWideLayout ? 'auto' : undefined,
                     position: isWideLayout ? 'absolute' : undefined,
                     top: isWideLayout ? '1rem' : undefined,
-                    right: isWideLayout ? 'calc(2.5rem)' : undefined
+                    right: isWideLayout ? '1rem' : undefined
                   }}
                 >
                   <div className="models-header-buttons">
