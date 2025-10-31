@@ -2672,6 +2672,8 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .follow-up-button:hover {
@@ -4569,6 +4571,14 @@ body {
     padding: 0.5rem;
     max-height: 350px;
   }
+
+  .follow-up-button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8125rem !important;
+    min-width: fit-content !important;
+  }
 }
 
 /* Extra small screens responsiveness */
@@ -4637,6 +4647,14 @@ body {
   .nav-button-primary {
     min-width: 70px !important;
     padding: 0.5rem 0.875rem !important;
+  }
+
+  .follow-up-button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.75rem !important;
+    min-width: fit-content !important;
   }
 
   .nav-actions {
