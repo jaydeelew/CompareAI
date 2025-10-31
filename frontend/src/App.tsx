@@ -2954,7 +2954,7 @@ function AppContent() {
                         }
                       }}
                       placeholder={isFollowUpMode
-                        ? "Enter your follow-up question or request here..."
+                        ? "Enter your follow-up here" 
                         : "Let's get started..."
                       }
                       className="hero-input-textarea"
