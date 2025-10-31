@@ -2881,7 +2881,6 @@ function AppContent() {
                 <div className="hero-capabilities">
                   <div 
                     className="capability-tile" 
-                    title="Natural Language"
                     onClick={() => handleCapabilityTileTap('natural-language')}
                   >
                     <div className="capability-icon">
@@ -2898,7 +2897,6 @@ function AppContent() {
 
                   <div 
                     className="capability-tile" 
-                    title="Code Generation"
                     onClick={() => handleCapabilityTileTap('code-generation')}
                   >
                     <div className="capability-icon">
@@ -2916,7 +2914,6 @@ function AppContent() {
 
                   <div 
                     className="capability-tile" 
-                    title="Formatted Math"
                     onClick={() => handleCapabilityTileTap('formatted-math')}
                   >
                     <div className="capability-icon">
