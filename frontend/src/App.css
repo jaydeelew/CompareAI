@@ -1114,7 +1114,24 @@ body {
   }
 
   .hero-input-section h2 {
-    font-size: clamp(1.125rem, 5vw, 1.375rem);
+    font-size: clamp(0.875rem, 3.5vw, 1.125rem) !important;
+    white-space: nowrap !important;
+  }
+
+  /* Prevent wrapping for follow-up mode and message context text */
+  .follow-up-header {
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .follow-up-header h2 {
+    font-size: clamp(0.875rem, 3.5vw, 1.125rem) !important;
+    white-space: nowrap !important;
+  }
+
+  .follow-up-header span {
+    font-size: clamp(0.875rem, 3.5vw, 1.125rem) !important;
+    white-space: nowrap !important;
   }
 
   .hero-input-textarea {
@@ -5132,6 +5149,22 @@ button.nav-button-primary {
   button.nav-button-primary {
     min-width: 75px !important;
     padding: 0.5rem 1rem !important;
+  }
+
+  /* Extended mode usage preview - stack on mobile */
+  .usage-preview-extended {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .usage-preview-extended .usage-preview-item {
+    display: block;
+  }
+
+  /* Hide the inline " • " separator on mobile */
+  .usage-preview-extended .usage-preview-separator {
+    display: none;
   }
 }
 

@@ -2896,7 +2896,7 @@ function AppContent() {
                 </div>
 
                 <div className="hero-input-section">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <div className="follow-up-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     {isFollowUpMode ? (
                       <>
                         <h2 style={{ margin: 0 }}>
@@ -3092,16 +3092,19 @@ function AppContent() {
                     const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
 
                     return (
-                      <div style={{
+                      <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
                         marginTop: '0.5rem',
                         fontSize: '0.825rem',
                         color: 'rgba(255, 255, 255, 0.85)'
                       }}>
-                        <span>
+                        <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
                           <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                         </span>
                         {isExtendedInteraction && (
-                          <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
+                          <span className="usage-preview-item">
+                            <span className="usage-preview-separator"> • </span>
+                            <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining
+                          </span>
                         )}
                       </div>
                     );
@@ -3175,16 +3178,19 @@ function AppContent() {
                       <>
                         {/* Usage Preview - Simple text line */}
                         {messageCount > 0 && (
-                          <div style={{
+                          <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
                             marginTop: '0.5rem',
                             fontSize: '0.825rem',
                             color: 'rgba(255, 255, 255, 0.85)'
                           }}>
-                            <span>
+                            <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
                               <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
                             </span>
                             {isExtendedInteraction && (
-                              <span> • <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining</span>
+                              <span className="usage-preview-item">
+                                <span className="usage-preview-separator"> • </span>
+                                <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining
+                              </span>
                             )}
                           </div>
                         )}
