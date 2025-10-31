@@ -3643,20 +3643,28 @@ function AppContent() {
 
             {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
             {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
-              <div style={{
+              <div className="usage-tracking-banner" style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 padding: '1rem',
-                margin: '0',
-                width: '100%',
                 textAlign: 'center',
                 boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
               }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                <div className="usage-banner-content">
                   {usageCount < MAX_DAILY_USAGE ? (
-                    `${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Sign up for 20 free per day`
+                    <>
+                      <div className="usage-banner-text-desktop" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                        {`${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Sign up for 20 free per day`}
+                      </div>
+                      <div className="usage-banner-text-mobile" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                        <div>{`${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today`}</div>
+                        <div>Sign up for 20 free per day</div>
+                      </div>
+                    </>
                   ) : (
-                    'Daily limit reached! Sign up for a free account to get 20 model responses per day.'
+                    <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Daily limit reached! Sign up for a free account to get 20 model responses per day.
+                    </div>
                   )}
                 </div>
 
