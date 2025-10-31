@@ -4398,24 +4398,35 @@ body {
   /* Mobile layout for models section header */
   .models-section-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 1rem;
-    padding-right: 2.5rem;
-    /* Space for toggle button */
+    padding-right: 0;
+    /* Remove right padding for proper centering */
   }
 
   .models-header-title {
     order: 1;
+    text-align: center;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .models-header-title h2,
+  .models-header-title p {
+    text-align: center;
   }
 
   .models-header-controls {
     order: 2;
     flex-direction: row;
     flex-wrap: nowrap;
-    align-items: stretch;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     width: 100%;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .models-header-buttons {
@@ -4444,13 +4455,11 @@ body {
     right: var(--page-gutter);
   }
 
-  /* Make the two buttons fill grid like thirds, allow shrinking when counter needs space */
+  /* Keep buttons at their natural size, don't stretch them */
   .models-header-buttons button {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
     justify-content: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   /* Stack layout vertically on mobile */
