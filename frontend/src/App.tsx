@@ -3277,8 +3277,8 @@ function AppContent() {
                   ...(isWideLayout && selectedModels.length === 0 ? {
                     paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0'
                   } : {}),
-                  // Center items vertically when collapsed
-                  alignItems: isModelsHidden ? 'center' : undefined
+                  // Always center items vertically
+                  alignItems: 'center'
                 }}
               >
                 <div className="models-header-title">
@@ -3303,13 +3303,13 @@ function AppContent() {
                   className="models-header-controls"
                   style={{
                     justifyContent: isWideLayout ? 'flex-end' : undefined,
-                    alignSelf: isWideLayout ? (isModelsHidden ? 'center' : 'flex-start') : undefined,
+                    alignSelf: isWideLayout ? 'center' : undefined,
                     marginLeft: isWideLayout ? 'auto' : undefined,
-                    marginTop: isModelsHidden ? 0 : undefined,
+                    marginTop: 0,
                     position: isWideLayout ? 'absolute' : undefined,
-                    top: isWideLayout ? (isModelsHidden ? '50%' : '1rem') : undefined,
+                    top: isWideLayout ? '50%' : undefined,
                     right: isWideLayout ? '1rem' : undefined,
-                    transform: (isWideLayout && isModelsHidden) ? 'translateY(-50%)' : undefined
+                    transform: isWideLayout ? 'translateY(-50%)' : undefined
                   }}
                 >
                   <div className="models-header-buttons">
