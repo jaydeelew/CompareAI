@@ -3300,7 +3300,6 @@ function AppContent() {
                 <div
                   className="models-header-controls"
                   style={{
-                    marginTop: (selectedModels.length === 0 && isWideLayout) ? 0 : undefined,
                     justifyContent: isWideLayout ? 'flex-end' : undefined,
                     alignSelf: isWideLayout ? 'flex-start' : undefined,
                     marginLeft: isWideLayout ? 'auto' : undefined,
@@ -3412,70 +3411,35 @@ function AppContent() {
                     >
                       {selectedModels.length} of {maxModelsLimit} selected
                     </div>
-                    {(selectedModels.length === 0 && isWideLayout) && (
-                      <button
-                        className="models-toggle-arrow"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsModelsHidden(!isModelsHidden);
-                        }}
-                        style={{
-                          padding: '0.5rem',
-                          fontSize: '1.25rem',
-                          border: 'none',
-                          outline: 'none',
-                          boxShadow: 'none',
-                          background: 'var(--bg-primary)',
-                          color: 'var(--primary-color)',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '36px',
-                          height: '36px',
-                          fontWeight: 'bold'
-                        }}
-                        title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-                      >
-                        {isModelsHidden ? '▼' : '▲'}
-                      </button>
-                    )}
+                    <button
+                      className="models-toggle-arrow"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsModelsHidden(!isModelsHidden);
+                      }}
+                      style={{
+                        padding: '0.5rem',
+                        fontSize: '1.25rem',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'var(--bg-primary)',
+                        color: 'var(--primary-color)',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '36px',
+                        height: '36px',
+                        fontWeight: 'bold'
+                      }}
+                      title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                    >
+                      {isModelsHidden ? '▼' : '▲'}
+                    </button>
                   </div>
                 </div>
-                {!(selectedModels.length === 0 && isWideLayout) && (
-                  <button
-                    className="models-toggle-arrow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsModelsHidden(!isModelsHidden);
-                    }}
-                    style={{
-                      padding: '0.5rem',
-                      fontSize: '1.25rem',
-                      border: 'none',
-                      outline: 'none',
-                      boxShadow: 'none',
-                      background: 'var(--bg-primary)',
-                      color: 'var(--primary-color)',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '36px',
-                      height: '36px',
-                      fontWeight: 'bold',
-                      position: 'absolute',
-                      top: '1rem',
-                      right: '1rem',
-                      zIndex: 10
-                    }}
-                    title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-                  >
-                    {isModelsHidden ? '▼' : '▲'}
-                  </button>
-                )}
               </div>
 
               {!isModelsHidden && (
