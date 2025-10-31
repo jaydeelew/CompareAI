@@ -112,6 +112,22 @@ function AppContent() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // State for mobile tooltip visibility (capability tiles)
+  const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
+  
+  // Handle capability tile tap on mobile to show tooltip
+  const handleCapabilityTileTap = (tileId: string) => {
+    // Only show tooltip on mobile (screen width <= 768px)
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setVisibleTooltip(tileId);
+      // Hide tooltip after 2 seconds
+      setTimeout(() => {
+        setVisibleTooltip(null);
+      }, 2000);
+    }
+  };
+  
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
@@ -2863,7 +2879,11 @@ function AppContent() {
                 <p className="hero-subtitle">Get concurrent responses from multiple AI models to find the best solution for your needs</p>
 
                 <div className="hero-capabilities">
-                  <div className="capability-tile" title="Natural Language">
+                  <div 
+                    className="capability-tile" 
+                    title="Natural Language"
+                    onClick={() => handleCapabilityTileTap('natural-language')}
+                  >
                     <div className="capability-icon">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -2871,9 +2891,16 @@ function AppContent() {
                     </div>
                     <h3 className="capability-title">Natural Language</h3>
                     <p className="capability-description">Compare conversational responses</p>
+                    <div className={`capability-tooltip ${visibleTooltip === 'natural-language' ? 'visible' : ''}`}>
+                      Natural Language: Compare conversational responses
+                    </div>
                   </div>
 
-                  <div className="capability-tile" title="Code Generation">
+                  <div 
+                    className="capability-tile" 
+                    title="Code Generation"
+                    onClick={() => handleCapabilityTileTap('code-generation')}
+                  >
                     <div className="capability-icon">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="16 18 22 12 16 6"></polyline>
@@ -2882,9 +2909,16 @@ function AppContent() {
                     </div>
                     <h3 className="capability-title">Code Generation</h3>
                     <p className="capability-description">Evaluate programming capabilities</p>
+                    <div className={`capability-tooltip ${visibleTooltip === 'code-generation' ? 'visible' : ''}`}>
+                      Code Generation: Evaluate programming capabilities
+                    </div>
                   </div>
 
-                  <div className="capability-tile" title="Formatted Math">
+                  <div 
+                    className="capability-tile" 
+                    title="Formatted Math"
+                    onClick={() => handleCapabilityTileTap('formatted-math')}
+                  >
                     <div className="capability-icon">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 12h3l3 7 5-14h7"></path>
@@ -2892,6 +2926,9 @@ function AppContent() {
                     </div>
                     <h3 className="capability-title">Formatted Math</h3>
                     <p className="capability-description">Render LaTeX equations beautifully</p>
+                    <div className={`capability-tooltip ${visibleTooltip === 'formatted-math' ? 'visible' : ''}`}>
+                      Formatted Math: Render LaTeX equations beautifully
+                    </div>
                   </div>
                 </div>
 
