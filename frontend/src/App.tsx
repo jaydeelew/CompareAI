@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -29,6 +29,14 @@ interface ConversationMessage {
   type: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+interface StoredMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  model_id?: string;
+  id?: string | number;
 }
 
 interface ModelConversation {
@@ -1016,7 +1024,7 @@ function AppContent() {
   const allModels = Object.values(modelsByProvider).flat();
 
   // Load conversation history from localStorage (anonymous users)
-  const loadHistoryFromLocalStorage = (): ConversationSummary[] => {
+  const loadHistoryFromLocalStorage = useCallback((): ConversationSummary[] => {
     try {
       const stored = localStorage.getItem('compareai_conversation_history');
       if (stored) {
@@ -1030,7 +1038,7 @@ function AppContent() {
       console.error('Failed to load conversation history from localStorage:', e);
     }
     return [];
-  };
+  }, []);
 
   // Save conversation to localStorage (anonymous users)
   const saveConversationToLocalStorage = (inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false) => {
@@ -1054,9 +1062,9 @@ function AppContent() {
             try {
               const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
               if (storedData) {
-                const parsed = JSON.parse(storedData);
+                const parsed = JSON.parse(storedData) as { messages?: StoredMessage[]; input_data?: string };
                 // Check if the first user message in stored data matches our inputData
-                const firstStoredUserMsg = parsed.messages?.find((m: any) => m.role === 'user');
+                const firstStoredUserMsg = parsed.messages?.find((m: StoredMessage) => m.role === 'user');
                 if (firstStoredUserMsg && firstStoredUserMsg.content === inputData) {
                   return true;
                 }
@@ -1065,7 +1073,7 @@ function AppContent() {
                   return true;
                 }
               }
-            } catch (e) {
+            } catch {
               // If we can't parse, fall back to input_data match
               return conv.input_data === inputData;
             }
@@ -1074,7 +1082,7 @@ function AppContent() {
         });
         
         if (existingConversation) {
-          conversationId = existingConversation.id;
+          conversationId = String(existingConversation.id);
         } else {
           // Couldn't find existing, create new (shouldn't happen)
           conversationId = Date.now().toString();
@@ -1128,7 +1136,7 @@ function AppContent() {
       
       // Store full conversation data with ID as key
       // Format: messages with role and model_id for proper reconstruction
-      const conversationMessages: any[] = [];
+      const conversationMessages: StoredMessage[] = [];
       const seenUserMessages = new Set<string>(); // Track user messages to avoid duplicates
       
       // Group messages from conversations by model
@@ -1175,7 +1183,7 @@ function AppContent() {
   };
 
   // Load conversation history from API (authenticated users)
-  const loadHistoryFromAPI = async () => {
+  const loadHistoryFromAPI = useCallback(async () => {
     if (!isAuthenticated) return;
     
     setIsLoadingHistory(true);
@@ -1202,10 +1210,10 @@ function AppContent() {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [isAuthenticated]);
 
   // Load full conversation from localStorage (anonymous users)
-  const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: any[] } | null => {
+  const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
     try {
       const stored = localStorage.getItem(`compareai_conversation_${id}`);
       if (stored) {
@@ -1222,7 +1230,7 @@ function AppContent() {
   };
 
   // Load full conversation from API (authenticated users)
-  const loadConversationFromAPI = async (id: number): Promise<{ input_data: string; models_used: string[]; messages: any[] } | null> => {
+  const loadConversationFromAPI = async (id: number): Promise<{ input_data: string; models_used: string[]; messages: StoredMessage[] } | null> => {
     if (!isAuthenticated) return null;
     
     try {
@@ -1257,7 +1265,7 @@ function AppContent() {
   const loadConversation = async (summary: ConversationSummary) => {
     setIsLoadingHistory(true);
     try {
-      let conversationData: { input_data: string; models_used: string[]; messages: any[] } | null = null;
+      let conversationData: { input_data: string; models_used: string[]; messages: StoredMessage[] } | null = null;
       
       if (isAuthenticated && typeof summary.id === 'number') {
         conversationData = await loadConversationFromAPI(summary.id);
@@ -1295,10 +1303,14 @@ function AppContent() {
       
       // Group messages into conversation rounds (user message + all assistant responses)
       // User messages should already be deduplicated when saved, so we can process in order
-      const rounds: Array<{ user: any; assistants: any[] }> = [];
-      let currentRound: { user: any; assistants: any[] } | null = null;
+      interface ConversationRound {
+        user: StoredMessage;
+        assistants: StoredMessage[];
+      }
+      const rounds: ConversationRound[] = [];
+      let currentRound: ConversationRound | null = null;
       
-      sortedMessages.forEach((msg: any) => {
+      sortedMessages.forEach((msg: StoredMessage) => {
         if (msg.role === 'user') {
           // If we have a current round, save it
           if (currentRound && currentRound.user) {
@@ -1328,7 +1340,7 @@ function AppContent() {
       });
       
       // Don't forget the last round
-      if (currentRound && currentRound.user) {
+      if (currentRound) {
         rounds.push(currentRound);
       }
       
@@ -1373,13 +1385,6 @@ function AppContent() {
       // Set selected models - only the models from this conversation, clear all others
       setSelectedModels([...conversationData.models_used]);
       
-      // Get the first user message from the loaded conversation (not follow-ups)
-      // This ensures we always reference the conversation by its first query
-      const firstUserMessage = loadedConversations
-        .flatMap(conv => conv.messages)
-        .filter(msg => msg.type === 'user')
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-      
       // Use the first user message as the input reference, but clear textarea for new follow-up
       // The conversation will be referenced by this first query in history
       setInput(''); // Clear textarea so user can type a new follow-up
@@ -1411,7 +1416,7 @@ function AppContent() {
       const history = loadHistoryFromLocalStorage();
       setConversationHistory(history);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -3475,15 +3480,11 @@ function AppContent() {
                             height: '32px',
                             borderRadius: '50%',
                             minWidth: '32px',
-                            padding: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            padding: 0
                           }}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', display: 'block' }}>
-                            <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                            <line x1="12" y1="19" x2="12" y2="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                           </svg>
                         </button>
                         <span style={{
@@ -3621,6 +3622,16 @@ function AppContent() {
                                   <div className="history-signup-message">
                                     You've reached your limit of 2 saved comparisons. Sign up for a free account to save 3+ comparisons!
                                   </div>
+                                  <button
+                                    className="history-signup-button"
+                                    onClick={() => {
+                                      setAuthModalMode('register');
+                                      setIsAuthModalOpen(true);
+                                      setShowHistoryDropdown(false);
+                                    }}
+                                  >
+                                    Sign Up Free
+                                  </button>
                                 </div>
                               )}
                             </>
