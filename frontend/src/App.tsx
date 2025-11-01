@@ -1335,6 +1335,9 @@ function AppContent() {
         return;
       }
       
+      // Store models_used in a local variable to satisfy TypeScript null checks in callbacks
+      const modelsUsed = conversationData.models_used;
+      
       console.log('Loaded conversation data:', {
         input_data: conversationData.input_data,
         models_used: conversationData.models_used,
@@ -1346,7 +1349,7 @@ function AppContent() {
       const messagesByModel: { [key: string]: ConversationMessage[] } = {};
       
       // Initialize empty arrays for all models
-      conversationData.models_used.forEach((modelId: string) => {
+      modelsUsed.forEach((modelId: string) => {
         messagesByModel[modelId] = [];
       });
       
@@ -1404,7 +1407,7 @@ function AppContent() {
       // Now reconstruct messages for each model based on rounds
       rounds.forEach(round => {
         // Add user message to all models
-        conversationData.models_used.forEach((modelId: string) => {
+        modelsUsed.forEach((modelId: string) => {
           messagesByModel[modelId].push({
             id: round.user.id?.toString() || `${Date.now()}-user-${Math.random()}`,
             type: 'user' as const,
@@ -1426,7 +1429,7 @@ function AppContent() {
       });
       
       // Convert to ModelConversation format
-      const loadedConversations: ModelConversation[] = conversationData.models_used.map((modelId: string) => ({
+      const loadedConversations: ModelConversation[] = modelsUsed.map((modelId: string) => ({
         modelId,
         messages: messagesByModel[modelId] || [],
       }));
@@ -1440,7 +1443,7 @@ function AppContent() {
       // Set state
       setConversations(loadedConversations);
       // Set selected models - only the models from this conversation, clear all others
-      setSelectedModels([...conversationData.models_used]);
+      setSelectedModels([...modelsUsed]);
       
       // Use the first user message as the input reference, but clear textarea for new follow-up
       // The conversation will be referenced by this first query in history
@@ -1461,7 +1464,7 @@ function AppContent() {
           }
           
           // Scroll all conversation content divs to the top
-          conversationData.models_used.forEach((modelId: string) => {
+          modelsUsed.forEach((modelId: string) => {
             const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
             const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
             if (conversationContent) {
