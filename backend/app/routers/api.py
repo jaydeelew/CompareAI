@@ -17,9 +17,10 @@ import json
 import os
 
 from ..model_runner import OPENROUTER_MODELS, MODELS_BY_PROVIDER, run_models, call_openrouter_streaming, clean_model_response
-from ..models import User, UsageLog, AppSettings
+from ..models import User, UsageLog, AppSettings, Conversation, ConversationMessage
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..schemas import ConversationSummary, ConversationDetail
 from ..rate_limiting import (
     get_user_usage_stats,
     get_anonymous_usage_stats,
@@ -71,6 +72,19 @@ class CompareResponse(BaseModel):
 
 
 # Helper functions
+def get_conversation_limit_for_tier(tier: str) -> int:
+    """Get conversation history limit based on subscription tier."""
+    limits = {
+        "anonymous": 2,
+        "free": 3,
+        "starter": 10,
+        "starter_plus": 20,
+        "pro": 50,
+        "pro_plus": 100,
+    }
+    return limits.get(tier, 2)  # Default to 2 for unknown tiers
+
+
 def validate_tier_limits(input_data: str, tier: str) -> bool:
     """Validate input length against tier limits"""
     if tier not in TIER_LIMITS:
@@ -933,19 +947,223 @@ async def compare_stream(
             log_db = SessionLocal()
             background_tasks.add_task(log_usage_to_db, usage_log, log_db)
 
+            # Save conversation to database for authenticated users
+            if user_id and successful_models > 0:
+                def save_conversation_to_db():
+                    """Save conversation and messages to database."""
+                    conv_db = SessionLocal()
+                    try:
+                        # Determine if this is a follow-up or new conversation
+                        is_follow_up = bool(req.conversation_history and len(req.conversation_history) > 0)
+                        
+                        # Try to find existing conversation if this is a follow-up
+                        existing_conversation = None
+                        if is_follow_up:
+                            # Find most recent conversation with matching models
+                            # Compare sorted model lists to handle any order differences
+                            req_models_sorted = sorted(req.models)
+                            all_user_conversations = (
+                                conv_db.query(Conversation)
+                                .filter(Conversation.user_id == user_id)
+                                .order_by(Conversation.updated_at.desc())
+                                .all()
+                            )
+                            
+                            for conv in all_user_conversations:
+                                try:
+                                    conv_models = json.loads(conv.models_used) if conv.models_used else []
+                                    if sorted(conv_models) == req_models_sorted:
+                                        existing_conversation = conv
+                                        break
+                                except (json.JSONDecodeError, TypeError):
+                                    continue
+                        
+                        # Create or update conversation
+                        if existing_conversation:
+                            conversation = existing_conversation
+                            conversation.updated_at = datetime.now()
+                        else:
+                            # Create new conversation
+                            conversation = Conversation(
+                                user_id=user_id,
+                                input_data=req.input_data,
+                                models_used=json.dumps(req.models),
+                            )
+                            conv_db.add(conversation)
+                            conv_db.flush()  # Get the ID
+                        
+                        # Save user message (current prompt)
+                        # For new conversations, this is the first message
+                        # For follow-ups, this is the new user prompt
+                        user_msg = ConversationMessage(
+                            conversation_id=conversation.id,
+                            role="user",
+                            content=req.input_data,
+                            model_id=None,
+                        )
+                        conv_db.add(user_msg)
+                        
+                        # Save assistant messages for each successful model
+                        for model_id, content in results_dict.items():
+                            if not content.startswith("Error:"):
+                                assistant_msg = ConversationMessage(
+                                    conversation_id=conversation.id,
+                                    role="assistant",
+                                    content=content,
+                                    model_id=model_id,
+                                    success=True,
+                                    processing_time_ms=processing_time_ms,
+                                )
+                                conv_db.add(assistant_msg)
+                        
+                        conv_db.commit()
+                        
+                        # Enforce tier-based conversation limits
+                        user_obj = conv_db.query(User).filter(User.id == user_id).first()
+                        tier = user_obj.subscription_tier if user_obj else "free"
+                        limit = get_conversation_limit_for_tier(tier)
+                        
+                        # Get all conversations for user
+                        all_conversations = (
+                            conv_db.query(Conversation)
+                            .filter(Conversation.user_id == user_id)
+                            .order_by(Conversation.created_at.desc())
+                            .all()
+                        )
+                        
+                        # Delete oldest conversations if over limit
+                        if len(all_conversations) > limit:
+                            conversations_to_delete = all_conversations[limit:]
+                            for conv_to_delete in conversations_to_delete:
+                                conv_db.delete(conv_to_delete)
+                            conv_db.commit()
+                            
+                    except Exception as e:
+                        print(f"Failed to save conversation to database: {e}")
+                        conv_db.rollback()
+                    finally:
+                        conv_db.close()
+                
+                # Save conversation in background
+                background_tasks.add_task(save_conversation_to_db)
+
             # Send completion event with metadata
             yield f"data: {json.dumps({'type': 'complete', 'metadata': metadata})}\n\n"
-
         except Exception as e:
             # Send error event
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            error_msg = f"Error: {str(e)[:200]}"
+            print(f"Error in generate_stream: {error_msg}")
+            yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
 
-    return StreamingResponse(
-        generate_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering for streaming
-        },
+
+    return StreamingResponse(generate_stream(), media_type="text/event-stream")
+
+
+@router.get("/conversations", response_model=list[ConversationSummary])
+async def get_conversations(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """Get list of user's conversations, limited by subscription tier."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    tier = current_user.subscription_tier or "free"
+    limit = get_conversation_limit_for_tier(tier)
+
+    # Get user's conversations ordered by created_at DESC, limited by tier
+    conversations = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == current_user.id)
+        .order_by(Conversation.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Convert to summaries with message counts
+    summaries = []
+    for conv in conversations:
+        # Parse models_used JSON
+        try:
+            models_used = json.loads(conv.models_used) if conv.models_used else []
+        except (json.JSONDecodeError, TypeError):
+            models_used = []
+
+        # Count messages
+        message_count = db.query(ConversationMessage).filter(
+            ConversationMessage.conversation_id == conv.id
+        ).count()
+
+        summaries.append(
+            ConversationSummary(
+                id=conv.id,
+                input_data=conv.input_data,
+                models_used=models_used,
+                created_at=conv.created_at,
+                message_count=message_count,
+            )
+        )
+
+    return summaries
+
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+async def get_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """Get full conversation with all messages."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Get conversation and verify it belongs to the user
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Parse models_used JSON
+    try:
+        models_used = json.loads(conversation.models_used) if conversation.models_used else []
+    except (json.JSONDecodeError, TypeError):
+        models_used = []
+
+    # Get all messages ordered by created_at ASC
+    messages = (
+        db.query(ConversationMessage)
+        .filter(ConversationMessage.conversation_id == conversation.id)
+        .order_by(ConversationMessage.created_at.asc())
+        .all()
+    )
+
+    # Convert messages to schema format
+    from ..schemas import ConversationMessage as ConversationMessageSchema
+    message_schemas = [
+        ConversationMessageSchema(
+            id=msg.id,
+            model_id=msg.model_id,
+            role=msg.role,
+            content=msg.content,
+            success=msg.success,
+            processing_time_ms=msg.processing_time_ms,
+            created_at=msg.created_at,
+        )
+        for msg in messages
+    ]
+
+    return ConversationDetail(
+        id=conversation.id,
+        title=conversation.title,
+        input_data=conversation.input_data,
+        models_used=models_used,
+        created_at=conversation.created_at,
+        messages=message_schemas,
     )

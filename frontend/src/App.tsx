@@ -760,6 +760,36 @@ function AppContent() {
   const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
+  
+  // Conversation history state
+  interface ConversationSummary {
+    id: string | number;
+    input_data: string;
+    models_used: string[];
+    created_at: string;
+    message_count?: number;
+  }
+  
+  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  
+  // Get history limit based on tier
+  const getHistoryLimit = (): number => {
+    if (!isAuthenticated || !user) return 2; // Anonymous
+    const tier = user.subscription_tier || 'free';
+    const limits: { [key: string]: number } = {
+      anonymous: 2,
+      free: 3,
+      starter: 10,
+      starter_plus: 20,
+      pro: 50,
+      pro_plus: 100,
+    };
+    return limits[tier] || 2;
+  };
+  
+  const historyLimit = getHistoryLimit();
   const [, setUserMessageTimestamp] = useState<string>('');
   const [originalSelectedModels, setOriginalSelectedModels] = useState<string[]>([]);
   const userCancelledRef = useRef(false);
@@ -984,6 +1014,421 @@ function AppContent() {
 
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
+
+  // Load conversation history from localStorage (anonymous users)
+  const loadHistoryFromLocalStorage = (): ConversationSummary[] => {
+    try {
+      const stored = localStorage.getItem('compareai_conversation_history');
+      if (stored) {
+        const history = JSON.parse(stored) as ConversationSummary[];
+        // Sort by created_at DESC and limit to 2
+        return history
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 2);
+      }
+    } catch (e) {
+      console.error('Failed to load conversation history from localStorage:', e);
+    }
+    return [];
+  };
+
+  // Save conversation to localStorage (anonymous users)
+  const saveConversationToLocalStorage = (inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false) => {
+    try {
+      const history = loadHistoryFromLocalStorage();
+      
+      // Count total messages across all conversations
+      const totalMessages = conversationsToSave.reduce((sum, conv) => sum + conv.messages.length, 0);
+      
+      let conversationId: string;
+      let existingConversation: ConversationSummary | undefined;
+      
+      if (isUpdate) {
+        // Find existing conversation by matching first user message and models
+        existingConversation = history.find(conv => {
+          const modelsMatch = JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort());
+          // Check if the input_data matches (first query)
+          // OR check if any stored conversation has a first user message matching this inputData
+          if (modelsMatch) {
+            // Load the conversation to check its first user message
+            try {
+              const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
+              if (storedData) {
+                const parsed = JSON.parse(storedData);
+                // Check if the first user message in stored data matches our inputData
+                const firstStoredUserMsg = parsed.messages?.find((m: any) => m.role === 'user');
+                if (firstStoredUserMsg && firstStoredUserMsg.content === inputData) {
+                  return true;
+                }
+                // Also check if input_data field matches
+                if (parsed.input_data === inputData) {
+                  return true;
+                }
+              }
+            } catch (e) {
+              // If we can't parse, fall back to input_data match
+              return conv.input_data === inputData;
+            }
+          }
+          return false;
+        });
+        
+        if (existingConversation) {
+          conversationId = existingConversation.id;
+        } else {
+          // Couldn't find existing, create new (shouldn't happen)
+          conversationId = Date.now().toString();
+          isUpdate = false;
+        }
+      } else {
+        // Create new conversation
+        conversationId = Date.now().toString();
+      }
+      
+      // Create or update conversation summary
+      const conversationSummary: ConversationSummary = existingConversation ? {
+        ...existingConversation,
+        message_count: totalMessages,
+        // Keep original created_at for existing conversations
+      } : {
+        id: conversationId,
+        input_data: inputData,
+        models_used: modelsUsed,
+        created_at: new Date().toISOString(),
+        message_count: totalMessages,
+      };
+      
+      // Update history list
+      let updatedHistory: ConversationSummary[];
+      if (isUpdate && existingConversation) {
+        // Update existing entry in place
+        updatedHistory = history.map(conv => 
+          conv.id === conversationId ? conversationSummary : conv
+        );
+      } else {
+        // Remove any existing conversation with the same input and models (to prevent duplicates)
+        const filteredHistory = history.filter(conv => 
+          !(conv.input_data === inputData && 
+            JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
+        );
+        
+        // Add new conversation to the front
+        filteredHistory.unshift(conversationSummary);
+        updatedHistory = filteredHistory;
+      }
+      
+      // Sort by created_at DESC and keep only last 2
+      const sorted = updatedHistory.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const limited = sorted.slice(0, 2);
+      
+      // Store summary list
+      localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
+      
+      // Store full conversation data with ID as key
+      // Format: messages with role and model_id for proper reconstruction
+      const conversationMessages: any[] = [];
+      const seenUserMessages = new Set<string>(); // Track user messages to avoid duplicates
+      
+      // Group messages from conversations by model
+      conversationsToSave.forEach(conv => {
+        conv.messages.forEach(msg => {
+          if (msg.type === 'user') {
+            // Deduplicate user messages - same content and timestamp (within 1 second) = same message
+            const userKey = `${msg.content}-${new Date(msg.timestamp).getTime()}`;
+            if (!seenUserMessages.has(userKey)) {
+              seenUserMessages.add(userKey);
+              conversationMessages.push({
+                role: 'user',
+                content: msg.content,
+                created_at: msg.timestamp,
+              });
+            }
+          } else {
+            conversationMessages.push({
+              role: 'assistant',
+              model_id: conv.modelId,
+              content: msg.content,
+              created_at: msg.timestamp,
+            });
+          }
+        });
+      });
+      
+      // Get existing conversation data to preserve created_at if updating
+      const existingData = isUpdate && existingConversation 
+        ? JSON.parse(localStorage.getItem(`compareai_conversation_${conversationId}`) || '{}')
+        : null;
+      
+      localStorage.setItem(`compareai_conversation_${conversationId}`, JSON.stringify({
+        input_data: inputData, // Always keep first query as input_data
+        models_used: modelsUsed,
+        created_at: existingData?.created_at || conversationSummary.created_at,
+        messages: conversationMessages,
+      }));
+      
+      setConversationHistory(limited);
+    } catch (e) {
+      console.error('Failed to save conversation to localStorage:', e);
+    }
+  };
+
+  // Load conversation history from API (authenticated users)
+  const loadHistoryFromAPI = async () => {
+    if (!isAuthenticated) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(`${API_URL}/conversations`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversationHistory(data);
+      } else {
+        console.error('Failed to load conversation history:', response.statusText);
+      }
+    } catch (e) {
+      console.error('Failed to load conversation history from API:', e);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Load full conversation from localStorage (anonymous users)
+  const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: any[] } | null => {
+    try {
+      const stored = localStorage.getItem(`compareai_conversation_${id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('Loaded from localStorage:', { id, parsed });
+        return parsed;
+      } else {
+        console.warn('No conversation found in localStorage for id:', id);
+      }
+    } catch (e) {
+      console.error('Failed to load conversation from localStorage:', e, { id });
+    }
+    return null;
+  };
+
+  // Load full conversation from API (authenticated users)
+  const loadConversationFromAPI = async (id: number): Promise<{ input_data: string; models_used: string[]; messages: any[] } | null> => {
+    if (!isAuthenticated) return null;
+    
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(`${API_URL}/conversations/${id}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          input_data: data.input_data,
+          models_used: data.models_used,
+          messages: data.messages,
+        };
+      } else {
+        console.error('Failed to load conversation:', response.statusText);
+      }
+    } catch (e) {
+      console.error('Failed to load conversation from API:', e);
+    }
+    return null;
+  };
+
+  // Load a conversation from history
+  const loadConversation = async (summary: ConversationSummary) => {
+    setIsLoadingHistory(true);
+    try {
+      let conversationData: { input_data: string; models_used: string[]; messages: any[] } | null = null;
+      
+      if (isAuthenticated && typeof summary.id === 'number') {
+        conversationData = await loadConversationFromAPI(summary.id);
+      } else if (!isAuthenticated && typeof summary.id === 'string') {
+        conversationData = loadConversationFromLocalStorage(summary.id);
+      }
+      
+      if (!conversationData) {
+        console.error('Failed to load conversation data', { summary, isAuthenticated });
+        return;
+      }
+      
+      console.log('Loaded conversation data:', {
+        input_data: conversationData.input_data,
+        models_used: conversationData.models_used,
+        message_count: conversationData.messages?.length || 0,
+        messages: conversationData.messages
+      });
+      
+      // Group messages by model_id
+      const messagesByModel: { [key: string]: ConversationMessage[] } = {};
+      
+      // Initialize empty arrays for all models
+      conversationData.models_used.forEach((modelId: string) => {
+        messagesByModel[modelId] = [];
+      });
+      
+      // Process messages in strict alternating order: user, then assistant responses for each model
+      // Messages are saved grouped by model conversation, so we need to reconstruct the round-based structure
+      
+      // Sort all messages by timestamp to ensure proper chronological order
+      const sortedMessages = [...conversationData.messages].sort((a, b) => 
+        new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+      );
+      
+      // Group messages into conversation rounds (user message + all assistant responses)
+      // User messages should already be deduplicated when saved, so we can process in order
+      const rounds: Array<{ user: any; assistants: any[] }> = [];
+      let currentRound: { user: any; assistants: any[] } | null = null;
+      
+      sortedMessages.forEach((msg: any) => {
+        if (msg.role === 'user') {
+          // If we have a current round, save it
+          if (currentRound && currentRound.user) {
+            rounds.push(currentRound);
+          }
+          // Start a new round - user messages should be deduplicated already when saved
+          currentRound = { user: msg, assistants: [] };
+        } else if (msg.role === 'assistant' && msg.model_id) {
+          // Add assistant message to current round
+          if (currentRound) {
+            // Check for duplicate assistant messages (same model, content, and timestamp within 1 second)
+            const isDuplicate = currentRound.assistants.some(asm => 
+              asm.model_id === msg.model_id &&
+              asm.content === msg.content &&
+              Math.abs(new Date(asm.created_at).getTime() - new Date(msg.created_at).getTime()) < 1000
+            );
+            
+            if (!isDuplicate) {
+              currentRound.assistants.push(msg);
+            }
+          } else {
+            // Edge case: assistant without preceding user message
+            // This shouldn't happen, but handle it gracefully
+            console.warn('Assistant message without preceding user message:', msg);
+          }
+        }
+      });
+      
+      // Don't forget the last round
+      if (currentRound && currentRound.user) {
+        rounds.push(currentRound);
+      }
+      
+      // Now reconstruct messages for each model based on rounds
+      rounds.forEach(round => {
+        // Add user message to all models
+        conversationData.models_used.forEach((modelId: string) => {
+          messagesByModel[modelId].push({
+            id: round.user.id?.toString() || `${Date.now()}-user-${Math.random()}`,
+            type: 'user' as const,
+            content: round.user.content,
+            timestamp: round.user.created_at || new Date().toISOString(),
+          });
+          
+          // Add assistant message for this specific model if it exists in this round
+          const modelAssistant = round.assistants.find(asm => asm.model_id === modelId);
+          if (modelAssistant) {
+            messagesByModel[modelId].push({
+              id: modelAssistant.id?.toString() || `${Date.now()}-${Math.random()}`,
+              type: 'assistant' as const,
+              content: modelAssistant.content,
+              timestamp: modelAssistant.created_at || new Date().toISOString(),
+            });
+          }
+        });
+      });
+      
+      // Convert to ModelConversation format
+      const loadedConversations: ModelConversation[] = conversationData.models_used.map((modelId: string) => ({
+        modelId,
+        messages: messagesByModel[modelId] || [],
+      }));
+      
+      console.log('Reconstructed conversations:', loadedConversations.map(conv => ({
+        modelId: conv.modelId,
+        messageCount: conv.messages.length,
+        messages: conv.messages
+      })));
+      
+      // Set state
+      setConversations(loadedConversations);
+      // Set selected models - only the models from this conversation, clear all others
+      setSelectedModels([...conversationData.models_used]);
+      
+      // Get the first user message from the loaded conversation (not follow-ups)
+      // This ensures we always reference the conversation by its first query
+      const firstUserMessage = loadedConversations
+        .flatMap(conv => conv.messages)
+        .filter(msg => msg.type === 'user')
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+      
+      // Use the first user message as the input reference, but clear textarea for new follow-up
+      // The conversation will be referenced by this first query in history
+      setInput(''); // Clear textarea so user can type a new follow-up
+      setIsFollowUpMode(loadedConversations.some(conv => conv.messages.length > 0));
+      setClosedCards(new Set()); // Ensure all result cards are open/visible
+      setResponse(null); // Clear any previous response state
+      setShowHistoryDropdown(false);
+      
+      // Scroll to results section
+      setTimeout(() => {
+        const resultsSection = document.querySelector('.results-section');
+        if (resultsSection) {
+          resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      
+    } catch (e) {
+      console.error('Failed to load conversation:', e);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Load history on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadHistoryFromAPI();
+    } else {
+      const history = loadHistoryFromLocalStorage();
+      setConversationHistory(history);
+    }
+  }, [isAuthenticated]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showHistoryDropdown && !target.closest('.history-toggle-wrapper') && !target.closest('.history-inline-list')) {
+        setShowHistoryDropdown(false);
+      }
+    };
+
+    if (showHistoryDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showHistoryDropdown]);
 
   // Helper function to create a conversation message
   const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
@@ -2292,6 +2737,17 @@ function AppContent() {
                   const endTime = Date.now();
                   setProcessingTime(endTime - startTime);
                   shouldUpdate = true;
+                  
+                  // Note: Conversation saving will happen after final state update
+                  // For authenticated users: backend handles it, refresh history after a delay
+                  if (isAuthenticated && !isFollowUpMode) {
+                    // Refresh history from API after a short delay to allow backend to save
+                    setTimeout(() => {
+                      loadHistoryFromAPI();
+                      // Clear the textarea after saving
+                      setInput('');
+                    }, 1000);
+                  }
                 } else if (event.type === 'error') {
                   throw new Error(event.message || 'Streaming error occurred');
                 }
@@ -2454,8 +2910,8 @@ function AppContent() {
               completionTimes: modelCompletionTimes
             });
 
-            setConversations(prevConversations =>
-              prevConversations.map(conv => {
+            setConversations(prevConversations => {
+              const updated = prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
                 const startTime = modelStartTimes[conv.modelId];
                 const completionTime = modelCompletionTimes[conv.modelId];
@@ -2482,8 +2938,11 @@ function AppContent() {
                     return msg;
                   })
                 };
-              })
-            );
+              });
+              
+              // Don't save here - will save after stream completes (see below)
+              return updated;
+            });
           } else {
             // For follow-up mode, just update timestamps on the last assistant messages
             console.log('🏁 Final follow-up conversation update - model times:', {
@@ -2491,8 +2950,8 @@ function AppContent() {
               completionTimes: modelCompletionTimes
             });
 
-            setConversations(prevConversations =>
-              prevConversations.map(conv => {
+            setConversations(prevConversations => {
+              const updated = prevConversations.map(conv => {
                 const completionTime = modelCompletionTimes[conv.modelId];
                 if (!completionTime) return conv;
 
@@ -2506,14 +2965,81 @@ function AppContent() {
                     return msg;
                   })
                 };
-              })
-            );
+              });
+              
+              // Don't save here - will save after stream completes (see below)
+              return updated;
+            });
           }
 
           // Tab switching happens automatically when each model completes (see 'done' event handler above)
           // No need to switch here - it's already been done dynamically as models finished
         } finally {
           reader.releaseLock();
+          
+          // Save conversation to history AFTER stream completes (only for anonymous users)
+          // This ensures the conversation is only added to history once it's fully complete
+          if (!isAuthenticated && !isFollowUpMode) {
+            // Use a small delay to ensure state is fully updated
+            setTimeout(() => {
+              // Get current conversations state (should be fully updated by now)
+              setConversations(currentConversations => {
+                const conversationsWithMessages = currentConversations.filter(conv => 
+                  selectedModels.includes(conv.modelId) &&
+                  conv.messages.length > 0
+                );
+                
+                // Only save if we have conversations with complete assistant messages (not empty)
+                const hasCompleteMessages = conversationsWithMessages.some(conv => {
+                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
+                  return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
+                });
+                
+                if (hasCompleteMessages && conversationsWithMessages.length > 0) {
+                  // Get the FIRST user message from the conversation (not follow-ups)
+                  const allUserMessages = conversationsWithMessages
+                    .flatMap(conv => conv.messages)
+                    .filter(msg => msg.type === 'user')
+                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                  
+                  const firstUserMessage = allUserMessages[0];
+                  
+                  if (firstUserMessage) {
+                    const inputData = firstUserMessage.content;
+                    // Save the complete conversation
+                    saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
+                    // Clear the textarea after saving
+                    setInput('');
+                  }
+                }
+                
+                return currentConversations; // Return unchanged
+              });
+            }, 200);
+          } else if (!isAuthenticated && isFollowUpMode) {
+            // Save follow-up updates after stream completes
+            setTimeout(() => {
+              setConversations(currentConversations => {
+                const conversationsWithMessages = currentConversations.filter(conv => 
+                  selectedModels.includes(conv.modelId)
+                );
+                
+                // Get the first user message (original query) to identify the conversation
+                const firstUserMessage = conversationsWithMessages
+                  .flatMap(conv => conv.messages)
+                  .filter(msg => msg.type === 'user')
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                
+                if (firstUserMessage) {
+                  const inputData = firstUserMessage.content;
+                  // Update existing conversation (isUpdate = true)
+                  saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages, true);
+                }
+                
+                return currentConversations; // Return unchanged
+              });
+            }, 200);
+          }
         }
       }
 
@@ -2657,10 +3183,13 @@ function AppContent() {
         }, 8000);
       }
 
-      // Clear input only when submitting a follow-up message
+      // Clear input after submission (both new comparisons and follow-ups)
+      // For new comparisons, it will be cleared after saving to history
+      // For follow-ups, clear immediately
       if (isFollowUpMode) {
         setInput('');
       }
+      // Note: For new comparisons, input is cleared in the saveConversationToLocalStorage callback
 
       // Initialize or update conversations
       if (isFollowUpMode) {
@@ -2946,11 +3475,15 @@ function AppContent() {
                             height: '32px',
                             borderRadius: '50%',
                             minWidth: '32px',
-                            padding: 0
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', display: 'block' }}>
+                            <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                            <line x1="12" y1="19" x2="12" y2="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                         <span style={{
@@ -2972,7 +3505,22 @@ function AppContent() {
                       <h2>Enter Your Prompt</h2>
                     )}
                   </div>
+                  
                   <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
+                    {/* History Toggle Button - Left side inside textarea */}
+                    <div className="history-toggle-wrapper">
+                      <button
+                        type="button"
+                        className={`history-toggle-button ${showHistoryDropdown ? 'active' : ''}`}
+                        onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                        title="Load previous conversations"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      </button>
+                    </div>
+                    
                     <textarea
                       ref={textareaRef}
                       value={input}
@@ -2994,6 +3542,92 @@ function AppContent() {
                       className="hero-input-textarea"
                       rows={1}
                     />
+                    
+                    {/* History List - Inline, extends textarea depth */}
+                    {showHistoryDropdown && (
+                      <div className="history-inline-list">
+                          {isLoadingHistory ? (
+                            <div className="history-loading">Loading...</div>
+                          ) : conversationHistory.length === 0 ? (
+                            <div className="history-empty">No conversation history</div>
+                          ) : (
+                            <>
+                              {conversationHistory
+                                .filter((summary) => {
+                                  // Filter out current conversation if in follow-up mode or if there's an active conversation
+                                  if (isFollowUpMode || conversations.length > 0) {
+                                    // Identify current conversation by matching:
+                                    // 1. First user message matches the first message in current conversations
+                                    // 2. Models used match selected models
+                                    
+                                    const currentFirstUserMessage = conversations
+                                      .flatMap(conv => conv.messages)
+                                      .filter(msg => msg.type === 'user')
+                                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                                    
+                                    if (currentFirstUserMessage) {
+                                      const modelsMatch = JSON.stringify(summary.models_used.sort()) === JSON.stringify(selectedModels.sort());
+                                      const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
+                                      
+                                      // Exclude if it's the current conversation
+                                      if (modelsMatch && firstMessageMatches) {
+                                        return false;
+                                      }
+                                    }
+                                  }
+                                  return true; // Include all other conversations
+                                })
+                                .slice(0, historyLimit).map((summary) => {
+                                const truncatePrompt = (text: string, maxLength: number = 60) => {
+                                  if (text.length <= maxLength) return text;
+                                  return text.substring(0, maxLength) + '...';
+                                };
+                                
+                                const formatDate = (dateString: string) => {
+                                  const date = new Date(dateString);
+                                  const now = new Date();
+                                  const diffMs = now.getTime() - date.getTime();
+                                  const diffMins = Math.floor(diffMs / 60000);
+                                  const diffHours = Math.floor(diffMs / 3600000);
+                                  const diffDays = Math.floor(diffMs / 86400000);
+                                  
+                                  if (diffMins < 1) return 'Just now';
+                                  if (diffMins < 60) return `${diffMins}m ago`;
+                                  if (diffHours < 24) return `${diffHours}h ago`;
+                                  if (diffDays === 1) return 'Yesterday';
+                                  if (diffDays < 7) return `${diffDays}d ago`;
+                                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                };
+                                
+                                return (
+                                  <div
+                                    key={summary.id}
+                                    className="history-item"
+                                    onClick={() => loadConversation(summary)}
+                                    title={summary.input_data}
+                                  >
+                                    <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
+                                    <div className="history-item-meta">
+                                      <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
+                                      <span className="history-item-date">{formatDate(summary.created_at)}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              
+                              {/* Signup prompt for anonymous users at limit */}
+                              {!isAuthenticated && conversationHistory.length >= 2 && (
+                                <div className="history-signup-prompt">
+                                  <div className="history-signup-message">
+                                    You've reached your limit of 2 saved comparisons. Sign up for a free account to save 3+ comparisons!
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                      </div>
+                    )}
+                    
                     <div className="textarea-actions">
                       {(() => {
                         // Check if user has reached daily limits
@@ -3746,7 +4380,7 @@ function AppContent() {
               </div>
             )}
 
-            {response && (
+            {(response || conversations.length > 0) && (
               <section className="results-section">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                   <h2 style={{ margin: 0 }}>Comparison Results</h2>
@@ -3839,54 +4473,56 @@ function AppContent() {
                 </div>
 
                 {/* Metadata */}
-                <div className="results-metadata">
-                  <div className="metadata-item">
-                    <span className="metadata-label">Input Length:</span>
-                    <span className="metadata-value">{response.metadata.input_length} characters</span>
-                  </div>
-                  <div className="metadata-item">
-                    <span className="metadata-label">Models Successful:</span>
-                    <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
-                      {response.metadata.models_successful}/{response.metadata.models_requested}
-                    </span>
-                  </div>
-                  {Object.keys(response.results).length > 0 && (
+                {response && (
+                  <div className="results-metadata">
                     <div className="metadata-item">
-                      <span className="metadata-label">Results Visible:</span>
-                      <span className="metadata-value">
-                        {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                      <span className="metadata-label">Input Length:</span>
+                      <span className="metadata-value">{response.metadata.input_length} characters</span>
+                    </div>
+                    <div className="metadata-item">
+                      <span className="metadata-label">Models Successful:</span>
+                      <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
+                        {response.metadata.models_successful}/{response.metadata.models_requested}
                       </span>
                     </div>
-                  )}
-                  {response.metadata.models_failed > 0 && (
-                    <div className="metadata-item">
-                      <span className="metadata-label">Models Failed:</span>
-                      <span className="metadata-value failed">{response.metadata.models_failed}</span>
-                    </div>
-                  )}
-                  {processingTime && (
-                    <div className="metadata-item">
-                      <span className="metadata-label">Processing Time:</span>
-                      <span className="metadata-value">
-                        {(() => {
-                          if (processingTime < 1000) {
-                            return `${processingTime}ms`;
-                          } else if (processingTime < 60000) {
-                            return `${(processingTime / 1000).toFixed(1)}s`;
-                          } else {
-                            const minutes = Math.floor(processingTime / 60000);
-                            const seconds = Math.floor((processingTime % 60000) / 1000);
-                            return `${minutes}m ${seconds}s`;
-                          }
-                        })()}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                    {Object.keys(response.results).length > 0 && (
+                      <div className="metadata-item">
+                        <span className="metadata-label">Results Visible:</span>
+                        <span className="metadata-value">
+                          {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                        </span>
+                      </div>
+                    )}
+                    {response.metadata.models_failed > 0 && (
+                      <div className="metadata-item">
+                        <span className="metadata-label">Models Failed:</span>
+                        <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                      </div>
+                    )}
+                    {processingTime && (
+                      <div className="metadata-item">
+                        <span className="metadata-label">Processing Time:</span>
+                        <span className="metadata-value">
+                          {(() => {
+                            if (processingTime < 1000) {
+                              return `${processingTime}ms`;
+                            } else if (processingTime < 60000) {
+                              return `${(processingTime / 1000).toFixed(1)}s`;
+                            } else {
+                              const minutes = Math.floor(processingTime / 60000);
+                              const seconds = Math.floor((processingTime % 60000) / 1000);
+                              return `${minutes}m ${seconds}s`;
+                            }
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="results-grid">
                   {conversations
-                    .filter((conv) => !closedCards.has(conv.modelId))
+                    .filter((conv) => selectedModels.includes(conv.modelId) && !closedCards.has(conv.modelId))
                     .map((conversation) => {
                       const model = allModels.find(m => m.id === conversation.modelId);
                       const latestMessage = conversation.messages[conversation.messages.length - 1];

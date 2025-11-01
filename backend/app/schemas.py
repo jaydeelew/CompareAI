@@ -250,6 +250,19 @@ class ConversationMessage(BaseModel):
         from_attributes = True
 
 
+class ConversationSummary(BaseModel):
+    """Schema for conversation list summary."""
+
+    id: int
+    input_data: str
+    models_used: List[str]
+    created_at: datetime
+    message_count: int
+
+    class Config:
+        from_attributes = True
+
+
 class ConversationDetail(BaseModel):
     """Schema for detailed conversation with messages."""
 
