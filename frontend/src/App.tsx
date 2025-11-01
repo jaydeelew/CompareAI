@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -794,8 +794,8 @@ function AppContent() {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
-  // Get history limit based on tier
-  const getHistoryLimit = (): number => {
+  // Get history limit based on tier - use useMemo to ensure it updates when user/auth changes
+  const historyLimit = useMemo(() => {
     if (!isAuthenticated || !user) return 2; // Anonymous
     const tier = user.subscription_tier || 'free';
     const limits: { [key: string]: number } = {
@@ -807,9 +807,7 @@ function AppContent() {
       pro_plus: 100,
     };
     return limits[tier] || 2;
-  };
-  
-  const historyLimit = getHistoryLimit();
+  }, [isAuthenticated, user]);
   const [, setUserMessageTimestamp] = useState<string>('');
   const [originalSelectedModels, setOriginalSelectedModels] = useState<string[]>([]);
   const userCancelledRef = useRef(false);
@@ -1224,12 +1222,24 @@ function AppContent() {
 
       if (response.ok) {
         const data = await response.json();
-        setConversationHistory(data);
+        // Ensure created_at is a string if it's not already, and models_used is always an array
+        const formattedData: ConversationSummary[] = Array.isArray(data) ? data.map((item) => {
+          const summary: ConversationSummary = {
+            ...item,
+            created_at: typeof item.created_at === 'string' ? item.created_at : new Date(item.created_at).toISOString(),
+            models_used: Array.isArray(item.models_used) ? item.models_used : [],
+          };
+          return summary;
+        }) : [];
+        setConversationHistory(formattedData);
       } else {
-        console.error('Failed to load conversation history:', response.statusText);
+        const errorText = await response.text();
+        console.error('Failed to load conversation history:', response.status, response.statusText, errorText);
+        setConversationHistory([]);
       }
     } catch (e) {
       console.error('Failed to load conversation history from API:', e);
+      setConversationHistory([]);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -1502,6 +1512,16 @@ function AppContent() {
       setConversationHistory(history);
     }
   }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
+
+  // Refresh history when dropdown is opened for authenticated users
+  useEffect(() => {
+    if (showHistoryDropdown && isAuthenticated) {
+      loadHistoryFromAPI();
+    } else if (showHistoryDropdown && !isAuthenticated) {
+      const history = loadHistoryFromLocalStorage();
+      setConversationHistory(history);
+    }
+  }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -3103,8 +3123,9 @@ function AppContent() {
         } finally {
           reader.releaseLock();
           
-          // Save conversation to history AFTER stream completes (only for anonymous users)
-          // This ensures the conversation is only added to history once it's fully complete
+          // Save conversation to history AFTER stream completes
+          // For anonymous users: save to localStorage
+          // For registered users: reload from API (backend already saved it)
           if (!isAuthenticated && !isFollowUpMode) {
             // Use a small delay to ensure state is fully updated
             setTimeout(() => {
@@ -3153,8 +3174,15 @@ function AppContent() {
                 return currentConversations; // Return unchanged
               });
             }, 200);
+          } else if (isAuthenticated && !isFollowUpMode) {
+            // For registered users, reload history from API after stream completes
+            // Backend already saved the conversation, we just need to refresh the list
+            setTimeout(() => {
+              loadHistoryFromAPI();
+              setInput(''); // Clear the textarea after saving
+            }, 1500); // Give backend more time to finish saving (background task)
           } else if (!isAuthenticated && isFollowUpMode) {
-            // Save follow-up updates after stream completes
+            // Save follow-up updates after stream completes (anonymous users)
             setTimeout(() => {
               setConversations(currentConversations => {
                 const conversationsWithMessages = currentConversations.filter(conv => 
@@ -3176,6 +3204,12 @@ function AppContent() {
                 return currentConversations; // Return unchanged
               });
             }, 200);
+          } else if (isAuthenticated && isFollowUpMode) {
+            // For registered users, reload history from API after follow-up completes
+            // Backend already saved the conversation update, we just need to refresh the list
+            setTimeout(() => {
+              loadHistoryFromAPI();
+            }, 1500); // Give backend more time to finish saving (background task)
           }
         }
       }
@@ -3695,6 +3729,11 @@ function AppContent() {
                     {showHistoryDropdown && (() => {
                       // Filter out current conversation if in follow-up mode or if there's an active conversation
                       const filteredHistory = conversationHistory.filter((summary) => {
+                        // Ensure models_used is an array
+                        if (!Array.isArray(summary.models_used)) {
+                          return true; // Include it anyway to avoid filtering everything
+                        }
+                        
                         if (isFollowUpMode || conversations.length > 0) {
                           // Identify current conversation by matching:
                           // 1. First user message matches the first message in current conversations
@@ -3708,7 +3747,7 @@ function AppContent() {
                           // Only filter if we have a valid user message and both models and content match
                           // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
                           if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
-                            const modelsMatch = JSON.stringify(summary.models_used.sort()) === JSON.stringify(selectedModels.sort());
+                            const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
                             const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
                             
                             // Exclude if it's the current conversation (both models and first message must match)
@@ -3777,15 +3816,49 @@ function AppContent() {
                                 );
                               })}
                               
-                              {/* Signup prompt for anonymous users at limit */}
-                              {!isAuthenticated && conversationHistory.length >= 2 && (
-                                <div className="history-signup-prompt">
-                                  <div className="history-signup-message">
-                                    <span className="history-signup-line">You can only save the last 2 comparisons.</span>
-                                    <span className="history-signup-line"> Sign up for a free account to save more!</span>
-                                  </div>
-                                </div>
-                              )}
+                              {/* Tier limit message for users at limit */}
+                              {(() => {
+                                const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+                                const tierLimits: { [key: string]: number } = {
+                                  anonymous: 2,
+                                  free: 3,
+                                  starter: 10,
+                                  starter_plus: 20,
+                                  pro: 50,
+                                  pro_plus: 100,
+                                };
+                                const tierLimit = tierLimits[userTier] || 2;
+                                const isAtLimit = conversationHistory.length >= tierLimit;
+                                
+                                if (!isAtLimit) return null;
+                                
+                                if (!isAuthenticated) {
+                                  return (
+                                    <div className="history-signup-prompt">
+                                      <div className="history-signup-message">
+                                        <span className="history-signup-line">You can only save the last 2 comparisons.</span>
+                                        <span className="history-signup-line"> Sign up for a free account to save more!</span>
+                                      </div>
+                                    </div>
+                                  );
+                                } else {
+                                  const upgradeMessages: { [key: string]: string } = {
+                                    free: " Upgrade to Starter for 10 saved comparisons or Pro for 50!",
+                                    starter: " Upgrade to Pro for 50 saved comparisons!",
+                                    starter_plus: " Upgrade to Pro for 50 saved comparisons!",
+                                    pro: " Upgrade to Pro+ for 100 saved comparisons!",
+                                  };
+                                  const upgradeMsg = upgradeMessages[userTier] || "";
+                                  
+                                  return (
+                                    <div className="history-signup-prompt">
+                                      <div className="history-signup-message">
+                                        <span className="history-signup-line">You've reached your {userTier} tier limit of {tierLimit} saved comparisons.{upgradeMsg}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </>
                           )}
                         </div>

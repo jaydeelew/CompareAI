@@ -17,7 +17,7 @@ import json
 import os
 
 from ..model_runner import OPENROUTER_MODELS, MODELS_BY_PROVIDER, run_models, call_openrouter_streaming, clean_model_response
-from ..models import User, UsageLog, AppSettings, Conversation, ConversationMessage
+from ..models import User, UsageLog, AppSettings, Conversation, ConversationMessage as ConversationMessageModel
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas import ConversationSummary, ConversationDetail
@@ -948,11 +948,13 @@ async def compare_stream(
             background_tasks.add_task(log_usage_to_db, usage_log, log_db)
 
             # Save conversation to database for authenticated users
+            print(f"🔍 Check save condition: user_id={user_id}, successful_models={successful_models}")
             if user_id and successful_models > 0:
                 def save_conversation_to_db():
                     """Save conversation and messages to database."""
                     conv_db = SessionLocal()
                     try:
+                        print(f"💾 Starting to save conversation for user_id={user_id}, successful_models={successful_models}")
                         # Determine if this is a follow-up or new conversation
                         is_follow_up = bool(req.conversation_history and len(req.conversation_history) > 0)
                         
@@ -982,6 +984,7 @@ async def compare_stream(
                         if existing_conversation:
                             conversation = existing_conversation
                             conversation.updated_at = datetime.now()
+                            print(f"💾 Updating existing conversation id={conversation.id}")
                         else:
                             # Create new conversation
                             conversation = Conversation(
@@ -991,11 +994,12 @@ async def compare_stream(
                             )
                             conv_db.add(conversation)
                             conv_db.flush()  # Get the ID
+                            print(f"💾 Created new conversation id={conversation.id}")
                         
                         # Save user message (current prompt)
                         # For new conversations, this is the first message
                         # For follow-ups, this is the new user prompt
-                        user_msg = ConversationMessage(
+                        user_msg = ConversationMessageModel(
                             conversation_id=conversation.id,
                             role="user",
                             content=req.input_data,
@@ -1004,9 +1008,10 @@ async def compare_stream(
                         conv_db.add(user_msg)
                         
                         # Save assistant messages for each successful model
+                        messages_saved = 0
                         for model_id, content in results_dict.items():
                             if not content.startswith("Error:"):
-                                assistant_msg = ConversationMessage(
+                                assistant_msg = ConversationMessageModel(
                                     conversation_id=conversation.id,
                                     role="assistant",
                                     content=content,
@@ -1015,8 +1020,10 @@ async def compare_stream(
                                     processing_time_ms=processing_time_ms,
                                 )
                                 conv_db.add(assistant_msg)
+                                messages_saved += 1
                         
                         conv_db.commit()
+                        print(f"✅ Successfully saved conversation id={conversation.id} with {messages_saved} assistant messages")
                         
                         # Enforce tier-based conversation limits
                         user_obj = conv_db.query(User).filter(User.id == user_id).first()
@@ -1034,18 +1041,25 @@ async def compare_stream(
                         # Delete oldest conversations if over limit
                         if len(all_conversations) > limit:
                             conversations_to_delete = all_conversations[limit:]
+                            deleted_count = len(conversations_to_delete)
                             for conv_to_delete in conversations_to_delete:
                                 conv_db.delete(conv_to_delete)
                             conv_db.commit()
+                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over tier limit {limit})")
                             
                     except Exception as e:
-                        print(f"Failed to save conversation to database: {e}")
+                        import traceback
+                        print(f"❌ Failed to save conversation to database: {e}")
+                        print(f"Traceback: {traceback.format_exc()}")
                         conv_db.rollback()
                     finally:
                         conv_db.close()
                 
-                # Save conversation in background
-                background_tasks.add_task(save_conversation_to_db)
+                # Save conversation - execute in thread executor to avoid blocking stream
+                # Background tasks don't execute reliably with StreamingResponse, so we run it here
+                print(f"📋 Executing conversation save for user_id={user_id}")
+                loop = asyncio.get_event_loop()
+                loop.run_in_executor(None, save_conversation_to_db)
 
             # Send completion event with metadata
             yield f"data: {json.dumps({'type': 'complete', 'metadata': metadata})}\n\n"
@@ -1071,6 +1085,8 @@ async def get_conversations(
     tier = current_user.subscription_tier or "free"
     limit = get_conversation_limit_for_tier(tier)
 
+    print(f"📥 GET /conversations - user_id={current_user.id}, tier={tier}, limit={limit}")
+
     # Get user's conversations ordered by created_at DESC, limited by tier
     conversations = (
         db.query(Conversation)
@@ -1079,6 +1095,8 @@ async def get_conversations(
         .limit(limit)
         .all()
     )
+
+    print(f"📥 Found {len(conversations)} conversations in database for user_id={current_user.id}")
 
     # Convert to summaries with message counts
     summaries = []
@@ -1090,8 +1108,8 @@ async def get_conversations(
             models_used = []
 
         # Count messages
-        message_count = db.query(ConversationMessage).filter(
-            ConversationMessage.conversation_id == conv.id
+        message_count = db.query(ConversationMessageModel).filter(
+            ConversationMessageModel.conversation_id == conv.id
         ).count()
 
         summaries.append(
@@ -1104,6 +1122,7 @@ async def get_conversations(
             )
         )
 
+    print(f"📥 Returning {len(summaries)} conversation summaries")
     return summaries
 
 
@@ -1138,9 +1157,9 @@ async def get_conversation(
 
     # Get all messages ordered by created_at ASC
     messages = (
-        db.query(ConversationMessage)
-        .filter(ConversationMessage.conversation_id == conversation.id)
-        .order_by(ConversationMessage.created_at.asc())
+        db.query(ConversationMessageModel)
+        .filter(ConversationMessageModel.conversation_id == conversation.id)
+        .order_by(ConversationMessageModel.created_at.asc())
         .all()
     )
 
