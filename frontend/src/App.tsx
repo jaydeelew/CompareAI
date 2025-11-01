@@ -4276,14 +4276,14 @@ function AppContent() {
                               >
                                 <div className="provider-left">
                                   <span className="provider-name">{provider}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                   <span className="provider-count">
                                     {(() => {
                                       const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
                                       return `${selectedCount} of ${models.length} selected`;
                                     })()}
                                   </span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                   {(() => {
                                     const providerModels = modelsByProvider[provider] || [];
                                     // Filter out unavailable models (where available === false)
