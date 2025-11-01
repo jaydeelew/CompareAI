@@ -5625,17 +5625,23 @@ button.nav-button-primary {
 }
 
 .history-signup-prompt {
-  padding: 1rem;
+  padding: 0.5rem 1rem 0.5rem 1rem;
   background: rgba(59, 130, 246, 0.1);
-  border-top: 1px solid rgba(59, 130, 246, 0.2);
   margin-top: 0.5rem;
+}
+
+.history-signup-prompt::before,
+.history-signup-prompt::after,
+.history-signup-message::before,
+.history-signup-message::after {
+  display: none;
 }
 
 .history-signup-message {
   color: var(--text-primary);
   font-size: 0.85rem;
   line-height: 1.5;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
 }
 
 .history-signup-button {
