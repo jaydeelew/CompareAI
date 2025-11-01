@@ -1029,10 +1029,11 @@ function AppContent() {
       const stored = localStorage.getItem('compareai_conversation_history');
       if (stored) {
         const history = JSON.parse(stored) as ConversationSummary[];
-        // Sort by created_at DESC and limit to 2
+        // Sort by created_at DESC
+        // Don't limit here - let the dropdown filtering and slicing handle the limit
+        // This ensures we have enough items even after filtering out the active conversation
         return history
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 2);
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       }
     } catch (e) {
       console.error('Failed to load conversation history from localStorage:', e);
@@ -3579,11 +3580,13 @@ function AppContent() {
                                       .filter(msg => msg.type === 'user')
                                       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
                                     
-                                    if (currentFirstUserMessage) {
+                                    // Only filter if we have a valid user message and both models and content match
+                                    // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
+                                    if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
                                       const modelsMatch = JSON.stringify(summary.models_used.sort()) === JSON.stringify(selectedModels.sort());
                                       const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
                                       
-                                      // Exclude if it's the current conversation
+                                      // Exclude if it's the current conversation (both models and first message must match)
                                       if (modelsMatch && firstMessageMatches) {
                                         return false;
                                       }
