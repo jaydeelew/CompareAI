@@ -4044,7 +4044,7 @@ function AppContent() {
                               ? 'rgba(239, 68, 68, 0.3)'
                               : warningLevel === 'high'
                                 ? 'rgba(251, 191, 36, 0.3)'
-                                : 'rgba(59, 130, 246, 0.25)'
+                                : 'rgba(120, 170, 255, 0.35)'
                               }`,
                             display: 'flex',
                             alignItems: 'center',
