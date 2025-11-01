@@ -3751,7 +3751,8 @@ function AppContent() {
                               {!isAuthenticated && conversationHistory.length >= 2 && (
                                 <div className="history-signup-prompt">
                                   <div className="history-signup-message">
-                                    You can only save the last 2 comparisons. Sign up for a free account to save more!
+                                    <span className="history-signup-line">You can only save the last 2 comparisons.</span>
+                                    <span className="history-signup-line"> Sign up for a free account to save more!</span>
                                   </div>
                                 </div>
                               )}
