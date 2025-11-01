@@ -1393,13 +1393,25 @@ function AppContent() {
       setResponse(null); // Clear any previous response state
       setShowHistoryDropdown(false);
       
-      // Scroll to results section
-      setTimeout(() => {
-        const resultsSection = document.querySelector('.results-section');
-        if (resultsSection) {
-          resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
+      // Scroll to results section and reset all conversation cards to top
+      // Use requestAnimationFrame to ensure DOM is rendered before scrolling
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const resultsSection = document.querySelector('.results-section');
+          if (resultsSection) {
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          
+          // Scroll all conversation content divs to the top
+          conversationData.models_used.forEach((modelId: string) => {
+            const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
+            const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+            if (conversationContent) {
+              conversationContent.scrollTop = 0;
+            }
+          });
+        }, 200); // Delay to ensure DOM is fully rendered
+      });
       
     } catch (e) {
       console.error('Failed to load conversation:', e);
