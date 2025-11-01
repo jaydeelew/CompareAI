@@ -1167,3 +1167,33 @@ async def get_conversation(
         created_at=conversation.created_at,
         messages=message_schemas,
     )
+
+
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_200_OK)
+async def delete_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """Delete a conversation and all its messages."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Get conversation and verify it belongs to the user
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Delete conversation (messages will be deleted via cascade)
+    db.delete(conversation)
+    db.commit()
+
+    return {"message": "Conversation deleted successfully"}

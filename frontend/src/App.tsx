@@ -1121,18 +1121,25 @@ function AppContent() {
             JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
         );
         
-        // Add new conversation to the front
+        // For new conversations: when at the limit, keep the 2 most recent conversations
+        // Add the new one and let sorting/limiting keep the most recent 2 (which will include the new one)
+        // This ensures when user has A & B, runs C, then runs D, they'll see B & C, then C & D
+        
+        // Always add the new conversation - we'll limit to 2 most recent after sorting
         filteredHistory.unshift(conversationSummary);
         updatedHistory = filteredHistory;
       }
       
-      // Sort by created_at DESC and keep only last 2
+      // Sort by created_at DESC
       const sorted = updatedHistory.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
+      
+      // For anonymous users, limit localStorage storage to 2 (tier limit)
+      // Keep the 2 most recent conversations
       const limited = sorted.slice(0, 2);
       
-      // Store summary list
+      // Store summary list (limit to 2 in localStorage to respect tier limits)
       localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
       
       // Store full conversation data with ID as key
@@ -1177,7 +1184,10 @@ function AppContent() {
         messages: conversationMessages,
       }));
       
-      setConversationHistory(limited);
+      // Reload all saved conversations from localStorage to state
+      // This ensures dropdown can show all saved conversations, and filtering/slicing handles the display limit
+      const reloadedHistory = loadHistoryFromLocalStorage();
+      setConversationHistory(reloadedHistory);
     } catch (e) {
       console.error('Failed to save conversation to localStorage:', e);
     }
@@ -1212,6 +1222,52 @@ function AppContent() {
       setIsLoadingHistory(false);
     }
   }, [isAuthenticated]);
+
+  // Delete conversation from API (authenticated users) or localStorage (anonymous users)
+  const deleteConversation = useCallback(async (summary: ConversationSummary, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the loadConversation onClick
+    
+    if (isAuthenticated && typeof summary.id === 'number') {
+      // Delete from API
+      try {
+        const accessToken = localStorage.getItem('access_token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const response = await fetch(`${API_URL}/conversations/${summary.id}`, {
+          method: 'DELETE',
+          headers,
+        });
+
+        if (response.ok) {
+          // Reload history from API
+          await loadHistoryFromAPI();
+        } else {
+          console.error('Failed to delete conversation:', response.statusText);
+        }
+      } catch (e) {
+        console.error('Failed to delete conversation from API:', e);
+      }
+    } else if (!isAuthenticated && typeof summary.id === 'string') {
+      // Delete from localStorage
+      try {
+        // Remove the conversation data
+        localStorage.removeItem(`compareai_conversation_${summary.id}`);
+        
+        // Remove from history list
+        const history = loadHistoryFromLocalStorage();
+        const updatedHistory = history.filter(conv => conv.id !== summary.id);
+        localStorage.setItem('compareai_conversation_history', JSON.stringify(updatedHistory));
+        
+        // Update state
+        setConversationHistory(updatedHistory);
+      } catch (e) {
+        console.error('Failed to delete conversation from localStorage:', e);
+      }
+    }
+  }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
@@ -2531,6 +2587,42 @@ function AppContent() {
     // Store original selected models for follow-up comparison logic (only for new comparisons, not follow-ups)
     if (!isFollowUpMode) {
       setOriginalSelectedModels([...selectedModels]);
+      
+      // If there's an active conversation and we're starting a new one, save the previous one first
+      // This ensures when user has A & B, runs C, then starts D, we save C and show B & C in history
+      if (!isAuthenticated && conversations.length > 0) {
+        // Use originalSelectedModels for the previous conversation, or fall back to current conversations' models
+        const previousModels = originalSelectedModels.length > 0 
+          ? originalSelectedModels 
+          : [...new Set(conversations.map(conv => conv.modelId))];
+        
+        const conversationsWithMessages = conversations.filter(conv => 
+          previousModels.includes(conv.modelId) && conv.messages.length > 0
+        );
+        
+        // Only save if we have conversations with complete assistant messages
+        const hasCompleteMessages = conversationsWithMessages.some(conv => {
+          const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
+          return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
+        });
+        
+        if (hasCompleteMessages && conversationsWithMessages.length > 0) {
+          // Get the FIRST user message from the conversation
+          const allUserMessages = conversationsWithMessages
+            .flatMap(conv => conv.messages)
+            .filter(msg => msg.type === 'user')
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          
+          const firstUserMessage = allUserMessages[0];
+          
+          if (firstUserMessage) {
+            const inputData = firstUserMessage.content;
+            // Save the previous conversation before starting the new one
+            // Use isUpdate=false since this is the first time saving this conversation
+            saveConversationToLocalStorage(inputData, previousModels, conversationsWithMessages, false);
+          }
+        }
+      }
     }
 
     setIsLoading(true);
@@ -3025,9 +3117,20 @@ function AppContent() {
                   
                   if (firstUserMessage) {
                     const inputData = firstUserMessage.content;
-                    // Save the complete conversation
-                    saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
-                    // Clear the textarea after saving
+                    // Check if we already have 2 saved conversations
+                    // If so, don't save yet - preserve the 2 saved ones
+                    // The conversation will be saved when user starts another comparison
+                    const currentHistory = loadHistoryFromLocalStorage();
+                    const historyLimit = 2; // Anonymous tier limit
+                    
+                    if (currentHistory.length < historyLimit) {
+                      // We have room, save it now
+                      saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
+                    }
+                    // If at limit, preserve the 2 saved conversations - don't save the new one yet
+                    // It will be saved when user starts another comparison
+                    
+                    // Clear the textarea after saving (or even if not saving, to prepare for follow-up)
                     setInput('');
                   }
                 }
@@ -3623,11 +3726,21 @@ function AppContent() {
                                     onClick={() => loadConversation(summary)}
                                     title={summary.input_data}
                                   >
-                                    <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
-                                    <div className="history-item-meta">
-                                      <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
-                                      <span className="history-item-date">{formatDate(summary.created_at)}</span>
+                                    <div className="history-item-content">
+                                      <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
+                                      <div className="history-item-meta">
+                                        <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
+                                        <span className="history-item-date">{formatDate(summary.created_at)}</span>
+                                      </div>
                                     </div>
+                                    <button
+                                      className="history-item-delete"
+                                      onClick={(e) => deleteConversation(summary, e)}
+                                      title="Delete conversation"
+                                      aria-label="Delete conversation"
+                                    >
+                                      ×
+                                    </button>
                                   </div>
                                 );
                               })}

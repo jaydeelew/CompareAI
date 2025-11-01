@@ -5566,6 +5566,11 @@ button.nav-button-primary {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: background 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .history-item:last-child {
@@ -5574,6 +5579,11 @@ button.nav-button-primary {
 
 .history-item:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.history-item-content {
+  flex: 1;
+  min-width: 0; /* Allows text truncation */
 }
 
 .history-inline-list .history-item {
@@ -5622,6 +5632,57 @@ button.nav-button-primary {
 
 .history-item-date {
   color: var(--text-muted);
+}
+
+.history-item-delete {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(156, 163, 175, 0.8);
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+  z-index: 10;
+  margin-right: -0.75rem;
+  margin-top: -0.25rem;
+}
+
+.history-item-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.history-item-delete:active {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(0.95);
+}
+
+.history-item:hover .history-item-delete {
+  color: rgba(156, 163, 175, 1);
+}
+
+.history-inline-list .history-item-delete {
+  color: rgba(107, 114, 128, 0.7);
+}
+
+.history-inline-list .history-item:hover .history-item-delete {
+  color: rgba(107, 114, 128, 0.9);
+}
+
+.history-inline-list .history-item-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .history-signup-prompt {
