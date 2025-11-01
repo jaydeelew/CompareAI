@@ -4004,7 +4004,7 @@ function AppContent() {
                     } else if (messageCount >= extendedThreshold) {
                       warningLevel = 'info';
                       warningIcon = 'ℹ️';
-                      warningMessage = 'Using extended context mode for this conversation.';
+                      warningMessage = `1 extended interaction used when message context is >= ${extendedThreshold}.`;
                     }
 
                     return (
