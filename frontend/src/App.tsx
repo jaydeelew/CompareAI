@@ -3632,7 +3632,7 @@ function AppContent() {
                               {!isAuthenticated && conversationHistory.length >= 2 && (
                                 <div className="history-signup-prompt">
                                   <div className="history-signup-message">
-                                    You've reached your limit of 2 saved comparisons. Sign up for a free account to save 3+ comparisons!
+                                    You've reached your limit of 2 saved comparisons. Sign up for a free account to save more comparisons!
                                   </div>
                                 </div>
                               )}
