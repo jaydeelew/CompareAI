@@ -3634,16 +3634,6 @@ function AppContent() {
                                   <div className="history-signup-message">
                                     You've reached your limit of 2 saved comparisons. Sign up for a free account to save 3+ comparisons!
                                   </div>
-                                  <button
-                                    className="history-signup-button"
-                                    onClick={() => {
-                                      setAuthModalMode('register');
-                                      setIsAuthModalOpen(true);
-                                      setShowHistoryDropdown(false);
-                                    }}
-                                  >
-                                    Sign Up Free
-                                  </button>
                                 </div>
                               )}
                             </>
