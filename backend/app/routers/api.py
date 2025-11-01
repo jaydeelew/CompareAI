@@ -1026,9 +1026,12 @@ async def compare_stream(
                         print(f"✅ Successfully saved conversation id={conversation.id} with {messages_saved} assistant messages")
                         
                         # Enforce tier-based conversation limits
+                        # Save (limit + 1) conversations to ensure when a new one is saved, 
+                        # the display limit number remain visible
                         user_obj = conv_db.query(User).filter(User.id == user_id).first()
                         tier = user_obj.subscription_tier if user_obj else "free"
-                        limit = get_conversation_limit_for_tier(tier)
+                        display_limit = get_conversation_limit_for_tier(tier)
+                        storage_limit = display_limit + 1  # Save 1 more than display limit
                         
                         # Get all conversations for user
                         all_conversations = (
@@ -1038,14 +1041,14 @@ async def compare_stream(
                             .all()
                         )
                         
-                        # Delete oldest conversations if over limit
-                        if len(all_conversations) > limit:
-                            conversations_to_delete = all_conversations[limit:]
+                        # Delete oldest conversations if over storage limit (display_limit + 1)
+                        if len(all_conversations) > storage_limit:
+                            conversations_to_delete = all_conversations[storage_limit:]
                             deleted_count = len(conversations_to_delete)
                             for conv_to_delete in conversations_to_delete:
                                 conv_db.delete(conv_to_delete)
                             conv_db.commit()
-                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over tier limit {limit})")
+                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over storage limit {storage_limit}, display limit {display_limit})")
                             
                     except Exception as e:
                         import traceback
