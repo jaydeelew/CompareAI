@@ -3827,7 +3827,17 @@ function AppContent() {
                           if (hasReachedExtendedLimit) {
                             return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
                           }
-                          return 'Enable Extended mode (15K chars, 8K tokens) - Better for detailed analysis';
+                          // Format tier name for display (handle _plus suffix specially)
+                          let tierDisplayName: string;
+                          if (userTier.endsWith('_plus')) {
+                            const baseTier = userTier.replace('_plus', '');
+                            tierDisplayName = baseTier.charAt(0).toUpperCase() + baseTier.slice(1) + '+';
+                          } else {
+                            tierDisplayName = userTier.split('_')
+                              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                              .join(' ');
+                          }
+                          return `${tierDisplayName} tier users get ${extendedLimit} extended interactions`;
                         };
 
                         return (
