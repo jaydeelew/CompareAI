@@ -3612,10 +3612,24 @@ function AppContent() {
                             height: '32px',
                             borderRadius: '50%',
                             minWidth: '32px',
-                            padding: 0
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            xmlns="http://www.w3.org/2000/svg"
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              display: 'block',
+                              margin: 0,
+                              transform: 'translate(-1px, 1px)'
+                            }}
+                          >
                             <path d="M12 2v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                           </svg>
