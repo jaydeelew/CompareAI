@@ -3662,41 +3662,43 @@ function AppContent() {
                     />
                     
                     {/* History List - Inline, extends textarea depth */}
-                    {showHistoryDropdown && (
-                      <div className="history-inline-list">
+                    {showHistoryDropdown && (() => {
+                      // Filter out current conversation if in follow-up mode or if there's an active conversation
+                      const filteredHistory = conversationHistory.filter((summary) => {
+                        if (isFollowUpMode || conversations.length > 0) {
+                          // Identify current conversation by matching:
+                          // 1. First user message matches the first message in current conversations
+                          // 2. Models used match selected models
+                          
+                          const currentFirstUserMessage = conversations
+                            .flatMap(conv => conv.messages)
+                            .filter(msg => msg.type === 'user')
+                            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                          
+                          // Only filter if we have a valid user message and both models and content match
+                          // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
+                          if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
+                            const modelsMatch = JSON.stringify(summary.models_used.sort()) === JSON.stringify(selectedModels.sort());
+                            const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
+                            
+                            // Exclude if it's the current conversation (both models and first message must match)
+                            if (modelsMatch && firstMessageMatches) {
+                              return false;
+                            }
+                          }
+                        }
+                        return true; // Include all other conversations
+                      });
+                      
+                      return (
+                        <div className="history-inline-list">
                           {isLoadingHistory ? (
                             <div className="history-loading">Loading...</div>
-                          ) : conversationHistory.length === 0 ? (
+                          ) : filteredHistory.length === 0 ? (
                             <div className="history-empty">No conversation history</div>
                           ) : (
                             <>
-                              {conversationHistory
-                                .filter((summary) => {
-                                  // Filter out current conversation if in follow-up mode or if there's an active conversation
-                                  if (isFollowUpMode || conversations.length > 0) {
-                                    // Identify current conversation by matching:
-                                    // 1. First user message matches the first message in current conversations
-                                    // 2. Models used match selected models
-                                    
-                                    const currentFirstUserMessage = conversations
-                                      .flatMap(conv => conv.messages)
-                                      .filter(msg => msg.type === 'user')
-                                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-                                    
-                                    // Only filter if we have a valid user message and both models and content match
-                                    // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
-                                    if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
-                                      const modelsMatch = JSON.stringify(summary.models_used.sort()) === JSON.stringify(selectedModels.sort());
-                                      const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
-                                      
-                                      // Exclude if it's the current conversation (both models and first message must match)
-                                      if (modelsMatch && firstMessageMatches) {
-                                        return false;
-                                      }
-                                    }
-                                  }
-                                  return true; // Include all other conversations
-                                })
+                              {filteredHistory
                                 .slice(0, historyLimit).map((summary) => {
                                 const truncatePrompt = (text: string, maxLength: number = 60) => {
                                   if (text.length <= maxLength) return text;
@@ -3755,8 +3757,9 @@ function AppContent() {
                               )}
                             </>
                           )}
-                      </div>
-                    )}
+                        </div>
+                      );
+                    })()}
                     
                     <div className="textarea-actions">
                       {(() => {
