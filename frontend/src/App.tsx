@@ -3909,7 +3909,7 @@ function AppContent() {
                         {isExtendedInteraction && (
                           <span className="usage-preview-item">
                             <span className="usage-preview-separator"> • </span>
-                            <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining
+                            <strong>{extendedToUse}</strong> extended selected, <strong>{extendedRemaining}</strong> remaining
                           </span>
                         )}
                       </div>
