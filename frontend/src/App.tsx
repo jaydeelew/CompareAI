@@ -4048,31 +4048,6 @@ function AppContent() {
                               }}>
                                 <span style={{ marginRight: '0.5rem' }}>{warningIcon}</span>{warningMessage}
                               </div>
-                              {messageCount < 24 && (
-                                <button
-                                  onClick={handleNewComparison}
-                                  style={{
-                                    background: 'rgba(255, 255, 255, 0.15)',
-                                    border: '1px solid rgba(255, 255, 255, 0.25)',
-                                    color: 'rgba(255, 255, 255, 0.95)',
-                                    padding: '0.375rem 0.875rem',
-                                    borderRadius: '6px',
-                                    fontSize: '0.8rem',
-                                    cursor: 'pointer',
-                                    marginTop: '0.5rem',
-                                    fontWeight: '500',
-                                    transition: 'all 0.2s ease'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                  }}
-                                >
-                                  ✨ Start Fresh Comparison
-                                </button>
-                              )}
                             </div>
                           </div>
                         )}
