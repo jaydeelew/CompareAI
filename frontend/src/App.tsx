@@ -1392,6 +1392,7 @@ function AppContent() {
       setClosedCards(new Set()); // Ensure all result cards are open/visible
       setResponse(null); // Clear any previous response state
       setShowHistoryDropdown(false);
+      setIsModelsHidden(true); // Collapse the models section when selecting from history
       
       // Scroll to results section and reset all conversation cards to top
       // Use requestAnimationFrame to ensure DOM is rendered before scrolling
