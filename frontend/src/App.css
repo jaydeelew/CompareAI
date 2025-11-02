@@ -2179,6 +2179,15 @@ body {
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Style counter with soft red background and white text when provider has selected models */
+.provider-dropdown.has-selected-models .provider-count {
+  background: #dc2626;
+  color: white;
+  border-color: #b91c1c;
+  font-weight: 500;
 }
 
 .dropdown-arrow {
@@ -2572,12 +2581,13 @@ body {
   border-color: rgba(102, 126, 234, 0.4);
 }
 
+/* Remove red border from dropdown when models are selected - counter will show selection instead */
 .provider-dropdown.has-selected-models {
-  border-color: #ef4444;
+  /* Keep default border color */
 }
 
 .provider-dropdown.has-selected-models:hover {
-  border-color: #dc2626;
+  /* Keep default hover border color */
 }
 
 .provider-header {
