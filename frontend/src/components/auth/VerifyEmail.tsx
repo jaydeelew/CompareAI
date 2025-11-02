@@ -78,8 +78,8 @@ export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onClose, externalToken
                         await refreshUser();
                         // Dispatch event to hide verification banner immediately
                         window.dispatchEvent(new CustomEvent('verification-complete'));
-                    } catch (err) {
-                        console.log('Could not refresh user data:', err);
+                    } catch {
+                        // Silently fail - user data refresh is not critical
                     }
 
                     // Small delay before showing success to allow orange banner to start fading

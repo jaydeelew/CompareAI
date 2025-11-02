@@ -10,7 +10,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // API base URL with smart fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api';
-console.log('API_BASE_URL:', API_BASE_URL); // Debug log
 
 interface AuthProviderProps {
     children: React.ReactNode;
@@ -95,7 +94,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Login function
     const login = async (credentials: LoginCredentials) => {
         try {
-            console.log('Attempting login to:', `${API_BASE_URL}/auth/login`);
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
@@ -106,7 +104,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     password: credentials.password,
                 }),
             });
-            console.log('Login response status:', response.status);
 
             if (!response.ok) {
                 const error = await response.json();
@@ -114,7 +111,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
             const data: AuthResponse = await response.json();
-            console.log('Login successful!');
 
             // The backend login doesn't return user data, so we need to fetch it
             saveTokens(data.access_token, data.refresh_token);
@@ -129,7 +125,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
         } catch (error) {
             console.error('Login error:', error);
-            console.error('Error type:', error instanceof TypeError ? 'Network error' : 'Other error');
             setIsLoading(false); // Set loading to false even on error
             throw error;
         }
@@ -138,7 +133,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Register function
     const register = async (data: RegisterData) => {
         try {
-            console.log('Attempting registration to:', `${API_BASE_URL}/auth/register`);
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: {
@@ -149,7 +143,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     password: data.password,
                 }),
             });
-            console.log('Registration response status:', response.status);
 
             if (!response.ok) {
                 const error = await response.json();
@@ -157,13 +150,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
             const responseData: AuthResponse = await response.json();
-            console.log('Registration successful!');
             saveTokens(responseData.access_token, responseData.refresh_token);
             setUser(responseData.user);
             setIsLoading(false); // Set loading to false after successful registration
         } catch (error) {
             console.error('Registration error:', error);
-            console.error('Error type:', error instanceof TypeError ? 'Network error' : 'Other error');
             setIsLoading(false); // Set loading to false even on error
             throw error;
         }
@@ -187,21 +178,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const refreshUser = async () => {
         const accessToken = getAccessToken();
         if (!accessToken) {
-            console.log('[AuthContext] No access token available for refresh');
             return;
         }
 
-        console.log('[AuthContext] Refreshing user data...');
         const userData = await fetchCurrentUser(accessToken);
         if (userData) {
-            console.log('[AuthContext] User data refreshed:', {
-                email: userData.email,
-                daily_usage_count: userData.daily_usage_count,
-                daily_extended_usage: userData.daily_extended_usage
-            });
             setUser(userData);
-        } else {
-            console.log('[AuthContext] Failed to fetch user data');
         }
     };
 

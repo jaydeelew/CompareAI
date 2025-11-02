@@ -499,7 +499,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         // Unordered lists
         processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
             const level = indent.length;
-            console.log(`📌 List item: level=${level}, indent="${indent}", content="${content.substring(0, 50)}..."`);
             const processedContent = processListContent(content);
             return `__UL_${level}__${processedContent}__/UL__`;
         });
@@ -507,7 +506,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         // Ordered lists - capture indent level for nesting
         processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, indent, num, content) => {
             const level = indent.length;
-            console.log(`🔢 OL match: indent="${indent}", level=${level}, num=${num}, content="${content.substring(0, 50)}"`);
             const processedContent = processListContent(content);
             return `__OL_${level}__${processedContent}__/OL__`;
         });
@@ -525,47 +523,37 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         // This catches expressions like "x = ..." that contain LaTeX commands
         rendered = rendered.replace(/^x\s*=\s*(.+)$/gm, (_match, rightSide) => {
             const fullExpression = `x = ${rightSide}`;
-            console.log('🔍 renderMathContent - Found x= line (EARLY):', fullExpression);
 
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(fullExpression);
             const alreadyRendered = fullExpression.includes('<span class="katex">') || fullExpression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
-                console.log('🔍 renderMathContent - Processing x= line as math (EARLY):', fullExpression);
                 return safeRenderKatex(fullExpression, false);
             }
-            console.log('🔍 renderMathContent - Skipping x= line (EARLY):', fullExpression);
             return _match;
         });
 
         // Handle other mathematical expressions that don't have explicit delimiters
         rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+)$/gm, (_match, expression) => {
-            console.log('🔍 renderMathContent - Checking expression (EARLY):', expression);
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(expression);
             const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
-                console.log('🔍 renderMathContent - Processing as math (EARLY):', expression);
                 return safeRenderKatex(expression, false);
             }
-            console.log('🔍 renderMathContent - Skipping (EARLY):', expression);
             return _match;
         });
 
         // Handle mathematical expressions within text (like verification steps)
         // Look for patterns like "2(3)² - 7(3) + 3 = 18 - 21 + 3 = 0"
         rendered = rendered.replace(/(\d+\([^)]+\)[²³⁴⁵⁶⁷⁸⁹⁰¹]?\s*[-+]\s*\d+\([^)]+\)\s*[-+]\s*\d+\s*=\s*[^=\n<]+)/g, (_match, mathExpression) => {
-            console.log('🔍 renderMathContent - Found math in text (EARLY):', mathExpression);
-
             const alreadyRendered = mathExpression.includes('<span class="katex">') || mathExpression.includes('katex');
 
             if (!alreadyRendered && looksMathematical(mathExpression)) {
-                console.log('🔍 renderMathContent - Processing math in text (EARLY):', mathExpression);
                 return safeRenderKatex(mathExpression, false);
             }
-            console.log('🔍 renderMathContent - Skipping math in text (EARLY):', mathExpression);
             return _match;
         });
 
@@ -836,8 +824,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             if (items.length === 0) return match;
 
-            console.log('📋 List items detected:', items);
-
             // Normalize levels
             const minLevel = Math.min(...items.map(i => i.level));
             items.forEach(i => i.level -= minLevel);
@@ -884,15 +870,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             }
             html += '</ul>';
 
-            console.log('📋 Generated HTML:', html);
-
             return html;
         });
 
         // Ordered lists - handle nesting like unordered lists
         // Match consecutive OL items including whitespace between them
         converted = converted.replace(/(?:__OL_\d+__[\s\S]*?__\/OL__\s*)+/g, (match) => {
-            console.log('📋 Full OL match (first 500 chars):', match.substring(0, 500));
             const items: { level: number; content: string }[] = [];
             const regex = /__OL_(\d+)__([\s\S]*?)__\/OL__/g;
             let m;
@@ -903,18 +886,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             if (items.length === 0) return match;
 
-            console.log('📋 Ordered list items detected (BEFORE normalization):', items);
-
             // Normalize levels
             const minLevel = Math.min(...items.map(i => i.level));
             items.forEach(i => i.level -= minLevel);
 
-            console.log('📋 Ordered list items (AFTER normalization, minLevel was', minLevel + '):', items);
-
             // Fallback: If all items are at the same level, try to infer nesting from bold markers
             const allSameLevel = items.every(i => i.level === 0);
             if (allSameLevel && items.length > 4) {
-                console.log('⚠️ All items at same level - attempting to infer nesting from bold text');
                 items.forEach(item => {
                     // Items with bold text (**text** or <strong>) are main items (level 0)
                     // Items without bold are sub-items (level 1)
@@ -923,7 +901,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                         item.level = 1;
                     }
                 });
-                console.log('📋 After bold-based inference:', items);
             }
 
             let html = '<ol>';
@@ -968,8 +945,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             }
             html += '</ol>';
 
-            console.log('📋 Generated ordered list HTML:', html);
-
             return html;
         });
 
@@ -1003,21 +978,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         try {
             let processed = text;
 
-            // Debug logging for multi-line mathematical expressions
-            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
-                console.log('🔍 LatexRenderer Debug - Input:', text);
-            }
-
             // Stage 1: Clean malformed content
             processed = cleanMalformedContent(processed);
 
             // Stage 2: Fix LaTeX issues
             processed = fixLatexIssues(processed);
-
-            // Debug logging after Stage 2
-            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
-                console.log('🔍 LatexRenderer Debug - After Stage 2:', processed);
-            }
 
             // Stage 3: Convert implicit math notation
             processed = convertImplicitMath(processed);
@@ -1031,11 +996,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
             // Stage 6: Render math content
             processed = renderMathContent(processed);
-
-            // Debug logging after Stage 6
-            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
-                console.log('🔍 LatexRenderer Debug - After Stage 6 (renderMathContent):', processed);
-            }
 
             // Stage 7: Process markdown formatting
             processed = processMarkdown(processed);
@@ -1056,11 +1016,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             processed = processed.replace(/\\([`*_#+\-.!|])/g, '$1');
             processed = processed.replace(/\\\(/g, '');
             processed = processed.replace(/\\\)/g, '');
-
-            // Debug logging final result
-            if (text.includes('(-(-7)') || text.includes('x =') || text.includes('--7') || text.includes('±') || text.includes('√')) {
-                console.log('🔍 LatexRenderer Debug - Final Result:', processed);
-            }
 
             return processed;
 

@@ -600,33 +600,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const handleDeleteConfirm = async () => {
         if (!userToDelete) return;
 
-        console.log('Attempting to delete user:', userToDelete);
-        console.log('User ID:', userToDelete.id);
-        console.log('User Email:', userToDelete.email);
-
         try {
             const headers = getAuthHeaders();
-            console.log('Auth headers:', headers);
 
             if (!headers.Authorization) {
                 throw new Error('No authentication token available');
             }
 
             const deleteUrl = `/api/admin/users/${userToDelete.id}`;
-            console.log('Delete URL:', deleteUrl);
 
             const response = await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers
             });
 
-            console.log('Delete response status:', response.status);
-            console.log('Delete response ok:', response.ok);
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                console.log('Error response data:', errorData);
-                console.log('Error status:', response.status);
 
                 if (response.status === 401) {
                     throw new Error('Authentication required. Please log in again.');

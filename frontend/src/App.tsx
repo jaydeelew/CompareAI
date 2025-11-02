@@ -350,9 +350,8 @@ function AppContent() {
             setAnonymousMockModeEnabled(false);
           }
         }
-      } catch (error) {
+      } catch {
         // Silently fail - this is a development-only feature
-        console.log('Could not fetch anonymous mock mode setting:', error);
       }
     };
 
@@ -445,16 +444,10 @@ function AppContent() {
   const setupScrollListener = (modelId: string): boolean => {
     const safeId = getSafeId(modelId);
     const expectedId = `conversation-content-${safeId}`;
-    console.log(`[SetupScrollListener] Looking for element with ID: ${expectedId}`);
 
     const conversationContent = document.querySelector(`#${expectedId}`) as HTMLElement;
 
     if (!conversationContent) {
-      console.log(`⚠️ Scroll listener setup failed for ${modelId}: element not found yet`);
-      // Debug: let's see what elements actually exist
-      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
-      console.log(`[SetupScrollListener] Available conversation elements (${allConversations.length}):`);
-      allConversations.forEach((el) => console.log(`  - ${el.id}`));
       return false;
     }
 
@@ -556,78 +549,53 @@ function AppContent() {
       lastScrollTopRef.current.set(modelId, currentScrollTop);
 
       // If scroll lock is enabled, sync this scroll to all other cards
-      console.log(`[Scroll ${modelId}] Scroll event - scrollTop: ${currentScrollTop}, lock enabled: ${isScrollLockedRef.current}, syncingFrom: ${syncingFromElementRef.current ? syncingFromElementRef.current.id : 'null'}`);
-
       if (!isScrollLockedRef.current) {
-        console.log(`[Scroll ${modelId}] Lock disabled, skipping sync`);
         return;
       }
 
       // If we're already in a sync operation, check if this is a new user scroll
       // This prevents infinite loops when programmatic scrolls trigger scroll events
       if (syncingFromElementRef.current !== null) {
-        console.log(`[Scroll ${modelId}] In sync operation, syncingFrom: ${syncingFromElementRef.current.id}, current: ${conversationContent.id}`);
-
         // If a different element is trying to scroll, check if it's user-initiated
         if (syncingFromElementRef.current !== conversationContent) {
           // Check if enough time has passed since the last sync to allow new user scrolling
           const timeSinceLastSync = Date.now() - lastSyncTimeRef.current;
           if (timeSinceLastSync < 100) {
             // Very recent sync - likely programmatic, skip it
-            console.log(`[Scroll ${modelId}] Skipping - too soon after last sync (${timeSinceLastSync}ms)`);
             return;
           } else {
             // Enough time has passed, this is likely a new user scroll on a different pane
-            console.log(`[Scroll ${modelId}] New user scroll detected on different pane (${timeSinceLastSync}ms since last sync), resetting sync flag`);
             syncingFromElementRef.current = null;
           }
-        } else {
-          console.log(`[Scroll ${modelId}] This is the initiating element, continuing`);
         }
       }
-
-      console.log(`[Sync ${modelId}] Starting sync operation`);
 
       // Mark this element as the one initiating the sync
       syncingFromElementRef.current = conversationContent;
       lastSyncTimeRef.current = Date.now();
-      console.log(`[Sync ${modelId}] Set syncingFromElement to: ${conversationContent.id}`);
 
       // Get all conversation content elements
       const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
-      console.log(`[Sync ${modelId}] Found ${allConversations.length} conversation elements`);
 
       // Store the scroll position as a percentage to account for different content heights
       const scrollHeight = conversationContent.scrollHeight - conversationContent.clientHeight;
       const scrollPercentage = scrollHeight > 0 ? conversationContent.scrollTop / scrollHeight : 0;
-      console.log(`[Sync ${modelId}] Scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${conversationContent.scrollTop}, scrollHeight: ${scrollHeight})`);
 
       // Sync all other cards
-      let syncCount = 0;
       allConversations.forEach((element) => {
         const el = element as HTMLElement;
-        console.log(`[Sync ${modelId}] Checking element: ${el.id}, isSelf: ${el === conversationContent}`);
         // Don't sync to the element that triggered this scroll
         if (el !== conversationContent) {
           const targetScrollHeight = el.scrollHeight - el.clientHeight;
-          const beforeScrollTop = el.scrollTop;
           if (targetScrollHeight > 0) {
             const targetScrollTop = scrollPercentage * targetScrollHeight;
-            console.log(`[Sync ${modelId}] Syncing ${el.id} from ${beforeScrollTop} to ${targetScrollTop} (${(scrollPercentage * 100).toFixed(1)}% of ${targetScrollHeight})`);
             el.scrollTop = targetScrollTop;
-            console.log(`[Sync ${modelId}] ${el.id} after sync - scrollTop: ${el.scrollTop}`);
-            syncCount++;
-          } else {
-            console.log(`[Sync ${modelId}] Skipping ${el.id} - no scrollable content`);
           }
         }
       });
 
-      console.log(`[Sync ${modelId}] Synced ${syncCount} elements, will reset flag in 300ms`);
-
       // Reset the flag after a delay to allow all programmatic scroll events to complete
       setTimeout(() => {
-        console.log(`[Sync ${modelId}] Resetting syncingFromElement flag`);
         syncingFromElementRef.current = null;
       }, 300);
     };
@@ -667,7 +635,6 @@ function AppContent() {
 
   const handleScreenshot = async (modelId: string) => {
     const safeId = getSafeId(modelId);
-    console.log('Screenshot button clicked for model:', modelId, 'Safe ID:', safeId);
     const content = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement | null;
     if (!content) {
       showNotification('Screenshot target not found.', 'error');
@@ -846,25 +813,19 @@ function AppContent() {
 
   // Keep ref in sync with state
   useEffect(() => {
-    console.log(`[ScrollLock] State changed - isScrollLocked: ${isScrollLocked}, conversations: ${conversations.length}`);
     isScrollLockedRef.current = isScrollLocked;
 
     // When scroll lock is enabled, align all cards to the first card's scroll position
     if (isScrollLocked && conversations.length > 0) {
-      console.log(`[ScrollLock] Enabling scroll lock - aligning all cards to first card`);
       const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
-      console.log(`[ScrollLock] Found ${allConversations.length} conversation elements`);
       if (allConversations.length > 0) {
         const firstCard = allConversations[0] as HTMLElement;
-        console.log(`[ScrollLock] First card: ${firstCard.id}`);
 
         // Mark the first card as the sync source
         syncingFromElementRef.current = firstCard;
-        console.log(`[ScrollLock] Set syncingFromElement to: ${firstCard.id}`);
 
         const firstScrollHeight = firstCard.scrollHeight - firstCard.clientHeight;
         const scrollPercentage = firstScrollHeight > 0 ? firstCard.scrollTop / firstScrollHeight : 0;
-        console.log(`[ScrollLock] First card scroll percentage: ${(scrollPercentage * 100).toFixed(1)}% (scrollTop: ${firstCard.scrollTop}, scrollHeight: ${firstScrollHeight})`);
 
         // Sync all other cards to the first card's scroll percentage
         allConversations.forEach((element, index) => {
@@ -872,33 +833,25 @@ function AppContent() {
             const el = element as HTMLElement;
             const targetScrollHeight = el.scrollHeight - el.clientHeight;
             if (targetScrollHeight > 0) {
-              const beforeScrollTop = el.scrollTop;
               const targetScrollTop = scrollPercentage * targetScrollHeight;
-              console.log(`[ScrollLock] Syncing ${el.id} from ${beforeScrollTop} to ${targetScrollTop}`);
               el.scrollTop = targetScrollTop;
-              console.log(`[ScrollLock] ${el.id} after sync - scrollTop: ${el.scrollTop}`);
             }
           }
         });
 
         // Reset after alignment is complete
         setTimeout(() => {
-          console.log(`[ScrollLock] Resetting syncingFromElement flag after initial alignment`);
           syncingFromElementRef.current = null;
         }, 100);
       }
-    } else if (!isScrollLocked) {
-      console.log(`[ScrollLock] Disabling scroll lock`);
     }
   }, [isScrollLocked, conversations]);
 
   // Setup scroll listeners when conversations are rendered
   useEffect(() => {
-    console.log(`[ScrollSetup] Conversations changed, count: ${conversations.length}`);
     conversations.forEach((conversation) => {
       // Check if listener is already set up
       if (!scrollListenersRef.current.has(conversation.modelId)) {
-        console.log(`[ScrollSetup] Setting up listener for ${conversation.modelId}`);
         const maxAttempts = 5;
         let attempt = 0;
 
@@ -906,15 +859,12 @@ function AppContent() {
           attempt++;
           const success = setupScrollListener(conversation.modelId);
           if (!success && attempt < maxAttempts) {
-            console.log(`[ScrollSetup] Retrying for ${conversation.modelId} (attempt ${attempt})`);
             setTimeout(trySetup, 100 * attempt);
           }
         };
 
         // Try immediately
         trySetup();
-      } else {
-        console.log(`[ScrollSetup] Listener already set up for ${conversation.modelId}`);
       }
     });
 
@@ -922,7 +872,6 @@ function AppContent() {
     const activeModelIds = new Set(conversations.map(c => c.modelId));
     scrollListenersRef.current.forEach((_, modelId) => {
       if (!activeModelIds.has(modelId)) {
-        console.log(`[ScrollSetup] Cleaning up listener for removed model: ${modelId}`);
         cleanupScrollListener(modelId);
       }
     });
@@ -1304,7 +1253,6 @@ function AppContent() {
       const stored = localStorage.getItem(`compareai_conversation_${id}`);
       if (stored) {
         const parsed = JSON.parse(stored);
-        console.log('Loaded from localStorage:', { id, parsed });
         return parsed;
       } else {
         console.warn('No conversation found in localStorage for id:', id);
@@ -1366,13 +1314,6 @@ function AppContent() {
       
       // Store models_used in a local variable to satisfy TypeScript null checks in callbacks
       const modelsUsed = conversationData.models_used;
-      
-      console.log('Loaded conversation data:', {
-        input_data: conversationData.input_data,
-        models_used: conversationData.models_used,
-        message_count: conversationData.messages?.length || 0,
-        messages: conversationData.messages
-      });
       
       // Group messages by model_id
       const messagesByModel: { [key: string]: ConversationMessage[] } = {};
@@ -1462,12 +1403,6 @@ function AppContent() {
         modelId,
         messages: messagesByModel[modelId] || [],
       }));
-      
-      console.log('Reconstructed conversations:', loadedConversations.map(conv => ({
-        modelId: conv.modelId,
-        messageCount: conv.messages.length,
-        messages: conv.messages
-      })));
       
       // Set state
       setConversations(loadedConversations);
@@ -1650,7 +1585,6 @@ function AppContent() {
       setTimeout(() => {
         const resultsSection = document.querySelector('.results-section');
         if (resultsSection) {
-          console.log('Follow-up submitted: Scrolling to results section:', resultsSection);
           resultsSection.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
@@ -1725,8 +1659,6 @@ function AppContent() {
 
     if (!allModelsComplete) return;
 
-    console.log(`Round ${currentRound} complete - aligning "You" sections`);
-
     // Wait for DOM to settle, then align scroll positions
     setTimeout(() => {
       const cards = document.querySelectorAll('.result-card.conversation-card');
@@ -1750,15 +1682,12 @@ function AppContent() {
         scrollData.push({ element: conversationContent, targetOffsetTop: offsetTop });
       });
 
-      console.log(`Max offsetTop for round ${currentRound}: ${maxOffsetTop}px`);
-
       // Scroll all cards to align the "You" section at the same position
-      scrollData.forEach(({ element }, index) => {
+      scrollData.forEach(({ element }) => {
         element.scrollTo({
           top: maxOffsetTop,
           behavior: 'smooth'
         });
-        console.log(`Card ${index}: Scrolled to ${maxOffsetTop}px to align "You" section`);
       });
 
       // Mark this round as aligned
@@ -1975,17 +1904,13 @@ function AppContent() {
 
     const fetchModels = async () => {
       try {
-        console.log('Fetching models from:', `${API_URL}/models`);
         const res = await fetch(`${API_URL}/models`);
-        console.log('Response status:', res.status);
 
         if (res.ok) {
           const data = await res.json();
-          console.log('Received data:', data);
 
           if (data.models_by_provider && Object.keys(data.models_by_provider).length > 0) {
             setModelsByProvider(data.models_by_provider);
-            console.log('Set modelsByProvider:', data.models_by_provider);
           } else {
             console.error('No models_by_provider data received');
             setError('No model data received from server');
@@ -1999,7 +1924,6 @@ function AppContent() {
         setError(`Failed to fetch models: ${err instanceof Error ? err.message : String(err)}`);
       } finally {
         setIsLoadingModels(false);
-        console.log('Finished loading models');
       }
     };
 
@@ -2346,11 +2270,9 @@ function AppContent() {
     setTimeout(() => {
       const inputSection = document.querySelector('.input-section');
       if (inputSection) {
-        console.log('Follow-up mode: Scrolling to input section:', inputSection);
         // Get the h2 heading inside the input section
         const heading = inputSection.querySelector('h2');
         if (heading) {
-          console.log('Follow-up mode: Scrolling to heading inside input section');
           heading.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
@@ -2362,8 +2284,6 @@ function AppContent() {
             block: 'start'
           });
         }
-      } else {
-        console.log('Follow-up mode: Input section not found');
       }
       // Reset the flag after scrolling
       followUpJustActivatedRef.current = false;
@@ -2718,7 +2638,6 @@ function AppContent() {
     // Capture user timestamp when they actually submit
     const userTimestamp = new Date().toISOString();
     setUserMessageTimestamp(userTimestamp);
-    console.log('Setting user timestamp:', userTimestamp);
 
     // Original input functionality removed - not needed
 
@@ -2840,10 +2759,6 @@ function AppContent() {
             createMessage('assistant', '', userTimestamp) // Placeholder AI timestamp, will be updated when model completes
           ]
         }));
-        console.log('🚀 Initializing conversations with placeholder timestamps:', {
-          userTimestamp: new Date(userTimestamp).toLocaleTimeString(),
-          models: selectedModels
-        });
         setConversations(emptyConversations);
       }
 
@@ -2899,7 +2814,6 @@ function AppContent() {
                         setTimeout(() => {
                           const success = setupScrollListener(event.model);
                           if (!success && attempt < maxAttempts) {
-                            console.log(`Retrying scroll listener setup for ${event.model} (attempt ${attempt + 1}/${maxAttempts})`);
                             trySetup(attempt + 1, maxAttempts);
                           }
                         }, delay);
@@ -2920,7 +2834,6 @@ function AppContent() {
 
                   // Check if ALL models are done - if so, switch to formatted view
                   if (completedModels.size === selectedModels.length) {
-                    console.log('🎉 All models complete! Switching to formatted view...');
                     const formattedTabs: { [modelId: string]: 'formatted' } = {};
                     selectedModels.forEach(modelId => {
                       formattedTabs[modelId] = 'formatted';
@@ -2981,12 +2894,6 @@ function AppContent() {
                     const completionTime = modelCompletionTimes[conv.modelId];
 
                     // Update both user and assistant message timestamps with individual model times
-                    if (startTime) {
-                      console.log(`📝 Applying start time for ${conv.modelId}: ${new Date(startTime).toLocaleTimeString()}`);
-                    }
-                    if (completionTime) {
-                      console.log(`📝 Applying completion time for ${conv.modelId}: ${new Date(completionTime).toLocaleTimeString()}`);
-                    }
 
                     return {
                       ...conv,
@@ -3101,21 +3008,11 @@ function AppContent() {
 
           // Final conversations update with complete content
           if (!isFollowUpMode) {
-            console.log('🏁 Final conversation update - model times:', {
-              startTimes: modelStartTimes,
-              completionTimes: modelCompletionTimes
-            });
-
             setConversations(prevConversations => {
               const updated = prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
                 const startTime = modelStartTimes[conv.modelId];
                 const completionTime = modelCompletionTimes[conv.modelId];
-
-                console.log(`🏁 Final update for ${conv.modelId}:`, {
-                  startTime: startTime ? new Date(startTime).toLocaleTimeString() : 'none',
-                  completionTime: completionTime ? new Date(completionTime).toLocaleTimeString() : 'none'
-                });
 
                 return {
                   ...conv,
@@ -3141,11 +3038,6 @@ function AppContent() {
             });
           } else {
             // For follow-up mode, just update timestamps on the last assistant messages
-            console.log('🏁 Final follow-up conversation update - model times:', {
-              startTimes: modelStartTimes,
-              completionTimes: modelCompletionTimes
-            });
-
             setConversations(prevConversations => {
               const updated = prevConversations.map(conv => {
                 const completionTime = modelCompletionTimes[conv.modelId];
@@ -3295,15 +3187,7 @@ function AppContent() {
         // Refresh user data if authenticated to update usage count
         if (isAuthenticated) {
           try {
-            console.log('[App] Before refreshUser - user data:', {
-              daily_usage_count: user?.daily_usage_count,
-              daily_extended_usage: user?.daily_extended_usage
-            });
             await refreshUser();
-            console.log('[App] After refreshUser - user data:', {
-              daily_usage_count: user?.daily_usage_count,
-              daily_extended_usage: user?.daily_extended_usage
-            });
           } catch (error) {
             console.error('Failed to refresh user data:', error);
           }
@@ -3316,13 +3200,11 @@ function AppContent() {
             const data = await response.json();
             // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
             const newCount = data.fingerprint_usage || data.daily_usage || 0;
-            console.log('Usage count synced from backend:', newCount);
             setUsageCount(newCount);
 
             // Sync extended usage from backend if available
             const newExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
             if (newExtendedCount !== undefined) {
-              console.log('Extended usage count synced from backend:', newExtendedCount);
               setExtendedUsageCount(newExtendedCount);
             }
 
@@ -3397,7 +3279,6 @@ function AppContent() {
         }
       } else {
         // All models failed - show a message but don't count it
-        console.log('All models failed - not counting towards usage limit');
         setError('All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.');
         // Clear the error after 8 seconds
         setTimeout(() => {
@@ -3945,23 +3826,9 @@ function AppContent() {
                                 // This indicates user has reached their storage limit (tierLimit + 1 saved)
                                 const isAtLimit = visibleCount >= tierLimit;
                                 
-                                console.log('🔔 Tier limit check:', { 
-                                  visibleCount, 
-                                  tierLimit, 
-                                  historyLimit, 
-                                  filteredHistoryLength: filteredHistory.length, 
-                                  conversationHistoryLength: conversationHistory.length, 
-                                  isAtLimit,
-                                  willShowMessage: isAtLimit,
-                                  userTier
-                                });
-                                
                                 if (!isAtLimit) {
-                                  console.log('❌ Not showing message - isAtLimit is false');
                                   return null;
                                 }
-                                
-                                console.log('✅ Showing tier limit message for tier:', userTier);
                                 
                                 if (!isAuthenticated) {
                                   return (
@@ -4479,7 +4346,6 @@ function AppContent() {
                   ) : Object.keys(modelsByProvider).length === 0 ? (
                     <div className="error-message">
                       <p>No models available. Please check the server connection.</p>
-                      <p>Debug info: modelsByProvider keys: {JSON.stringify(Object.keys(modelsByProvider))}</p>
                     </div>
                   ) : (
                     <div className="models-selection-layout">
@@ -4740,7 +4606,6 @@ function AppContent() {
                     {/* Scroll Lock Toggle */}
                     <button
                       onClick={() => {
-                        console.log(`[ScrollLock Button] Toggling scroll lock from ${isScrollLocked} to ${!isScrollLocked}`);
                         setIsScrollLocked(!isScrollLocked);
                       }}
                       style={{
