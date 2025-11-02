@@ -1285,18 +1285,18 @@ function AppContent() {
         // Remove the conversation data
         localStorage.removeItem(`compareai_conversation_${summary.id}`);
         
-        // Remove from history list
-        const history = loadHistoryFromLocalStorage();
-        const updatedHistory = history.filter(conv => conv.id !== summary.id);
-        localStorage.setItem('compareai_conversation_history', JSON.stringify(updatedHistory));
-        
-        // Update state
-        setConversationHistory(updatedHistory);
+        // Update state using functional update to ensure we work with latest state
+        setConversationHistory((prevHistory) => {
+          const updatedHistory = prevHistory.filter(conv => conv.id !== summary.id);
+          // Sync localStorage with the updated state
+          localStorage.setItem('compareai_conversation_history', JSON.stringify(updatedHistory));
+          return updatedHistory;
+        });
       } catch (e) {
         console.error('Failed to delete conversation from localStorage:', e);
       }
     }
-  }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
+  }, [isAuthenticated, loadHistoryFromAPI]);
 
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
