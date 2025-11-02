@@ -2353,6 +2353,9 @@ function AppContent() {
     // Hide the card
     setShowDoneSelectingCard(false);
 
+    // Collapse all expanded model-provider dropdowns
+    collapseAllDropdowns();
+
     // Collapse the models section
     setIsModelsHidden(true);
 
