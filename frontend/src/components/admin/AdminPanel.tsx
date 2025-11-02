@@ -59,7 +59,7 @@ interface AdminPanelProps {
 type AdminTab = 'users' | 'logs';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
-    const { user, refreshUser } = useAuth();
+    const { user, refreshUser, logout } = useAuth();
     const getAuthHeaders = useAuthHeaders();
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [activeTab, setActiveTab] = useState<AdminTab>('users');
@@ -700,6 +700,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         <h1>Admin Panel</h1>
                         <p>Manage users and monitor system activity</p>
                     </div>
+                    <button 
+                        className="sign-out-button" 
+                        onClick={logout} 
+                        title="Sign Out"
+                        aria-label="Sign Out"
+                    >
+                        Sign Out
+                    </button>
                 </div>
             </div>
 
