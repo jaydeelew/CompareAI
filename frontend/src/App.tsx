@@ -4296,6 +4296,7 @@ function AppContent() {
                   <div className="models-header-right">
                     <div
                       className="models-count-indicator"
+                      title="Total selections"
                       style={{
                         padding: '0.5rem 1rem',
                         background: selectedModels.length >= maxModelsLimit ? '#fef2f2' :
