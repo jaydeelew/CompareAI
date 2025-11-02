@@ -3040,22 +3040,46 @@ function AppContent() {
               return updated;
             });
           } else {
-            // For follow-up mode, just update timestamps on the last assistant messages
+            // For follow-up mode, ensure messages are added and update with final content
             setConversations(prevConversations => {
               const updated = prevConversations.map(conv => {
+                const content = streamingResults[conv.modelId] || '';
                 const completionTime = modelCompletionTimes[conv.modelId];
-                if (!completionTime) return conv;
+                
+                // Check if we already added the new user message
+                const hasNewUserMessage = conv.messages.some((msg, idx) =>
+                  msg.type === 'user' &&
+                  msg.content === input &&
+                  idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
+                );
 
-                return {
-                  ...conv,
-                  messages: conv.messages.map((msg, idx) => {
-                    // Update the last assistant message timestamp with completion time
-                    if (idx === conv.messages.length - 1 && msg.type === 'assistant') {
-                      return { ...msg, timestamp: completionTime };
-                    }
-                    return msg;
-                  })
-                };
+                if (!hasNewUserMessage) {
+                  // Add user message and assistant message if they weren't added during streaming
+                  const startTime = modelStartTimes[conv.modelId];
+                  return {
+                    ...conv,
+                    messages: [
+                      ...conv.messages,
+                      createMessage('user', input, startTime || userTimestamp),
+                      createMessage('assistant', content, completionTime || new Date().toISOString())
+                    ]
+                  };
+                } else {
+                  // Update the last assistant message with final content and timestamp
+                  return {
+                    ...conv,
+                    messages: conv.messages.map((msg, idx) => {
+                      if (idx === conv.messages.length - 1 && msg.type === 'assistant') {
+                        return {
+                          ...msg,
+                          content: content || msg.content, // Ensure content is set
+                          timestamp: completionTime || msg.timestamp
+                        };
+                      }
+                      return msg;
+                    })
+                  };
+                }
               });
               
               // Don't save here - will save after stream completes (see below)
@@ -3127,23 +3151,35 @@ function AppContent() {
             setTimeout(() => {
               setConversations(currentConversations => {
                 const conversationsWithMessages = currentConversations.filter(conv => 
-                  selectedModels.includes(conv.modelId)
+                  selectedModels.includes(conv.modelId) &&
+                  conv.messages.length > 0
                 );
                 
-                // Get the first user message (original query) to identify the conversation
-                const firstUserMessage = conversationsWithMessages
-                  .flatMap(conv => conv.messages)
-                  .filter(msg => msg.type === 'user')
-                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                // Only save if we have conversations with complete assistant messages (not empty)
+                const hasCompleteMessages = conversationsWithMessages.some(conv => {
+                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
+                  return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
+                });
                 
-                if (firstUserMessage) {
-                  const inputData = firstUserMessage.content;
-                  // Update existing conversation (isUpdate = true)
-                  const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages, true);
-                  // Always track this as the currently visible comparison (will be filtered from history dropdown)
-                  // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
-                  if (savedId) {
-                    setCurrentVisibleComparisonId(savedId);
+                if (hasCompleteMessages && conversationsWithMessages.length > 0) {
+                  // Get the first user message (original query) to identify the conversation
+                  const firstUserMessage = conversationsWithMessages
+                    .flatMap(conv => conv.messages)
+                    .filter(msg => msg.type === 'user')
+                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                  
+                  if (firstUserMessage) {
+                    const inputData = firstUserMessage.content;
+                    // Update existing conversation (isUpdate = true)
+                    const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages, true);
+                    // Always track this as the currently visible comparison (will be filtered from history dropdown)
+                    // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
+                    if (savedId) {
+                      setCurrentVisibleComparisonId(savedId);
+                    }
+                    
+                    // Clear the textarea after saving
+                    setInput('');
                   }
                 }
                 
