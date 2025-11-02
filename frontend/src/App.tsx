@@ -2856,8 +2856,6 @@ function AppContent() {
                     // Refresh history from API after a short delay to allow backend to save
                     setTimeout(() => {
                       loadHistoryFromAPI();
-                      // Clear the textarea after saving
-                      setInput('');
                     }, 1000);
                   }
                 } else if (event.type === 'error') {
@@ -3120,20 +3118,17 @@ function AppContent() {
                   
                   const firstUserMessage = allUserMessages[0];
                   
-                  if (firstUserMessage) {
-                    const inputData = firstUserMessage.content;
-                    // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
-                    // by keeping only the 2 most recent conversations
-                    const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
-                    // Always track this as the currently visible comparison (will be filtered from history dropdown)
-                    // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
-                    if (savedId) {
-                      setCurrentVisibleComparisonId(savedId);
+                    if (firstUserMessage) {
+                      const inputData = firstUserMessage.content;
+                      // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
+                      // by keeping only the 2 most recent conversations
+                      const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
+                      // Always track this as the currently visible comparison (will be filtered from history dropdown)
+                      // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
+                      if (savedId) {
+                        setCurrentVisibleComparisonId(savedId);
+                      }
                     }
-                    
-                    // Clear the textarea after saving
-                    setInput('');
-                  }
                 }
                 
                 return currentConversations; // Return unchanged
@@ -3144,7 +3139,6 @@ function AppContent() {
             // Backend already saved the conversation, we just need to refresh the list
             setTimeout(() => {
               loadHistoryFromAPI();
-              setInput(''); // Clear the textarea after saving
             }, 1500); // Give backend more time to finish saving (background task)
           } else if (!isAuthenticated && isFollowUpMode) {
             // Save follow-up updates after stream completes (anonymous users)
@@ -3177,9 +3171,6 @@ function AppContent() {
                     if (savedId) {
                       setCurrentVisibleComparisonId(savedId);
                     }
-                    
-                    // Clear the textarea after saving
-                    setInput('');
                   }
                 }
                 
@@ -3218,6 +3209,12 @@ function AppContent() {
       // Deselect Extended mode after successful Extended request
       if (isExtendedMode) {
         setIsExtendedMode(false);
+      }
+
+      // Clear input field only if at least one model succeeded
+      // Keep input if all models failed so user can retry without retyping
+      if (filteredData.metadata.models_successful > 0) {
+        setInput('');
       }
 
       // Track usage only if at least one model succeeded
@@ -3323,15 +3320,8 @@ function AppContent() {
         setTimeout(() => {
           setError(null);
         }, 8000);
+        // Note: Input is NOT cleared when all models fail - user can retry without retyping
       }
-
-      // Clear input after submission (both new comparisons and follow-ups)
-      // For new comparisons, it will be cleared after saving to history
-      // For follow-ups, clear immediately
-      if (isFollowUpMode) {
-        setInput('');
-      }
-      // Note: For new comparisons, input is cleared in the saveConversationToLocalStorage callback
 
       // Initialize or update conversations
       if (isFollowUpMode) {
