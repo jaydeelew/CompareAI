@@ -3851,7 +3851,10 @@ function AppContent() {
                           // Free: 3 items + message if at limit
                           return isShowingMessage ? '315px' : '255px';
                         }
-                        return '300px'; // Others: 3 visible, scrollable for more (message would be in scroll)
+                        // For higher tiers (starter, pro, etc.): Show 3 items initially, or 3 items + message if at limit
+                        // The message will be visible in the scrollable area for tiers with many items
+                        // For tiers with 10+ items, showing all items + message would be too tall, so scrollable is appropriate
+                        return isShowingMessage ? '360px' : '300px'; // Add ~60px for message on higher tiers too
                       };
                       
                       return (
@@ -3915,7 +3918,7 @@ function AppContent() {
                                 );
                               })}
                               
-                              {/* Tier limit message for users at limit */}
+                              {/* Tier limit message for users at limit - only for Anonymous and Free tiers */}
                               {(() => {
                                 const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
                                 const tierLimits: { [key: string]: number } = {
@@ -3927,24 +3930,30 @@ function AppContent() {
                                   pro_plus: 100,
                                 };
                                 const tierLimit = tierLimits[userTier] || 2;
-                                // Check if the number of visible items (after filtering and slicing) equals the tier limit
-                                // This correctly shows the message when user has reached their display limit
-                                // We save (limit + 1) conversations, so we need to check visible count, not total stored count
-                                // Show message when we're displaying the maximum number of items allowed for this tier
-                                // For anonymous: if 2 items are displayed (out of 2 allowed), show the message
-                                // The displayed count is the minimum of what's available and what we're allowed to show
-                                const displayedCount = Math.min(filteredHistory.length, historyLimit);
-                                // Show message when we're displaying exactly the tier limit number of items
-                                // This means the user has reached their display limit for their tier
-                                const isAtLimit = displayedCount === tierLimit;
+                                
+                                // Only show message for anonymous and free tiers
+                                if (userTier !== 'anonymous' && userTier !== 'free') {
+                                  return null;
+                                }
+                                
+                                // Check if the number of visible items in the dropdown equals or exceeds the tier limit
+                                // For free tier: show message when 3+ items are visible (meaning user has reached storage limit of 4)
+                                // Backend returns display_limit + 1 (4 for free tier) to account for filtering
+                                // For anonymous: show message when 2+ items are visible
+                                const visibleCount = filteredHistory.length;
+                                // Show message when we have tierLimit or more items (after filtering)
+                                // This indicates user has reached their storage limit (tierLimit + 1 saved)
+                                const isAtLimit = visibleCount >= tierLimit;
+                                
                                 console.log('🔔 Tier limit check:', { 
-                                  displayedCount, 
+                                  visibleCount, 
                                   tierLimit, 
                                   historyLimit, 
                                   filteredHistoryLength: filteredHistory.length, 
                                   conversationHistoryLength: conversationHistory.length, 
                                   isAtLimit,
-                                  willShowMessage: isAtLimit
+                                  willShowMessage: isAtLimit,
+                                  userTier
                                 });
                                 
                                 if (!isAtLimit) {
@@ -3964,18 +3973,12 @@ function AppContent() {
                                     </div>
                                   );
                                 } else {
-                                  const upgradeMessages: { [key: string]: string } = {
-                                    free: " Upgrade to Starter for 10 saved comparisons or Pro for 50!",
-                                    starter: " Upgrade to Pro for 50 saved comparisons!",
-                                    starter_plus: " Upgrade to Pro for 50 saved comparisons!",
-                                    pro: " Upgrade to Pro+ for 100 saved comparisons!",
-                                  };
-                                  const upgradeMsg = upgradeMessages[userTier] || "";
-                                  
+                                  // For free tier, show a specific reminder about the 3 saves limit
                                   return (
                                     <div className="history-signup-prompt">
                                       <div className="history-signup-message">
-                                        <span className="history-signup-line">You've reached your {userTier} tier limit of {tierLimit} saved comparisons.{upgradeMsg}</span>
+                                        <span className="history-signup-line">You only have 3 saves for your tier.</span>
+                                        <span className="history-signup-line"> Upgrade to Starter for 10 saved comparisons or Pro for 50!</span>
                                       </div>
                                     </div>
                                   );

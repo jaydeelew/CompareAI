@@ -1086,16 +1086,19 @@ async def get_conversations(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     tier = current_user.subscription_tier or "free"
-    limit = get_conversation_limit_for_tier(tier)
+    display_limit = get_conversation_limit_for_tier(tier)
+    # Return display_limit + 1 to ensure that after filtering out the currently visible conversation,
+    # there are still display_limit items visible in the dropdown
+    return_limit = display_limit + 1
 
-    print(f"📥 GET /conversations - user_id={current_user.id}, tier={tier}, limit={limit}")
+    print(f"📥 GET /conversations - user_id={current_user.id}, tier={tier}, display_limit={display_limit}, return_limit={return_limit}")
 
-    # Get user's conversations ordered by created_at DESC, limited by tier
+    # Get user's conversations ordered by created_at DESC, return limit + 1 to account for filtering
     conversations = (
         db.query(Conversation)
         .filter(Conversation.user_id == current_user.id)
         .order_by(Conversation.created_at.desc())
-        .limit(limit)
+        .limit(return_limit)
         .all()
     )
 
