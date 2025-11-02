@@ -22,8 +22,8 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onS
     const [isLoading, setIsLoading] = useState(false);
 
     const validateForm = (): boolean => {
-        if (newPassword.length < 12) {
-            setError('Password must be at least 12 characters long');
+        if (newPassword.length < 8) {
+            setError('Password must be at least 8 characters long');
             return false;
         }
 
@@ -164,9 +164,9 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onS
                         required
                         autoComplete="new-password"
                         disabled={isLoading}
-                        minLength={12}
+                        minLength={8}
                     />
-                    <small className="form-hint">Min 12 chars: uppercase, lowercase, number & special char</small>
+                    <small className="form-hint">Min 8 chars: uppercase, lowercase, number & special char</small>
                 </div>
 
                 <div className="form-group">
@@ -180,7 +180,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onS
                         required
                         autoComplete="new-password"
                         disabled={isLoading}
-                        minLength={12}
+                        minLength={8}
                     />
                 </div>
 

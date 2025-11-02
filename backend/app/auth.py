@@ -152,8 +152,8 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
     Returns:
         tuple: (is_valid, error_message)
     """
-    if len(password) < 12:
-        return False, "Password must be at least 12 characters long"
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
 
     if not any(char.isdigit() for char in password):
         return False, "Password must contain at least one digit"

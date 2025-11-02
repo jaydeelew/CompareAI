@@ -363,8 +363,8 @@ async def reset_user_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Validate password strength
-    if len(new_password) < 12:
-        raise HTTPException(status_code=400, detail="Password must be at least 12 characters long")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
 
     # Update password
     user.password_hash = get_password_hash(new_password)

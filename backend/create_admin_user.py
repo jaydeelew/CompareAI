@@ -69,7 +69,7 @@ def create_admin_user():
 
         # Get password
         while True:
-            password = getpass.getpass("Password (min 12 chars): ")
+            password = getpass.getpass("Password (min 8 chars): ")
             is_valid, error_msg = validate_password_strength(password)
             if is_valid:
                 break

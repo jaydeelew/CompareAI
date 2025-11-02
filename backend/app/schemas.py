@@ -18,7 +18,7 @@ class UserRegister(BaseModel):
     """Schema for user registration request."""
 
     email: EmailStr
-    password: str = Field(..., min_length=12)
+    password: str = Field(..., min_length=8)
 
     @field_validator("password")
     @classmethod
@@ -115,7 +115,7 @@ class PasswordReset(BaseModel):
     """Schema for completing password reset."""
 
     token: str
-    new_password: str = Field(..., min_length=12)
+    new_password: str = Field(..., min_length=8)
 
     @field_validator("new_password")
     @classmethod
@@ -309,7 +309,7 @@ class AdminUserCreate(BaseModel):
     """Schema for creating a user via admin panel."""
 
     email: EmailStr
-    password: str = Field(..., min_length=12)
+    password: str = Field(..., min_length=8)
     role: str = Field(default="user", pattern="^(user|moderator|admin|super_admin)$")
     subscription_tier: str = Field(default="free", pattern="^(free|starter|starter_plus|pro|pro_plus)$")
     subscription_period: str = Field(default="monthly", pattern="^(monthly|yearly)$")
@@ -319,8 +319,8 @@ class AdminUserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_strength(cls, v):
-        if len(v) < 12:
-            raise ValueError("Password must be at least 12 characters long")
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long")
         if not any(char.isdigit() for char in v):
             raise ValueError("Password must contain at least one digit")
         if not any(char.isupper() for char in v):

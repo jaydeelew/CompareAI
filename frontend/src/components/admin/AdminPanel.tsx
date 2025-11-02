@@ -1385,8 +1385,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         value={createUserData.password}
                                         onChange={(e) => setCreateUserData({ ...createUserData, password: e.target.value })}
                                         required
-                                        minLength={12}
-                                        placeholder="Min 12 chars, uppercase, number, special char"
+                                        minLength={8}
+                                        placeholder="Min 8 chars, uppercase, number, special char"
                                     />
                                     <button
                                         type="button"
@@ -1399,7 +1399,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     </button>
                                 </div>
                                 <small className="form-hint">
-                                    Must be at least 12 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{ };':\"|,.&lt;&gt;/?)
+                                    Must be at least 8 characters with uppercase, lowercase, numbers, and special characters (!@#$%^&*()_+-=[]{ };':\"|,.&lt;&gt;/?)
                                 </small>
                             </div>
 

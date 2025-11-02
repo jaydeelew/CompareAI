@@ -91,8 +91,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
 
 
     const validateForm = (): boolean => {
-        if (password.length < 12) {
-            setError('Password must be at least 12 characters long');
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters long');
             return false;
         }
 
@@ -201,7 +201,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                             required
                             autoComplete="new-password"
                             disabled={isLoading}
-                            minLength={12}
+                            minLength={8}
                             data-lpignore="false"
                             data-form-type="register"
                             data-1p-ignore="false"
@@ -216,7 +216,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                             {showPassword ? "🔒" : "👁️"}
                         </button>
                     </div>
-                    <small className="form-hint">Min 12 chars: uppercase, lowercase, number & special char</small>
+                    <small className="form-hint">Min 8 chars: uppercase, lowercase, number & special char</small>
                 </div>
 
                 <div className="form-group">
@@ -232,7 +232,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                             required
                             autoComplete="new-password"
                             disabled={isLoading}
-                            minLength={12}
+                            minLength={8}
                             data-lpignore="false"
                             data-form-type="register"
                             data-1p-ignore="false"
