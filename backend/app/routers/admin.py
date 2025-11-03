@@ -25,6 +25,7 @@ from ..schemas import (
 )
 from ..dependencies import get_current_admin_user, require_admin_role
 from ..auth import get_password_hash
+from ..rate_limiting import anonymous_rate_limit_storage
 
 # from ..email_service import send_verification_email
 
@@ -742,4 +743,65 @@ async def toggle_anonymous_mock_mode(
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
         "message": f"Anonymous mock mode is now {'enabled' if settings.anonymous_mock_mode_enabled else 'disabled'}"
+    }
+
+
+@router.post("/settings/zero-anonymous-usage")
+async def zero_anonymous_usage(
+    request: Request,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db)
+):
+    """
+    Zero out all anonymous user usage data and clear comparison history.
+    
+    This clears:
+    - Daily interaction usage for all anonymous users
+    - Extended interaction usage for all anonymous users
+    - Comparison history stored locally (client-side)
+    
+    Only available in development environment.
+    """
+    import os
+    
+    # Check if in development mode
+    is_development = os.environ.get("ENVIRONMENT") == "development"
+    
+    # Prevent usage in production
+    if not is_development:
+        raise HTTPException(
+            status_code=403, 
+            detail="Zero anonymous usage is only available in development environment"
+        )
+    
+    # Count entries before clearing for logging
+    keys_to_remove = []
+    for key in list(anonymous_rate_limit_storage.keys()):
+        # Remove all anonymous user entries (both regular and extended)
+        # Keys are formatted as "ip:xxx", "fp:xxx", "ip:xxx_extended", "fp:xxx_extended"
+        if key.startswith("ip:") or key.startswith("fp:"):
+            keys_to_remove.append(key)
+    
+    # Clear all anonymous usage entries
+    for key in keys_to_remove:
+        del anonymous_rate_limit_storage[key]
+    
+    # Log admin action
+    log_admin_action(
+        db=db,
+        admin_user=current_user,
+        action_type="zero_anonymous_usage",
+        action_description=f"Zeroed out anonymous user usage data (cleared {len(keys_to_remove)} entries)",
+        target_user_id=None,
+        details={
+            "entries_cleared": len(keys_to_remove),
+            "keys_removed": keys_to_remove,
+            "development_mode": is_development
+        },
+        request=request,
+    )
+    
+    return {
+        "message": f"Anonymous usage data cleared ({len(keys_to_remove)} entries removed). Client-side history should be cleared separately.",
+        "entries_cleared": len(keys_to_remove)
     }

@@ -82,6 +82,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [users, setUsers] = useState<AdminUserListResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [historyCleared, setHistoryCleared] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRole, setSelectedRole] = useState('');
@@ -433,6 +434,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         }
     };
 
+    const zeroAnonymousUsage = async () => {
+        try {
+            const headers = getAuthHeaders();
+            if (!headers.Authorization) {
+                throw new Error('No authentication token available');
+            }
+
+            const response = await fetch('/api/admin/settings/zero-anonymous-usage', {
+                method: 'POST',
+                headers
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Admin privileges required.');
+                } else {
+                    throw new Error(`Failed to zero anonymous usage (${response.status})`);
+                }
+            }
+
+            // Clear all localStorage keys related to anonymous usage and history
+            const localStorageKeys: string[] = [];
+
+            // Clear usage data
+            localStorage.removeItem('compareai_usage');
+            localStorageKeys.push('compareai_usage');
+
+            localStorage.removeItem('compareai_extended_usage');
+            localStorageKeys.push('compareai_extended_usage');
+
+            // Clear conversation history
+            localStorage.removeItem('compareai_conversation_history');
+            localStorageKeys.push('compareai_conversation_history');
+
+            // Clear all individual conversation data
+            // Iterate through all localStorage keys and remove conversation entries
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('compareai_conversation_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                localStorageKeys.push(key);
+            });
+
+            await response.json();
+            setHistoryCleared(true);
+        } catch (err) {
+            console.error('Error zeroing anonymous usage:', err);
+            setError(err instanceof Error ? err.message : 'Failed to zero anonymous usage');
+        }
+    };
+
     const toggleMockMode = async (userId: number) => {
         try {
             const headers = getAuthHeaders();
@@ -689,9 +748,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         <h1>Admin Panel</h1>
                         <p>Manage users and monitor system activity</p>
                     </div>
-                    <button 
-                        className="sign-out-button" 
-                        onClick={logout} 
+                    <button
+                        className="sign-out-button"
+                        onClick={logout}
                         title="Sign Out"
                         aria-label="Sign Out"
                     >
@@ -707,6 +766,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <button onClick={() => setError(null)}>Dismiss</button>
                 </div>
             )}
+
 
             {/* Stats Dashboard */}
             {stats && (
@@ -948,38 +1008,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
             )}
 
-            {/* Application Settings - Development Only */}
+            {/* Anonymous Settings - Development Only */}
             {appSettings && appSettings.is_development && activeTab === 'users' && (
                 <div className="admin-stats" style={{ marginBottom: '2rem' }}>
-                    <h2>Application Settings (Development Mode)</h2>
+                    <h2>Anonymous Users (Development Mode Only)</h2>
                     <div className="stats-grid">
                         <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-                            <h3 style={{ marginBottom: '0.5rem' }}>Anonymous User Mock Mode</h3>
-                            <p style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#ff6b00', textAlign: 'center', fontWeight: 'bold' }}>
-                                ⚠️ Development Only Feature
-                            </p>
-                            <button
-                                onClick={toggleAnonymousMockMode}
-                                className={`mock-mode-btn ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'}`}
-                                title={`Anonymous mock mode is ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'} - ${appSettings.anonymous_mock_mode_enabled ? 'Anonymous users get mock responses' : 'Anonymous users use real API calls'}`}
-                                style={{
-                                    padding: '0.75rem 1.5rem',
-                                    fontSize: '1rem',
-                                    cursor: 'pointer',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontWeight: 'bold',
-                                    transition: 'all 0.3s ease',
-                                    outline: 'none'
-                                }}
-                            >
-                                🎭 Anonymous Mock {appSettings.anonymous_mock_mode_enabled ? 'ON' : 'OFF'}
-                            </button>
-                            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#666', textAlign: 'center' }}>
-                                {appSettings.anonymous_mock_mode_enabled
-                                    ? 'Anonymous users will receive mock responses'
-                                    : 'Anonymous users will use real API calls'}
-                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: '1rem', width: '100%', flexWrap: 'wrap' }}>
+                                {/* Anonymous Mock Mode Section */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', minWidth: '250px', flex: '1' }}>
+                                    <h3 style={{ marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '1rem', fontWeight: 'bold' }}>Anonymous Tier Mock Mode</h3>
+                                    <button
+                                        onClick={toggleAnonymousMockMode}
+                                        className={`mock-mode-btn ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'}`}
+                                        title={`Anonymous mock mode is ${appSettings.anonymous_mock_mode_enabled ? 'enabled' : 'disabled'} - ${appSettings.anonymous_mock_mode_enabled ? 'Anonymous users get mock responses' : 'Anonymous users use real API calls'}`}
+                                        style={{ minWidth: '220px' }}
+                                    >
+                                        🎭 Anonymous Mock {appSettings.anonymous_mock_mode_enabled ? 'ON' : 'OFF'}
+                                    </button>
+                                    <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', color: '#666', textAlign: 'center', minHeight: '2.5rem' }}>
+                                        {appSettings.anonymous_mock_mode_enabled
+                                            ? 'Anonymous users will receive mock responses'
+                                            : 'Anonymous users will use real API calls'}
+                                    </p>
+                                </div>
+
+                                {/* Anonymous Zero Usage Section */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', minWidth: '250px', flex: '1' }}>
+                                    <h3 style={{ marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '1rem', fontWeight: 'bold' }}>Anonymous Usage Data and History</h3>
+                                    <button
+                                        onClick={zeroAnonymousUsage}
+                                        className={`mock-mode-btn zero-usage-btn ${historyCleared ? 'history-cleared-green' : ''}`}
+                                        title="Zero out all anonymous user daily/extended usage and clear comparison history"
+                                        style={{ minWidth: '220px' }}
+                                    >
+                                        🔄 {historyCleared ? 'History Cleared' : 'Anonymous Zero Usage'}
+                                    </button>
+                                    <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', color: '#666', textAlign: 'center', minHeight: '2.5rem' }}>
+                                        {historyCleared ? 'Usage counts and history have been cleared' : 'Usage counts and history will be cleared'}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

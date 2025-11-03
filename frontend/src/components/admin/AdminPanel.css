@@ -730,6 +730,16 @@ button:hover {
   color: white;
 }
 
+.mock-mode-btn.zero-usage-btn {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
+.mock-mode-btn.history-cleared-green {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
 .delete-btn {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
@@ -739,6 +749,7 @@ button:hover {
 .verify-btn:hover,
 .reset-usage-btn:hover,
 .mock-mode-btn:hover,
+.mock-mode-btn.zero-usage-btn:hover,
 .delete-btn:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
