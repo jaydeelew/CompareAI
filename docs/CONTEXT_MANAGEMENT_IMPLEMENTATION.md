@@ -61,10 +61,10 @@ Both `call_openrouter_streaming()` and `call_openrouter()` now:
 is_extended_interaction = conversation_message_count > 6
 ```
 
-- Tracks context-heavy requests separately
+- Tracks context-heavy requests separately for analytics purposes only
 - Metadata returned to frontend: `conversation_message_count`, `is_extended_interaction`
-- Aligns with context management thresholds (same cost, more context capacity)
-- Threshold set at 6+ messages because extended mode provides ~2x token capacity
+- **Note**: This tracking does NOT automatically trigger extended mode - extended mode is only used when the user explicitly clicks the Extended mode button
+- The `is_extended_interaction` flag is purely for analytics to understand usage patterns
 
 ---
 
@@ -76,21 +76,21 @@ is_extended_interaction = conversation_message_count > 6
 
 - Shows: "This follow-up will use: X model responses • X extended interactions"
 - Displays message count in context
-- Highlights when interaction becomes "extended" (>6 messages)
+- Highlights when extended mode is explicitly enabled by user
 - Purple gradient styling for extended interactions
-- Educational tooltip about extended interaction counting
+- Extended mode is only counted when user clicks the Extended mode button
 
 #### 2. Claude-Style Context Warnings (`frontend/src/App.tsx`)
 
-**Progressive warning system:**
+**Progressive warning system to encourage fresh conversations:**
 
-| Message Count | Level    | Icon | Message                                                                    | Action                |
-| ------------- | -------- | ---- | -------------------------------------------------------------------------- | --------------------- |
-| 6-9           | Info     | ℹ️   | "Using extended context mode for this conversation"                        | Inform user           |
-| 10-13         | Medium   | ℹ️   | "Tip: New comparisons often provide more focused responses"                | Suggest fresh start   |
-| 14-19         | High     | 💡   | "Long conversation detected. Starting fresh may improve quality and speed" | Encourage fresh start |
-| 20-23         | Critical | ⚠️   | "Conversation approaching maximum length. Consider starting fresh"         | Strong encouragement  |
-| 24+           | Critical | 🚫   | "Maximum conversation length reached. Please start new comparison"         | Hard block            |
+| Message Count | Level    | Icon | Message                                                                                       | Action                |
+| ------------- | -------- | ---- | --------------------------------------------------------------------------------------------- | --------------------- |
+| 6-9           | Info     | ℹ️   | "Reminder: Starting a new comparison helps keep responses sharp and context-focused"          | Inform user           |
+| 10-13         | Medium   | 🎯   | "Pro tip: Fresh comparisons provide more focused and relevant responses!"                     | Suggest fresh start   |
+| 14-19         | High     | 💡   | "Consider starting a fresh comparison! New conversations help maintain optimal context"       | Encourage fresh start |
+| 20-23         | Critical | ✨   | "Time for a fresh start! Starting a new comparison will give you the best response quality"   | Strong encouragement  |
+| 24+           | Critical | 🚫   | "Maximum conversation length reached. Please start a fresh comparison for continued help"     | Hard block            |
 
 **Visual Design:**
 

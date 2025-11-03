@@ -62,7 +62,7 @@ interface ModelsByProvider {
 const MAX_DAILY_USAGE = 10;
 
 // Maximum number of times extended mode can be used per day per subscription tier (quota enforcement)
-// This limits how many times a user can access extended mode, regardless of how it's triggered
+// Extended mode is only triggered when the user explicitly clicks the Extended mode button
 const EXTENDED_TIER_LIMITS = {
   anonymous: 2,
   free: 5,
@@ -70,17 +70,6 @@ const EXTENDED_TIER_LIMITS = {
   starter_plus: 20,
   pro: 40,
   pro_plus: 80
-};
-
-// Message count thresholds per tier that automatically trigger extended mode
-// When a conversation reaches this many messages, extended mode is automatically enabled
-const EXTENDED_MODE_THRESHOLDS = {
-  anonymous: 6,
-  free: 6,
-  starter: 6,
-  starter_plus: 6,
-  pro: 6,
-  pro_plus: 6
 };
 
 // Simple hash function to convert fingerprint to a fixed-length string
@@ -2425,8 +2414,7 @@ function AppContent() {
     // Check input length against tier limits
     const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const extendedThreshold = EXTENDED_MODE_THRESHOLDS[userTier] || EXTENDED_MODE_THRESHOLDS.anonymous;
-    const shouldUseExtendedTier = isExtendedMode || (isFollowUpMode && messageCount >= extendedThreshold);
+    const shouldUseExtendedTier = isExtendedMode; // Only use extended mode if explicitly enabled by user
     const tierLimit = shouldUseExtendedTier ? 15000 : 5000; // Extended: 15K chars, Standard: 5K chars
 
     if (input.length > tierLimit) {
@@ -2514,9 +2502,8 @@ function AppContent() {
       return;
     }
 
-    // Check Extended tier limit if using Extended tier (manual toggle OR conversation >= threshold messages)
+    // Check Extended tier limit if using Extended tier (only when user explicitly enables it)
     // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
-    // Threshold varies by tier - see EXTENDED_MODE_THRESHOLDS
     // Reuse messageCount, userTier, and shouldUseExtendedTier declared above
 
     if (shouldUseExtendedTier) {
@@ -2555,7 +2542,7 @@ function AppContent() {
       const extendedInteractionsNeeded = 1;
 
       if (currentExtendedUsage >= extendedLimit) {
-        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options and more Extended interactions.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
+        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions.`);
         return;
       }
 
@@ -2573,7 +2560,7 @@ function AppContent() {
           await new Promise(resolve => requestAnimationFrame(resolve));
           await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
         }
-        setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison. ${userTier === 'free' ? 'Upgrade to a paid tier for overage options.' : `Upgrade to a higher tier or purchase additional Extended interactions.`}`);
+        setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison.`);
         return;
       }
     }
@@ -3965,10 +3952,7 @@ function AppContent() {
                         onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
                         disabled={(() => {
                           // Check if input exceeds tier limit
-                          const msgCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-                          const userTier: keyof typeof EXTENDED_MODE_THRESHOLDS = (isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous') as keyof typeof EXTENDED_MODE_THRESHOLDS;
-                          const extendedThreshold = EXTENDED_MODE_THRESHOLDS[userTier] ?? EXTENDED_MODE_THRESHOLDS.anonymous;
-                          const usesExtendedTier = isExtendedMode || (isFollowUpMode && msgCount >= extendedThreshold);
+                          const usesExtendedTier = isExtendedMode; // Only extended if explicitly enabled
                           const tierLimit = usesExtendedTier ? 15000 : 5000;
                           const exceedsLimit = input.length > tierLimit;
 
@@ -3980,9 +3964,7 @@ function AppContent() {
                         title={(() => {
                           const msgCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
                           if (msgCount >= 24) return 'Maximum conversation length reached - start a new comparison';
-                          const userTier: keyof typeof EXTENDED_MODE_THRESHOLDS = (isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous') as keyof typeof EXTENDED_MODE_THRESHOLDS;
-                          const extendedThreshold = EXTENDED_MODE_THRESHOLDS[userTier] ?? EXTENDED_MODE_THRESHOLDS.anonymous;
-                          const usesExtendedTier = isExtendedMode || (isFollowUpMode && msgCount >= extendedThreshold);
+                          const usesExtendedTier = isExtendedMode; // Only extended if explicitly enabled
                           const tierLimit = usesExtendedTier ? 15000 : 5000;
                           if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
                           return isFollowUpMode ? 'Continue conversation' : 'Compare models';
@@ -4056,8 +4038,7 @@ function AppContent() {
                     
                     // Calculate usage limits and remaining
                     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                    const extendedThreshold = EXTENDED_MODE_THRESHOLDS[userTier] || EXTENDED_MODE_THRESHOLDS.anonymous;
-                    const isExtendedInteraction = isExtendedMode || messageCount >= extendedThreshold;
+                    const isExtendedInteraction = isExtendedMode; // Only extended if user explicitly enabled it
 
                     // Define regular limits for each tier
                     const REGULAR_LIMITS: { [key: string]: number } = {
@@ -4088,7 +4069,7 @@ function AppContent() {
                     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
                     const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
 
-                    // Calculate warning level
+                    // Calculate warning level - encourage starting fresh conversations at appropriate intervals
                     let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
                     let warningMessage = '';
                     let warningIcon = '';
@@ -4096,23 +4077,23 @@ function AppContent() {
                     if (messageCount >= 24) {
                       warningLevel = 'critical';
                       warningIcon = '🚫';
-                      warningMessage = 'Maximum conversation length reached (24 messages). Please start a new comparison for continued assistance.';
+                      warningMessage = 'Maximum conversation length reached (24 messages). Please start a fresh comparison for continued assistance.';
                     } else if (messageCount >= 20) {
                       warningLevel = 'critical';
-                      warningIcon = '⚠️';
-                      warningMessage = 'Conversation approaching maximum length. Consider starting fresh for best results.';
+                      warningIcon = '✨';
+                      warningMessage = 'Time for a fresh start! Starting a new comparison will give you the best response quality and speed.';
                     } else if (messageCount >= 14) {
                       warningLevel = 'high';
                       warningIcon = '💡';
-                      warningMessage = 'Long conversation detected. Starting fresh may improve response quality and speed.';
+                      warningMessage = 'Consider starting a fresh comparison! New conversations help maintain optimal context and response quality.';
                     } else if (messageCount >= 10) {
                       warningLevel = 'medium';
-                      warningIcon = 'ℹ️';
-                      warningMessage = 'Tip: New comparisons often provide more focused responses.';
-                    } else if (messageCount >= extendedThreshold) {
+                      warningIcon = '🎯';
+                      warningMessage = 'Pro tip: Fresh comparisons provide more focused and relevant responses!';
+                    } else if (messageCount >= 6) {
                       warningLevel = 'info';
                       warningIcon = 'ℹ️';
-                      warningMessage = `1 extended interaction used when message context is >= ${extendedThreshold}.`;
+                      warningMessage = 'Reminder: Starting a new comparison helps keep responses sharp and context-focused.';
                     }
 
                     return (
