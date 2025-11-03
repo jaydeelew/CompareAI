@@ -2585,15 +2585,6 @@ body {
   border-color: rgba(102, 126, 234, 0.4);
 }
 
-/* Remove red border from dropdown when models are selected - counter will show selection instead */
-.provider-dropdown.has-selected-models {
-  /* Keep default border color */
-}
-
-.provider-dropdown.has-selected-models:hover {
-  /* Keep default hover border color */
-}
-
 .provider-header {
   display: flex;
   align-items: center;
