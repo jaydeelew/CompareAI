@@ -66,11 +66,11 @@ FRONTEND_URL=http://localhost:5173  # For email links
 ## Production Deployment
 
 ```bash
-# One-command SSL setup (AWS EC2)
-./setup-ssl.sh yourdomain.com your@email.com
-
-# Or manual deployment
+# Manual deployment
 docker compose -f docker-compose.ssl.yml up -d --build
+
+# Or use deployment scripts
+./deploy-production.sh
 ```
 
 **Deploy Options:**
@@ -137,7 +137,11 @@ POST /api/compare-stream              # Streaming comparison (SSE)
 GET  /api/models                      # List all available models
 GET  /api/rate-limit-status           # Check usage status
 GET  /api/model-stats                 # Performance metrics
+GET  /api/anonymous-mock-mode-status  # Check anonymous mock mode (dev only)
 POST /api/dev/reset-rate-limit        # Reset limits (dev only)
+GET  /api/conversations               # List user conversations
+GET  /api/conversations/{id}          # Get conversation details
+DELETE /api/conversations/{id}        # Delete conversation
 ```
 
 **Admin (requires admin privileges):**
@@ -155,15 +159,18 @@ POST   /api/admin/users/{user_id}/change-tier          # Change subscription tie
 POST   /api/admin/users/{user_id}/send-verification    # Resend verification
 POST   /api/admin/users/{user_id}/reset-password       # Admin password reset
 GET    /api/admin/action-logs                   # View admin action logs
+GET    /api/admin/settings                      # Get app settings (dev only)
+POST   /api/admin/settings/toggle-anonymous-mock-mode # Toggle anonymous mock mode (dev only)
+POST   /api/admin/settings/zero-anonymous-usage        # Reset anonymous usage (dev only)
 ```
 
 ## Configuration
 
 **Performance Tuning** (`backend/app/model_runner.py`):
 
-- `MAX_CONCURRENT_REQUESTS = 12` - Parallel API calls
+- `MAX_CONCURRENT_REQUESTS = 9` - Parallel API calls (matches Pro tier limit)
 - `INDIVIDUAL_MODEL_TIMEOUT = 120` - Seconds per model
-- `BATCH_SIZE = 12` - Models per batch
+- `BATCH_SIZE = 9` - Models per batch (optimized for Pro tier)
 
 **Subscription Tiers** (`backend/app/rate_limiting.py`):
 
@@ -195,29 +202,57 @@ backend/
 │   ├── dependencies.py      # Auth dependencies
 │   ├── rate_limiting.py     # Rate limit logic
 │   ├── email_service.py     # Email sending
+│   ├── mock_responses.py    # Mock responses for testing
 │   └── routers/
-│       └── auth.py          # Auth endpoints
-└── requirements.txt
+│       ├── auth.py          # Auth endpoints
+│       ├── admin.py         # Admin endpoints
+│       └── api.py           # Core API endpoints (compare, models, etc.)
+├── alembic/                 # Database migrations
+├── create_admin_user.py    # Admin user creation script
+├── requirements.txt
+└── openrouter_models.json  # Model definitions
 
 frontend/
 ├── src/
 │   ├── App.tsx              # Main component
+│   ├── main.tsx            # Entry point
 │   ├── components/
 │   │   ├── LatexRenderer.tsx       # LaTeX/Markdown renderer
-│   │   └── auth/                   # Auth components
+│   │   ├── TermsOfService.tsx      # Terms of service component
+│   │   ├── Footer.tsx              # Footer component
+│   │   ├── auth/                   # Auth components
+│   │   ├── admin/                  # Admin panel components
+│   │   └── index.ts                # Component exports
 │   ├── contexts/
 │   │   └── AuthContext.tsx  # Auth state management
-│   └── types/
-│       └── auth.ts          # TypeScript types
+│   ├── types/
+│   │   └── auth.ts          # TypeScript types
+│   └── styles/              # CSS styles
 └── package.json
 ```
 
 ## Documentation
 
-- [DEV_WORKFLOW.md](DEV_WORKFLOW.md) - Development & deployment guide
-- [RATE_LIMITING_IMPLEMENTATION.md](RATE_LIMITING_IMPLEMENTATION.md) - Rate limiting details
-- [OVERAGE_PRICING_ANALYSIS.md](OVERAGE_PRICING_ANALYSIS.md) - Pricing model & financials
-- [CACHE_BUSTING_SETUP.md](CACHE_BUSTING_SETUP.md) - Cache busting strategy
+**Core Documentation:**
+- [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md) - Development & deployment guide
+- [RATE_LIMITING_IMPLEMENTATION.md](docs/RATE_LIMITING_IMPLEMENTATION.md) - Rate limiting details
+- [OVERAGE_PRICING_ANALYSIS.md](docs/OVERAGE_PRICING_ANALYSIS.md) - Pricing model & financials
+- [CACHE_BUSTING_SETUP.md](docs/CACHE_BUSTING_SETUP.md) - Cache busting strategy
+
+**Feature Documentation:**
+- [CONTEXT_MANAGEMENT_IMPLEMENTATION.md](docs/CONTEXT_MANAGEMENT_IMPLEMENTATION.md) - Conversation context management
+- [LATEX_STREAMING_FIX.md](docs/LATEX_STREAMING_FIX.md) - LaTeX rendering in streaming responses
+- [TAB_STREAMING_SOLUTION.md](docs/TAB_STREAMING_SOLUTION.md) - Tab-based streaming implementation
+- [STREAMING_SUMMARY.md](docs/STREAMING_SUMMARY.md) - Streaming functionality overview
+- [SUPPORT_EMAIL_IMPLEMENTATION.md](docs/SUPPORT_EMAIL_IMPLEMENTATION.md) - Support email system
+
+**Additional Resources:**
+- [ENV_SETUP_GUIDE.md](docs/ENV_SETUP_GUIDE.md) - Environment setup guide
+- [TESTING_CONTEXT_MANAGEMENT.md](docs/TESTING_CONTEXT_MANAGEMENT.md) - Testing guide for context management
+- [STREAMING_QUICK_TEST.md](docs/STREAMING_QUICK_TEST.md) - Quick test guide for streaming
+- [STREAMING_SPACES_FIX.md](docs/STREAMING_SPACES_FIX.md) - Streaming whitespace fixes
+- [FEATURE_RECOMMENDATIONS.md](docs/FEATURE_RECOMMENDATIONS.md) - Future feature recommendations
+- [FUTURE_OPTIMIZATIONS.md](docs/FUTURE_OPTIMIZATIONS.md) - Optimization suggestions
 
 ## Contributing
 
