@@ -882,6 +882,10 @@ function AppContent() {
   // Developer reset function
   const resetUsage = async () => {
     try {
+      // Save currently displayed conversations to preserve them after reset
+      const currentDisplayedConversations = [...conversations];
+      const currentDisplayedComparisonId = currentVisibleComparisonId;
+
       // Reset backend rate limits (dev only)
       const url = browserFingerprint
         ? `${API_URL}/dev/reset-rate-limit?fingerprint=${encodeURIComponent(browserFingerprint)}`
@@ -904,11 +908,16 @@ function AppContent() {
 
         if (isAuthenticated) {
           // Authenticated user: backend handles database cleanup
-          // Reset UI state
+          // Clear history but preserve currently displayed results
           setConversationHistory([]);
-          setConversations([]);
-          setIsFollowUpMode(false);
-          setCurrentVisibleComparisonId(null);
+          // Restore the currently displayed conversations
+          setConversations(currentDisplayedConversations);
+          // Keep the current visible comparison ID if there's a visible comparison
+          if (currentDisplayedConversations.length > 0 && currentDisplayedComparisonId) {
+            setCurrentVisibleComparisonId(currentDisplayedComparisonId);
+          } else {
+            setCurrentVisibleComparisonId(null);
+          }
 
           // Refresh user data to show updated usage from backend
           await refreshUser();
@@ -932,11 +941,16 @@ function AppContent() {
           }
           keysToRemove.forEach(key => localStorage.removeItem(key));
 
-          // Clear conversation state in UI
+          // Clear history but preserve currently displayed results
           setConversationHistory([]);
-          setConversations([]);
-          setIsFollowUpMode(false);
-          setCurrentVisibleComparisonId(null);
+          // Restore the currently displayed conversations
+          setConversations(currentDisplayedConversations);
+          // Keep the current visible comparison ID if there's a visible comparison
+          if (currentDisplayedConversations.length > 0 && currentDisplayedComparisonId) {
+            setCurrentVisibleComparisonId(currentDisplayedComparisonId);
+          } else {
+            setCurrentVisibleComparisonId(null);
+          }
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
