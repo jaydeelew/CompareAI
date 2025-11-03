@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Eye, EyeClosed } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthForms.css';
 
@@ -213,7 +214,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                             disabled={isLoading}
                             aria-label={showPassword ? "Hide password" : "Show password"}
                         >
-                            {showPassword ? "🔒" : "👁️"}
+                            {showPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
                         </button>
                     </div>
                     <small className="form-hint">Min 8 chars: uppercase, lowercase, number & special char</small>
@@ -244,7 +245,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
                             disabled={isLoading}
                             aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                         >
-                            {showConfirmPassword ? "🔒" : "👁️"}
+                            {showConfirmPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
                         </button>
                     </div>
                 </div>

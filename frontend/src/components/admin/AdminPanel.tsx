@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Eye, EyeClosed } from 'lucide-react';
 import { useAuth, useAuthHeaders } from '../../contexts/AuthContext';
 import './AdminPanel.css';
 
@@ -1464,7 +1465,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         title={showPassword ? "Hide password" : "Show password"}
                                         aria-label={showPassword ? "Hide password" : "Show password"}
                                     >
-                                        {showPassword ? "🔒" : "👁️"}
+                                        {showPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
                                     </button>
                                 </div>
                                 <small className="form-hint">
