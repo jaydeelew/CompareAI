@@ -1,0 +1,95 @@
+/* Banner components - Mock mode, usage tracking, etc. */
+
+/* Mock Mode Banner */
+.mock-mode-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-banner);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  animation: slideDown var(--transition-slow) ease-out;
+}
+
+.mock-mode-banner-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.mock-mode-icon {
+  font-size: var(--font-2xl);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.mock-mode-text {
+  font-size: var(--font-sm);
+  font-weight: var(--font-medium);
+  text-align: center;
+}
+
+.dev-mode-indicator {
+  font-size: var(--font-xs);
+  opacity: var(--opacity-hover);
+  font-weight: var(--font-normal);
+  font-style: italic;
+}
+
+.mock-mode-text strong {
+  font-weight: var(--font-bold);
+  margin-right: var(--spacing-xs);
+}
+
+/* Adjust app header when mock mode banner is visible */
+.app:has(.mock-mode-banner) .app-header {
+  margin-top: 3.5rem;
+}
+
+/* Usage tracking banner */
+.usage-tracking-banner {
+  position: relative;
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%) !important;
+  left: 0;
+  right: 0;
+}
+
+.usage-banner-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.usage-banner-text-desktop {
+  display: block;
+}
+
+.usage-banner-text-mobile {
+  display: none;
+}
+
+.usage-banner-text-mobile div {
+  text-align: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.usage-banner-text-mobile div:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .usage-banner-text-desktop {
+    display: none;
+  }
+
+  .usage-banner-text-mobile {
+    display: block;
+  }
+}
+
