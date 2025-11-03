@@ -4082,7 +4082,7 @@ function AppContent() {
 
                         const getTitle = () => {
                           if (isExtendedMode) {
-                            return 'Disable Extended mode (Standard: 5K chars, 4K tokens)';
+                            return 'Disable Extended mode)';
                           }
                           if (hasNoRemainingRegularResponses) {
                             return `No remaining model responses today.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`;
