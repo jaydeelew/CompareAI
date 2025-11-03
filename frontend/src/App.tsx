@@ -3738,9 +3738,9 @@ function AppContent() {
                       </svg>
                     </div>
                     <h3 className="capability-title">Formatted Math</h3>
-                    <p className="capability-description">Render LaTeX equations beautifully</p>
+                    <p className="capability-description">Render math equations beautifully</p>
                     <div className={`capability-tooltip ${visibleTooltip === 'formatted-math' ? 'visible' : ''}`}>
-                      Formatted Math: Render LaTeX equations beautifully
+                      Formatted Math: Render mathematical equations beautifully
                     </div>
                   </div>
                 </div>
