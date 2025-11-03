@@ -786,7 +786,8 @@ body {
     font-size: 0.875rem;
     font-weight: 500;
     white-space: normal;
-    max-width: min(280px, calc(100vw - 32px)); /* Fit within viewport with padding, max 280px wide */
+    max-width: min(280px, calc(100vw - 32px));
+    /* Fit within viewport with padding, max 280px wide */
     width: auto;
     min-width: 120px;
     text-align: center;
@@ -1216,12 +1217,15 @@ body {
     width: 76px;
     /* narrower tile width on mobile */
     padding: 0.5rem;
-    overflow: visible; /* Allow tooltip to be visible outside tile bounds */
-    cursor: pointer; /* Indicate tiles are tappable on mobile */
+    overflow: visible;
+    /* Allow tooltip to be visible outside tile bounds */
+    cursor: pointer;
+    /* Indicate tiles are tappable on mobile */
   }
-  
+
   .hero-capabilities {
-    overflow: visible; /* Allow tooltips to extend beyond container */
+    overflow: visible;
+    /* Allow tooltips to extend beyond container */
   }
 
   .hero-description {
@@ -4942,7 +4946,7 @@ body {
   text-align: center;
   letter-spacing: -0.02em;
   text-shadow: none;
-  -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.8);
+  -webkit-text-stroke: 0.3px rgba(255, 255, 255, 1);
   paint-order: stroke fill;
 }
 
@@ -4987,7 +4991,7 @@ body {
 .done-selecting-button svg {
   width: 32px;
   height: 32px;
-  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 1));
 }
 
 .done-selecting-button:hover::before {
@@ -5003,6 +5007,7 @@ body {
   height: 32px;
   position: relative;
   z-index: 1;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 1));
 }
 
 /* Animation for button pulse glow */
@@ -5255,7 +5260,7 @@ button.nav-button-primary {
     flex-wrap: nowrap !important;
     overflow: visible !important;
   }
-  
+
   .nav-brand {
     flex-shrink: 1 !important;
     min-width: 0;
@@ -5314,7 +5319,7 @@ button.nav-button-primary {
     flex-wrap: nowrap !important;
     overflow: visible !important;
   }
-  
+
   .nav-brand {
     flex-shrink: 1 !important;
     min-width: 0;
@@ -5572,6 +5577,7 @@ button.nav-button-primary {
     opacity: 0;
     max-height: 0;
   }
+
   to {
     opacity: 1;
     /* max-height is set dynamically via inline style based on tier */
@@ -5625,7 +5631,8 @@ button.nav-button-primary {
 
 .history-item-content {
   flex: 1;
-  min-width: 0; /* Allows text truncation */
+  min-width: 0;
+  /* Allows text truncation */
 }
 
 .history-inline-list .history-item {
@@ -5776,35 +5783,36 @@ button.nav-button-primary {
     max-width: calc(100vw - 2rem);
     left: 0;
   }
-  
+
   .history-toggle-wrapper {
     /* Position from top: mobile textarea top padding (1rem) + half line height - half button height (40px) */
     /* Center vertically in textarea and maintain spacing from placeholder */
     top: calc(1rem + (1rem * 1.6) / 2 - 20px);
-    left: 0.75rem; /* Add spacing between chevron and placeholder text */
+    left: 0.75rem;
+    /* Add spacing between chevron and placeholder text */
   }
-  
+
   .history-toggle-button {
     width: 40px;
     height: 40px;
   }
-  
+
   .history-toggle-button svg {
     width: 18px;
     height: 18px;
   }
-  
+
   .hero-input-textarea {
     padding: 1rem 6.5rem 1rem 3rem;
   }
-  
+
   .history-signup-message {
     display: flex;
     flex-direction: column;
     text-align: center;
     align-items: center;
   }
-  
+
   .history-signup-line {
     display: block;
     text-align: center;
