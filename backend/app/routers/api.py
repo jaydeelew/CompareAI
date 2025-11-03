@@ -227,7 +227,9 @@ async def reset_rate_limit_dev(
     db: Session = Depends(get_db),
 ):
     """
-    DEV ONLY: Reset rate limits for the current client.
+    DEV ONLY: Reset rate limits, usage counts, and conversation history for the current user.
+    For authenticated users: resets database usage and deletes their conversations.
+    For anonymous users: resets IP/fingerprint-based rate limits (client clears localStorage).
     This endpoint should be disabled in production!
     """
     # Only allow in development mode
@@ -235,15 +237,21 @@ async def reset_rate_limit_dev(
         raise HTTPException(status_code=403, detail="This endpoint is only available in development mode")
 
     client_ip = get_client_ip(request)
+    deleted_count = 0
 
-    # Reset authenticated user's usage if logged in
+    # For authenticated users: reset usage and delete their conversations
     if current_user:
+        # Reset usage counts
         current_user.daily_usage_count = 0
         current_user.monthly_overage_count = 0
-        current_user.daily_extended_usage = 0  # Reset extended interactions count
+        current_user.daily_extended_usage = 0
+        
+        # Delete only this user's conversations (messages deleted via cascade)
+        deleted_count = db.query(Conversation).filter(Conversation.user_id == current_user.id).delete()
         db.commit()
 
-    # Reset IP-based rate limit (use anonymous_rate_limit_storage from rate_limiting.py)
+    # For anonymous users: reset IP-based rate limits
+    # (frontend will handle localStorage clearing)
     ip_key = f"ip:{client_ip}"
     if ip_key in anonymous_rate_limit_storage:
         del anonymous_rate_limit_storage[ip_key]
@@ -264,7 +272,13 @@ async def reset_rate_limit_dev(
         if fp_extended_key in anonymous_rate_limit_storage:
             del anonymous_rate_limit_storage[fp_extended_key]
 
-    return {"message": "Rate limits reset successfully", "ip_address": client_ip, "fingerprint_reset": fingerprint is not None}
+    return {
+        "message": "Rate limits, usage, and conversation history reset successfully",
+        "ip_address": client_ip,
+        "fingerprint_reset": fingerprint is not None,
+        "conversations_deleted": deleted_count,
+        "user_type": "authenticated" if current_user else "anonymous"
+    }
 
 
 @router.post("/compare")

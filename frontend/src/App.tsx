@@ -888,14 +888,43 @@ function AppContent() {
       });
 
       if (response.ok) {
-        // Reset frontend state for anonymous users
-        setUsageCount(0);
-        localStorage.removeItem('compareai_usage');
         setError(null);
 
-        // If authenticated, refresh user data to show updated usage
         if (isAuthenticated) {
+          // Authenticated user: backend handles database cleanup
+          // Reset UI state
+          setConversationHistory([]);
+          setConversations([]);
+          setIsFollowUpMode(false);
+          setCurrentVisibleComparisonId(null);
+          
+          // Refresh user data to show updated usage from backend
           await refreshUser();
+        } else {
+          // Anonymous user: clear localStorage and reset UI state
+          // Reset usage counts
+          setUsageCount(0);
+          setExtendedUsageCount(0);
+          localStorage.removeItem('compareai_usage');
+          localStorage.removeItem('compareai_extended_usage');
+
+          // Clear all conversation history from localStorage
+          localStorage.removeItem('compareai_conversation_history');
+          // Clear all individual conversation data
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('compareai_conversation_')) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+
+          // Clear conversation state in UI
+          setConversationHistory([]);
+          setConversations([]);
+          setIsFollowUpMode(false);
+          setCurrentVisibleComparisonId(null);
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
