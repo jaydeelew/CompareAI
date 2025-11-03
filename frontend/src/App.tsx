@@ -3357,6 +3357,61 @@ function AppContent() {
     }
   };
 
+  // Helper function to render usage preview (used in both regular and follow-up modes)
+  const renderUsagePreview = () => {
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+
+    // Define regular limits for each tier
+    const REGULAR_LIMITS: { [key: string]: number } = {
+      anonymous: 10,
+      free: 20,
+      starter: 50,
+      starter_plus: 100,
+      pro: 200,
+      pro_plus: 400
+    };
+
+    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+
+    // Calculate current usage
+    const currentRegularUsage = isAuthenticated && user
+      ? user.daily_usage_count
+      : usageCount;
+    const currentExtendedUsage = isAuthenticated && user
+      ? user.daily_extended_usage
+      : extendedUsageCount;
+
+    // Extended mode is based on isExtendedMode flag
+    const isExtendedInteraction = isExtendedMode;
+
+    // Calculate what will be used
+    const regularToUse = selectedModels.length;
+    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
+
+    // Calculate remaining
+    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
+    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
+
+    return (
+      <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
+        marginTop: '0.5rem',
+        fontSize: '0.825rem',
+        color: 'rgba(255, 255, 255, 0.85)'
+      }}>
+        <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
+          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+        </span>
+        {isExtendedInteraction && (
+          <span className="usage-preview-item">
+            <span className="usage-preview-separator"> • </span>
+            <strong>{extendedToUse}</strong> extended use selected, <strong>{extendedRemaining}</strong> remaining
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="app">
       {/* Mock Mode Banner - Show when mock mode is enabled for current user */}
@@ -3978,97 +4033,12 @@ function AppContent() {
                   </div>
 
                   {/* Usage Preview - Regular Mode */}
-                  {!isFollowUpMode && selectedModels.length > 0 && input.trim() && (() => {
-                    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-
-                    // Define regular limits for each tier
-                    const REGULAR_LIMITS: { [key: string]: number } = {
-                      anonymous: 10,
-                      free: 20,
-                      starter: 50,
-                      starter_plus: 100,
-                      pro: 200,
-                      pro_plus: 400
-                    };
-
-                    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
-                    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
-
-                    // Calculate current usage
-                    const currentRegularUsage = isAuthenticated && user
-                      ? user.daily_usage_count
-                      : usageCount;
-                    const currentExtendedUsage = isAuthenticated && user
-                      ? user.daily_extended_usage
-                      : extendedUsageCount;
-
-                    // For new comparisons, extended mode is based on isExtendedMode flag
-                    const isExtendedInteraction = isExtendedMode;
-
-                    // Calculate what will be used
-                    const regularToUse = selectedModels.length;
-                    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
-
-                    // Calculate remaining
-                    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
-                    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
-
-                    return (
-                      <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
-                        marginTop: '0.5rem',
-                        fontSize: '0.825rem',
-                        color: 'rgba(255, 255, 255, 0.85)'
-                      }}>
-                        <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
-                          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
-                        </span>
-                        {isExtendedInteraction && (
-                          <span className="usage-preview-item">
-                            <span className="usage-preview-separator"> • </span>
-                            <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {!isFollowUpMode && selectedModels.length > 0 && input.trim() && renderUsagePreview()}
 
                   {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
                   {isFollowUpMode && conversations.length > 0 && (() => {
                     const messageCount = conversations[0]?.messages.length || 0;
                     
-                    // Calculate usage limits and remaining
-                    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                    const isExtendedInteraction = isExtendedMode; // Only extended if user explicitly enabled it
-
-                    // Define regular limits for each tier
-                    const REGULAR_LIMITS: { [key: string]: number } = {
-                      anonymous: 10,
-                      free: 20,
-                      starter: 50,
-                      starter_plus: 100,
-                      pro: 200,
-                      pro_plus: 400
-                    };
-
-                    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
-                    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
-
-                    // Get current usage
-                    const currentRegularUsage = isAuthenticated && user
-                      ? user.daily_usage_count
-                      : usageCount;
-                    const currentExtendedUsage = isAuthenticated && user
-                      ? user.daily_extended_usage
-                      : extendedUsageCount;
-
-                    // Calculate what will be used
-                    const regularToUse = selectedModels.length;
-                    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
-
-                    // Calculate remaining
-                    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
-                    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
-
                     // Calculate warning level - encourage starting fresh conversations at appropriate intervals
                     let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
                     let warningMessage = '';
@@ -4099,23 +4069,7 @@ function AppContent() {
                     return (
                       <>
                         {/* Usage Preview - Simple text line */}
-                        {messageCount > 0 && (
-                          <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
-                            marginTop: '0.5rem',
-                            fontSize: '0.825rem',
-                            color: 'rgba(255, 255, 255, 0.85)'
-                          }}>
-                            <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
-                              <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
-                            </span>
-                            {isExtendedInteraction && (
-                              <span className="usage-preview-item">
-                                <span className="usage-preview-separator"> • </span>
-                                <strong>{extendedToUse}</strong> extended use, <strong>{extendedRemaining}</strong> remaining
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        {messageCount > 0 && renderUsagePreview()}
 
                         {/* Context Warning - Claude-style */}
                         {warningLevel && (
