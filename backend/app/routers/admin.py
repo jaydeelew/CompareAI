@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import json
 
 from ..database import get_db
-from ..models import User, AdminActionLog, AppSettings
+from ..models import User, AdminActionLog, AppSettings, Conversation
 from ..schemas import (
     AdminUserResponse,
     AdminUserCreate,
@@ -512,17 +512,26 @@ async def toggle_user_active(
 async def reset_user_usage(
     user_id: int, request: Request, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
 ):
-    """Reset user's daily usage count to zero."""
+    """Reset user's daily usage count and extended usage to zero and remove all model comparison history."""
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Store previous usage count for logging
+    # Store previous usage counts for logging
     previous_usage = user.daily_usage_count
+    previous_extended_usage = user.daily_extended_usage
 
-    # Reset daily usage count to 0
+    # Get count of conversations to be deleted for logging
+    conversations_count = db.query(Conversation).filter(Conversation.user_id == user_id).count()
+
+    # Delete all conversations (comparison history) for this user
+    # This will cascade delete all related ConversationMessage records due to the cascade setting
+    db.query(Conversation).filter(Conversation.user_id == user_id).delete()
+
+    # Reset daily usage counts to 0
     user.daily_usage_count = 0
+    user.daily_extended_usage = 0
     db.commit()
     db.refresh(user)
 
@@ -531,9 +540,15 @@ async def reset_user_usage(
         db=db,
         admin_user=current_user,
         action_type="reset_usage",
-        action_description=f"Reset daily usage for user {user.email}",
+        action_description=f"Reset daily usage, extended usage, and removed all model comparison history for user {user.email}",
         target_user_id=user.id,
-        details={"previous_usage": previous_usage, "new_usage": 0},
+        details={
+            "previous_usage": previous_usage,
+            "new_usage": 0,
+            "previous_extended_usage": previous_extended_usage,
+            "new_extended_usage": 0,
+            "conversations_deleted": conversations_count
+        },
         request=request,
     )
 

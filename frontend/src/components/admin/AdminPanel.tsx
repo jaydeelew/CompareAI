@@ -1140,7 +1140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                         <button
                                                             onClick={() => resetUsage(userRow.id)}
                                                             className="reset-usage-btn"
-                                                            title="Reset daily usage to 0"
+                                                            title="Reset daily usage and extended usage to 0 and remove all model comparison history"
                                                         >
                                                             Zero Usage
                                                         </button>
