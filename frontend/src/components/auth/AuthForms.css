@@ -104,7 +104,7 @@
 
 .password-toggle-btn:hover:not(:disabled) {
     color: #333;
-    background-color: rgba(0, 0, 0, 0.05);
+    background: none;
 }
 
 .password-toggle-btn:disabled {
@@ -213,6 +213,17 @@ input:-webkit-autofill:active {
     color: #999 !important;
     margin-bottom: 0.2rem !important;
     line-height: 1.3;
+}
+
+.terms-link {
+    color: #4a90e2;
+    font-weight: 600;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.terms-link:hover {
+    color: #357abd;
 }
 
 .auth-link-btn {

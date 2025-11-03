@@ -261,7 +261,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
 
             <div className="auth-form-footer">
                 <p className="terms-text">
-                    By creating an account, you agree to our Terms of Service and Privacy Policy
+                    By creating an account, you agree to our{' '}
+                    <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="terms-link">
+                        Terms of Service
+                    </a>
+                    {' '}and Privacy Policy
                 </p>
                 <p>
                     Already have an account?{' '}

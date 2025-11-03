@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Routes, Route } from 'react-router-dom';
 // Import all CSS modules directly (better for Vite than CSS @import)
 import './styles/variables.css';
 import './styles/base.css';
@@ -17,6 +18,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
 import { AdminPanel } from './components/admin';
 import { Footer } from './components';
+import { TermsOfService } from './components/TermsOfService';
 
 // API URL with smart fallback:
 // - Uses VITE_API_URL from environment if set
@@ -4969,7 +4971,10 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <Routes>
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="*" element={<AppContent />} />
+      </Routes>
     </AuthProvider>
   );
 }

@@ -1108,7 +1108,7 @@ button:hover {
 }
 
 .password-toggle-btn:hover {
-  background: var(--bg-tertiary);
+  background: none;
   color: var(--text-primary);
 }
 

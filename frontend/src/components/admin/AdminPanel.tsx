@@ -1462,7 +1462,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         type="button"
                                         className="password-toggle-btn"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        title={showPassword ? "Hide password" : "Show password"}
                                         aria-label={showPassword ? "Hide password" : "Show password"}
                                     >
                                         {showPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
