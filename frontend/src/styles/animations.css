@@ -132,6 +132,150 @@
   }
 }
 
+@keyframes patternFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+@keyframes conicRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes titleGlow {
+  0% {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+  }
+  100% {
+    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+  }
+}
+
+/* Hero section animations */
+@keyframes modelPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.1);
+    opacity: 0.9;
+    filter: brightness(1.3);
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.8;
+    filter: brightness(1.6);
+  }
+  75% {
+    transform: scale(1.1);
+    opacity: 0.9;
+    filter: brightness(1.3);
+  }
+}
+
+@keyframes ringRotate {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.5;
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.4);
+  }
+  75% {
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.5;
+    filter: brightness(1);
+  }
+}
+
+@keyframes beamScan {
+  0% {
+    opacity: 0.4;
+    transform: translateY(-50%) scaleX(0.3);
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.7;
+    transform: translateY(-50%) scaleX(0.7);
+    filter: brightness(1.3);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(1);
+    filter: brightness(1.6);
+  }
+  75% {
+    opacity: 0.7;
+    transform: translateY(-50%) scaleX(0.7);
+    filter: brightness(1.3);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translateY(-50%) scaleX(0.3);
+    filter: brightness(1);
+  }
+}
+
+/* Loading spinner animations */
+@keyframes rotateClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotateCounterClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+/* Additional animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 /* Animation utility classes */
 .animate-pulse-glow {
   animation: pulseGlow 1.5s ease-in-out infinite;

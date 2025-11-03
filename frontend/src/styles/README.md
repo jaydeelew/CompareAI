@@ -17,9 +17,9 @@ This directory contains the modular CSS architecture for the CompareAI frontend,
   - 67 lines
 
 - **`animations.css`** - All keyframe animations
-  - `slideDown`, `pulse`, `fadeIn`, `bounce`, `rotate`, `swing`, etc.
+  - `slideDown`, `pulse`, `fadeIn`, `bounce`, `rotate`, `swing`, `patternFloat`, `conicRotate`, `fadeInUp`, `titleGlow`, etc.
   - Animation utility classes
-  - 143 lines
+  - 177 lines
 
 - **`banners.css`** - Banner components
   - Mock mode banner, usage tracking banner
@@ -30,11 +30,40 @@ This directory contains the modular CSS architecture for the CompareAI frontend,
   - Error and loading messages
   - 163 lines
 
-### Legacy
+- **`navigation.css`** - Navigation and header
+  - Navbar, header, navigation buttons, admin avatar
+  - 186 lines
+
+- **`layout.css`** - Layout containers
+  - Main content, sections, grids, textarea inputs
+  - 126 lines
+
+- **`responsive.css`** - Responsive breakpoints
+  - Media queries for mobile, tablet, desktop
+  - Common responsive adjustments
+  - 96 lines
+
+- **`hero.css`** - Hero section styles
+  - Hero section, capabilities, input section, textarea
+  - Header content, logo, AI comparison visual
+  - 1,274 lines
+
+- **`models.css`** - Model selection components
+  - Provider dropdowns, model cards, selected models
+  - Models grid, selection layout
+  - 1,026 lines
+
+- **`results.css`** - Results display
+  - Result cards, metadata, content styling
+  - LaTeX rendering, code blocks, conversation styles
+  - 2,622 lines
+
+### Main Stylesheet
 
 - **`App.css`** - Main stylesheet that imports all modules
-  - Contains legacy styles that haven't been migrated yet
-  - Will be gradually reduced as more styles move to modules
+  - Now only contains app container styles and module imports
+  - All component styles have been extracted to modules
+  - Currently 33 lines (down from 5,811 - 99.4% reduction!)
 
 ## Improvements Made
 

@@ -1,4 +1,16 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// Import all CSS modules directly (better for Vite than CSS @import)
+import './styles/variables.css';
+import './styles/base.css';
+import './styles/animations.css';
+import './styles/banners.css';
+import './styles/components.css';
+import './styles/navigation.css';
+import './styles/layout.css';
+import './styles/responsive.css';
+import './styles/hero.css';
+import './styles/models.css';
+import './styles/results.css';
 import './App.css';
 import LatexRenderer from './components/LatexRenderer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';

@@ -1,6 +1,5 @@
 /* CSS Custom Properties for consistent theming - Expanded with spacing, sizing, and common values */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Note: Font import is handled in App.css to avoid duplicate imports */
 
 :root {
   /* Colors - Primary */

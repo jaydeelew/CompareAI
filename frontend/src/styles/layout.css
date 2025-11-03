@@ -1,0 +1,151 @@
+/* Layout - Main content containers, grids, sections */
+
+/* Main content */
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* Three-tile grid layout for equal height tiles */
+.tiles-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-xl);
+  align-items: stretch;
+}
+
+/* Ensure all tiles stretch to fill the grid row */
+.tiles-container > .models-section,
+.tiles-container > .input-section,
+.tiles-container > .action-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Sections */
+.input-section,
+.models-section,
+.action-section,
+.results-section {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl) var(--spacing-md);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-slow);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Specific padding adjustment for models section */
+.models-section {
+  padding: var(--spacing-xl) var(--spacing-md) var(--spacing-md) var(--spacing-md);
+}
+
+/* Models section header */
+.models-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+  cursor: pointer;
+  position: relative;
+  padding-right: 2.5rem;
+  transition: none;
+}
+
+.models-header-title {
+  flex: 1;
+}
+
+.models-header-controls {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  margin-top: var(--spacing-lg);
+  transition: none;
+}
+
+.models-header-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.models-header-right {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+/* Keep header controls equal height across layouts */
+.models-header-buttons button,
+.models-count-indicator,
+.models-toggle-arrow {
+  height: var(--models-header-control-height);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.input-section:hover,
+.models-section:hover,
+.results-section:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.input-section h2,
+.models-section h2,
+.results-section h2 {
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+  font-size: var(--font-2xl);
+  font-weight: var(--font-semibold);
+  line-height: var(--line-tight);
+}
+
+/* Textarea */
+.input-textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-base);
+  font-family: inherit;
+  resize: vertical;
+  transition: all var(--transition-base);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: var(--line-normal);
+}
+
+.input-textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: var(--bg-primary);
+}
+
+.input-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Action Section */
+.action-section {
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+/* Reduce spacing when error message is above models section */
+.error-message + .models-section {
+  margin-top: -1rem;
+}
+
