@@ -504,7 +504,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         });
 
         // Ordered lists - capture indent level for nesting
-        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, indent, num, content) => {
+        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, indent, _num, content) => {
             const level = indent.length;
             const processedContent = processListContent(content);
             return `__OL_${level}__${processedContent}__/OL__`;
