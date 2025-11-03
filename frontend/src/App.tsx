@@ -1846,6 +1846,16 @@ function AppContent() {
     }
   }, [input, isAnimatingButton, isAnimatingTextarea]);
 
+  // Clear textarea-related errors when user starts typing
+  useEffect(() => {
+    if (input.trim().length > 0 && error && (
+      error === 'Please enter some text to compare' ||
+      error === 'Please enter a follow-up question or code'
+    )) {
+      setError(null);
+    }
+  }, [input, error]);
+
   // Load usage data and fetch models on component mount
   useEffect(() => {
     // Generate browser fingerprint for anti-abuse tracking
