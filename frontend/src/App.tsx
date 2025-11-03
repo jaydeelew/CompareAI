@@ -121,10 +121,10 @@ function AppContent() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   // State for mobile tooltip visibility (capability tiles)
   const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
-  
+
   // Handle capability tile tap on mobile to show tooltip
   const handleCapabilityTileTap = (tileId: string) => {
     // Only show tooltip on mobile (screen width <= 768px)
@@ -136,7 +136,7 @@ function AppContent() {
       }, 2000);
     }
   };
-  
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
@@ -736,7 +736,7 @@ function AppContent() {
   const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
   const [conversations, setConversations] = useState<ModelConversation[]>([]);
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
-  
+
   // Conversation history state
   interface ConversationSummary {
     id: string | number;
@@ -745,13 +745,13 @@ function AppContent() {
     created_at: string;
     message_count?: number;
   }
-  
+
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   // Track the ID of the currently visible comparison to exclude it from history dropdown
   const [currentVisibleComparisonId, setCurrentVisibleComparisonId] = useState<string | null>(null);
-  
+
   // Get history limit based on tier - use useMemo to ensure it updates when user/auth changes
   const historyLimit = useMemo(() => {
     if (!isAuthenticated || !user) return 2; // Anonymous
@@ -897,7 +897,7 @@ function AppContent() {
           setConversations([]);
           setIsFollowUpMode(false);
           setCurrentVisibleComparisonId(null);
-          
+
           // Refresh user data to show updated usage from backend
           await refreshUser();
         } else {
@@ -1025,13 +1025,13 @@ function AppContent() {
   const saveConversationToLocalStorage = (inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false): string => {
     try {
       const history = loadHistoryFromLocalStorage();
-      
+
       // Count total messages across all conversations
       const totalMessages = conversationsToSave.reduce((sum, conv) => sum + conv.messages.length, 0);
-      
+
       let conversationId: string;
       let existingConversation: ConversationSummary | undefined;
-      
+
       if (isUpdate) {
         // Find existing conversation by matching first user message and models
         existingConversation = history.find(conv => {
@@ -1061,7 +1061,7 @@ function AppContent() {
           }
           return false;
         });
-        
+
         if (existingConversation) {
           conversationId = String(existingConversation.id);
         } else {
@@ -1073,7 +1073,7 @@ function AppContent() {
         // Create new conversation
         conversationId = Date.now().toString();
       }
-      
+
       // Create or update conversation summary
       const conversationSummary: ConversationSummary = existingConversation ? {
         ...existingConversation,
@@ -1086,48 +1086,48 @@ function AppContent() {
         created_at: new Date().toISOString(),
         message_count: totalMessages,
       };
-      
+
       // Update history list
       let updatedHistory: ConversationSummary[];
       if (isUpdate && existingConversation) {
         // Update existing entry in place
-        updatedHistory = history.map(conv => 
+        updatedHistory = history.map(conv =>
           conv.id === conversationId ? conversationSummary : conv
         );
       } else {
         // Remove any existing conversation with the same input and models (to prevent duplicates)
-        const filteredHistory = history.filter(conv => 
-          !(conv.input_data === inputData && 
+        const filteredHistory = history.filter(conv =>
+          !(conv.input_data === inputData &&
             JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
         );
-        
+
         // For new conversations: when at the limit, keep the 2 most recent conversations
         // Add the new one and let sorting/limiting keep the most recent 2 (which will include the new one)
         // This ensures when user has A & B, runs C, then runs D, they'll see B & C, then C & D
-        
+
         // Always add the new conversation - we'll limit to 2 most recent after sorting
         filteredHistory.unshift(conversationSummary);
         updatedHistory = filteredHistory;
       }
-      
+
       // Sort by created_at DESC
-      const sorted = updatedHistory.sort((a, b) => 
+      const sorted = updatedHistory.sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-      
+
       // For anonymous users, save 3 conversations (display limit + 1)
       // This ensures when a new comparison is saved, 2 remain visible in history dropdown
       // Keep the 3 most recent conversations
       const limited = sorted.slice(0, 3);
-      
+
       // Store summary list (save 3 in localStorage, but only display 2 in dropdown)
       localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
-      
+
       // Store full conversation data with ID as key
       // Format: messages with role and model_id for proper reconstruction
       const conversationMessages: StoredMessage[] = [];
       const seenUserMessages = new Set<string>(); // Track user messages to avoid duplicates
-      
+
       // Group messages from conversations by model
       conversationsToSave.forEach(conv => {
         conv.messages.forEach(msg => {
@@ -1152,24 +1152,24 @@ function AppContent() {
           }
         });
       });
-      
+
       // Get existing conversation data to preserve created_at if updating
-      const existingData = isUpdate && existingConversation 
+      const existingData = isUpdate && existingConversation
         ? JSON.parse(localStorage.getItem(`compareai_conversation_${conversationId}`) || '{}')
         : null;
-      
+
       localStorage.setItem(`compareai_conversation_${conversationId}`, JSON.stringify({
         input_data: inputData, // Always keep first query as input_data
         models_used: modelsUsed,
         created_at: existingData?.created_at || conversationSummary.created_at,
         messages: conversationMessages,
       }));
-      
+
       // Reload all saved conversations from localStorage to state
       // This ensures dropdown can show all saved conversations, and filtering/slicing handles the display limit
       const reloadedHistory = loadHistoryFromLocalStorage();
       setConversationHistory(reloadedHistory);
-      
+
       return conversationId;
     } catch (e) {
       console.error('Failed to save conversation to localStorage:', e);
@@ -1180,7 +1180,7 @@ function AppContent() {
   // Load conversation history from API (authenticated users)
   const loadHistoryFromAPI = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     setIsLoadingHistory(true);
     try {
       const accessToken = localStorage.getItem('access_token');
@@ -1222,7 +1222,7 @@ function AppContent() {
   // Delete conversation from API (authenticated users) or localStorage (anonymous users)
   const deleteConversation = useCallback(async (summary: ConversationSummary, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the loadConversation onClick
-    
+
     if (isAuthenticated && typeof summary.id === 'number') {
       // Delete from API
       try {
@@ -1251,7 +1251,7 @@ function AppContent() {
       try {
         // Remove the conversation data
         localStorage.removeItem(`compareai_conversation_${summary.id}`);
-        
+
         // Update state using functional update to ensure we work with latest state
         setConversationHistory((prevHistory) => {
           const updatedHistory = prevHistory.filter(conv => conv.id !== summary.id);
@@ -1284,7 +1284,7 @@ function AppContent() {
   // Load full conversation from API (authenticated users)
   const loadConversationFromAPI = async (id: number): Promise<{ input_data: string; models_used: string[]; messages: StoredMessage[] } | null> => {
     if (!isAuthenticated) return null;
-    
+
     try {
       const accessToken = localStorage.getItem('access_token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -1318,37 +1318,37 @@ function AppContent() {
     setIsLoadingHistory(true);
     try {
       let conversationData: { input_data: string; models_used: string[]; messages: StoredMessage[] } | null = null;
-      
+
       if (isAuthenticated && typeof summary.id === 'number') {
         conversationData = await loadConversationFromAPI(summary.id);
       } else if (!isAuthenticated && typeof summary.id === 'string') {
         conversationData = loadConversationFromLocalStorage(summary.id);
       }
-      
+
       if (!conversationData) {
         console.error('Failed to load conversation data', { summary, isAuthenticated });
         return;
       }
-      
+
       // Store models_used in a local variable to satisfy TypeScript null checks in callbacks
       const modelsUsed = conversationData.models_used;
-      
+
       // Group messages by model_id
       const messagesByModel: { [key: string]: ConversationMessage[] } = {};
-      
+
       // Initialize empty arrays for all models
       modelsUsed.forEach((modelId: string) => {
         messagesByModel[modelId] = [];
       });
-      
+
       // Process messages in strict alternating order: user, then assistant responses for each model
       // Messages are saved grouped by model conversation, so we need to reconstruct the round-based structure
-      
+
       // Sort all messages by timestamp to ensure proper chronological order
-      const sortedMessages = [...conversationData.messages].sort((a, b) => 
+      const sortedMessages = [...conversationData.messages].sort((a, b) =>
         new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
       );
-      
+
       // Group messages into conversation rounds (user message + all assistant responses)
       // User messages should already be deduplicated when saved, so we can process in order
       interface ConversationRound {
@@ -1357,7 +1357,7 @@ function AppContent() {
       }
       const rounds: ConversationRound[] = [];
       let currentRound: ConversationRound | null = null;
-      
+
       sortedMessages.forEach((msg: StoredMessage) => {
         if (msg.role === 'user') {
           // If we have a current round, save it
@@ -1370,12 +1370,12 @@ function AppContent() {
           // Add assistant message to current round
           if (currentRound) {
             // Check for duplicate assistant messages (same model, content, and timestamp within 1 second)
-            const isDuplicate = currentRound.assistants.some(asm => 
+            const isDuplicate = currentRound.assistants.some(asm =>
               asm.model_id === msg.model_id &&
               asm.content === msg.content &&
               Math.abs(new Date(asm.created_at).getTime() - new Date(msg.created_at).getTime()) < 1000
             );
-            
+
             if (!isDuplicate) {
               currentRound.assistants.push(msg);
             }
@@ -1386,12 +1386,12 @@ function AppContent() {
           }
         }
       });
-      
+
       // Don't forget the last round
       if (currentRound) {
         rounds.push(currentRound);
       }
-      
+
       // Now reconstruct messages for each model based on rounds
       rounds.forEach(round => {
         // Add user message to all models
@@ -1402,7 +1402,7 @@ function AppContent() {
             content: round.user.content,
             timestamp: round.user.created_at || new Date().toISOString(),
           });
-          
+
           // Add assistant message for this specific model if it exists in this round
           const modelAssistant = round.assistants.find(asm => asm.model_id === modelId);
           if (modelAssistant) {
@@ -1415,18 +1415,18 @@ function AppContent() {
           }
         });
       });
-      
+
       // Convert to ModelConversation format
       const loadedConversations: ModelConversation[] = modelsUsed.map((modelId: string) => ({
         modelId,
         messages: messagesByModel[modelId] || [],
       }));
-      
+
       // Set state
       setConversations(loadedConversations);
       // Set selected models - only the models from this conversation, clear all others
       setSelectedModels([...modelsUsed]);
-      
+
       // Use the first user message as the input reference, but clear textarea for new follow-up
       // The conversation will be referenced by this first query in history
       setInput(''); // Clear textarea so user can type a new follow-up
@@ -1435,7 +1435,7 @@ function AppContent() {
       setResponse(null); // Clear any previous response state
       setShowHistoryDropdown(false);
       setIsModelsHidden(true); // Collapse the models section when selecting from history
-      
+
       // Scroll to results section and reset all conversation cards to top
       // Use requestAnimationFrame to ensure DOM is rendered before scrolling
       requestAnimationFrame(() => {
@@ -1444,7 +1444,7 @@ function AppContent() {
           if (resultsSection) {
             resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-          
+
           // Scroll all conversation content divs to the top
           modelsUsed.forEach((modelId: string) => {
             const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -1455,10 +1455,10 @@ function AppContent() {
           });
         }, 200); // Delay to ensure DOM is fully rendered
       });
-      
+
       // Track this conversation as currently visible so it doesn't appear in history dropdown
       setCurrentVisibleComparisonId(String(summary.id));
-      
+
     } catch (e) {
       console.error('Failed to load conversation:', e);
     } finally {
@@ -1471,7 +1471,7 @@ function AppContent() {
     // Clear currently visible comparison ID on mount/login/logout (page refresh or auth change)
     // This ensures saved comparisons appear in history after refresh/login
     setCurrentVisibleComparisonId(null);
-    
+
     if (isAuthenticated) {
       loadHistoryFromAPI();
     } else {
@@ -1499,14 +1499,14 @@ function AppContent() {
         .flatMap(conv => conv.messages)
         .filter(msg => msg.type === 'user')
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-      
+
       if (firstUserMessage && firstUserMessage.content) {
         const matchingConversation = conversationHistory.find(summary => {
           const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
           const inputMatches = summary.input_data === firstUserMessage.content;
           return modelsMatch && inputMatches;
         });
-        
+
         if (matchingConversation) {
           const matchingId = String(matchingConversation.id);
           // Only update if it's different or not set - this ensures we always track the current visible comparison
@@ -1978,9 +1978,54 @@ function AppContent() {
     };
   }, [selectedModels.length]); // Re-run when selected models change
 
-  // Reset page state when user logs out
+  // Track previous authentication state to detect transitions
+  const prevIsAuthenticatedRef = useRef<boolean | null>(null);
+
+  // Handle authentication state changes (logout and sign-in from anonymous)
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only process transitions if we have a previous state (not initial mount)
+    if (prevIsAuthenticatedRef.current === null) {
+      // Initial mount - just record the current state and don't clear anything
+      prevIsAuthenticatedRef.current = isAuthenticated;
+      return;
+    }
+
+    const wasAnonymous = prevIsAuthenticatedRef.current === false;
+    const isNowAuthenticated = isAuthenticated === true;
+    const wasAuthenticated = prevIsAuthenticatedRef.current === true;
+    const isNowAnonymous = isAuthenticated === false;
+
+    // Clear all state when signing in from anonymous mode
+    if (wasAnonymous && isNowAuthenticated) {
+      // Clear all prompts, model choices, results, and related state
+      setInput('');
+      setResponse(null);
+      setError(null);
+      setIsLoading(false);
+      setConversations([]);
+      setProcessingTime(null);
+      setIsFollowUpMode(false);
+      setCurrentVisibleComparisonId(null);
+      setSelectedModels([]); // Clear model choices when signing in
+      setOriginalSelectedModels([]);
+      setClosedCards(new Set());
+      setActiveResultTabs({});
+      setIsExtendedMode(false);
+      setShowDoneSelectingCard(false);
+      setIsModelsHidden(false);
+      setIsScrollLocked(false);
+      setOpenDropdowns(new Set());
+      // Clear any ongoing requests
+      if (currentAbortController) {
+        currentAbortController.abort();
+        setCurrentAbortController(null);
+      }
+      // Clear scroll refs
+      hasScrolledToResultsRef.current = false;
+    }
+
+    // Reset page state when user logs out
+    if (wasAuthenticated && isNowAnonymous) {
       // Reset all state to default
       setInput('');
       setResponse(null);
@@ -1993,7 +2038,10 @@ function AppContent() {
       setCurrentVisibleComparisonId(null);
       // Don't reset selectedModels or usage count - let them keep their selections
     }
-  }, [isAuthenticated]);
+
+    // Update the ref to track current state for next render
+    prevIsAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated, currentAbortController]);
 
   const toggleDropdown = (provider: string) => {
     setOpenDropdowns(prev => {
@@ -2609,36 +2657,36 @@ function AppContent() {
       // Clear the currently visible comparison ID so the previous one will appear in history
       // This allows the previously visible comparison to show in the dropdown when user starts a new one
       setCurrentVisibleComparisonId(null);
-      
+
       setOriginalSelectedModels([...selectedModels]);
-      
+
       // If there's an active conversation and we're starting a new one, save the previous one first
       // This ensures when user has A & B, runs C, then starts D, we save C and show B & C in history
       if (!isAuthenticated && conversations.length > 0) {
         // Use originalSelectedModels for the previous conversation, or fall back to current conversations' models
-        const previousModels = originalSelectedModels.length > 0 
-          ? originalSelectedModels 
+        const previousModels = originalSelectedModels.length > 0
+          ? originalSelectedModels
           : [...new Set(conversations.map(conv => conv.modelId))];
-        
-        const conversationsWithMessages = conversations.filter(conv => 
+
+        const conversationsWithMessages = conversations.filter(conv =>
           previousModels.includes(conv.modelId) && conv.messages.length > 0
         );
-        
+
         // Only save if we have conversations with complete assistant messages
         const hasCompleteMessages = conversationsWithMessages.some(conv => {
           const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
           return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
         });
-        
+
         if (hasCompleteMessages && conversationsWithMessages.length > 0) {
           // Get the FIRST user message from the conversation
           const allUserMessages = conversationsWithMessages
             .flatMap(conv => conv.messages)
             .filter(msg => msg.type === 'user')
             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          
+
           const firstUserMessage = allUserMessages[0];
-          
+
           if (firstUserMessage) {
             const inputData = firstUserMessage.content;
             // Save the previous conversation before starting the new one
@@ -2865,7 +2913,7 @@ function AppContent() {
                   const endTime = Date.now();
                   setProcessingTime(endTime - startTime);
                   shouldUpdate = true;
-                  
+
                   // Note: Conversation saving will happen after final state update
                   // For authenticated users: backend handles it, refresh history after a delay
                   if (isAuthenticated && !isFollowUpMode) {
@@ -3049,7 +3097,7 @@ function AppContent() {
                   })
                 };
               });
-              
+
               // Don't save here - will save after stream completes (see below)
               return updated;
             });
@@ -3059,7 +3107,7 @@ function AppContent() {
               const updated = prevConversations.map(conv => {
                 const content = streamingResults[conv.modelId] || '';
                 const completionTime = modelCompletionTimes[conv.modelId];
-                
+
                 // Check if we already added the new user message
                 const hasNewUserMessage = conv.messages.some((msg, idx) =>
                   msg.type === 'user' &&
@@ -3095,7 +3143,7 @@ function AppContent() {
                   };
                 }
               });
-              
+
               // Don't save here - will save after stream completes (see below)
               return updated;
             });
@@ -3105,7 +3153,7 @@ function AppContent() {
           // No need to switch here - it's already been done dynamically as models finished
         } finally {
           reader.releaseLock();
-          
+
           // Save conversation to history AFTER stream completes
           // For anonymous users: save to localStorage
           // For registered users: reload from API (backend already saved it)
@@ -3114,39 +3162,39 @@ function AppContent() {
             setTimeout(() => {
               // Get current conversations state (should be fully updated by now)
               setConversations(currentConversations => {
-                const conversationsWithMessages = currentConversations.filter(conv => 
+                const conversationsWithMessages = currentConversations.filter(conv =>
                   selectedModels.includes(conv.modelId) &&
                   conv.messages.length > 0
                 );
-                
+
                 // Only save if we have conversations with complete assistant messages (not empty)
                 const hasCompleteMessages = conversationsWithMessages.some(conv => {
                   const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
                   return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
                 });
-                
+
                 if (hasCompleteMessages && conversationsWithMessages.length > 0) {
                   // Get the FIRST user message from the conversation (not follow-ups)
                   const allUserMessages = conversationsWithMessages
                     .flatMap(conv => conv.messages)
                     .filter(msg => msg.type === 'user')
                     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-                  
+
                   const firstUserMessage = allUserMessages[0];
-                  
-                    if (firstUserMessage) {
-                      const inputData = firstUserMessage.content;
-                      // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
-                      // by keeping only the 2 most recent conversations
-                      const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
-                      // Always track this as the currently visible comparison (will be filtered from history dropdown)
-                      // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
-                      if (savedId) {
-                        setCurrentVisibleComparisonId(savedId);
-                      }
+
+                  if (firstUserMessage) {
+                    const inputData = firstUserMessage.content;
+                    // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
+                    // by keeping only the 2 most recent conversations
+                    const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
+                    // Always track this as the currently visible comparison (will be filtered from history dropdown)
+                    // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
+                    if (savedId) {
+                      setCurrentVisibleComparisonId(savedId);
                     }
+                  }
                 }
-                
+
                 return currentConversations; // Return unchanged
               });
             }, 200);
@@ -3160,24 +3208,24 @@ function AppContent() {
             // Save follow-up updates after stream completes (anonymous users)
             setTimeout(() => {
               setConversations(currentConversations => {
-                const conversationsWithMessages = currentConversations.filter(conv => 
+                const conversationsWithMessages = currentConversations.filter(conv =>
                   selectedModels.includes(conv.modelId) &&
                   conv.messages.length > 0
                 );
-                
+
                 // Only save if we have conversations with complete assistant messages (not empty)
                 const hasCompleteMessages = conversationsWithMessages.some(conv => {
                   const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
                   return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
                 });
-                
+
                 if (hasCompleteMessages && conversationsWithMessages.length > 0) {
                   // Get the first user message (original query) to identify the conversation
                   const firstUserMessage = conversationsWithMessages
                     .flatMap(conv => conv.messages)
                     .filter(msg => msg.type === 'user')
                     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-                  
+
                   if (firstUserMessage) {
                     const inputData = firstUserMessage.content;
                     // Update existing conversation (isUpdate = true)
@@ -3189,7 +3237,7 @@ function AppContent() {
                     }
                   }
                 }
-                
+
                 return currentConversations; // Return unchanged
               });
             }, 200);
@@ -3611,8 +3659,8 @@ function AppContent() {
                 <p className="hero-subtitle">Get concurrent responses from multiple AI models to find the best solution for your needs</p>
 
                 <div className="hero-capabilities">
-                  <div 
-                    className="capability-tile" 
+                  <div
+                    className="capability-tile"
                     onClick={() => handleCapabilityTileTap('natural-language')}
                   >
                     <div className="capability-icon">
@@ -3627,8 +3675,8 @@ function AppContent() {
                     </div>
                   </div>
 
-                  <div 
-                    className="capability-tile" 
+                  <div
+                    className="capability-tile"
                     onClick={() => handleCapabilityTileTap('code-generation')}
                   >
                     <div className="capability-icon">
@@ -3644,8 +3692,8 @@ function AppContent() {
                     </div>
                   </div>
 
-                  <div 
-                    className="capability-tile" 
+                  <div
+                    className="capability-tile"
                     onClick={() => handleCapabilityTileTap('formatted-math')}
                   >
                     <div className="capability-icon">
@@ -3684,9 +3732,9 @@ function AppContent() {
                             justifyContent: 'center'
                           }}
                         >
-                          <svg 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
                             xmlns="http://www.w3.org/2000/svg"
                             style={{
                               width: '22px',
@@ -3719,7 +3767,7 @@ function AppContent() {
                       <h2>Enter Your Prompt</h2>
                     )}
                   </div>
-                  
+
                   <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
                     {/* History Toggle Button - Left side inside textarea */}
                     <div className="history-toggle-wrapper">
@@ -3734,7 +3782,7 @@ function AppContent() {
                         </svg>
                       </button>
                     </div>
-                    
+
                     <textarea
                       ref={textareaRef}
                       value={input}
@@ -3750,13 +3798,13 @@ function AppContent() {
                         }
                       }}
                       placeholder={isFollowUpMode
-                        ? "Enter your follow-up here" 
+                        ? "Enter your follow-up here"
                         : "Let's get started..."
                       }
                       className="hero-input-textarea"
                       rows={1}
                     />
-                    
+
                     {/* History List - Inline, extends textarea depth */}
                     {showHistoryDropdown && (() => {
                       // Filter out the currently visible comparison to avoid showing it in history while it's displayed
@@ -3766,30 +3814,30 @@ function AppContent() {
                         if (!Array.isArray(summary.models_used)) {
                           return true; // Include it anyway to avoid filtering everything
                         }
-                        
+
                         // Always exclude the currently visible comparison by ID
                         // Convert both to string for comparison (summary.id may be number or string)
                         if (currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId) {
                           return false;
                         }
-                        
+
                         // Only filter when actively in follow-up mode (having an ongoing conversation)
                         if (isFollowUpMode && conversations.length > 0) {
                           // Identify current conversation by matching:
                           // 1. First user message matches the first message in current conversations
                           // 2. Models used match selected models
-                          
+
                           const currentFirstUserMessage = conversations
                             .flatMap(conv => conv.messages)
                             .filter(msg => msg.type === 'user')
                             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-                          
+
                           // Only filter if we have a valid user message and both models and content match
                           // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
                           if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
                             const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
                             const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
-                            
+
                             // Exclude if it's the current conversation (both models and first message must match)
                             if (modelsMatch && firstMessageMatches) {
                               return false;
@@ -3798,11 +3846,11 @@ function AppContent() {
                         }
                         return true; // Include all other conversations
                       });
-                      
+
                       // Hide scrollbar when tier limit is 3 or less (anonymous: 2, free: 3)
                       // Show scrollbar for tiers with more than 3 saved comparisons
                       const shouldHideScrollbar = historyLimit <= 3;
-                      
+
                       // Calculate max-height based on tier limit:
                       // Each item is approximately: padding (1rem top + 1rem bottom) + prompt (~22px) + margin (0.5rem) + meta (~14px) ≈ ~80-85px
                       // Message is approximately: padding (0.5rem top + 0.5rem bottom) + text (~40px) ≈ ~60px
@@ -3823,7 +3871,7 @@ function AppContent() {
                         };
                         const tierLimit = tierLimits[userTier] || 2;
                         const isShowingMessage = displayedCount === tierLimit;
-                        
+
                         if (historyLimit === 2) {
                           // Anonymous: 2 items + message if at limit
                           return isShowingMessage ? '230px' : '170px';
@@ -3837,9 +3885,9 @@ function AppContent() {
                         // For tiers with 10+ items, showing all items + message would be too tall, so scrollable is appropriate
                         return isShowingMessage ? '360px' : '300px'; // Add ~60px for message on higher tiers too
                       };
-                      
+
                       return (
-                        <div 
+                        <div
                           className={`history-inline-list ${shouldHideScrollbar ? 'no-scrollbar' : 'scrollable'}`}
                           style={{ maxHeight: getMaxHeight() }}
                         >
@@ -3852,53 +3900,53 @@ function AppContent() {
                               {filteredHistory
                                 .slice(0, historyLimit) // Limit to tier's maximum saved comparisons
                                 .map((summary) => {
-                                const truncatePrompt = (text: string, maxLength: number = 60) => {
-                                  if (text.length <= maxLength) return text;
-                                  return text.substring(0, maxLength) + '...';
-                                };
-                                
-                                const formatDate = (dateString: string) => {
-                                  const date = new Date(dateString);
-                                  const now = new Date();
-                                  const diffMs = now.getTime() - date.getTime();
-                                  const diffMins = Math.floor(diffMs / 60000);
-                                  const diffHours = Math.floor(diffMs / 3600000);
-                                  const diffDays = Math.floor(diffMs / 86400000);
-                                  
-                                  if (diffMins < 1) return 'Just now';
-                                  if (diffMins < 60) return `${diffMins}m ago`;
-                                  if (diffHours < 24) return `${diffHours}h ago`;
-                                  if (diffDays === 1) return 'Yesterday';
-                                  if (diffDays < 7) return `${diffDays}d ago`;
-                                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                };
-                                
-                                return (
-                                  <div
-                                    key={summary.id}
-                                    className="history-item"
-                                    onClick={() => loadConversation(summary)}
-                                    title={summary.input_data}
-                                  >
-                                    <div className="history-item-content">
-                                      <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
-                                      <div className="history-item-meta">
-                                        <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
-                                        <span className="history-item-date">{formatDate(summary.created_at)}</span>
-                                      </div>
-                                    </div>
-                                    <button
-                                      className="history-item-delete"
-                                      onClick={(e) => deleteConversation(summary, e)}
-                                      title="Delete conversation"
-                                      aria-label="Delete conversation"
+                                  const truncatePrompt = (text: string, maxLength: number = 60) => {
+                                    if (text.length <= maxLength) return text;
+                                    return text.substring(0, maxLength) + '...';
+                                  };
+
+                                  const formatDate = (dateString: string) => {
+                                    const date = new Date(dateString);
+                                    const now = new Date();
+                                    const diffMs = now.getTime() - date.getTime();
+                                    const diffMins = Math.floor(diffMs / 60000);
+                                    const diffHours = Math.floor(diffMs / 3600000);
+                                    const diffDays = Math.floor(diffMs / 86400000);
+
+                                    if (diffMins < 1) return 'Just now';
+                                    if (diffMins < 60) return `${diffMins}m ago`;
+                                    if (diffHours < 24) return `${diffHours}h ago`;
+                                    if (diffDays === 1) return 'Yesterday';
+                                    if (diffDays < 7) return `${diffDays}d ago`;
+                                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                  };
+
+                                  return (
+                                    <div
+                                      key={summary.id}
+                                      className="history-item"
+                                      onClick={() => loadConversation(summary)}
+                                      title={summary.input_data}
                                     >
-                                      ×
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                              
+                                      <div className="history-item-content">
+                                        <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
+                                        <div className="history-item-meta">
+                                          <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
+                                          <span className="history-item-date">{formatDate(summary.created_at)}</span>
+                                        </div>
+                                      </div>
+                                      <button
+                                        className="history-item-delete"
+                                        onClick={(e) => deleteConversation(summary, e)}
+                                        title="Delete conversation"
+                                        aria-label="Delete conversation"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+
                               {/* Tier limit message for users at limit - only for Anonymous and Free tiers */}
                               {(() => {
                                 const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
@@ -3911,12 +3959,12 @@ function AppContent() {
                                   pro_plus: 100,
                                 };
                                 const tierLimit = tierLimits[userTier] || 2;
-                                
+
                                 // Only show message for anonymous and free tiers
                                 if (userTier !== 'anonymous' && userTier !== 'free') {
                                   return null;
                                 }
-                                
+
                                 // Check if the number of visible items in the dropdown equals or exceeds the tier limit
                                 // For free tier: show message when 3+ items are visible (meaning user has reached storage limit of 4)
                                 // Backend returns display_limit + 1 (4 for free tier) to account for filtering
@@ -3925,11 +3973,11 @@ function AppContent() {
                                 // Show message when we have tierLimit or more items (after filtering)
                                 // This indicates user has reached their storage limit (tierLimit + 1 saved)
                                 const isAtLimit = visibleCount >= tierLimit;
-                                
+
                                 if (!isAtLimit) {
                                   return null;
                                 }
-                                
+
                                 if (!isAuthenticated) {
                                   return (
                                     <div className="history-signup-prompt">
@@ -3956,7 +4004,7 @@ function AppContent() {
                         </div>
                       );
                     })()}
-                    
+
                     <div className="textarea-actions">
                       {(() => {
                         // Check if user has reached daily limits
@@ -4067,7 +4115,7 @@ function AppContent() {
                   {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
                   {isFollowUpMode && conversations.length > 0 && (() => {
                     const messageCount = conversations[0]?.messages.length || 0;
-                    
+
                     // Calculate warning level - encourage starting fresh conversations at appropriate intervals
                     let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
                     let warningMessage = '';
@@ -4157,7 +4205,7 @@ function AppContent() {
                   // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
                   // Keep padding consistent whether collapsed or not when models are selected
                   // Force the padding-right value to ensure it overrides CSS media query
-                  ...(isWideLayout && selectedModels.length > 0 ? { 
+                  ...(isWideLayout && selectedModels.length > 0 ? {
                     paddingRight: 'calc(340px + 2rem + 2.5rem)',
                   } : {}),
                   ...(isWideLayout && selectedModels.length === 0 ? {
