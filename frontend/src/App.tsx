@@ -1797,7 +1797,7 @@ function AppContent() {
     };
   }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
 
-  // Hide "Done Selecting?" card when switching modes
+  // Hide Done Selecting?" card when switching modes
   useEffect(() => {
     setShowDoneSelectingCard(false);
   }, [isFollowUpMode]);
