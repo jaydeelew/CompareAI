@@ -26,57 +26,27 @@ import {
   getExtendedLimit,
   getDailyLimit,
 } from './config/constants';
+import type {
+  CompareResponse,
+  ConversationMessage,
+  StoredMessage,
+  ModelConversation,
+  Model,
+  ModelsByProvider,
+  ConversationSummary,
+  ConversationRound,
+  ResultTab,
+  ActiveResultTabs,
+  StreamEvent,
+  CompareRequest,
+} from './types';
+import { RESULT_TAB } from './types';
 
 // API URL with smart fallback:
 // - Uses VITE_API_URL from environment if set
 // - Defaults to '/api' which works with Vite proxy in development
 // - In production, set VITE_API_URL to full backend URL if no proxy
 const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-interface CompareResponse {
-  results: { [key: string]: string };
-  metadata: {
-    input_length: number;
-    models_requested: number;
-    models_successful: number;
-    models_failed: number;
-    timestamp: string;
-    processing_time_ms?: number;
-  };
-}
-
-interface ConversationMessage {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-interface StoredMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: string;
-  model_id?: string;
-  id?: string | number;
-}
-
-interface ModelConversation {
-  modelId: string;
-  messages: ConversationMessage[];
-}
-
-interface Model {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  provider: string;
-  available?: boolean; // Optional field - if false, model is not available for selection
-}
-
-interface ModelsByProvider {
-  [provider: string]: Model[];
-}
 
 // Simple hash function to convert fingerprint to a fixed-length string
 const simpleHash = async (str: string): Promise<string> => {
@@ -733,14 +703,6 @@ function AppContent() {
   const [isFollowUpMode, setIsFollowUpMode] = useState(false);
 
   // Conversation history state
-  interface ConversationSummary {
-    id: string | number;
-    input_data: string;
-    models_used: string[];
-    created_at: string;
-    message_count?: number;
-  }
-
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -787,7 +749,7 @@ function AppContent() {
   const [isModelsHidden, setIsModelsHidden] = useState(false);
 
   // Tab switching state - tracks active tab for each conversation
-  const [activeResultTabs, setActiveResultTabs] = useState<{ [modelId: string]: 'formatted' | 'raw' }>({});
+  const [activeResultTabs, setActiveResultTabs] = useState<ActiveResultTabs>({});
 
   // Scroll lock state - when enabled, all model result cards scroll together
   const [isScrollLocked, setIsScrollLocked] = useState(false);
@@ -1403,10 +1365,6 @@ function AppContent() {
 
       // Group messages into conversation rounds (user message + all assistant responses)
       // User messages should already be deduplicated when saved, so we can process in order
-      interface ConversationRound {
-        user: StoredMessage;
-        assistants: StoredMessage[];
-      }
       const rounds: ConversationRound[] = [];
       let currentRound: ConversationRound | null = null;
 
@@ -1606,8 +1564,8 @@ function AppContent() {
   });
 
   // Helper function to switch tabs for a specific conversation
-  const switchResultTab = (modelId: string, tab: 'formatted' | 'raw') => {
-    setActiveResultTabs((prev: { [key: string]: 'formatted' | 'raw' }) => ({
+  const switchResultTab = (modelId: string, tab: ResultTab) => {
+    setActiveResultTabs((prev: ActiveResultTabs) => ({
       ...prev,
       [modelId]: tab
     }));
@@ -2881,9 +2839,9 @@ function AppContent() {
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
 
       // Set all selected models to 'raw' tab to show streaming content immediately
-      const rawTabs: { [modelId: string]: 'raw' } = {};
+      const rawTabs: ActiveResultTabs = {};
       selectedModels.forEach(modelId => {
-        rawTabs[modelId] = 'raw';
+        rawTabs[modelId] = RESULT_TAB.RAW;
       });
       setActiveResultTabs(rawTabs);
 
@@ -2971,9 +2929,9 @@ function AppContent() {
 
                   // Check if ALL models are done - if so, switch to formatted view
                   if (completedModels.size === selectedModels.length) {
-                    const formattedTabs: { [modelId: string]: 'formatted' } = {};
+                    const formattedTabs: ActiveResultTabs = {};
                     selectedModels.forEach(modelId => {
-                      formattedTabs[modelId] = 'formatted';
+                      formattedTabs[modelId] = RESULT_TAB.FORMATTED;
                     });
                     setActiveResultTabs(formattedTabs);
                   }
@@ -4918,14 +4876,14 @@ function AppContent() {
                               <span className="output-length">{latestMessage?.content.length || 0} chars</span>
                               <div className="result-tabs">
                                 <button
-                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? 'active' : ''}`}
-                                  onClick={() => switchResultTab(conversation.modelId, 'formatted')}
+                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'active' : ''}`}
+                                  onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.FORMATTED)}
                                 >
                                   Formatted
                                 </button>
                                 <button
-                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || 'formatted') === 'raw' ? 'active' : ''}`}
-                                  onClick={() => switchResultTab(conversation.modelId, 'raw')}
+                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.RAW ? 'active' : ''}`}
+                                  onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.RAW)}
                                 >
                                   Raw
                                 </button>
@@ -4971,7 +4929,7 @@ function AppContent() {
                                   </span>
                                 </div>
                                 <div className="message-content">
-                                  {(activeResultTabs[conversation.modelId] || 'formatted') === 'formatted' ? (
+                                  {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
                                     /* Full LaTeX rendering for formatted view */
                                     <LatexRenderer className="result-output">
                                       {message.content}
