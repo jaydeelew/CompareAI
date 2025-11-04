@@ -12,6 +12,10 @@ frontend/.env
 *.env
 .envrc
 
+# BUT allow example files (templates for developers)
+!.env.example
+!**/.env.example
+
 # Python Backend
 __pycache__/
 *.py[cod]

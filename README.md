@@ -35,14 +35,18 @@ Compare responses from 50+ AI models side-by-side. Production-ready platform wit
 git clone https://github.com/jaydeelew/CompareAI.git
 cd CompareAI
 
-# Create environment file
-cat > backend/.env << EOF
-OPENROUTER_API_KEY=your_key_here
-SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-DATABASE_URL=sqlite:///./compareintel.db
-EOF
+# Configure backend environment
+cd backend
+cp .env.example .env
+# Edit .env and add your OPENROUTER_API_KEY and SECRET_KEY
+# Generate SECRET_KEY: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Configure frontend environment (optional - defaults work for local dev)
+cd ../frontend
+cp .env.example .env
 
 # Start development environment
+cd ..
 docker compose up --build
 ```
 
@@ -50,18 +54,17 @@ docker compose up --build
 
 ### Environment Variables
 
-```bash
-# Required
-OPENROUTER_API_KEY=sk-or-...        # Get from openrouter.ai
-SECRET_KEY=...                       # JWT signing key
+See **[Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md)** for detailed configuration.
 
-# Optional
-DATABASE_URL=sqlite:///./compareintel.db  # Or PostgreSQL for production
-MAIL_USERNAME=...                    # SendGrid/SMTP for emails
-MAIL_PASSWORD=...
-MAIL_FROM=noreply@yourdomain.com
-FRONTEND_URL=http://localhost:5173  # For email links
-```
+**Quick Reference:**
+- **Backend:** Copy `backend/.env.example` to `backend/.env` and fill in:
+  - `SECRET_KEY` (required) - Generate with: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+  - `OPENROUTER_API_KEY` (required) - Get from [openrouter.ai](https://openrouter.ai/keys)
+  - `DATABASE_URL` (optional) - Defaults to SQLite for development
+  - Email configuration (optional) - For user verification emails
+
+- **Frontend:** Copy `frontend/.env.example` to `frontend/.env` (optional - defaults work)
+  - `VITE_API_URL` - Defaults to `/api` (uses Vite proxy)
 
 ## Production Deployment
 
@@ -233,8 +236,11 @@ frontend/
 
 ## Documentation
 
-**Core Documentation:**
+**Getting Started:**
+- [Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md) - Complete environment configuration guide
 - [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md) - Development & deployment guide
+
+**Core Documentation:**
 - [RATE_LIMITING_IMPLEMENTATION.md](docs/RATE_LIMITING_IMPLEMENTATION.md) - Rate limiting details
 - [OVERAGE_PRICING_ANALYSIS.md](docs/OVERAGE_PRICING_ANALYSIS.md) - Pricing model & financials
 - [CACHE_BUSTING_SETUP.md](docs/CACHE_BUSTING_SETUP.md) - Cache busting strategy
@@ -247,7 +253,7 @@ frontend/
 - [SUPPORT_EMAIL_IMPLEMENTATION.md](docs/SUPPORT_EMAIL_IMPLEMENTATION.md) - Support email system
 
 **Additional Resources:**
-- [ENV_SETUP_GUIDE.md](docs/ENV_SETUP_GUIDE.md) - Environment setup guide
+- [ENV_SETUP_GUIDE.md](docs/ENV_SETUP_GUIDE.md) - Legacy environment setup guide (see [Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md) for updated version)
 - [TESTING_CONTEXT_MANAGEMENT.md](docs/TESTING_CONTEXT_MANAGEMENT.md) - Testing guide for context management
 - [STREAMING_QUICK_TEST.md](docs/STREAMING_QUICK_TEST.md) - Quick test guide for streaming
 - [STREAMING_SPACES_FIX.md](docs/STREAMING_SPACES_FIX.md) - Streaming whitespace fixes
