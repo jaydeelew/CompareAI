@@ -12,53 +12,18 @@ from sqlalchemy.orm import Session
 from .models import User
 from collections import defaultdict
 
-# Subscription tier configuration - MODEL-BASED PRICING
-# daily_limit = model responses per day (not comparisons)
-# model_limit = max models per comparison (tiered: 3/6/6/9/9)
-# overage_allowed = whether tier can purchase additional interactions beyond daily limit
-# overage_price = price per additional model response (TBD - pricing not yet finalized)
-# extended_overage_price = price per additional extended interaction (TBD - pricing not yet finalized)
-SUBSCRIPTION_CONFIG = {
-    "free": {
-        "daily_limit": 20,
-        "model_limit": 3,
-        "overage_allowed": False,
-        "overage_price": None,
-        "extended_overage_price": None,
-    },  # Free registered users
-    "starter": {
-        "daily_limit": 50,
-        "model_limit": 6,
-        "overage_allowed": True,
-        "overage_price": None,
-        "extended_overage_price": None,
-    },  # Pricing TBD
-    "starter_plus": {
-        "daily_limit": 100,
-        "model_limit": 6,
-        "overage_allowed": True,
-        "overage_price": None,
-        "extended_overage_price": None,
-    },  # Pricing TBD
-    "pro": {
-        "daily_limit": 200,
-        "model_limit": 9,
-        "overage_allowed": True,
-        "overage_price": None,
-        "extended_overage_price": None,
-    },  # Pricing TBD
-    "pro_plus": {
-        "daily_limit": 400,
-        "model_limit": 9,
-        "overage_allowed": True,
-        "overage_price": None,
-        "extended_overage_price": None,
-    },  # Pricing TBD
-}
-
-# Backwards compatibility - extract limits
-SUBSCRIPTION_LIMITS = {tier: config["daily_limit"] for tier, config in SUBSCRIPTION_CONFIG.items()}
-MODEL_LIMITS = {tier: config["model_limit"] for tier, config in SUBSCRIPTION_CONFIG.items()}
+# Import configuration constants
+from .config import (
+    SUBSCRIPTION_CONFIG,
+    SUBSCRIPTION_LIMITS,
+    MODEL_LIMITS,
+    EXTENDED_TIER_LIMITS,
+    ANONYMOUS_DAILY_LIMIT,
+    ANONYMOUS_MODEL_LIMIT,
+    get_model_limit,
+    get_daily_limit,
+    get_extended_limit,
+)
 
 # In-memory storage for anonymous rate limiting
 # Structure: { "identifier": { "count": int, "date": str, "first_seen": datetime } }
@@ -84,7 +49,7 @@ def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
         db.commit()
 
     # Get daily limit based on subscription tier
-    daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
+    daily_limit = get_daily_limit(user.subscription_tier)
 
     # Check if user is within limit
     is_allowed = user.daily_usage_count < daily_limit
@@ -165,11 +130,11 @@ def get_user_usage_stats(user: User) -> Dict[str, Any]:
     Returns:
         dict: Usage statistics including daily usage, limit, remaining, and extended usage
     """
-    daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 10)
+    daily_limit = get_daily_limit(user.subscription_tier)
     remaining = max(0, daily_limit - user.daily_usage_count)
     
     # Get extended tier limits
-    extended_limit = EXTENDED_TIER_LIMITS.get(user.subscription_tier, 5)
+    extended_limit = get_extended_limit(user.subscription_tier)
     extended_remaining = max(0, extended_limit - user.daily_extended_usage)
 
     return {
@@ -195,7 +160,7 @@ def get_anonymous_usage_stats(identifier: str) -> Dict[str, Any]:
         dict: Usage statistics including daily usage, limit, and remaining
     """
     _, current_count = check_anonymous_rate_limit(identifier)
-    daily_limit = 10  # Model responses per day for anonymous (unregistered) users
+    daily_limit = ANONYMOUS_DAILY_LIMIT
     remaining = max(0, daily_limit - current_count)
 
     return {
@@ -219,7 +184,7 @@ def should_send_usage_warning(user: User) -> bool:
     Returns:
         bool: True if warning should be sent
     """
-    daily_limit = SUBSCRIPTION_LIMITS.get(user.subscription_tier, 20)
+    daily_limit = get_daily_limit(user.subscription_tier)
     warning_threshold = int(daily_limit * 0.8)
 
     return user.daily_usage_count == warning_threshold
@@ -235,17 +200,7 @@ def reset_anonymous_rate_limits() -> None:
     anonymous_rate_limit_storage.clear()
 
 
-def get_model_limit(tier: str) -> int:
-    """
-    Get maximum models allowed per comparison for a tier.
-
-    Args:
-        tier: Subscription tier
-
-    Returns:
-        int: Maximum number of models allowed
-    """
-    return MODEL_LIMITS.get(tier, 3)  # Default to free tier limit
+# get_model_limit is now imported from config module
 
 
 def is_overage_allowed(tier: str) -> bool:
@@ -313,13 +268,13 @@ def get_rate_limit_info() -> Dict[str, Any]:
     return {
         "subscription_tiers": SUBSCRIPTION_LIMITS,
         "model_limits": MODEL_LIMITS,
-        "anonymous_limit": 10,  # Model responses per day for unregistered users
+        "anonymous_limit": ANONYMOUS_DAILY_LIMIT,
         "anonymous_users_tracked": len(anonymous_rate_limit_storage),
     }
 
 
 # Extended tier usage tracking
-EXTENDED_TIER_LIMITS = {"anonymous": 2, "free": 5, "starter": 10, "starter_plus": 20, "pro": 40, "pro_plus": 80}
+# EXTENDED_TIER_LIMITS is now imported from config module
 
 
 def check_extended_tier_limit(user: User, db: Session) -> Tuple[bool, int, int]:
@@ -341,7 +296,7 @@ def check_extended_tier_limit(user: User, db: Session) -> Tuple[bool, int, int]:
         db.commit()
 
     # Get daily limit based on subscription tier
-    daily_limit = EXTENDED_TIER_LIMITS.get(user.subscription_tier, 5)
+    daily_limit = get_extended_limit(user.subscription_tier)
 
     # Check if user is within limit
     is_allowed = user.daily_extended_usage < daily_limit
@@ -384,7 +339,7 @@ def check_anonymous_extended_limit(identifier: str) -> Tuple[bool, int]:
         anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
 
     current_count = anonymous_rate_limit_storage[storage_key]["count"]
-    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]  # 2 for anonymous users
+    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]
 
     is_allowed = current_count < daily_limit
 
@@ -449,7 +404,7 @@ def get_anonymous_extended_usage_stats(identifier: str) -> Dict[str, Any]:
         dict: Extended usage statistics including daily usage, limit, and remaining
     """
     _, current_count = check_anonymous_extended_limit(identifier)
-    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]  # 2 for anonymous users
+    daily_limit = EXTENDED_TIER_LIMITS["anonymous"]
     remaining = max(0, daily_limit - current_count)
 
     return {

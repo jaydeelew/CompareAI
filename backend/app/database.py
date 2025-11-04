@@ -10,23 +10,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+# Import configuration
+from .config import settings
 
-# Database URL from environment variable
+# Database URL from configuration
 # Format: postgresql://username:password@host:port/database
 # Handle both running from project root and backend directory
 
-# Determine the correct database path
+# Determine the correct database path for SQLite fallback
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(backend_dir)
-
-# Check for database files in different locations
-backend_db_path = os.path.join(backend_dir, "compareintel.db")
-project_db_path = os.path.join(project_root, "backend", "compareintel.db")
 
 # Determine working directory to choose correct relative path
 cwd = os.getcwd()
@@ -37,7 +32,8 @@ else:
     # Running from project root or other location
     default_db_path = "sqlite:///./backend/compareintel.db"
 
-DATABASE_URL = os.getenv("DATABASE_URL", default_db_path)
+# Use database URL from settings, with fallback to default SQLite path
+DATABASE_URL = settings.database_url if settings.database_url != "sqlite:///./compareintel.db" else default_db_path
 
 # Create SQLAlchemy engine
 # For PostgreSQL in production, add connection pooling settings

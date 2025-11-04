@@ -44,12 +44,8 @@ router = APIRouter(tags=["API"])
 # This is shared with main.py via import
 model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
 
-# Tier configuration
-TIER_LIMITS = {
-    "brief": {"input_chars": 1000, "output_tokens": 2000},
-    "standard": {"input_chars": 5000, "output_tokens": 4000},
-    "extended": {"input_chars": 15000, "output_tokens": 8192},
-}
+# Import configuration constants
+from ..config import TIER_LIMITS, get_conversation_limit
 
 
 # Pydantic models for request/response
@@ -72,24 +68,10 @@ class CompareResponse(BaseModel):
 
 
 # Helper functions
-def get_conversation_limit_for_tier(tier: str) -> int:
-    """Get conversation history limit based on subscription tier."""
-    limits = {
-        "anonymous": 2,
-        "free": 3,
-        "starter": 10,
-        "starter_plus": 20,
-        "pro": 50,
-        "pro_plus": 100,
-    }
-    return limits.get(tier, 2)  # Default to 2 for unknown tiers
+# get_conversation_limit_for_tier is now get_conversation_limit from config module
 
-
-def validate_tier_limits(input_data: str, tier: str) -> bool:
-    """Validate input length against tier limits"""
-    if tier not in TIER_LIMITS:
-        return False
-    return len(input_data) <= TIER_LIMITS[tier]["input_chars"]
+# Import validation functions from config
+from ..config import validate_tier_limits
 
 
 def get_client_ip(request: Request) -> str:
@@ -1043,7 +1025,7 @@ async def compare_stream(
                         # Store exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
                         user_obj = conv_db.query(User).filter(User.id == user_id).first()
                         tier = user_obj.subscription_tier if user_obj else "free"
-                        display_limit = get_conversation_limit_for_tier(tier)
+                        display_limit = get_conversation_limit(tier)
                         storage_limit = display_limit  # Store exactly the display limit
                         
                         # Get all conversations for user
@@ -1099,7 +1081,7 @@ async def get_conversations(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     tier = current_user.subscription_tier or "free"
-    display_limit = get_conversation_limit_for_tier(tier)
+    display_limit = get_conversation_limit(tier)
     # Return exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
     return_limit = display_limit
 

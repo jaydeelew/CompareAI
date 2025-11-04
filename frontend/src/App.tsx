@@ -19,6 +19,14 @@ import { AuthModal, UserMenu, VerifyEmail, VerificationBanner, ResetPassword } f
 import { AdminPanel } from './components/admin';
 import { Footer } from './components';
 import { TermsOfService } from './components/TermsOfService';
+import {
+  ANONYMOUS_DAILY_LIMIT,
+  EXTENDED_TIER_LIMITS,
+  getModelLimit,
+  getConversationLimit,
+  getExtendedLimit,
+  getDailyLimit,
+} from './config/constants';
 
 // API URL with smart fallback:
 // - Uses VITE_API_URL from environment if set
@@ -70,21 +78,6 @@ interface Model {
 interface ModelsByProvider {
   [provider: string]: Model[];
 }
-
-// Freemium usage limits (anonymous users only) - MODEL-BASED
-// Anonymous (unregistered) users get 10 model responses per day
-const MAX_DAILY_USAGE = 10;
-
-// Maximum number of times extended mode can be used per day per subscription tier (quota enforcement)
-// Extended mode is only triggered when the user explicitly clicks the Extended mode button
-const EXTENDED_TIER_LIMITS = {
-  anonymous: 2,
-  free: 5,
-  starter: 10,
-  starter_plus: 20,
-  pro: 40,
-  pro_plus: 80
-};
 
 // Simple hash function to convert fingerprint to a fixed-length string
 const simpleHash = async (str: string): Promise<string> => {
@@ -158,20 +151,9 @@ function AppContent() {
   // Get max models based on user tier
   const getMaxModelsForUser = () => {
     if (!isAuthenticated || !user) {
-      return 3; // Anonymous users
+      return getModelLimit('anonymous');
     }
-
-    switch (user.subscription_tier) {
-      case 'pro':
-      case 'pro_plus':
-        return 9;
-      case 'starter':
-      case 'starter_plus':
-        return 6;
-      case 'free':
-      default:
-        return 3;
-    }
+    return getModelLimit(user.subscription_tier);
   };
 
   const maxModelsLimit = getMaxModelsForUser();
@@ -975,19 +957,9 @@ function AppContent() {
   useEffect(() => {
     if (!isExtendedMode) return; // Only check if extended mode is on
 
-    // Define regular limits for each tier
-    const REGULAR_LIMITS: { [key: string]: number } = {
-      anonymous: 10,
-      free: 20,
-      starter: 50,
-      starter_plus: 100,
-      pro: 200,
-      pro_plus: 400
-    };
-
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
-    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+    const regularLimit = getDailyLimit(userTier);
+    const extendedLimit = getExtendedLimit(userTier);
 
     // Calculate current usage
     const currentRegularUsage = isAuthenticated && user
@@ -2155,7 +2127,7 @@ function AppContent() {
   // Helper function to check extended interaction limits
   const checkExtendedInteractionLimit = async (): Promise<{ canProceed: boolean; errorMessage?: string }> => {
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+    const extendedLimit = getExtendedLimit(userTier);
 
     // Get current extended usage
     let currentExtendedUsage = isAuthenticated && user
@@ -2641,15 +2613,7 @@ function AppContent() {
     const modelsNeeded = selectedModels.length;
 
     // Determine user tier and their regular limit (userTier already declared above)
-    const REGULAR_LIMITS: { [key: string]: number } = {
-      anonymous: 10,
-      free: 20,
-      starter: 50,
-      starter_plus: 100,
-      pro: 200,
-      pro_plus: 400
-    };
-    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
+    const regularLimit = getDailyLimit(userTier);
 
     if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
@@ -2681,7 +2645,7 @@ function AppContent() {
     // Reuse messageCount, userTier, and shouldUseExtendedTier declared above
 
     if (shouldUseExtendedTier) {
-      const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+      const extendedLimit = getExtendedLimit(userTier);
 
       // Sync extended usage from backend before checking limit
       let currentExtendedUsage = isAuthenticated && user
@@ -3612,18 +3576,8 @@ function AppContent() {
   const renderUsagePreview = () => {
     const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
 
-    // Define regular limits for each tier
-    const REGULAR_LIMITS: { [key: string]: number } = {
-      anonymous: 10,
-      free: 20,
-      starter: 50,
-      starter_plus: 100,
-      pro: 200,
-      pro_plus: 400
-    };
-
-    const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
-    const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+    const regularLimit = getDailyLimit(userTier);
+    const extendedLimit = getExtendedLimit(userTier);
 
     // Calculate current usage
     const currentRegularUsage = isAuthenticated && user
@@ -4090,15 +4044,7 @@ function AppContent() {
                               {/* Tier limit message for users at limit - only for Anonymous and Free tiers */}
                               {(() => {
                                 const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                                const tierLimits: { [key: string]: number } = {
-                                  anonymous: 2,
-                                  free: 3,
-                                  starter: 10,
-                                  starter_plus: 20,
-                                  pro: 50,
-                                  pro_plus: 100,
-                                };
-                                const tierLimit = tierLimits[userTier] || 2;
+                                const tierLimit = getConversationLimit(userTier);
 
                                 // Only show message for anonymous and free tiers
                                 if (userTier !== 'anonymous' && userTier !== 'free') {
@@ -4149,18 +4095,8 @@ function AppContent() {
                         // Check if user has reached daily limits
                         const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
 
-                        // Define regular limits for each tier
-                        const REGULAR_LIMITS: { [key: string]: number } = {
-                          anonymous: 10,
-                          free: 20,
-                          starter: 50,
-                          starter_plus: 100,
-                          pro: 200,
-                          pro_plus: 400
-                        };
-
-                        const regularLimit = REGULAR_LIMITS[userTier] || REGULAR_LIMITS.anonymous;
-                        const extendedLimit = EXTENDED_TIER_LIMITS[userTier] || EXTENDED_TIER_LIMITS.anonymous;
+                        const regularLimit = getDailyLimit(userTier);
+                        const extendedLimit = getExtendedLimit(userTier);
 
                         // Calculate current usage
                         const currentRegularUsage = isAuthenticated && user
@@ -4709,7 +4645,7 @@ function AppContent() {
             </section>
 
             {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
-            {!isAuthenticated && (usageCount > 0 || usageCount >= MAX_DAILY_USAGE || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
+            {!isAuthenticated && (usageCount > 0 || usageCount >= ANONYMOUS_DAILY_LIMIT || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
               <div className="usage-tracking-banner" style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
@@ -4718,13 +4654,13 @@ function AppContent() {
                 boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
               }}>
                 <div className="usage-banner-content">
-                  {usageCount < MAX_DAILY_USAGE ? (
+                  {usageCount < ANONYMOUS_DAILY_LIMIT ? (
                     <>
                       <div className="usage-banner-text-desktop" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        {`${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today • Sign up for 20 free per day`}
+                        {`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today • Sign up for 20 free per day`}
                       </div>
                       <div className="usage-banner-text-mobile" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        <div>{`${MAX_DAILY_USAGE - usageCount} of 10 model responses remaining today`}</div>
+                        <div>{`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today`}</div>
                         <div>Sign up for 20 free per day</div>
                       </div>
                     </>

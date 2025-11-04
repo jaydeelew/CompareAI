@@ -43,27 +43,13 @@ from .routers import auth, admin, api
 # Import model_stats from api router to share the same storage
 from .routers.api import model_stats
 
-# Tier configuration
-TIER_LIMITS = {
-    "brief": {"input_chars": 1000, "output_tokens": 2000},
-    "standard": {"input_chars": 5000, "output_tokens": 4000},
-    "extended": {"input_chars": 15000, "output_tokens": 8192},
-}
-
-# Extended tier daily limits per subscription tier
-EXTENDED_TIER_LIMITS = {"anonymous": 2, "free": 5, "starter": 10, "starter_plus": 20, "pro": 40, "pro_plus": 80}
-
-
-def validate_tier_limits(input_data: str, tier: str) -> bool:
-    """Validate input length against tier limits"""
-    if tier not in TIER_LIMITS:
-        return False
-    return len(input_data) <= TIER_LIMITS[tier]["input_chars"]
-
-
-def get_tier_max_tokens(tier: str) -> int:
-    """Get max tokens for tier"""
-    return TIER_LIMITS.get(tier, TIER_LIMITS["standard"])["output_tokens"]
+# Import configuration constants
+from .config import (
+    TIER_LIMITS,
+    EXTENDED_TIER_LIMITS,
+    validate_tier_limits,
+    get_tier_max_tokens,
+)
 
 
 app = FastAPI(title="CompareAI API", version="1.0.0")

@@ -1,0 +1,166 @@
+/**
+ * Centralized configuration constants for CompareAI frontend.
+ * 
+ * This module consolidates all configuration constants to avoid duplication
+ * and provides a single source of truth for frontend settings.
+ * 
+ * Should match backend configuration for consistency.
+ * See: backend/app/config.py
+ */
+
+// ============================================================================
+// Anonymous User Limits
+// ============================================================================
+// Limits for unregistered (anonymous) users
+
+/** Model responses per day for anonymous (unregistered) users */
+export const ANONYMOUS_DAILY_LIMIT = 10;
+
+/** Maximum models per comparison for anonymous users */
+export const ANONYMOUS_MODEL_LIMIT = 3;
+
+// ============================================================================
+// Extended Tier Daily Limits
+// ============================================================================
+// Maximum number of times Extended mode can be used per day per subscription tier
+// Extended mode is only triggered when the user explicitly clicks the Extended mode button
+
+export const EXTENDED_TIER_LIMITS = {
+  anonymous: 2,
+  free: 5,
+  starter: 10,
+  starter_plus: 20,
+  pro: 40,
+  pro_plus: 80,
+} as const;
+
+// ============================================================================
+// Model Limits per Subscription Tier
+// ============================================================================
+// Maximum number of models that can be selected per comparison
+
+export const MODEL_LIMITS = {
+  anonymous: 3,
+  free: 3,
+  starter: 6,
+  starter_plus: 6,
+  pro: 9,
+  pro_plus: 9,
+} as const;
+
+// ============================================================================
+// Daily Limits per Subscription Tier
+// ============================================================================
+// Daily model response limits (model responses per day, not comparisons)
+
+export const DAILY_LIMITS = {
+  anonymous: 10,
+  free: 20,
+  starter: 50,
+  starter_plus: 100,
+  pro: 200,
+  pro_plus: 400,
+} as const;
+
+// ============================================================================
+// Tier Limits for Input/Output
+// ============================================================================
+// Input/output character and token limits for each response tier
+
+export const TIER_LIMITS = {
+  brief: { input_chars: 1000, output_tokens: 2000 },
+  standard: { input_chars: 5000, output_tokens: 4000 },
+  extended: { input_chars: 15000, output_tokens: 8192 },
+} as const;
+
+// ============================================================================
+// Conversation History Limits
+// ============================================================================
+// Maximum number of conversation messages stored per subscription tier
+
+export const CONVERSATION_LIMITS = {
+  anonymous: 2,
+  free: 3,
+  starter: 10,
+  starter_plus: 20,
+  pro: 50,
+  pro_plus: 100,
+} as const;
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+// TypeScript types derived from constants for type safety
+
+export type SubscriptionTier = keyof typeof MODEL_LIMITS;
+export type ResponseTier = keyof typeof TIER_LIMITS;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Get maximum models per comparison for a given subscription tier.
+ * 
+ * @param tier - Subscription tier name
+ * @returns Maximum number of models allowed per comparison
+ */
+export function getModelLimit(tier: SubscriptionTier | string): number {
+  return MODEL_LIMITS[tier as SubscriptionTier] ?? MODEL_LIMITS.anonymous;
+}
+
+/**
+ * Get daily model response limit for a given subscription tier.
+ * 
+ * @param tier - Subscription tier name
+ * @returns Daily limit for model responses
+ */
+export function getDailyLimit(tier: SubscriptionTier | string): number {
+  return DAILY_LIMITS[tier as SubscriptionTier] ?? DAILY_LIMITS.anonymous;
+}
+
+/**
+ * Get Extended tier daily limit for a given subscription tier.
+ * 
+ * @param tier - Subscription tier name
+ * @returns Daily Extended tier limit
+ */
+export function getExtendedLimit(tier: SubscriptionTier | string): number {
+  return EXTENDED_TIER_LIMITS[tier as SubscriptionTier] ?? EXTENDED_TIER_LIMITS.anonymous;
+}
+
+/**
+ * Validate input length against tier limits.
+ * 
+ * @param inputData - Input text to validate
+ * @param tier - Response tier (brief, standard, extended)
+ * @returns True if input is within limits, False otherwise
+ */
+export function validateTierLimits(inputData: string, tier: ResponseTier | string): boolean {
+  if (!(tier in TIER_LIMITS)) {
+    return false;
+  }
+  const limit = TIER_LIMITS[tier as ResponseTier];
+  return inputData.length <= limit.input_chars;
+}
+
+/**
+ * Get maximum output tokens for a given response tier.
+ * 
+ * @param tier - Response tier (brief, standard, extended)
+ * @returns Maximum output tokens for the tier
+ */
+export function getTierMaxTokens(tier: ResponseTier | string): number {
+  return TIER_LIMITS[tier as ResponseTier]?.output_tokens ?? TIER_LIMITS.standard.output_tokens;
+}
+
+/**
+ * Get conversation history limit for a given subscription tier.
+ * 
+ * @param tier - Subscription tier name
+ * @returns Maximum number of conversation messages stored
+ */
+export function getConversationLimit(tier: SubscriptionTier | string): number {
+  return CONVERSATION_LIMITS[tier as SubscriptionTier] ?? CONVERSATION_LIMITS.anonymous;
+}
+

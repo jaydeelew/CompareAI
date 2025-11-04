@@ -17,13 +17,11 @@ import bcrypt
 # Using bcrypt with explicit rounds to avoid issues
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12, bcrypt__ident="2b")
 
+# Import configuration
+from .config import settings
+
 # JWT settings
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError(
-        "SECRET_KEY environment variable is not set. "
-        'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
-    )
+SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7

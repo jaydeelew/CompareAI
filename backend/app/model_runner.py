@@ -8,18 +8,15 @@ import re
 import tiktoken
 from .mock_responses import stream_mock_response, get_mock_response
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+# Import configuration
+from .config import (
+    settings,
+    MAX_CONCURRENT_REQUESTS,
+    INDIVIDUAL_MODEL_TIMEOUT,
+    BATCH_SIZE,
+)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# Configuration optimized for 9-model limit (Pro tier maximum)
-MAX_CONCURRENT_REQUESTS = 9  # Matches Pro tier limit of 9 models
-INDIVIDUAL_MODEL_TIMEOUT = 120  # Increased timeout for very long, detailed responses
-BATCH_SIZE = 9  # Process all 9 models in single batch for optimal performance
-
-# Connection quality optimizations
-# For slower connections, you may want to reduce MAX_CONCURRENT_REQUESTS to 6-8
-# and increase INDIVIDUAL_MODEL_TIMEOUT to 60-90 seconds
+OPENROUTER_API_KEY = settings.openrouter_api_key
 
 # List of available models organized by providers
 MODELS_BY_PROVIDER = {
