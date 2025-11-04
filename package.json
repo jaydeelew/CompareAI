@@ -1,8 +1,17 @@
 {
+  "name": "compareai",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky install"
+  },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
     "html2canvas": "^1.4.1",
     "katex": "^0.16.25",
     "lucide-react": "^0.552.0"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11"
   }
 }

@@ -64,3 +64,16 @@ psycopg2-binary>=2.9.9   # PostgreSQL driver
 # ============================================================================
 fastapi-mail>=1.4.0      # Email sending
 pydantic[email]>=2.0.0   # Email validation
+
+# ============================================================================
+# Development Tools (Linting, Formatting, Type Checking)
+# ============================================================================
+ruff>=0.6.0              # Fast Python linter (replaces flake8, isort, etc.)
+black>=24.0.0            # Code formatter
+mypy>=1.11.0             # Static type checker
+pre-commit>=3.7.0        # Git hooks framework
+types-sqlalchemy>=2.0.0  # Type stubs for SQLAlchemy
+types-python-jose>=3.3.0 # Type stubs for python-jose
+types-passlib>=1.7.6     # Type stubs for passlib
+types-bcrypt>=4.0.0      # Type stubs for bcrypt
+types-PyYAML>=6.0.0      # Type stubs for PyYAML
