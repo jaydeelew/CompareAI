@@ -6,9 +6,9 @@ that are used by the frontend for the core AI comparison functionality.
 """
 
 from fastapi import APIRouter, Request, Depends, HTTPException, status, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from sqlalchemy.orm import Session
 from collections import defaultdict
 from datetime import datetime
@@ -95,7 +95,7 @@ def get_client_ip(request: Request) -> str:
     return "unknown"
 
 
-def log_usage_to_db(usage_log: UsageLog, db: Session):
+def log_usage_to_db(usage_log: UsageLog, db: Session) -> None:
     """Background task to log usage to database without blocking the response."""
     try:
         db.add(usage_log)
@@ -108,7 +108,7 @@ def log_usage_to_db(usage_log: UsageLog, db: Session):
 
 
 @router.get("/models")
-async def get_available_models():
+async def get_available_models() -> Dict[str, Any]:
     """Get list of available AI models."""
     return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
 

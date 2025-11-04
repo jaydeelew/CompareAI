@@ -8,7 +8,7 @@ and token generation for email verification and password resets.
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 import os
 import secrets
 import bcrypt
@@ -67,7 +67,7 @@ def get_password_hash(password: str) -> str:
         raise
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token.
 
@@ -90,7 +90,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: Dict[str, Any]) -> str:
     """
     Create a JWT refresh token with longer expiration.
 
@@ -107,7 +107,7 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 
-def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
+def verify_token(token: str, token_type: str = "access") -> Optional[Dict[str, Any]]:
     """
     Verify and decode a JWT token.
 

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
 
@@ -38,9 +38,9 @@ def log_admin_action(
     action_type: str,
     action_description: str,
     target_user_id: Optional[int] = None,
-    details: Optional[dict] = None,
+    details: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None,
-):
+) -> None:
     """Log admin action for audit trail."""
     log_entry = AdminActionLog(
         admin_user_id=admin_user.id,

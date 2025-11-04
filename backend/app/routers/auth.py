@@ -8,6 +8,7 @@ user registration, login, email verification, and password resets.
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import Dict
 import os
 from ..database import get_db
 from ..models import User, UserPreference
@@ -315,7 +316,7 @@ async def reset_password(reset: PasswordReset, db: Session = Depends(get_db)):
 
 
 @router.get("/test")
-async def test_endpoint():
+async def test_endpoint() -> Dict[str, str]:
     """Test endpoint to verify basic functionality."""
     return {"message": "Auth router is working"}
 

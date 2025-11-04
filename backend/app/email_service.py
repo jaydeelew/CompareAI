@@ -8,7 +8,7 @@ password resets, and subscription notifications.
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 import os
-from typing import List
+from typing import List, Optional
 
 # Email configuration from environment variables
 # Only initialize if we have valid email settings
@@ -39,7 +39,7 @@ else:
     fm = None
 
 
-async def send_verification_email(email: EmailStr, token: str):
+async def send_verification_email(email: EmailStr, token: str) -> None:
     """
     Send email verification link to user.
 
@@ -137,7 +137,7 @@ async def send_verification_email(email: EmailStr, token: str):
         raise
 
 
-async def send_password_reset_email(email: EmailStr, token: str):
+async def send_password_reset_email(email: EmailStr, token: str) -> None:
     """
     Send password reset link to user.
 
@@ -244,7 +244,7 @@ async def send_password_reset_email(email: EmailStr, token: str):
         raise
 
 
-async def send_subscription_confirmation_email(email: EmailStr, tier: str, period: str, amount: float):
+async def send_subscription_confirmation_email(email: EmailStr, tier: str, period: str, amount: float) -> None:
     """
     Send subscription confirmation email.
 
@@ -421,7 +421,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
         pass
 
 
-async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, daily_limit: int, tier: str):
+async def send_usage_limit_warning_email(email: EmailStr, usage_count: int, daily_limit: int, tier: str) -> None:
     """
     Send warning email when user is approaching their daily limit.
 

@@ -8,7 +8,7 @@ and checking user permissions.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Callable
 from .database import get_db
 from .models import User
 from .auth import verify_token
@@ -119,7 +119,7 @@ def get_current_verified_user(current_user: User = Depends(get_current_user_requ
     return current_user
 
 
-def check_subscription_tier(required_tier: str):
+def check_subscription_tier(required_tier: str) -> Callable[[User], User]:
     """
     Dependency factory to check if user has required subscription tier.
 
@@ -145,7 +145,7 @@ def check_subscription_tier(required_tier: str):
     return dependency
 
 
-def require_admin_role(required_role: str = "admin"):
+def require_admin_role(required_role: str = "admin") -> Callable[[User], User]:
     """
     Dependency factory to check if user has required admin role.
 

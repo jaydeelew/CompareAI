@@ -7,7 +7,8 @@ database session management for the FastAPI application.
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
 import os
 from pathlib import Path
 
@@ -67,7 +68,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     """
     Dependency function for FastAPI to get database session.
 
@@ -87,7 +88,7 @@ def get_db():
         db.close()
 
 
-def init_db():
+def init_db() -> None:
     """
     Initialize database tables.
     This creates all tables defined in models.
@@ -97,7 +98,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def drop_db():
+def drop_db() -> None:
     """
     Drop all database tables.
     WARNING: This will delete all data!

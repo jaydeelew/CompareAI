@@ -2,11 +2,12 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import concurrent.futures
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Generator, Tuple
 import time
 import re
 import tiktoken
 from .mock_responses import stream_mock_response, get_mock_response
+from .types import ConnectionQualityDict
 
 # Import configuration
 from .config import (
@@ -486,7 +487,7 @@ def estimate_token_count(text: str) -> int:
         return len(text) // 4
 
 
-def count_conversation_tokens(messages: list) -> int:
+def count_conversation_tokens(messages: List[Any]) -> int:
     """
     Count total tokens in a conversation history.
     Includes tokens for message formatting overhead.
@@ -508,7 +509,7 @@ def count_conversation_tokens(messages: list) -> int:
     return total_tokens
 
 
-def truncate_conversation_history(conversation_history: list, max_messages: int = 20) -> tuple:
+def truncate_conversation_history(conversation_history: List[Any], max_messages: int = 20) -> Tuple[List[Any], bool, int]:
     """
     Truncate conversation history to recent messages to manage context window.
     Returns (truncated_history, was_truncated, original_message_count).
@@ -538,8 +539,8 @@ def truncate_conversation_history(conversation_history: list, max_messages: int 
 
 
 def call_openrouter_streaming(
-    prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None, use_mock: bool = False
-):
+    prompt: str, model_id: str, tier: str = "standard", conversation_history: Optional[List[Any]] = None, use_mock: bool = False
+) -> Generator[str, None, None]:
     """
     Stream OpenRouter responses token-by-token for faster perceived response time.
     Yields chunks of text as they arrive from the model.
@@ -661,7 +662,7 @@ def call_openrouter_streaming(
 
 
 def call_openrouter(
-    prompt: str, model_id: str, tier: str = "standard", conversation_history: list = None, use_mock: bool = False
+    prompt: str, model_id: str, tier: str = "standard", conversation_history: Optional[List[Any]] = None, use_mock: bool = False
 ) -> str:
     """
     Non-streaming version of OpenRouter call (kept for backward compatibility).
@@ -785,7 +786,7 @@ def call_openrouter(
 
 
 def run_models_batch(
-    prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: list = None
+    prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None
 ) -> Dict[str, str]:
     """Run a batch of models with limited concurrency"""
     results = {}
@@ -834,7 +835,7 @@ def run_models_batch(
     return results
 
 
-def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: list = None) -> Dict[str, str]:
+def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None) -> Dict[str, str]:
     """Run models with batching to prevent timeouts and API overload"""
     all_results = {}
 
@@ -852,7 +853,7 @@ def run_models(prompt: str, model_list: List[str], tier: str = "standard", conve
     return all_results
 
 
-def test_connection_quality() -> Dict[str, Any]:
+def test_connection_quality() -> ConnectionQualityDict:
     """Test connection quality by making a quick API call"""
     test_model = "anthropic/claude-3-haiku"  # Fast, reliable model for testing
     test_prompt = "Hello"

@@ -4,8 +4,8 @@ Pydantic schemas for request/response validation.
 This module defines all data models for API requests and responses.
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List, Dict
+from pydantic import BaseModel, EmailStr, Field, field_validator, field_serializer
+from typing import Optional, List, Dict, Literal
 from datetime import datetime, date
 
 
@@ -142,8 +142,10 @@ class PasswordReset(BaseModel):
 class SubscriptionUpdate(BaseModel):
     """Schema for updating subscription."""
 
-    tier: str = Field(..., pattern="^(free|starter|starter_plus|pro|pro_plus)$")
-    period: str = Field(..., pattern="^(monthly|yearly)$")
+    tier: Literal["free", "starter", "starter_plus", "pro", "pro_plus"] = Field(
+        ..., description="Subscription tier"
+    )
+    period: Literal["monthly", "yearly"] = Field(..., description="Billing period")
 
 
 class SubscriptionInfo(BaseModel):
@@ -178,13 +180,21 @@ class UsageHistory(BaseModel):
     """Schema for usage history item."""
 
     id: int
-    models_used: List[str]
-    input_length: int
-    models_successful: int
-    models_failed: int
-    processing_time_ms: int
-    estimated_cost: float
+    models_used: List[str] = Field(..., min_length=1, description="List of model IDs used")
+    input_length: int = Field(..., ge=0, description="Input text length in characters")
+    models_successful: int = Field(..., ge=0, description="Number of successful model responses")
+    models_failed: int = Field(..., ge=0, description="Number of failed model responses")
+    processing_time_ms: int = Field(..., ge=0, description="Total processing time in milliseconds")
+    estimated_cost: float = Field(..., ge=0, description="Estimated cost in USD")
     created_at: datetime
+
+    @field_validator("models_used")
+    @classmethod
+    def validate_models_used(cls, v: List[str]) -> List[str]:
+        """Validate models_used is not empty."""
+        if not v:
+            raise ValueError("models_used cannot be empty")
+        return v
 
     class Config:
         from_attributes = True
@@ -198,10 +208,18 @@ class UsageHistory(BaseModel):
 class UserPreferencesUpdate(BaseModel):
     """Schema for updating user preferences."""
 
-    preferred_models: Optional[List[str]] = None
-    theme: Optional[str] = Field(None, pattern="^(light|dark)$")
-    email_notifications: Optional[bool] = None
-    usage_alerts: Optional[bool] = None
+    preferred_models: Optional[List[str]] = Field(None, description="List of preferred model IDs")
+    theme: Optional[Literal["light", "dark"]] = Field(None, description="UI theme preference")
+    email_notifications: Optional[bool] = Field(None, description="Enable email notifications")
+    usage_alerts: Optional[bool] = Field(None, description="Enable usage limit alerts")
+
+    @field_validator("preferred_models")
+    @classmethod
+    def validate_preferred_models(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate preferred_models list."""
+        if v is not None and len(v) == 0:
+            raise ValueError("preferred_models cannot be an empty list")
+        return v
 
 
 class UserPreferencesResponse(BaseModel):
@@ -239,12 +257,20 @@ class ConversationMessage(BaseModel):
     """Schema for a single conversation message."""
 
     id: int
-    model_id: Optional[str]
-    role: str
-    content: str
-    success: bool
-    processing_time_ms: Optional[int]
+    model_id: Optional[str] = None
+    role: Literal["user", "assistant"] = Field(..., description="Message role: 'user' or 'assistant'")
+    content: str = Field(..., min_length=1, description="Message content")
+    success: bool = Field(default=True, description="Whether the message was successfully processed")
+    processing_time_ms: Optional[int] = Field(None, ge=0, description="Processing time in milliseconds")
     created_at: datetime
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        """Validate role is either 'user' or 'assistant'."""
+        if v not in ("user", "assistant"):
+            raise ValueError("Role must be either 'user' or 'assistant'")
+        return v
 
     class Config:
         from_attributes = True

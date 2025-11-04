@@ -11,6 +11,12 @@ from typing import Optional, Tuple, Dict, Any
 from sqlalchemy.orm import Session
 from .models import User
 from collections import defaultdict
+from .types import (
+    UsageStatsDict,
+    ExtendedUsageStatsDict,
+    FullUsageStatsDict,
+    AnonymousRateLimitData,
+)
 
 # Import configuration constants
 from .config import (
@@ -27,7 +33,11 @@ from .config import (
 
 # In-memory storage for anonymous rate limiting
 # Structure: { "identifier": { "count": int, "date": str, "first_seen": datetime } }
-anonymous_rate_limit_storage: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "date": "", "first_seen": None})
+def _default_rate_limit_data() -> AnonymousRateLimitData:
+    """Default factory for anonymous rate limit storage."""
+    return {"count": 0, "date": "", "first_seen": None}
+
+anonymous_rate_limit_storage: Dict[str, AnonymousRateLimitData] = defaultdict(_default_rate_limit_data)
 
 
 def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
@@ -120,7 +130,7 @@ def increment_anonymous_usage(identifier: str, count: int = 1) -> None:
         user_data["count"] += count
 
 
-def get_user_usage_stats(user: User) -> Dict[str, Any]:
+def get_user_usage_stats(user: User) -> FullUsageStatsDict:
     """
     Get usage statistics for authenticated user.
 
@@ -149,7 +159,7 @@ def get_user_usage_stats(user: User) -> Dict[str, Any]:
     }
 
 
-def get_anonymous_usage_stats(identifier: str) -> Dict[str, Any]:
+def get_anonymous_usage_stats(identifier: str) -> UsageStatsDict:
     """
     Get usage statistics for anonymous user.
 
@@ -245,7 +255,7 @@ def get_extended_overage_price(tier: str) -> Optional[float]:
     return config.get("extended_overage_price")
 
 
-def get_tier_config(tier: str) -> Dict[str, Any]:
+def get_tier_config(tier: str) -> Dict[str, Any]:  # TODO: Use TierConfigDict when config.py uses TypedDict
     """
     Get complete configuration for a tier.
 
@@ -335,7 +345,7 @@ def check_anonymous_extended_limit(identifier: str) -> Tuple[bool, int]:
     storage_key = f"{identifier}_extended"
 
     # Reset if new day
-    if anonymous_rate_limit_storage[storage_key]["date"] != today:
+    if storage_key not in anonymous_rate_limit_storage or anonymous_rate_limit_storage[storage_key]["date"] != today:
         anonymous_rate_limit_storage[storage_key] = {"count": 0, "date": today, "first_seen": datetime.now()}
 
     current_count = anonymous_rate_limit_storage[storage_key]["count"]
@@ -393,7 +403,7 @@ def decrement_anonymous_extended_usage(identifier: str, count: int = 1) -> None:
         anonymous_rate_limit_storage[storage_key]["count"] = max(0, anonymous_rate_limit_storage[storage_key]["count"] - count)
 
 
-def get_anonymous_extended_usage_stats(identifier: str) -> Dict[str, Any]:
+def get_anonymous_extended_usage_stats(identifier: str) -> ExtendedUsageStatsDict:
     """
     Get Extended tier usage statistics for anonymous user.
 
