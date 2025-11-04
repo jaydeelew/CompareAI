@@ -361,7 +361,7 @@ class AdminActionLogResponse(BaseModel):
     """Schema for admin action log response."""
 
     id: int
-    admin_user_id: int
+    admin_user_id: Optional[int] = None
     admin_user_email: Optional[str] = None
     target_user_id: Optional[int] = None
     target_user_email: Optional[str] = None
