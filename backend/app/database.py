@@ -24,16 +24,19 @@ backend_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(backend_dir)
 
 # Determine working directory to choose correct relative path
+# Database is now stored in backend/data/ directory for clean project structure
 cwd = os.getcwd()
 if cwd.endswith(os.sep + "backend") or cwd.endswith("/backend"):
     # Running from backend directory
-    default_db_path = "sqlite:///./compareintel.db"
+    default_db_path = "sqlite:///./data/compareintel.db"
 else:
     # Running from project root or other location
-    default_db_path = "sqlite:///./backend/compareintel.db"
+    default_db_path = "sqlite:///./backend/data/compareintel.db"
 
 # Use database URL from settings, with fallback to default SQLite path
-DATABASE_URL = settings.database_url if settings.database_url != "sqlite:///./compareintel.db" else default_db_path
+# Only use default if settings still has the old default path
+old_default = "sqlite:///./compareintel.db"
+DATABASE_URL = settings.database_url if settings.database_url != old_default else default_db_path
 
 # Create SQLAlchemy engine
 # For PostgreSQL in production, add connection pooling settings

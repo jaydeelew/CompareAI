@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     """
     
     # Database
-    database_url: str = "sqlite:///./compareintel.db"
+    # Default path is now in backend/data/ directory for clean project structure
+    database_url: str = "sqlite:///./data/compareintel.db"
     
     # Security
     secret_key: str

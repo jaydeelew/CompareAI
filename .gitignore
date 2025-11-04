@@ -16,6 +16,14 @@ frontend/.env
 !.env.example
 !**/.env.example
 
+# Root-level files that should not be in version control
+# Logs are now stored in backend/logs/
+/backend.log
+/*.log
+# Database files are now stored in backend/data/
+/*.db
+/compareintel.db
+
 # Python Backend
 __pycache__/
 *.py[cod]

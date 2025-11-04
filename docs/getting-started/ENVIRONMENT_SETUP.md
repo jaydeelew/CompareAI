@@ -47,10 +47,10 @@ These variables **must** be set for the backend to run:
 #### Database Configuration
 
 **`DATABASE_URL`**
-- **Default:** `sqlite:///./compareintel.db` (SQLite)
-- **Development:** SQLite is fine for local development
+- **Default:** `sqlite:///./data/compareintel.db` (SQLite in `backend/data/` directory)
+- **Development:** SQLite is fine for local development. Database files are stored in `backend/data/` for clean project structure.
 - **Production:** Use PostgreSQL for better performance and scalability
-- **SQLite Example:** `DATABASE_URL=sqlite:///./compareintel.db`
+- **SQLite Example:** `DATABASE_URL=sqlite:///./data/compareintel.db` (stored in `backend/data/`)
 - **PostgreSQL Example:** `DATABASE_URL=postgresql://user:password@localhost:5432/compareintel`
 - **Docker Example:** `DATABASE_URL=postgresql://compareintel:compareintel@postgres:5432/compareintel`
 
@@ -180,7 +180,7 @@ MAIL_FROM=your-email@gmail.com
 |----------|----------|---------|-------|
 | `SECRET_KEY` | ✅ Yes | None | Must be set |
 | `OPENROUTER_API_KEY` | ✅ Yes | None | Must be set |
-| `DATABASE_URL` | ❌ No | `sqlite:///./compareintel.db` | SQLite for dev |
+| `DATABASE_URL` | ❌ No | `sqlite:///./data/compareintel.db` | SQLite for dev (stored in `backend/data/`) |
 | `ENVIRONMENT` | ❌ No | `development` | Affects CORS/errors |
 | `FRONTEND_URL` | ❌ No | `http://localhost:5173` | For email links |
 | `MAIL_*` | ❌ No | None | Email optional |
@@ -199,7 +199,7 @@ MAIL_FROM=your-email@gmail.com
 
 **Backend `.env`:**
 ```bash
-DATABASE_URL=sqlite:///./compareintel.db
+DATABASE_URL=sqlite:///./data/compareintel.db
 SECRET_KEY=<generate-with-python-secrets>
 OPENROUTER_API_KEY=sk-or-v1-your-key
 ENVIRONMENT=development

@@ -15,10 +15,13 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)
 
 # Check for database files in different locations
+# Database is now stored in backend/data/ directory for clean project structure
 db_paths = [
-    os.path.join(current_dir, "compareintel.db"),
-    os.path.join(backend_dir, "backend", "compareintel.db"),
-    os.path.join(os.getcwd(), "backend", "compareintel.db"),
+    os.path.join(current_dir, "data", "compareintel.db"),  # New location: backend/data/
+    os.path.join(current_dir, "compareintel.db"),  # Old location: backend/ (for migration)
+    os.path.join(backend_dir, "backend", "data", "compareintel.db"),
+    os.path.join(os.getcwd(), "backend", "data", "compareintel.db"),
+    os.path.join(os.getcwd(), "backend", "compareintel.db"),  # Old location fallback
     "compareintel.db",
     os.path.join(os.getcwd(), "compareintel.db"),
 ]
