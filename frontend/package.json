@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@types/katex": "^0.16.7",
-    "@types/react-router-dom": "^5.3.3",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "katex": "^0.16.22",
