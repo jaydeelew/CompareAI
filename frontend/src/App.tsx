@@ -41,48 +41,22 @@ import type {
   CompareRequest,
 } from './types';
 import { RESULT_TAB } from './types';
+import {
+  generateBrowserFingerprint,
+  showNotification,
+  getSafeId,
+  formatDate,
+  formatTime,
+  formatNumber,
+  truncatePrompt,
+  formatConversationMessage,
+} from './utils';
 
 // API URL with smart fallback:
 // - Uses VITE_API_URL from environment if set
 // - Defaults to '/api' which works with Vite proxy in development
 // - In production, set VITE_API_URL to full backend URL if no proxy
 const API_URL = import.meta.env.VITE_API_URL || '/api';
-
-// Simple hash function to convert fingerprint to a fixed-length string
-const simpleHash = async (str: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-// Generate browser fingerprint for usage tracking (anti-abuse measure)
-const generateBrowserFingerprint = async () => {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('Browser fingerprint', 2, 2);
-  }
-
-  const fingerprint = {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    platform: navigator.platform,
-    screenResolution: `${screen.width}x${screen.height}`,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    canvas: canvas.toDataURL(),
-    colorDepth: screen.colorDepth,
-    hardwareConcurrency: navigator.hardwareConcurrency
-    // Removed timestamp to keep fingerprint consistent across page refreshes
-  };
-
-  const fingerprintString = JSON.stringify(fingerprint);
-  // Hash the fingerprint to keep it under 64 characters (SHA-256)
-  return await simpleHash(fingerprintString);
-};
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
@@ -313,79 +287,6 @@ function AppContent() {
   }, [isAuthenticated]);
 
   // Screenshot handler for message area only
-  const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
-    const notif = document.createElement('div');
-
-    // Create container with icon and text
-    const container = document.createElement('div');
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.gap = '12px';
-
-    // Add icon
-    const icon = document.createElement('div');
-    icon.innerHTML = type === 'success' ? '✓' : '✕';
-    icon.style.fontSize = '1.1rem';
-    icon.style.fontWeight = 'bold';
-    icon.style.display = 'flex';
-    icon.style.alignItems = 'center';
-    icon.style.justifyContent = 'center';
-    icon.style.width = '24px';
-    icon.style.height = '24px';
-    icon.style.borderRadius = '50%';
-    icon.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-    icon.style.backdropFilter = 'blur(8px)';
-
-    // Add text
-    const text = document.createElement('span');
-    text.textContent = msg;
-    text.style.fontWeight = '500';
-    text.style.fontSize = '0.95rem';
-    text.style.letterSpacing = '0.025em';
-
-    container.appendChild(icon);
-    container.appendChild(text);
-    notif.appendChild(container);
-
-    // Main notification styling
-    notif.style.position = 'fixed';
-    notif.style.top = '24px';
-    notif.style.right = '24px';
-    notif.style.zIndex = '9999';
-    notif.style.padding = '16px 24px';
-    notif.style.borderRadius = '16px';
-    notif.style.background = type === 'success' ?
-      'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)' :
-      'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
-    notif.style.color = 'white';
-    notif.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.1)';
-    notif.style.backdropFilter = 'blur(16px)';
-    notif.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-    notif.style.pointerEvents = 'none';
-    notif.style.transform = 'translateX(100%) scale(0.9)';
-    notif.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    notif.style.opacity = '0';
-    notif.style.maxWidth = '400px';
-    notif.style.minWidth = '280px';
-
-    document.body.appendChild(notif);
-
-    // Animate in
-    requestAnimationFrame(() => {
-      notif.style.transform = 'translateX(0) scale(1)';
-      notif.style.opacity = '1';
-    });
-
-    // Animate out
-    setTimeout(() => {
-      notif.style.transform = 'translateX(100%) scale(0.9)';
-      notif.style.opacity = '0';
-      setTimeout(() => notif.remove(), 400);
-    }, 3000);
-  };
-
-  // Sanitize modelId for HTML id and selector
-  const getSafeId = (modelId: string) => modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
 
   // Helper to check if element is scrolled to bottom (within 50px threshold)
   const isScrolledToBottom = (element: HTMLElement): boolean => {
@@ -671,11 +572,7 @@ function AppContent() {
 
     // Format the entire conversation history
     const formattedHistory = conversation.messages
-      .map((msg) => {
-        const label = msg.type === 'user' ? 'You' : 'AI';
-        const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-        return `[${label}] ${timestamp}\n${msg.content}`;
-      })
+      .map((msg) => formatConversationMessage(msg.type, msg.content, msg.timestamp))
       .join('\n\n---\n\n');
 
     try {
@@ -2529,7 +2426,7 @@ function AppContent() {
       const upgradeMsg = shouldUseExtendedTier
         ? ' Your input has exceeded the Extended tier limit.'
         : ' Enable Extended mode for up to 15,000 characters, or reduce your input.';
-      setError(`${tierName} tier limit exceeded. Maximum ${tierLimit.toLocaleString()} characters allowed, but your input has ${input.length.toLocaleString()} characters.${upgradeMsg}`);
+      setError(`${tierName} tier limit exceeded. Maximum ${formatNumber(tierLimit)} characters allowed, but your input has ${formatNumber(input.length)} characters.${upgradeMsg}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -3958,27 +3855,6 @@ function AppContent() {
                               {conversationHistory
                                 .slice(0, historyLimit) // Limit to tier's maximum saved comparisons
                                 .map((summary) => {
-                                  const truncatePrompt = (text: string, maxLength: number = 60) => {
-                                    if (text.length <= maxLength) return text;
-                                    return text.substring(0, maxLength) + '...';
-                                  };
-
-                                  const formatDate = (dateString: string) => {
-                                    const date = new Date(dateString);
-                                    const now = new Date();
-                                    const diffMs = now.getTime() - date.getTime();
-                                    const diffMins = Math.floor(diffMs / 60000);
-                                    const diffHours = Math.floor(diffMs / 3600000);
-                                    const diffDays = Math.floor(diffMs / 86400000);
-
-                                    if (diffMins < 1) return 'Just now';
-                                    if (diffMins < 60) return `${diffMins}m ago`;
-                                    if (diffHours < 24) return `${diffHours}h ago`;
-                                    if (diffDays === 1) return 'Yesterday';
-                                    if (diffDays < 7) return `${diffDays}d ago`;
-                                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                  };
-
                                   // Check if this is the currently active/selected comparison
                                   const isActive = currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId;
 
@@ -4925,7 +4801,7 @@ function AppContent() {
                                     )}
                                   </span>
                                   <span className="message-time">
-                                    {new Date(message.timestamp).toLocaleTimeString()}
+                                    {formatTime(message.timestamp)}
                                   </span>
                                 </div>
                                 <div className="message-content">

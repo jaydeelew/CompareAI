@@ -1,0 +1,57 @@
+/**
+ * Utility functions for CompareAI frontend.
+ * 
+ * This module re-exports all utility functions for convenient importing.
+ * Import from here to get all utilities, or import from individual modules
+ * for tree-shaking benefits.
+ * 
+ * @example
+ * ```typescript
+ * // Import individual utilities
+ * import { formatDate, truncatePrompt } from '@/utils/format';
+ * 
+ * // Or import from index (convenient but less tree-shakeable)
+ * import { formatDate, truncatePrompt } from '@/utils';
+ * ```
+ */
+
+// Hash utilities
+export { simpleHash } from './hash';
+export type {} from './hash';
+
+// Fingerprint utilities
+export { generateBrowserFingerprint } from './fingerprint';
+export type { BrowserFingerprintData } from './fingerprint';
+
+// Formatting utilities
+export {
+  formatDate,
+  formatTime,
+  formatNumber,
+  truncatePrompt,
+  formatConversationMessage,
+} from './format';
+
+// Validation utilities
+export {
+  getSafeId,
+  validateEmail,
+  validateInputLength,
+  isEmpty,
+  validateNotEmpty,
+} from './validation';
+
+// Error handling utilities
+export { showNotification, formatError } from './error';
+export type { NotificationType } from './error';
+
+// Date utilities
+export {
+  parseDate,
+  isToday,
+  getTodayStart,
+  getCurrentISODate,
+  getDateDiff,
+  formatLocaleDate,
+} from './date';
+
