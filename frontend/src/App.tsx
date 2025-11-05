@@ -763,7 +763,7 @@ function AppContent() {
   const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  // Track the ID of the currently visible comparison to exclude it from history dropdown
+  // Track the ID of the currently visible comparison to highlight it in history dropdown
   const [currentVisibleComparisonId, setCurrentVisibleComparisonId] = useState<string | null>(null);
 
   // Get history limit based on tier - use useMemo to ensure it updates when user/auth changes
@@ -1129,10 +1129,8 @@ function AppContent() {
             JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
         );
 
-        // For new conversations: when at the limit, keep the 2 most recent conversations
-        // Add the new one and let sorting/limiting keep the most recent 2 (which will include the new one)
-        // This ensures when user has A & B, runs C, then runs D, they'll see B & C, then C & D
-
+        // For new conversations: add the new one and limit to 2 most recent after sorting
+        // When user has A & B and runs C, comparison C appears at top and A is deleted
         // Always add the new conversation - we'll limit to 2 most recent after sorting
         filteredHistory.unshift(conversationSummary);
         updatedHistory = filteredHistory;
@@ -1143,12 +1141,12 @@ function AppContent() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      // For anonymous users, save 3 conversations (display limit + 1)
-      // This ensures when a new comparison is saved, 2 remain visible in history dropdown
-      // Keep the 3 most recent conversations
-      const limited = sorted.slice(0, 3);
+      // For anonymous users, save maximum of 2 conversations
+      // When comparison 3 is made, comparison 1 is deleted and comparison 3 appears at the top
+      // Keep only the 2 most recent conversations
+      const limited = sorted.slice(0, 2);
 
-      // Store summary list (save 3 in localStorage, but only display 2 in dropdown)
+      // Store summary list (save maximum 2 in localStorage)
       localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
 
       // Store full conversation data with ID as key
@@ -1192,6 +1190,26 @@ function AppContent() {
         created_at: existingData?.created_at || conversationSummary.created_at,
         messages: conversationMessages,
       }));
+
+      // Delete full conversation data for any conversations that are no longer in the limited list
+      // This ensures we only keep data for the 2 most recent comparisons
+      const limitedIds = new Set(limited.map(conv => conv.id));
+      const keysToDelete: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
+          // Extract the conversation ID from the key (format: compareai_conversation_{id})
+          const convId = key.replace('compareai_conversation_', '');
+          if (!limitedIds.has(convId)) {
+            keysToDelete.push(key);
+          }
+        }
+      }
+      // Delete the old conversation data
+      keysToDelete.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🗑️ Deleted old conversation data: ${key}`);
+      });
 
       // Reload all saved conversations from localStorage to state
       // This ensures dropdown can show all saved conversations, and filtering/slicing handles the display limit
@@ -1251,6 +1269,9 @@ function AppContent() {
   const deleteConversation = useCallback(async (summary: ConversationSummary, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the loadConversation onClick
 
+    // Check if the deleted item is the currently active comparison
+    const isActiveItem = currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId;
+
     if (isAuthenticated && typeof summary.id === 'number') {
       // Delete from API
       try {
@@ -1266,7 +1287,23 @@ function AppContent() {
         });
 
         if (response.ok) {
-          // Reload history from API
+          // If this was the active item, reset screen to default BEFORE reloading history
+          // This prevents any auto-loading logic from triggering
+          if (isActiveItem) {
+            setIsFollowUpMode(false);
+            setInput('');
+            setConversations([]);
+            setResponse(null);
+            setClosedCards(new Set());
+            setError(null);
+            setSelectedModels([]); // Unselect all models
+            setOriginalSelectedModels([]);
+            setIsModelsHidden(false);
+            setOpenDropdowns(new Set()); // Close all provider dropdowns
+            setCurrentVisibleComparisonId(null);
+          }
+
+          // Reload history from API after reset
           await loadHistoryFromAPI();
         } else {
           console.error('Failed to delete conversation:', response.statusText);
@@ -1280,6 +1317,22 @@ function AppContent() {
         // Remove the conversation data
         localStorage.removeItem(`compareai_conversation_${summary.id}`);
 
+        // If this was the active item, reset screen to default BEFORE updating history
+        // This prevents any auto-loading logic from triggering
+        if (isActiveItem) {
+          setIsFollowUpMode(false);
+          setInput('');
+          setConversations([]);
+          setResponse(null);
+          setClosedCards(new Set());
+          setError(null);
+          setSelectedModels([]); // Unselect all models
+          setOriginalSelectedModels([]);
+          setIsModelsHidden(false);
+          setOpenDropdowns(new Set()); // Close all provider dropdowns
+          setCurrentVisibleComparisonId(null);
+        }
+
         // Update state using functional update to ensure we work with latest state
         setConversationHistory((prevHistory) => {
           const updatedHistory = prevHistory.filter(conv => conv.id !== summary.id);
@@ -1291,7 +1344,7 @@ function AppContent() {
         console.error('Failed to delete conversation from localStorage:', e);
       }
     }
-  }, [isAuthenticated, loadHistoryFromAPI]);
+  }, [isAuthenticated, loadHistoryFromAPI, currentVisibleComparisonId]);
 
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
@@ -1484,7 +1537,7 @@ function AppContent() {
         }, 200); // Delay to ensure DOM is fully rendered
       });
 
-      // Track this conversation as currently visible so it doesn't appear in history dropdown
+      // Track this conversation as currently visible so it shows as active in history dropdown
       setCurrentVisibleComparisonId(String(summary.id));
 
     } catch (e) {
@@ -1519,9 +1572,15 @@ function AppContent() {
   }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
   // Track currently visible comparison ID for authenticated users after history loads
-  // This ensures the visible comparison is filtered from the history dropdown
+  // This ensures the visible comparison is highlighted in the history dropdown
   // Always try to match and set the ID when history or conversations change
+  // BUT: Skip if currentVisibleComparisonId is null and conversations are empty (screen was reset)
   useEffect(() => {
+    // Skip auto-matching if we just reset the screen (conversations empty and no current ID)
+    if (conversations.length === 0 && !currentVisibleComparisonId) {
+      return;
+    }
+
     if (isAuthenticated && conversationHistory.length > 0 && conversations.length > 0) {
       const firstUserMessage = conversations
         .flatMap(conv => conv.messages)
@@ -2418,7 +2477,7 @@ function AppContent() {
     setError(null);
     setOriginalSelectedModels([]); // Reset original models for new comparison
     setIsModelsHidden(false); // Show models section again for new comparison
-    // Clear currently visible comparison ID so it will appear in history dropdown
+    // Clear currently visible comparison ID
     setCurrentVisibleComparisonId(null);
   };
 
@@ -3225,8 +3284,8 @@ function AppContent() {
                     // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
                     // by keeping only the 2 most recent conversations
                     const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
-                    // Always track this as the currently visible comparison (will be filtered from history dropdown)
-                    // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
+                    // Set currentVisibleComparisonId to the saved comparison ID so it shows as active in the dropdown
+                    // This allows users to see their saved comparison highlighted in the dropdown right after streaming completes
                     if (savedId) {
                       setCurrentVisibleComparisonId(savedId);
                     }
@@ -3239,8 +3298,47 @@ function AppContent() {
           } else if (isAuthenticated && !isFollowUpMode) {
             // For registered users, reload history from API after stream completes
             // Backend already saved the conversation, we just need to refresh the list
-            setTimeout(() => {
-              loadHistoryFromAPI();
+            setTimeout(async () => {
+              await loadHistoryFromAPI();
+              // After history is loaded, find the newly saved comparison and set it as active
+              // Use a small delay to ensure conversationHistory state is updated
+              setTimeout(() => {
+                // Access conversationHistory from state using functional update
+                setConversationHistory(currentHistory => {
+                  setConversations(currentConversations => {
+                    const conversationsWithMessages = currentConversations.filter(conv =>
+                      selectedModels.includes(conv.modelId) &&
+                      conv.messages.length > 0
+                    );
+
+                    if (conversationsWithMessages.length > 0) {
+                      const allUserMessages = conversationsWithMessages
+                        .flatMap(conv => conv.messages)
+                        .filter(msg => msg.type === 'user')
+                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                      const firstUserMessage = allUserMessages[0];
+                      if (firstUserMessage) {
+                        const inputData = firstUserMessage.content;
+                        // Find matching conversation in history (should be the most recent one)
+                        const matchingConversation = currentHistory.find((summary: ConversationSummary) => {
+                          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
+                          const inputMatches = summary.input_data === inputData;
+                          return modelsMatch && inputMatches;
+                        });
+
+                        if (matchingConversation) {
+                          // Set this as the active comparison so it shows as highlighted in dropdown
+                          setCurrentVisibleComparisonId(String(matchingConversation.id));
+                        }
+                      }
+                    }
+
+                    return currentConversations;
+                  });
+                  return currentHistory; // Return unchanged
+                });
+              }, 100);
             }, 1500); // Give backend more time to finish saving (background task)
           } else if (!isAuthenticated && isFollowUpMode) {
             // Save follow-up updates after stream completes (anonymous users)
@@ -3268,8 +3366,8 @@ function AppContent() {
                     const inputData = firstUserMessage.content;
                     // Update existing conversation (isUpdate = true)
                     const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages, true);
-                    // Always track this as the currently visible comparison (will be filtered from history dropdown)
-                    // This ensures it won't appear in history until user runs another comparison, logs out/in, or refreshes
+                    // Set currentVisibleComparisonId to the saved comparison ID so it shows as active in the dropdown
+                    // This allows users to see their saved comparison highlighted in the dropdown right after streaming completes
                     if (savedId) {
                       setCurrentVisibleComparisonId(savedId);
                     }
@@ -3282,8 +3380,46 @@ function AppContent() {
           } else if (isAuthenticated && isFollowUpMode) {
             // For registered users, reload history from API after follow-up completes
             // Backend already saved the conversation update, we just need to refresh the list
-            setTimeout(() => {
-              loadHistoryFromAPI();
+            setTimeout(async () => {
+              await loadHistoryFromAPI();
+              // After history is loaded, find the updated comparison and set it as active
+              setTimeout(() => {
+                // Access conversationHistory from state using functional update
+                setConversationHistory((currentHistory: ConversationSummary[]) => {
+                  setConversations(currentConversations => {
+                    const conversationsWithMessages = currentConversations.filter(conv =>
+                      selectedModels.includes(conv.modelId) &&
+                      conv.messages.length > 0
+                    );
+
+                    if (conversationsWithMessages.length > 0) {
+                      const allUserMessages = conversationsWithMessages
+                        .flatMap(conv => conv.messages)
+                        .filter(msg => msg.type === 'user')
+                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                      const firstUserMessage = allUserMessages[0];
+                      if (firstUserMessage) {
+                        const inputData = firstUserMessage.content;
+                        // Find matching conversation in history
+                        const matchingConversation = currentHistory.find((summary: ConversationSummary) => {
+                          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
+                          const inputMatches = summary.input_data === inputData;
+                          return modelsMatch && inputMatches;
+                        });
+
+                        if (matchingConversation) {
+                          // Set this as the active comparison so it shows as highlighted in dropdown
+                          setCurrentVisibleComparisonId(String(matchingConversation.id));
+                        }
+                      }
+                    }
+
+                    return currentConversations;
+                  });
+                  return currentHistory; // Return unchanged
+                });
+              }, 100);
             }, 1500); // Give backend more time to finish saving (background task)
           }
         }
@@ -3845,45 +3981,8 @@ function AppContent() {
 
                     {/* History List - Inline, extends textarea depth */}
                     {showHistoryDropdown && (() => {
-                      // Filter out the currently visible comparison to avoid showing it in history while it's displayed
-                      // Also filter out current conversation in follow-up mode for consistency
-                      const filteredHistory = conversationHistory.filter((summary) => {
-                        // Ensure models_used is an array
-                        if (!Array.isArray(summary.models_used)) {
-                          return true; // Include it anyway to avoid filtering everything
-                        }
-
-                        // Always exclude the currently visible comparison by ID
-                        // Convert both to string for comparison (summary.id may be number or string)
-                        if (currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId) {
-                          return false;
-                        }
-
-                        // Only filter when actively in follow-up mode (having an ongoing conversation)
-                        if (isFollowUpMode && conversations.length > 0) {
-                          // Identify current conversation by matching:
-                          // 1. First user message matches the first message in current conversations
-                          // 2. Models used match selected models
-
-                          const currentFirstUserMessage = conversations
-                            .flatMap(conv => conv.messages)
-                            .filter(msg => msg.type === 'user')
-                            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
-
-                          // Only filter if we have a valid user message and both models and content match
-                          // This ensures we don't incorrectly filter saved conversations when active conversation is incomplete
-                          if (currentFirstUserMessage && currentFirstUserMessage.content && currentFirstUserMessage.content.trim()) {
-                            const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
-                            const firstMessageMatches = summary.input_data === currentFirstUserMessage.content;
-
-                            // Exclude if it's the current conversation (both models and first message must match)
-                            if (modelsMatch && firstMessageMatches) {
-                              return false;
-                            }
-                          }
-                        }
-                        return true; // Include all other conversations
-                      });
+                      // Show all items in history - no filtering
+                      // Active comparison will be visually indicated
 
                       // Hide scrollbar when tier limit is 3 or less (anonymous: 2, free: 3)
                       // Show scrollbar for tiers with more than 3 saved comparisons
@@ -3897,7 +3996,7 @@ function AppContent() {
                       // Others: 300px (shows 3 with scroll, message would be scrollable)
                       const getMaxHeight = () => {
                         // Check if we're showing the tier limit message (when at display limit)
-                        const displayedCount = Math.min(filteredHistory.length, historyLimit);
+                        const displayedCount = Math.min(conversationHistory.length, historyLimit);
                         const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
                         const tierLimits: { [key: string]: number } = {
                           anonymous: 2,
@@ -3931,11 +4030,11 @@ function AppContent() {
                         >
                           {isLoadingHistory ? (
                             <div className="history-loading">Loading...</div>
-                          ) : filteredHistory.length === 0 ? (
+                          ) : conversationHistory.length === 0 ? (
                             <div className="history-empty">No conversation history</div>
                           ) : (
                             <>
-                              {filteredHistory
+                              {conversationHistory
                                 .slice(0, historyLimit) // Limit to tier's maximum saved comparisons
                                 .map((summary) => {
                                   const truncatePrompt = (text: string, maxLength: number = 60) => {
@@ -3959,10 +4058,13 @@ function AppContent() {
                                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                                   };
 
+                                  // Check if this is the currently active/selected comparison
+                                  const isActive = currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId;
+
                                   return (
                                     <div
                                       key={summary.id}
-                                      className="history-item"
+                                      className={`history-item ${isActive ? 'history-item-active' : ''}`}
                                       onClick={() => loadConversation(summary)}
                                       title={summary.input_data}
                                     >
@@ -4005,9 +4107,8 @@ function AppContent() {
 
                                 // Check if the number of visible items in the dropdown equals or exceeds the tier limit
                                 // For free tier: show message when 3+ items are visible (meaning user has reached storage limit of 4)
-                                // Backend returns display_limit + 1 (4 for free tier) to account for filtering
                                 // For anonymous: show message when 2+ items are visible
-                                const visibleCount = filteredHistory.length;
+                                const visibleCount = conversationHistory.length;
                                 // Show message when we have tierLimit or more items (after filtering)
                                 // This indicates user has reached their storage limit (tierLimit + 1 saved)
                                 const isAtLimit = visibleCount >= tierLimit;

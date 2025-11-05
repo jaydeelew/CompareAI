@@ -1040,12 +1040,11 @@ async def compare_stream(
                         print(f"✅ Successfully saved conversation id={conversation.id} with {messages_saved} assistant messages")
                         
                         # Enforce tier-based conversation limits
-                        # Save (limit + 1) conversations to ensure when a new one is saved, 
-                        # the display limit number remain visible
+                        # Store exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
                         user_obj = conv_db.query(User).filter(User.id == user_id).first()
                         tier = user_obj.subscription_tier if user_obj else "free"
                         display_limit = get_conversation_limit_for_tier(tier)
-                        storage_limit = display_limit + 1  # Save 1 more than display limit
+                        storage_limit = display_limit  # Store exactly the display limit
                         
                         # Get all conversations for user
                         all_conversations = (
@@ -1055,14 +1054,14 @@ async def compare_stream(
                             .all()
                         )
                         
-                        # Delete oldest conversations if over storage limit (display_limit + 1)
+                        # Delete oldest conversations if over storage limit
                         if len(all_conversations) > storage_limit:
                             conversations_to_delete = all_conversations[storage_limit:]
                             deleted_count = len(conversations_to_delete)
                             for conv_to_delete in conversations_to_delete:
                                 conv_db.delete(conv_to_delete)
                             conv_db.commit()
-                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over storage limit {storage_limit}, display limit {display_limit})")
+                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over storage limit {storage_limit})")
                             
                     except Exception as e:
                         import traceback
@@ -1101,13 +1100,29 @@ async def get_conversations(
 
     tier = current_user.subscription_tier or "free"
     display_limit = get_conversation_limit_for_tier(tier)
-    # Return display_limit + 1 to ensure that after filtering out the currently visible conversation,
-    # there are still display_limit items visible in the dropdown
-    return_limit = display_limit + 1
+    # Return exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
+    return_limit = display_limit
 
     print(f"📥 GET /conversations - user_id={current_user.id}, tier={tier}, display_limit={display_limit}, return_limit={return_limit}")
 
-    # Get user's conversations ordered by created_at DESC, return limit + 1 to account for filtering
+    # Get all conversations to check if cleanup is needed
+    all_conversations = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == current_user.id)
+        .order_by(Conversation.created_at.desc())
+        .all()
+    )
+    
+    # Clean up any conversations beyond the limit (in case deletion left extra conversations)
+    if len(all_conversations) > display_limit:
+        conversations_to_delete = all_conversations[display_limit:]
+        deleted_count = len(conversations_to_delete)
+        for conv_to_delete in conversations_to_delete:
+            db.delete(conv_to_delete)
+        db.commit()
+        print(f"🗑️ Cleaned up {deleted_count} excess conversations (limit: {display_limit})")
+    
+    # Get user's conversations ordered by created_at DESC, limited to display_limit
     conversations = (
         db.query(Conversation)
         .filter(Conversation.user_id == current_user.id)
