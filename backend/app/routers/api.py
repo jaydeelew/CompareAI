@@ -60,6 +60,7 @@ class CompareRequest(BaseModel):
     conversation_history: list[ConversationMessage] = []  # Optional conversation context
     browser_fingerprint: Optional[str] = None  # Optional browser fingerprint for rate limiting
     tier: str = "standard"  # brief, standard, extended
+    conversation_id: Optional[int] = None  # Optional conversation ID for follow-ups (most reliable matching)
 
 
 class CompareResponse(BaseModel):
@@ -957,24 +958,62 @@ async def compare_stream(
                         # Try to find existing conversation if this is a follow-up
                         existing_conversation = None
                         if is_follow_up:
-                            # Find most recent conversation with matching models
-                            # Compare sorted model lists to handle any order differences
-                            req_models_sorted = sorted(req.models)
-                            all_user_conversations = (
-                                conv_db.query(Conversation)
-                                .filter(Conversation.user_id == user_id)
-                                .order_by(Conversation.updated_at.desc())
-                                .all()
-                            )
+                            # Method 1: If conversation_id is provided, use it directly (most reliable)
+                            if req.conversation_id:
+                                conversation_by_id = (
+                                    conv_db.query(Conversation)
+                                    .filter(
+                                        Conversation.id == req.conversation_id,
+                                        Conversation.user_id == user_id
+                                    )
+                                    .first()
+                                )
+                                if conversation_by_id:
+                                    existing_conversation = conversation_by_id
+                                    print(f"💾 Found conversation by ID: {req.conversation_id}")
                             
-                            for conv in all_user_conversations:
-                                try:
-                                    conv_models = json.loads(conv.models_used) if conv.models_used else []
-                                    if sorted(conv_models) == req_models_sorted:
-                                        existing_conversation = conv
+                            # Method 2: If no conversation_id provided, match by models + input_data + timestamp
+                            if not existing_conversation:
+                                # Extract the original input_data (first user message) from conversation history
+                                # This is the initial prompt that started the conversation
+                                original_input_data = None
+                                first_message_timestamp = None
+                                for msg in req.conversation_history:
+                                    if msg.role == 'user':
+                                        original_input_data = msg.content
+                                        # Try to get timestamp if available (from message metadata)
+                                        # Note: conversation_history doesn't include timestamps by default,
+                                        # but we can use this for future enhancement
                                         break
-                                except (json.JSONDecodeError, TypeError):
-                                    continue
+                                
+                                # Find conversation with matching models AND original input_data
+                                # This ensures follow-ups are added to the correct conversation,
+                                # even if multiple conversations use the same models
+                                req_models_sorted = sorted(req.models)
+                                all_user_conversations = (
+                                    conv_db.query(Conversation)
+                                    .filter(Conversation.user_id == user_id)
+                                    .order_by(Conversation.updated_at.desc())
+                                    .all()
+                                )
+                                
+                                for conv in all_user_conversations:
+                                    try:
+                                        conv_models = json.loads(conv.models_used) if conv.models_used else []
+                                        # Match by models AND original input_data to ensure correct conversation
+                                        models_match = sorted(conv_models) == req_models_sorted
+                                        input_matches = original_input_data and conv.input_data == original_input_data
+                                        
+                                        # Additional safeguard: if timestamps are available in future,
+                                        # we could also match by comparing conversation.created_at with
+                                        # the timestamp of the first user message
+                                        
+                                        if models_match and input_matches:
+                                            existing_conversation = conv
+                                            print(f"💾 Found conversation by matching: id={conv.id}, models={conv_models}, input={conv.input_data[:50]}...")
+                                            break
+                                    except (json.JSONDecodeError, TypeError):
+                                        continue
                         
                         # Create or update conversation
                         if existing_conversation:

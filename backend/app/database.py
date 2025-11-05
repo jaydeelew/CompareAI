@@ -5,7 +5,7 @@ This module sets up SQLAlchemy with PostgreSQL support and provides
 database session management for the FastAPI application.
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -48,6 +48,17 @@ engine = create_engine(
     # pool_pre_ping=True,  # Verify connections before using them
     echo=False,  # Set to True for SQL query logging during development
 )
+
+# Enable foreign keys for SQLite (required for CASCADE deletes to work)
+# SQLite disables foreign key constraints by default, so we must enable them
+# on every connection for CASCADE deletes to function properly
+if "sqlite" in DATABASE_URL:
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        """Enable foreign key constraints for SQLite connections."""
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

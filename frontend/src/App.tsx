@@ -21,7 +21,6 @@ import { Footer } from './components';
 import { TermsOfService } from './components/TermsOfService';
 import {
   ANONYMOUS_DAILY_LIMIT,
-  EXTENDED_TIER_LIMITS,
   getModelLimit,
   getConversationLimit,
   getExtendedLimit,
@@ -2836,6 +2835,11 @@ function AppContent() {
       // Reuse messageCount and shouldUseExtendedTier declared above
 
       // Use streaming endpoint for faster perceived response time
+      // Include conversation_id if available (for authenticated users) to ensure correct conversation matching
+      const conversationId = isAuthenticated && currentVisibleComparisonId
+        ? (typeof currentVisibleComparisonId === 'string' ? parseInt(currentVisibleComparisonId, 10) : currentVisibleComparisonId)
+        : null;
+
       const res = await fetch(`${API_URL}/compare-stream`, {
         method: 'POST',
         headers,
@@ -2844,7 +2848,8 @@ function AppContent() {
           models: selectedModels,
           conversation_history: conversationHistory,
           browser_fingerprint: browserFingerprint,
-          tier: shouldUseExtendedTier ? 'extended' : 'standard'
+          tier: shouldUseExtendedTier ? 'extended' : 'standard',
+          conversation_id: conversationId || undefined  // Only include if not null
         }),
         signal: controller.signal,
       });
