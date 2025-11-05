@@ -1479,6 +1479,9 @@ function AppContent() {
       setConversations(loadedConversations);
       // Set selected models - only the models from this conversation, clear all others
       setSelectedModels([...modelsUsed]);
+      // Set original selected models to match the loaded conversation
+      // This ensures that only models from THIS conversation show the red border when deselected
+      setOriginalSelectedModels([...modelsUsed]);
 
       // Use the first user message as the input reference, but clear textarea for new follow-up
       // The conversation will be referenced by this first query in history
@@ -1488,6 +1491,7 @@ function AppContent() {
       setResponse(null); // Clear any previous response state
       setShowHistoryDropdown(false);
       setIsModelsHidden(true); // Collapse the models section when selecting from history
+      collapseAllDropdowns(); // Collapse all provider dropdowns when selecting from history
 
       // Scroll to results section and reset all conversation cards to top
       // Use requestAnimationFrame to ensure DOM is rendered before scrolling
