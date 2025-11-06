@@ -100,11 +100,11 @@
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Style counter with soft red background and white text when provider has selected models */
+/* Style counter with soft orange background and white text when provider has selected models */
 .provider-dropdown.has-selected-models .provider-count {
-  background: #dc2626;
+  background: #f59e0b;
   color: white;
-  border-color: #b91c1c;
+  border-color: #d97706;
   font-weight: 500;
 }
 

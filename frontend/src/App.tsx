@@ -4199,12 +4199,12 @@ function AppContent() {
                       >
                         <rect
                           x="5" y="5" width="14" height="14"
-                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626'}
+                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b'}
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                         <path
                           d="M9 9l6 6M15 9l-6 6"
-                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626'}
+                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b'}
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                       </svg>
@@ -4255,14 +4255,14 @@ function AppContent() {
                       title="Total selections"
                       style={{
                         padding: '0.5rem 1rem',
-                        background: selectedModels.length >= maxModelsLimit ? '#fef2f2' :
+                        background: selectedModels.length >= maxModelsLimit ? '#ffffff' :
                           selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                        color: selectedModels.length >= maxModelsLimit ? '#dc2626' :
+                        color: selectedModels.length >= maxModelsLimit ? '#f59e0b' :
                           selectedModels.length > 0 ? 'white' : '#6b7280',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontWeight: '600',
-                        border: `1px solid ${selectedModels.length >= maxModelsLimit ? '#fecaca' : '#e5e7eb'}`
+                        border: `1px solid ${selectedModels.length >= maxModelsLimit ? '#f59e0b' : '#e5e7eb'}`
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -4353,7 +4353,7 @@ function AppContent() {
                                           fontSize: '1.2rem',
                                           border: 'none',
                                           background: 'transparent',
-                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#dc2626' : '#667eea'),
+                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#f59e0b' : '#667eea'),
                                           cursor: isDisabled ? 'not-allowed' : 'pointer',
                                           opacity: isDisabled ? 0.5 : 1,
                                           display: 'flex',
