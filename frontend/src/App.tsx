@@ -31,16 +31,13 @@ import type {
   ConversationMessage,
   StoredMessage,
   ModelConversation,
-  Model,
   ModelsByProvider,
   ConversationSummary,
   ConversationRound,
   ResultTab,
   ActiveResultTabs,
-  StreamEvent,
-  CompareRequest,
 } from './types';
-import { RESULT_TAB } from './types';
+import { RESULT_TAB, createModelId, createConversationId, createMessageId } from './types';
 import {
   generateBrowserFingerprint,
   showNotification,
@@ -714,7 +711,7 @@ function AppContent() {
     // Clean up listeners for models that are no longer in conversations
     const activeModelIds = new Set(conversations.map(c => c.modelId));
     scrollListenersRef.current.forEach((_, modelId) => {
-      if (!activeModelIds.has(modelId)) {
+      if (!activeModelIds.has(createModelId(modelId))) {
         cleanupScrollListener(modelId);
       }
     });
@@ -938,9 +935,9 @@ function AppContent() {
         message_count: totalMessages,
         // Keep original created_at for existing conversations
       } : {
-        id: conversationId,
+        id: createConversationId(conversationId),
         input_data: inputData,
-        models_used: modelsUsed,
+        models_used: modelsUsed.map(id => createModelId(id)),
         created_at: new Date().toISOString(),
         message_count: totalMessages,
       };
@@ -1030,7 +1027,7 @@ function AppContent() {
         if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
           // Extract the conversation ID from the key (format: compareai_conversation_{id})
           const convId = key.replace('compareai_conversation_', '');
-          if (!limitedIds.has(convId)) {
+          if (!limitedIds.has(createConversationId(convId))) {
             keysToDelete.push(key);
           }
         }
@@ -1304,7 +1301,7 @@ function AppContent() {
         // Add user message to all models
         modelsUsed.forEach((modelId: string) => {
           messagesByModel[modelId].push({
-            id: round.user.id?.toString() || `${Date.now()}-user-${Math.random()}`,
+            id: round.user.id ? (typeof round.user.id === 'string' ? createMessageId(round.user.id) : createMessageId(String(round.user.id))) : createMessageId(`${Date.now()}-user-${Math.random()}`),
             type: 'user' as const,
             content: round.user.content,
             timestamp: round.user.created_at || new Date().toISOString(),
@@ -1314,7 +1311,7 @@ function AppContent() {
           const modelAssistant = round.assistants.find(asm => asm.model_id === modelId);
           if (modelAssistant) {
             messagesByModel[modelId].push({
-              id: modelAssistant.id?.toString() || `${Date.now()}-${Math.random()}`,
+              id: modelAssistant.id ? (typeof modelAssistant.id === 'string' ? createMessageId(modelAssistant.id) : createMessageId(String(modelAssistant.id))) : createMessageId(`${Date.now()}-${Math.random()}`),
               type: 'assistant' as const,
               content: modelAssistant.content,
               timestamp: modelAssistant.created_at || new Date().toISOString(),
@@ -1325,7 +1322,7 @@ function AppContent() {
 
       // Convert to ModelConversation format
       const loadedConversations: ModelConversation[] = modelsUsed.map((modelId: string) => ({
-        modelId,
+        modelId: createModelId(modelId),
         messages: messagesByModel[modelId] || [],
       }));
 
@@ -1454,7 +1451,7 @@ function AppContent() {
 
   // Helper function to create a conversation message
   const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: createMessageId(`${Date.now()}-${Math.random().toString(36).substr(2, 9)}`),
     type,
     content,
     timestamp: customTimestamp || new Date().toISOString()
@@ -2045,11 +2042,12 @@ function AppContent() {
     const providerModelIds = availableProviderModels.map(model => model.id);
 
     // Check if all provider models are currently selected
-    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id));
+    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(String(id)));
 
     if (allProviderModelsSelected) {
       // Deselecting - check if this would leave us with no models
-      const modelsAfterDeselect = selectedModels.filter(id => !providerModelIds.includes(id));
+      const providerModelIdsStrings = providerModelIds.map(id => String(id));
+      const modelsAfterDeselect = selectedModels.filter(id => !providerModelIdsStrings.includes(id));
 
       // In follow-up mode, show error if deselecting would leave zero models total
       if (isFollowUpMode && modelsAfterDeselect.length === 0) {
@@ -2078,7 +2076,7 @@ function AppContent() {
 
     if (!allProviderModelsSelected && !isFollowUpMode) {
       // Calculate how many models we can actually add
-      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(id)).length;
+      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(String(id))).length;
       const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider);
       const modelsToAdd = providerModelIds.slice(0, remainingSlots);
       couldNotSelectAll = modelsToAdd.length < providerModelIds.length;
@@ -2736,16 +2734,16 @@ function AppContent() {
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
 
       // Set all selected models to 'raw' tab to show streaming content immediately
-      const rawTabs: ActiveResultTabs = {};
+      const rawTabs: ActiveResultTabs = {} as ActiveResultTabs;
       selectedModels.forEach(modelId => {
-        rawTabs[modelId] = RESULT_TAB.RAW;
+        rawTabs[createModelId(modelId)] = RESULT_TAB.RAW;
       });
       setActiveResultTabs(rawTabs);
 
       // Initialize empty conversations immediately so cards appear during streaming
       if (!isFollowUpMode) {
         const emptyConversations: ModelConversation[] = selectedModels.map(modelId => ({
-          modelId,
+          modelId: createModelId(modelId),
           messages: [
             createMessage('user', input, userTimestamp), // Placeholder user timestamp, will be updated when model starts
             createMessage('assistant', '', userTimestamp) // Placeholder AI timestamp, will be updated when model completes
@@ -2826,9 +2824,9 @@ function AppContent() {
 
                   // Check if ALL models are done - if so, switch to formatted view
                   if (completedModels.size === selectedModels.length) {
-                    const formattedTabs: ActiveResultTabs = {};
+                    const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
                     selectedModels.forEach(modelId => {
-                      formattedTabs[modelId] = RESULT_TAB.FORMATTED;
+                      formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED;
                     });
                     setActiveResultTabs(formattedTabs);
                   }
