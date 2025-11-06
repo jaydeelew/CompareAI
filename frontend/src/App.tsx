@@ -2297,8 +2297,11 @@ function AppContent() {
   };
 
   const handleNewComparison = () => {
+    // Preserve text in textarea if in follow-up mode and text exists
+    if (!isFollowUpMode || !input.trim()) {
+      setInput('');
+    }
     setIsFollowUpMode(false);
-    setInput('');
     setConversations([]);
     setResponse(null);
     setClosedCards(new Set());
