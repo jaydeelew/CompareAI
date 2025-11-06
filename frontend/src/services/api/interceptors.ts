@@ -87,7 +87,7 @@ export const timeoutInterceptor: RequestInterceptor = async (url, config) => {
 /**
  * Response interceptor: Parse JSON responses
  */
-export const jsonResponseInterceptor: ResponseInterceptor = async <T>(
+export const jsonResponseInterceptor: ResponseInterceptor = async (
   response: Response,
   config: RequestConfig
 ) => {
@@ -113,7 +113,7 @@ export const jsonResponseInterceptor: ResponseInterceptor = async <T>(
  */
 export const errorResponseInterceptor: ResponseInterceptor = async (
   response: Response,
-  config: RequestConfig
+  _config: RequestConfig
 ) => {
   if (!response.ok) {
     // Try to parse error response
@@ -139,7 +139,6 @@ export const errorResponseInterceptor: ResponseInterceptor = async (
     } else if (response.status === 422) {
       throw new ApiError(message, 422, 'Unprocessable Entity', errorData);
     } else if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After');
       throw new ApiError(
         message,
         429,
@@ -196,7 +195,6 @@ export const loggingErrorInterceptor: ErrorInterceptor = async (error, config) =
   if (import.meta.env.DEV) {
     console.error('[API Client Error]', {
       error: error.message,
-      url: config.url || 'unknown',
       method: config.method || 'GET',
       status: (error as any).status,
     });

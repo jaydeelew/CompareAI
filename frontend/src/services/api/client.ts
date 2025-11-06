@@ -143,23 +143,23 @@ function sleep(ms: number): Promise<void> {
  */
 export class ApiClient {
   private baseURL: string;
-  private defaultTimeout: number;
-  private defaultHeaders: HeadersInit;
+  private _defaultTimeout: number;
+  private _defaultHeaders: HeadersInit;
   private retryConfig: RetryConfig;
   private cache: ResponseCache | null = null;
   private getToken?: () => string | null;
-  private refreshToken?: () => Promise<string | null>;
+  private _refreshToken?: () => Promise<string | null>;
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
   private errorInterceptors: ErrorInterceptor[] = [];
 
   constructor(config: ApiClientConfig) {
     this.baseURL = config.baseURL.replace(/\/$/, ''); // Remove trailing slash
-    this.defaultTimeout = config.timeout ?? 60000; // Default 60 seconds
-    this.defaultHeaders = config.headers ?? {};
+    this._defaultTimeout = config.timeout ?? 60000; // Default 60 seconds
+    this._defaultHeaders = config.headers ?? {};
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retry };
     this.getToken = config.getToken;
-    this.refreshToken = config.refreshToken;
+    this._refreshToken = config.refreshToken;
 
     // Setup cache if enabled (default to enabled)
     const cacheEnabled = (config.cache as any) !== false;
@@ -346,7 +346,7 @@ export class ApiClient {
           : `${this.baseURL}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
 
         // Remove internal properties before passing to fetch
-        const { _timeoutId, _cacheKey, getToken, enableCache, cacheTTL, timeout, retry, maxRetries, retryDelay, skipAuth, ...fetchConfig } = finalConfig;
+        const { _timeoutId, _cacheKey, getToken, enableCache, cacheTTL, timeout, retry, maxRetries, retryDelay, skipAuth, ...fetchConfig } = finalConfig as any;
         
         const response = await fetch(fullUrl, fetchConfig);
 
@@ -496,7 +496,7 @@ export class ApiClient {
   /**
    * Make a streaming request (Server-Sent Events)
    */
-  async stream<T = unknown>(
+  async stream(
     url: string,
     data?: unknown,
     config?: StreamRequestConfig
@@ -519,7 +519,7 @@ export class ApiClient {
         : `${this.baseURL}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
 
       // Remove internal properties before passing to fetch
-      const { _timeoutId, _cacheKey, getToken, enableCache, cacheTTL, timeout, retry, maxRetries, retryDelay, skipAuth, onChunk, onComplete, onError, ...fetchConfig } = finalConfig;
+      const { _timeoutId, _cacheKey, getToken, enableCache, cacheTTL, timeout, retry, maxRetries, retryDelay, skipAuth, ...fetchConfig } = finalConfig as any;
       
       const response = await fetch(fullUrl, fetchConfig);
 

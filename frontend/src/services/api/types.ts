@@ -69,7 +69,7 @@ export type RequestInterceptor = (
 /**
  * Response interceptor function
  */
-export type ResponseInterceptor = <T>(
+export type ResponseInterceptor = (
   response: Response,
   config: RequestConfig
 ) => Promise<Response> | Response;
