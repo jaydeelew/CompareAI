@@ -8,6 +8,7 @@ All configuration constants should be imported from this module.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Dict, Any, Optional
 import os
 from pathlib import Path
@@ -46,6 +47,14 @@ class Settings(BaseSettings):
     mail_from: Optional[str] = None
     mail_server: Optional[str] = None
     mail_port: Optional[int] = None
+    
+    @field_validator('mail_port', mode='before')
+    @classmethod
+    def parse_mail_port(cls, v):
+        """Convert empty strings to None for mail_port."""
+        if v == '' or v is None:
+            return None
+        return v
     
     # Frontend
     frontend_url: str = "http://localhost:5173"
