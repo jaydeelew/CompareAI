@@ -112,8 +112,8 @@ See [DEV_WORKFLOW.md](DEV_WORKFLOW.md) for detailed deployment workflows.
 
 **Support & Features:**
 
-- Starter/Starter+: 48-hour email support, 30 days chat history
-- Pro/Pro+: 24-hour priority email support, 60-90 days chat history
+- Starter/Starter+: 48-hour email support, 10-20 conversations saved
+- Pro/Pro+: 24-hour priority email support, 40-80 conversations saved
 
 ## Key API Endpoints
 

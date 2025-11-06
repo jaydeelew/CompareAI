@@ -612,8 +612,8 @@ function AppContent() {
       free: 3,
       starter: 10,
       starter_plus: 20,
-      pro: 50,
-      pro_plus: 100,
+      pro: 40,
+      pro_plus: 80,
     };
     return limits[tier] || 2;
   }, [isAuthenticated, user]);
@@ -3812,7 +3812,7 @@ function AppContent() {
                       // Message is approximately: padding (0.5rem top + 0.5rem bottom) + text (~40px) ≈ ~60px
                       // Anonymous (2 items + message): ~170px + ~60px = ~230px
                       // Free (3 items + message): ~255px + ~60px = ~315px
-                      // Others: 300px (shows 3 with scroll, message would be scrollable)
+                      // Starter and above: Show 3 items at a time (scrollable)
                       const getMaxHeight = () => {
                         // Check if we're showing the tier limit message (when at display limit)
                         const displayedCount = Math.min(conversationHistory.length, historyLimit);
@@ -3836,10 +3836,9 @@ function AppContent() {
                           // Free: 3 items + message if at limit
                           return isShowingMessage ? '315px' : '255px';
                         }
-                        // For higher tiers (starter, pro, etc.): Show 3 items initially, or 3 items + message if at limit
-                        // The message will be visible in the scrollable area for tiers with many items
-                        // For tiers with 10+ items, showing all items + message would be too tall, so scrollable is appropriate
-                        return isShowingMessage ? '360px' : '300px'; // Add ~60px for message on higher tiers too
+                        // For higher tiers (starter, pro, etc.): Show exactly 3 items at a time (scrollable)
+                        // Height for 3 items: ~255px (3 × ~85px per item)
+                        return '255px';
                       };
 
                       return (

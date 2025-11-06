@@ -167,15 +167,16 @@ ANONYMOUS_EXTENDED_LIMIT: int = EXTENDED_TIER_LIMITS["anonymous"]  # Extended ti
 # ============================================================================
 # Conversation History Limits
 # ============================================================================
-# Maximum number of conversation messages stored per subscription tier
+# Maximum number of conversations stored per subscription tier
+# Each conversation (with or without follow-ups) counts as 1 conversation
 
 CONVERSATION_LIMITS: Dict[str, int] = {
     "anonymous": 2,
     "free": 3,
     "starter": 10,
     "starter_plus": 20,
-    "pro": 50,
-    "pro_plus": 100,
+    "pro": 40,
+    "pro_plus": 80,
 }
 
 
@@ -230,7 +231,7 @@ def get_conversation_limit(tier: str) -> int:
         tier: Subscription tier name
         
     Returns:
-        Maximum number of conversation messages stored
+        Maximum number of conversations stored (each conversation counts as 1)
     """
     return CONVERSATION_LIMITS.get(tier, 2)  # Default to anonymous limit
 

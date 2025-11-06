@@ -267,14 +267,14 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             "6 models max per comparison",
             "Email support (48-hour response)",
             "Usage analytics",
-            "30 days chat history",
+            "10 conversations saved",
         ],
         "starter_plus": [
             "100 model responses per day",
             "6 models max per comparison",
             "Email support (48-hour response)",
             "Usage analytics",
-            "30 days chat history",
+            "20 conversations saved",
         ],
         "pro": [
             "200 model responses per day",
@@ -282,7 +282,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             "Priority email support (24-hour response)",
             "Usage analytics",
             "Export conversations",
-            "60 days chat history",
+            "40 conversations saved",
         ],
         "pro_plus": [
             "400 model responses per day",
@@ -290,7 +290,7 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
             "Priority email support (24-hour response)",
             "Usage analytics",
             "Export conversations",
-            "90 days chat history",
+            "80 conversations saved",
         ],
     }
 

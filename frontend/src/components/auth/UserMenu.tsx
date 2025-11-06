@@ -314,7 +314,7 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>30 days</strong> chat history retention</span>
+                                        <span className="feature-text"><strong>10 conversations</strong> saved</span>
                                     </div>
                                 </div>
                             </div>
@@ -346,7 +346,7 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>30 days</strong> chat history retention</span>
+                                        <span className="feature-text"><strong>20 conversations</strong> saved</span>
                                     </div>
                                 </div>
                             </div>
@@ -379,7 +379,7 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>60 days</strong> chat history retention</span>
+                                        <span className="feature-text"><strong>40 conversations</strong> saved</span>
                                     </div>
                                 </div>
                             </div>
@@ -411,7 +411,7 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text"><strong>90 days</strong> chat history retention</span>
+                                        <span className="feature-text"><strong>80 conversations</strong> saved</span>
                                     </div>
                                 </div>
                             </div>

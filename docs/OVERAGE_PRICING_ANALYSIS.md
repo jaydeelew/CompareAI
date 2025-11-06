@@ -8,14 +8,14 @@
 
 ## 🎯 Current Tier Structure (MODEL-BASED PRICING)
 
-| Tier                     | Daily Model Responses | Max Models/Comparison | Support Response | Chat History | Monthly Price | Status                |
-| ------------------------ | --------------------- | --------------------- | ---------------- | ------------ | ------------- | --------------------- |
-| **Anonymous (unregistered)** | 10                | 3                     | N/A              | N/A          | $0            | ✅ Active             |
-| **Free (registered)**    | 20                    | 3                     | N/A              | N/A          | $0            | ✅ Active             |
-| **Starter**              | 50                    | 6                     | 48 hours         | 30 days      | TBD           | ⏳ Pricing TBD        |
-| **Starter+**             | 100                   | 6                     | 48 hours         | 30 days      | TBD           | ⏳ Pricing TBD        |
-| **Pro**                  | 200                   | 9                     | 24 hours         | 60 days      | TBD           | ⏳ Pricing TBD        |
-| **Pro+**                 | 400                   | 9                     | 24 hours         | 90 days      | TBD           | ⏳ Pricing TBD        |
+| Tier                     | Daily Model Responses | Max Models/Comparison | Support Response | Conversations Saved | Monthly Price | Status                |
+| ------------------------ | --------------------- | --------------------- | ---------------- | ------------------- | ------------- | --------------------- |
+| **Anonymous (unregistered)** | 10                | 3                     | N/A              | 2                   | $0            | ✅ Active             |
+| **Free (registered)**    | 20                    | 3                     | N/A              | 3                   | $0            | ✅ Active             |
+| **Starter**              | 50                    | 6                     | 48 hours         | 10                  | TBD           | ⏳ Pricing TBD        |
+| **Starter+**             | 100                   | 6                     | 48 hours         | 20                  | TBD           | ⏳ Pricing TBD        |
+| **Pro**                  | 200                   | 9                     | 24 hours         | 40                  | TBD           | ⏳ Pricing TBD        |
+| **Pro+**                 | 400                   | 9                     | 24 hours         | 80                  | TBD           | ⏳ Pricing TBD        |
 
 **Key Changes:**
 - ✅ **Model-based limits:** Users are limited by individual model responses, not comparisons
@@ -24,7 +24,7 @@
 - ✅ **Fair pricing:** Users pay for what they actually use
 - ✅ **Clear upgrade path:** More models + more daily capacity at each tier
 - ✅ **Support tiers:** 48-hour response for Starter tiers, 24-hour for Pro tiers
-- ✅ **Chat history retention:** Ranges from 30 to 90 days based on tier
+- ✅ **Conversation history:** Each conversation (with or without follow-ups) counts as 1 saved conversation. Limits range from 2 to 80 conversations based on tier
 - ⏳ **Pricing pending:** Subscription and overage pricing to be determined
 
 **Rationale for Model-Based Pricing:**
@@ -75,28 +75,28 @@ The model-based approach:
 - Monthly cost to us: 50 × 30 × $0.0166 = $24.90/month
 - Requires pricing to achieve target margins
 - Benefit: 2x model capacity (3 → 6) + 2.5x daily responses (20 → 50)
-- Support: 48-hour email response, 30 days chat history
+- Support: 48-hour email response, 10 conversations saved
 
 **Starter+ Tier (Pricing TBD):**
 - 100 model responses/day with 6 models max = ~17 comparisons with 6 models average
 - Monthly cost to us: 100 × 30 × $0.0166 = $49.80/month
 - Requires pricing to achieve target margins
 - Benefit: 2x model capacity (3 → 6) + 5x daily responses (20 → 100)
-- Support: 48-hour email response, 30 days chat history
+- Support: 48-hour email response, 10 conversations saved
 
 **Pro Tier (Pricing TBD):**
 - 200 model responses/day with 9 models max = ~22 comparisons with 9 models average  
 - Monthly cost to us: 200 × 30 × $0.0166 = $99.60/month
 - Requires pricing to achieve target margins
 - Benefit: 3x model capacity (3 → 9) + 10x daily responses (20 → 200)
-- Support: 24-hour priority email response, 60 days chat history
+- Support: 24-hour priority email response, 40 conversations saved
 
 **Pro+ Tier (Pricing TBD):**
 - 400 model responses/day with 9 models max = ~44 comparisons with 9 models average  
 - Monthly cost to us: 400 × 30 × $0.0166 = $199.20/month
 - Requires pricing to achieve target margins
 - Benefit: 3x model capacity (3 → 9) + 20x daily responses (20 → 400)
-- Support: 24-hour priority email response, 90 days chat history
+- Support: 24-hour priority email response, 80 conversations saved
 
 ---
 

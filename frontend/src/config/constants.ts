@@ -76,15 +76,16 @@ export const TIER_LIMITS = {
 // ============================================================================
 // Conversation History Limits
 // ============================================================================
-// Maximum number of conversation messages stored per subscription tier
+// Maximum number of conversations stored per subscription tier
+// Each conversation (with or without follow-ups) counts as 1 conversation
 
 export const CONVERSATION_LIMITS = {
   anonymous: 2,
   free: 3,
   starter: 10,
   starter_plus: 20,
-  pro: 50,
-  pro_plus: 100,
+  pro: 40,
+  pro_plus: 80,
 } as const;
 
 // ============================================================================
@@ -158,7 +159,7 @@ export function getTierMaxTokens(tier: ResponseTier | string): number {
  * Get conversation history limit for a given subscription tier.
  * 
  * @param tier - Subscription tier name
- * @returns Maximum number of conversation messages stored
+ * @returns Maximum number of conversations stored (each conversation counts as 1)
  */
 export function getConversationLimit(tier: SubscriptionTier | string): number {
   return CONVERSATION_LIMITS[tier as SubscriptionTier] ?? CONVERSATION_LIMITS.anonymous;
