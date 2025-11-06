@@ -26,10 +26,36 @@ from ..schemas import (
 from ..dependencies import get_current_admin_user, require_admin_role
 from ..auth import get_password_hash
 from ..rate_limiting import anonymous_rate_limit_storage
+from datetime import date
 
 # from ..email_service import send_verification_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def ensure_usage_reset(user: User, db: Session) -> None:
+    """
+    Ensure user's daily usage and extended usage are reset if it's a new day.
+    This function should be called before displaying user data in admin panel
+    to ensure accurate usage counts.
+    
+    Args:
+        user: User object to check and reset
+        db: Database session
+    """
+    today = date.today()
+    
+    # Reset daily usage if it's a new day
+    if user.usage_reset_date != today:
+        user.daily_usage_count = 0
+        user.usage_reset_date = today
+        db.commit()
+    
+    # Reset extended usage if it's a new day
+    if user.extended_usage_reset_date != today:
+        user.daily_extended_usage = 0
+        user.extended_usage_reset_date = today
+        db.commit()
 
 
 def log_admin_action(
@@ -134,6 +160,10 @@ async def list_users(
     offset = (page - 1) * per_page
     users = query.order_by(desc(User.created_at)).offset(offset).limit(per_page).all()
 
+    # Ensure usage is reset for all users if it's a new day
+    for user in users:
+        ensure_usage_reset(user, db)
+
     # Calculate total pages
     total_pages = (total + per_page - 1) // per_page
 
@@ -153,6 +183,9 @@ async def get_user(user_id: int, current_user: User = Depends(get_current_admin_
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Ensure usage is reset if it's a new day
+    ensure_usage_reset(user, db)
 
     return AdminUserResponse.from_orm(user)
 
@@ -251,6 +284,9 @@ async def update_user(
 
     db.commit()
     db.refresh(user)
+
+    # Ensure usage is reset if it's a new day
+    ensure_usage_reset(user, db)
 
     # Log admin action
     changes = {k: v for k, v in update_data.items() if original_values.get(k) != v}
@@ -495,6 +531,9 @@ async def toggle_user_active(
     db.commit()
     db.refresh(user)
 
+    # Ensure usage is reset if it's a new day
+    ensure_usage_reset(user, db)
+
     # Log admin action
     log_admin_action(
         db=db,
@@ -530,9 +569,12 @@ async def reset_user_usage(
     # This will cascade delete all related ConversationMessage records due to the cascade setting
     db.query(Conversation).filter(Conversation.user_id == user_id).delete()
 
-    # Reset daily usage counts to 0
+    # Reset daily usage counts to 0 and update reset dates to today
+    today = date.today()
     user.daily_usage_count = 0
+    user.usage_reset_date = today
     user.daily_extended_usage = 0
+    user.extended_usage_reset_date = today
     db.commit()
     db.refresh(user)
 
@@ -587,6 +629,9 @@ async def toggle_mock_mode(
     db.commit()
     db.refresh(user)
 
+    # Ensure usage is reset if it's a new day
+    ensure_usage_reset(user, db)
+
     # Log admin action
     log_admin_action(
         db=db,
@@ -637,6 +682,9 @@ async def change_user_tier(
 
     db.commit()
     db.refresh(user)
+
+    # Ensure usage is reset if it's a new day
+    ensure_usage_reset(user, db)
 
     # Log admin action
     log_admin_action(
