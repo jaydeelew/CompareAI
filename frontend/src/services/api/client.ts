@@ -143,23 +143,17 @@ function sleep(ms: number): Promise<void> {
  */
 export class ApiClient {
   private baseURL: string;
-  private _defaultTimeout: number;
-  private _defaultHeaders: HeadersInit;
   private retryConfig: RetryConfig;
   private cache: ResponseCache | null = null;
   private getToken?: () => string | null;
-  private _refreshToken?: () => Promise<string | null>;
   private requestInterceptors: RequestInterceptor[] = [];
   private responseInterceptors: ResponseInterceptor[] = [];
   private errorInterceptors: ErrorInterceptor[] = [];
 
   constructor(config: ApiClientConfig) {
     this.baseURL = config.baseURL.replace(/\/$/, ''); // Remove trailing slash
-    this._defaultTimeout = config.timeout ?? 60000; // Default 60 seconds
-    this._defaultHeaders = config.headers ?? {};
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retry };
     this.getToken = config.getToken;
-    this._refreshToken = config.refreshToken;
 
     // Setup cache if enabled (default to enabled)
     const cacheEnabled = (config.cache as any) !== false;
@@ -234,14 +228,14 @@ export class ApiClient {
   /**
    * Apply response interceptors
    */
-  private async applyResponseInterceptors<T>(
+  private async applyResponseInterceptors(
     response: Response,
     config: RequestConfig
   ): Promise<Response> {
     let finalResponse = response;
 
     for (const interceptor of this.responseInterceptors) {
-      finalResponse = await interceptor<T>(finalResponse, config);
+      finalResponse = await interceptor(finalResponse, config);
     }
 
     return finalResponse;
@@ -354,7 +348,7 @@ export class ApiClient {
         cleanup();
 
         // Apply response interceptors (will throw on error)
-        const processedResponse = await this.applyResponseInterceptors<T>(
+        const processedResponse = await this.applyResponseInterceptors(
           response,
           finalConfig
         );

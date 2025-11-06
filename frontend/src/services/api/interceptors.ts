@@ -224,7 +224,7 @@ export const loggingRequestInterceptor: RequestInterceptor = async (url, config)
 /**
  * Response interceptor: Log responses (development only)
  */
-export const loggingResponseInterceptor: ResponseInterceptor = async (response, config) => {
+export const loggingResponseInterceptor: ResponseInterceptor = async (response, _config) => {
   if (import.meta.env.DEV) {
     console.log('[API Response]', {
       status: response.status,
