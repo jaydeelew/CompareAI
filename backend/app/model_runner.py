@@ -10,12 +10,7 @@ from .mock_responses import stream_mock_response, get_mock_response
 from .types import ConnectionQualityDict
 
 # Import configuration
-from .config import (
-    settings,
-    MAX_CONCURRENT_REQUESTS,
-    INDIVIDUAL_MODEL_TIMEOUT,
-    BATCH_SIZE,
-)
+from .config import settings
 
 OPENROUTER_API_KEY = settings.openrouter_api_key
 
@@ -611,7 +606,7 @@ def call_openrouter_streaming(
         response = client.chat.completions.create(
             model=model_id,
             messages=messages,
-            timeout=INDIVIDUAL_MODEL_TIMEOUT,
+            timeout=settings.individual_model_timeout,
             max_tokens=max_tokens,
             stream=True,  # Enable streaming!
         )
@@ -650,7 +645,7 @@ def call_openrouter_streaming(
         error_str = str(e).lower()
         # Yield error messages in the stream
         if "timeout" in error_str:
-            yield f"Error: Timeout ({INDIVIDUAL_MODEL_TIMEOUT}s)"
+            yield f"Error: Timeout ({settings.individual_model_timeout}s)"
         elif "rate limit" in error_str or "429" in error_str:
             yield f"Error: Rate limited"
         elif "not found" in error_str or "404" in error_str:
@@ -723,7 +718,7 @@ def call_openrouter(
         max_tokens = min(tier_max_tokens, model_max_tokens)
 
         response = client.chat.completions.create(
-            model=model_id, messages=messages, timeout=INDIVIDUAL_MODEL_TIMEOUT, max_tokens=max_tokens  # Use tier-based limit
+            model=model_id, messages=messages, timeout=settings.individual_model_timeout, max_tokens=max_tokens  # Use tier-based limit
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
@@ -774,7 +769,7 @@ def call_openrouter(
         error_str = str(e).lower()
         # More descriptive error messages for faster debugging
         if "timeout" in error_str:
-            return f"Error: Timeout ({INDIVIDUAL_MODEL_TIMEOUT}s)"
+            return f"Error: Timeout ({settings.individual_model_timeout}s)"
         elif "rate limit" in error_str or "429" in error_str:
             return f"Error: Rate limited"
         elif "not found" in error_str or "404" in error_str:
@@ -798,7 +793,7 @@ def run_models_batch(
             return model_id, f"Error: {str(e)}"
 
     # Use a limited number of threads to prevent overwhelming the API
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=settings.max_concurrent_requests) as executor:
         # Submit all futures
         future_to_model = {executor.submit(call, model_id): model_id for model_id in model_batch}
 
@@ -840,8 +835,8 @@ def run_models(prompt: str, model_list: List[str], tier: str = "standard", conve
     all_results = {}
 
     # Process models in batches
-    for i in range(0, len(model_list), BATCH_SIZE):
-        batch = model_list[i : i + BATCH_SIZE]
+    for i in range(0, len(model_list), settings.batch_size):
+        batch = model_list[i : i + settings.batch_size]
         try:
             batch_results = run_models_batch(prompt, batch, tier, conversation_history)
             all_results.update(batch_results)

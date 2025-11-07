@@ -277,22 +277,13 @@ def get_tier_max_tokens(tier: str) -> int:
 # ============================================================================
 # Performance Configuration
 # ============================================================================
-# Model runner performance settings
-# These can be overridden via environment variables in Settings class
-# Configuration optimized for 9-model limit (Pro tier maximum)
-
-# Use settings values, with fallback to defaults if settings not yet initialized
-# These are accessed via settings in code, but we export constants for backwards compatibility
-MAX_CONCURRENT_REQUESTS: int = 9  # Matches Pro tier limit of 9 models
-INDIVIDUAL_MODEL_TIMEOUT: int = 120  # Increased timeout for very long, detailed responses
-BATCH_SIZE: int = 9  # Process all 9 models in single batch for optimal performance
-
-# Connection quality optimizations
-# For slower connections, you may want to reduce MAX_CONCURRENT_REQUESTS to 6-8
-# and increase INDIVIDUAL_MODEL_TIMEOUT to 60-90 seconds
-
-# Note: These constants are defaults. To use environment variable overrides,
-# access via settings.max_concurrent_requests, settings.individual_model_timeout, etc.
+# Model runner performance settings are configured in the Settings class above
+# (max_concurrent_requests, individual_model_timeout, batch_size)
+# These can be overridden via environment variables.
+# 
+# Configuration optimized for 9-model limit (Pro tier maximum).
+# For slower connections, you may want to reduce max_concurrent_requests to 6-8
+# and increase individual_model_timeout to 60-90 seconds via environment variables.
 
 
 # ============================================================================

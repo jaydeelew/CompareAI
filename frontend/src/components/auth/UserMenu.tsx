@@ -150,10 +150,10 @@ export const UserMenu: React.FC = () => {
                                     <span className="usage-limit">{getDailyLimit(user.subscription_tier)}</span>
                                 </div>
                                 <div className="usage-progress-bar">
-                                    <div 
-                                        className="usage-progress-fill" 
-                                        style={{ 
-                                            width: `${Math.min(100, (user.daily_usage_count / getDailyLimit(user.subscription_tier)) * 100)}%` 
+                                    <div
+                                        className="usage-progress-fill"
+                                        style={{
+                                            width: `${Math.min(100, (user.daily_usage_count / getDailyLimit(user.subscription_tier)) * 100)}%`
                                         }}
                                     ></div>
                                 </div>
@@ -166,10 +166,10 @@ export const UserMenu: React.FC = () => {
                                     <span className="usage-limit">{getExtendedLimit(user.subscription_tier)}</span>
                                 </div>
                                 <div className="usage-progress-bar">
-                                    <div 
-                                        className="usage-progress-fill extended" 
-                                        style={{ 
-                                            width: `${Math.min(100, ((user.daily_extended_usage || 0) / getExtendedLimit(user.subscription_tier)) * 100)}%` 
+                                    <div
+                                        className="usage-progress-fill extended"
+                                        style={{
+                                            width: `${Math.min(100, ((user.daily_extended_usage || 0) / getExtendedLimit(user.subscription_tier)) * 100)}%`
                                         }}
                                     ></div>
                                 </div>
