@@ -612,8 +612,8 @@ function AppContent() {
       free: 3,
       starter: 10,
       starter_plus: 20,
-      pro: 40,
-      pro_plus: 80,
+      pro: 50,
+      pro_plus: 100,
     };
     return limits[tier] || 2;
   }, [isAuthenticated, user]);
@@ -2297,11 +2297,8 @@ function AppContent() {
   };
 
   const handleNewComparison = () => {
-    // Preserve text in textarea if in follow-up mode and text exists
-    if (!isFollowUpMode || !input.trim()) {
-      setInput('');
-    }
     setIsFollowUpMode(false);
+    setInput('');
     setConversations([]);
     setResponse(null);
     setClosedCards(new Set());
@@ -3812,7 +3809,7 @@ function AppContent() {
                       // Message is approximately: padding (0.5rem top + 0.5rem bottom) + text (~40px) ≈ ~60px
                       // Anonymous (2 items + message): ~170px + ~60px = ~230px
                       // Free (3 items + message): ~255px + ~60px = ~315px
-                      // Starter and above: Show 3 items at a time (scrollable)
+                      // Others: 300px (shows 3 with scroll, message would be scrollable)
                       const getMaxHeight = () => {
                         // Check if we're showing the tier limit message (when at display limit)
                         const displayedCount = Math.min(conversationHistory.length, historyLimit);
@@ -3836,9 +3833,10 @@ function AppContent() {
                           // Free: 3 items + message if at limit
                           return isShowingMessage ? '315px' : '255px';
                         }
-                        // For higher tiers (starter, pro, etc.): Show exactly 3 items at a time (scrollable)
-                        // Height for 3 items: ~255px (3 × ~85px per item)
-                        return '255px';
+                        // For higher tiers (starter, pro, etc.): Show 3 items initially, or 3 items + message if at limit
+                        // The message will be visible in the scrollable area for tiers with many items
+                        // For tiers with 10+ items, showing all items + message would be too tall, so scrollable is appropriate
+                        return isShowingMessage ? '360px' : '300px'; // Add ~60px for message on higher tiers too
                       };
 
                       return (
@@ -4073,7 +4071,7 @@ function AppContent() {
                             background: warningLevel === 'critical'
                               ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15))'
                               : warningLevel === 'high'
-                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15))'
+                                ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15))'
                                 : 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.12))',
                             borderRadius: '12px',
                             marginTop: '0.75rem',
@@ -4081,7 +4079,7 @@ function AppContent() {
                             border: `1px solid ${warningLevel === 'critical'
                               ? 'rgba(239, 68, 68, 0.3)'
                               : warningLevel === 'high'
-                                ? 'rgba(251, 191, 36, 0.3)'
+                                ? 'rgba(245, 158, 11, 0.3)'
                                 : 'rgba(120, 170, 255, 0.35)'
                               }`,
                             display: 'flex',
@@ -4176,7 +4174,7 @@ function AppContent() {
                         fontSize: '0.75rem',
                         border: 'none',
                         background: 'transparent',
-                        color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#dc2626',
+                        color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b',
                         borderRadius: '6px',
                         cursor: (selectedModels.length === 0 || isFollowUpMode) ? 'not-allowed' : 'pointer',
                         opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1,
@@ -4255,14 +4253,12 @@ function AppContent() {
                       title="Total selections"
                       style={{
                         padding: '0.5rem 1rem',
-                        background: selectedModels.length >= maxModelsLimit ? '#ffffff' :
-                          selectedModels.length > 0 ? '#667eea' : '#f3f4f6',
-                        color: selectedModels.length >= maxModelsLimit ? '#f59e0b' :
-                          selectedModels.length > 0 ? 'white' : '#6b7280',
+                        background: selectedModels.length > 0 ? '#2563eb' : '#f3f4f6',
+                        color: selectedModels.length > 0 ? '#ffffff' : '#6b7280',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
                         fontWeight: '600',
-                        border: `1px solid ${selectedModels.length >= maxModelsLimit ? '#f59e0b' : '#e5e7eb'}`
+                        border: `1px solid ${selectedModels.length > 0 ? '#ffffff33' : '#e5e7eb'}`
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -4323,7 +4319,27 @@ function AppContent() {
                                   <span className="provider-name">{provider}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span className="provider-count">
+                                  <span
+                                    className="provider-count"
+                                    style={{
+                                      padding: '0.25rem 0.5rem',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '600',
+                                      borderRadius: '8px',
+                                      background: (() => {
+                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                        return selectedCount > 0 ? '#2563eb' : '#f3f4f6';
+                                      })(),
+                                      color: (() => {
+                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                        return selectedCount > 0 ? '#ffffff' : '#6b7280';
+                                      })(),
+                                      border: (() => {
+                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                        return `1px solid ${selectedCount > 0 ? '#ffffff33' : '#e5e7eb'}`;
+                                      })()
+                                    }}
+                                  >
                                     {(() => {
                                       const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
                                       return `${selectedCount} of ${models.length} selected`;
@@ -4353,7 +4369,7 @@ function AppContent() {
                                           fontSize: '1.2rem',
                                           border: 'none',
                                           background: 'transparent',
-                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#f59e0b' : '#667eea'),
+                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#f59e0b' : '#9ca3af'),
                                           cursor: isDisabled ? 'not-allowed' : 'pointer',
                                           opacity: isDisabled ? 0.5 : 1,
                                           display: 'flex',
@@ -4428,7 +4444,7 @@ function AppContent() {
                                                   marginLeft: '0.5rem',
                                                   padding: '0.125rem 0.375rem',
                                                   background: 'rgba(245, 158, 11, 0.2)',
-                                                  color: '#d97706',
+                                                  color: '#f59e0b',
                                                   borderRadius: '4px',
                                                   fontWeight: '500'
                                                 }}

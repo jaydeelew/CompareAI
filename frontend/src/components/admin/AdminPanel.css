@@ -555,7 +555,7 @@ button:hover {
 
 .role-moderator {
   background: linear-gradient(135deg, #fed7aa, #fdba74);
-  color: #ea580c;
+  color: #f59e0b;
 }
 
 .role-admin {
@@ -655,7 +655,7 @@ button:hover {
 
 .verified-badge.unverified {
   background: linear-gradient(135deg, #fed7aa, #fdba74);
-  color: #ea580c;
+  color: #f59e0b;
 }
 
 .usage-info {
@@ -706,7 +706,7 @@ button:hover {
 }
 
 .toggle-btn.deactivate {
-  background: linear-gradient(135deg, var(--warning-color), #ea580c);
+  background: var(--warning-color);
   color: white;
 }
 
@@ -1618,7 +1618,7 @@ button:hover {
 
 .action-password_reset {
   background: linear-gradient(135deg, #fed7aa, #fdba74);
-  color: #ea580c;
+  color: #f59e0b;
 }
 
 .action-send_verification {
@@ -1642,7 +1642,7 @@ button:hover {
 }
 
 .action-change_tier {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: #f59e0b;
   color: white;
 }
 

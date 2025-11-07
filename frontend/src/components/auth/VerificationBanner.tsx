@@ -130,7 +130,7 @@ export const VerificationBanner: React.FC = () => {
     return (
         <div
             style={{
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                background: '#f59e0b',
                 color: 'white',
                 padding: hasAnimatedIn ? '1rem' : '0 1rem',
                 margin: '0',
