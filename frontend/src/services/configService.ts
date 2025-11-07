@@ -7,7 +7,7 @@
  * - Getting tier limits
  */
 
-import { apiClient } from './api/client';
+// import { apiClient } from './api/client'; // Reserved for future use
 
 /**
  * Configuration sync response

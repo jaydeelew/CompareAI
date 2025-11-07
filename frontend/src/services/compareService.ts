@@ -8,9 +8,8 @@
  */
 
 import { apiClient } from './api/client';
-import type { CompareRequest, CompareResponse, StreamEvent } from '../../types';
-import type { StreamRequestConfig } from './api/types';
-import { STREAM_EVENT_TYPE } from '../../types';
+import type { CompareResponse, StreamEvent } from '../types';
+import { STREAM_EVENT_TYPE } from '../types';
 
 /**
  * Request body for comparison endpoint

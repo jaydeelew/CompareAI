@@ -8,7 +8,7 @@
  */
 
 import { apiClient } from './api/client';
-import type { ConversationSummary, ConversationId } from '../../types';
+import type { ConversationSummary, ConversationId } from '../types';
 
 /**
  * Conversation detail response

@@ -48,12 +48,19 @@ import {
   truncatePrompt,
   formatConversationMessage,
 } from './utils';
-
-// API URL with smart fallback:
-// - Uses VITE_API_URL from environment if set
-// - Defaults to '/api' which works with Vite proxy in development
-// - In production, set VITE_API_URL to full backend URL if no proxy
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import {
+  getAnonymousMockModeStatus,
+  getRateLimitStatus,
+  resetRateLimit,
+  compareStream,
+} from './services/compareService';
+import {
+  getConversations,
+  getConversation,
+  deleteConversation as deleteConversationFromAPI,
+} from './services/conversationService';
+import { getAvailableModels } from './services/modelsService';
+import { ApiError } from './services/api/errors';
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
@@ -266,14 +273,11 @@ function AppContent() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/anonymous-mock-mode-status`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.is_development && data.anonymous_mock_mode_enabled) {
-            setAnonymousMockModeEnabled(true);
-          } else {
-            setAnonymousMockModeEnabled(false);
-          }
+        const data = await getAnonymousMockModeStatus();
+        if (data.is_development && data.anonymous_mock_mode_enabled) {
+          setAnonymousMockModeEnabled(true);
+        } else {
+          setAnonymousMockModeEnabled(false);
         }
       } catch {
         // Silently fail - this is a development-only feature
@@ -726,23 +730,8 @@ function AppContent() {
       const currentDisplayedComparisonId = currentVisibleComparisonId;
 
       // Reset backend rate limits (dev only)
-      const url = browserFingerprint
-        ? `${API_URL}/dev/reset-rate-limit?fingerprint=${encodeURIComponent(browserFingerprint)}`
-        : `${API_URL}/dev/reset-rate-limit`;
-
-      // Prepare headers with auth token if available
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const accessToken = localStorage.getItem('access_token');
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers
-      });
-
-      if (response.ok) {
+      try {
+        await resetRateLimit(browserFingerprint || undefined);
         setError(null);
 
         if (isAuthenticated) {
@@ -791,13 +780,16 @@ function AppContent() {
             setCurrentVisibleComparisonId(null);
           }
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error(`Failed to reset: ${errorData.detail || 'Unknown error'}`);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          console.error(`Failed to reset: ${error.message}`);
+        } else {
+          console.error('Reset error:', error);
+          console.error('Failed to reset rate limits. Make sure the backend is running.');
+        }
       }
     } catch (error) {
-      console.error('Reset error:', error);
-      console.error('Failed to reset rate limits. Make sure the backend is running.');
+      console.error('Unexpected error in resetUsage:', error);
     }
   };
 
@@ -1056,36 +1048,23 @@ function AppContent() {
 
     setIsLoadingHistory(true);
     try {
-      const accessToken = localStorage.getItem('access_token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(`${API_URL}/conversations`, {
-        method: 'GET',
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Ensure created_at is a string if it's not already, and models_used is always an array
-        const formattedData: ConversationSummary[] = Array.isArray(data) ? data.map((item) => {
-          const summary: ConversationSummary = {
-            ...item,
-            created_at: typeof item.created_at === 'string' ? item.created_at : new Date(item.created_at).toISOString(),
-            models_used: Array.isArray(item.models_used) ? item.models_used : [],
-          };
-          return summary;
-        }) : [];
-        setConversationHistory(formattedData);
+      const data = await getConversations();
+      // Ensure created_at is a string if it's not already, and models_used is always an array
+      const formattedData: ConversationSummary[] = Array.isArray(data) ? data.map((item) => {
+        const summary: ConversationSummary = {
+          ...item,
+          created_at: typeof item.created_at === 'string' ? item.created_at : new Date(item.created_at).toISOString(),
+          models_used: Array.isArray(item.models_used) ? item.models_used : [],
+        };
+        return summary;
+      }) : [];
+      setConversationHistory(formattedData);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('Failed to load conversation history:', error.status, error.message);
       } else {
-        const errorText = await response.text();
-        console.error('Failed to load conversation history:', response.status, response.statusText, errorText);
-        setConversationHistory([]);
+        console.error('Failed to load conversation history from API:', error);
       }
-    } catch (e) {
-      console.error('Failed to load conversation history from API:', e);
       setConversationHistory([]);
     } finally {
       setIsLoadingHistory(false);
@@ -1102,41 +1081,32 @@ function AppContent() {
     if (isAuthenticated && typeof summary.id === 'number') {
       // Delete from API
       try {
-        const accessToken = localStorage.getItem('access_token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (accessToken) {
-          headers['Authorization'] = `Bearer ${accessToken}`;
+        await deleteConversationFromAPI(summary.id);
+
+        // If this was the active item, reset screen to default BEFORE reloading history
+        // This prevents any auto-loading logic from triggering
+        if (isActiveItem) {
+          setIsFollowUpMode(false);
+          setInput('');
+          setConversations([]);
+          setResponse(null);
+          setClosedCards(new Set());
+          setError(null);
+          setSelectedModels([]); // Unselect all models
+          setOriginalSelectedModels([]);
+          setIsModelsHidden(false);
+          setOpenDropdowns(new Set()); // Close all provider dropdowns
+          setCurrentVisibleComparisonId(null);
         }
 
-        const response = await fetch(`${API_URL}/conversations/${summary.id}`, {
-          method: 'DELETE',
-          headers,
-        });
-
-        if (response.ok) {
-          // If this was the active item, reset screen to default BEFORE reloading history
-          // This prevents any auto-loading logic from triggering
-          if (isActiveItem) {
-            setIsFollowUpMode(false);
-            setInput('');
-            setConversations([]);
-            setResponse(null);
-            setClosedCards(new Set());
-            setError(null);
-            setSelectedModels([]); // Unselect all models
-            setOriginalSelectedModels([]);
-            setIsModelsHidden(false);
-            setOpenDropdowns(new Set()); // Close all provider dropdowns
-            setCurrentVisibleComparisonId(null);
-          }
-
-          // Reload history from API after reset
-          await loadHistoryFromAPI();
+        // Reload history from API after reset
+        await loadHistoryFromAPI();
+      } catch (error) {
+        if (error instanceof ApiError) {
+          console.error('Failed to delete conversation:', error.message);
         } else {
-          console.error('Failed to delete conversation:', response.statusText);
+          console.error('Failed to delete conversation from API:', error);
         }
-      } catch (e) {
-        console.error('Failed to delete conversation from API:', e);
       }
     } else if (!isAuthenticated && typeof summary.id === 'string') {
       // Delete from localStorage
@@ -1194,29 +1164,18 @@ function AppContent() {
     if (!isAuthenticated) return null;
 
     try {
-      const accessToken = localStorage.getItem('access_token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(`${API_URL}/conversations/${id}`, {
-        method: 'GET',
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          input_data: data.input_data,
-          models_used: data.models_used,
-          messages: data.messages,
-        };
+      const data = await getConversation(id);
+      return {
+        input_data: data.input_data,
+        models_used: data.models_used,
+        messages: data.messages,
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('Failed to load conversation:', error.message);
       } else {
-        console.error('Failed to load conversation:', response.statusText);
+        console.error('Failed to load conversation from API:', error);
       }
-    } catch (e) {
-      console.error('Failed to load conversation from API:', e);
     }
     return null;
   };
@@ -1771,15 +1730,14 @@ function AppContent() {
           // For authenticated users, use the user object directly
           setUsageCount(user.daily_usage_count);
         } else {
-          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`);
-          if (response.ok) {
-            const data = await response.json();
+          try {
+            const data = await getRateLimitStatus(fingerprint);
             // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
-            const usageCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0;
+            const usageCount = data.daily_usage || (data as any).fingerprint_usage || (data as any).ip_usage || 0;
             setUsageCount(usageCount);
 
             // Sync extended usage from backend if available
-            const extendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
+            const extendedCount = data.extended_usage || (data as any).daily_extended_usage;
             if (extendedCount !== undefined) {
               setExtendedUsageCount(extendedCount);
             }
@@ -1798,8 +1756,9 @@ function AppContent() {
                 date: today
               }));
             }
-          } else {
+          } catch (error) {
             // Fallback to localStorage if backend is unavailable
+            console.error('Failed to sync usage count from backend, using localStorage:', error);
             const savedUsage = localStorage.getItem('compareai_usage');
             const today = new Date().toDateString();
 
@@ -1846,24 +1805,22 @@ function AppContent() {
 
     const fetchModels = async () => {
       try {
-        const res = await fetch(`${API_URL}/models`);
+        const data = await getAvailableModels();
 
-        if (res.ok) {
-          const data = await res.json();
-
-          if (data.models_by_provider && Object.keys(data.models_by_provider).length > 0) {
-            setModelsByProvider(data.models_by_provider);
-          } else {
-            console.error('No models_by_provider data received');
-            setError('No model data received from server');
-          }
+        if (data.models_by_provider && Object.keys(data.models_by_provider).length > 0) {
+          setModelsByProvider(data.models_by_provider);
         } else {
-          console.error('Failed to fetch models, status:', res.status);
-          setError(`Failed to fetch models: ${res.status}`);
+          console.error('No models_by_provider data received');
+          setError('No model data received from server');
         }
-      } catch (err) {
-        console.error('Failed to fetch models:', err instanceof Error ? err.message : String(err));
-        setError(`Failed to fetch models: ${err instanceof Error ? err.message : String(err)}`);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          console.error('Failed to fetch models:', error.status, error.message);
+          setError(`Failed to fetch models: ${error.message}`);
+        } else {
+          console.error('Failed to fetch models:', error instanceof Error ? error.message : String(error));
+          setError(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
+        }
       } finally {
         setIsLoadingModels(false);
       }
@@ -1992,19 +1949,16 @@ function AppContent() {
     // For anonymous users, try to sync from backend
     if (!isAuthenticated && browserFingerprint) {
       try {
-        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
-        if (response.ok) {
-          const data = await response.json();
-          const latestExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
-          if (latestExtendedCount !== undefined) {
-            currentExtendedUsage = latestExtendedCount;
-            setExtendedUsageCount(latestExtendedCount);
-            const today = new Date().toDateString();
-            localStorage.setItem('compareai_extended_usage', JSON.stringify({
-              count: latestExtendedCount,
-              date: today
-            }));
-          }
+        const data = await getRateLimitStatus(browserFingerprint);
+        const latestExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+        if (latestExtendedCount !== undefined) {
+          currentExtendedUsage = latestExtendedCount;
+          setExtendedUsageCount(latestExtendedCount);
+          const today = new Date().toDateString();
+          localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            count: latestExtendedCount,
+            date: today
+          }));
         }
       } catch (error) {
         console.error('Failed to sync extended usage count:', error);
@@ -2449,16 +2403,13 @@ function AppContent() {
     } else if (browserFingerprint) {
       // For anonymous users, sync from backend
       try {
-        const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
-        if (response.ok) {
-          const data = await response.json();
-          // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
-          const latestCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0;
-          currentUsageCount = latestCount;
-          // Update state to keep it in sync - will update banner and localStorage below if needed
-          if (latestCount !== usageCount) {
-            setUsageCount(latestCount);
-          }
+        const data = await getRateLimitStatus(browserFingerprint);
+        // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
+        const latestCount = data.daily_usage || (data as any).fingerprint_usage || (data as any).ip_usage || 0;
+        currentUsageCount = latestCount;
+        // Update state to keep it in sync - will update banner and localStorage below if needed
+        if (latestCount !== usageCount) {
+          setUsageCount(latestCount);
         }
       } catch (error) {
         console.error('Failed to sync usage count before check:', error);
@@ -2511,20 +2462,17 @@ function AppContent() {
       // For anonymous users, try to sync from backend
       if (!isAuthenticated && browserFingerprint) {
         try {
-          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
-          if (response.ok) {
-            const data = await response.json();
-            const latestExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
-            if (latestExtendedCount !== undefined) {
-              currentExtendedUsage = latestExtendedCount;
-              // Update state to keep it in sync
-              setExtendedUsageCount(latestExtendedCount);
-              const today = new Date().toDateString();
-              localStorage.setItem('compareai_extended_usage', JSON.stringify({
-                count: latestExtendedCount,
-                date: today
-              }));
-            }
+          const data = await getRateLimitStatus(browserFingerprint);
+          const latestExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+          if (latestExtendedCount !== undefined) {
+            currentExtendedUsage = latestExtendedCount;
+            // Update state to keep it in sync
+            setExtendedUsageCount(latestExtendedCount);
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              count: latestExtendedCount,
+              date: today
+            }));
           }
         } catch (error) {
           console.error('Failed to sync extended usage count before check:', error);
@@ -2675,13 +2623,6 @@ function AppContent() {
         })()
         : [];
 
-      // Prepare headers with auth token if available
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const accessToken = localStorage.getItem('access_token');
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
       // Determine tier: Extended if manually toggled OR if conversation exceeds 6 messages
       // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
       // So 6+ messages is a more reasonable threshold for context-heavy requests
@@ -2693,35 +2634,24 @@ function AppContent() {
         ? (typeof currentVisibleComparisonId === 'string' ? parseInt(currentVisibleComparisonId, 10) : currentVisibleComparisonId)
         : null;
 
-      const res = await fetch(`${API_URL}/compare-stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          input_data: input,
-          models: selectedModels,
-          conversation_history: conversationHistory,
-          browser_fingerprint: browserFingerprint,
-          tier: shouldUseExtendedTier ? 'extended' : 'standard',
-          conversation_id: conversationId || undefined  // Only include if not null
-        }),
-        signal: controller.signal,
-      });
-
       clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
+      // Use service for streaming request
+      const stream = await compareStream({
+        input_data: input,
+        models: selectedModels,
+        conversation_history: conversationHistory,
+        browser_fingerprint: browserFingerprint,
+        tier: shouldUseExtendedTier ? 'extended' : 'standard',
+        conversation_id: conversationId || undefined  // Only include if not null
+      });
 
-        // Special handling for rate limit errors (429)
-        if (res.status === 429) {
-          throw new Error(errorData.detail || 'Daily comparison limit reached. Please try again tomorrow.');
-        }
-
-        throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
+      if (!stream) {
+        throw new Error('Failed to start streaming comparison');
       }
 
       // Handle streaming response with Server-Sent Events
-      const reader = res.body?.getReader();
+      const reader = stream.getReader();
       const decoder = new TextDecoder();
 
       // Initialize results object for streaming updates
@@ -3295,63 +3225,34 @@ function AppContent() {
 
         // Sync with backend to get the actual count (backend now counts after success)
         try {
-          const response = await fetch(`${API_URL}/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`);
-          if (response.ok) {
-            const data = await response.json();
-            // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
-            const newCount = data.fingerprint_usage || data.daily_usage || 0;
-            setUsageCount(newCount);
+          const data = await getRateLimitStatus(browserFingerprint);
+          // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
+          const newCount = (data as any).fingerprint_usage || data.daily_usage || 0;
+          setUsageCount(newCount);
 
-            // Sync extended usage from backend if available
-            const newExtendedCount = data.fingerprint_extended_usage || data.daily_extended_usage;
-            if (newExtendedCount !== undefined) {
-              setExtendedUsageCount(newExtendedCount);
-            }
+          // Sync extended usage from backend if available
+          const newExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+          if (newExtendedCount !== undefined) {
+            setExtendedUsageCount(newExtendedCount);
+          }
 
-            // Update localStorage to match backend
-            const today = new Date().toDateString();
-            localStorage.setItem('compareai_usage', JSON.stringify({
-              count: newCount,
+          // Update localStorage to match backend
+          const today = new Date().toDateString();
+          localStorage.setItem('compareai_usage', JSON.stringify({
+            count: newCount,
+            date: today
+          }));
+
+          // Update extended usage in localStorage if synced from backend
+          if (newExtendedCount !== undefined) {
+            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              count: newExtendedCount,
               date: today
             }));
-
-            // Update extended usage in localStorage if synced from backend
-            if (newExtendedCount !== undefined) {
-              localStorage.setItem('compareai_extended_usage', JSON.stringify({
-                count: newExtendedCount,
-                date: today
-              }));
-            }
-          } else {
-            // Fallback to local increment if backend sync fails
-            const newUsageCount = usageCount + selectedModels.length;
-            setUsageCount(newUsageCount);
-
-            // Calculate if this was an extended interaction - reuse variables from above
-
-            // Update Extended usage if using Extended tier (1 per request, not per model)
-            if (shouldUseExtendedTier) {
-              const newExtendedUsageCount = extendedUsageCount + 1;
-              setExtendedUsageCount(newExtendedUsageCount);
-            }
-
-            const today = new Date().toDateString();
-            localStorage.setItem('compareai_usage', JSON.stringify({
-              count: newUsageCount,
-              date: today
-            }));
-
-            // Store Extended usage separately (1 per request, not per model)
-            if (shouldUseExtendedTier) {
-              localStorage.setItem('compareai_extended_usage', JSON.stringify({
-                count: extendedUsageCount + 1,
-                date: today
-              }));
-            }
           }
         } catch (error) {
+          // Fallback to local increment if backend sync fails
           console.error('Failed to sync usage count after comparison:', error);
-          // Fallback to local increment (increment by number of models used)
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
 

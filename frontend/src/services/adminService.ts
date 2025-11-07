@@ -9,8 +9,7 @@
  */
 
 import { apiClient } from './api/client';
-import type { User } from '../../types';
-import type { UserId } from '../../types';
+import type { User, UserId } from '../types';
 
 /**
  * Admin statistics response

@@ -7,7 +7,7 @@
  */
 
 import { apiClient } from './api/client';
-import type { ModelsByProvider } from '../../types';
+import type { ModelsByProvider } from '../types';
 
 /**
  * Available models response

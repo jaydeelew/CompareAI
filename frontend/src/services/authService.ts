@@ -11,7 +11,7 @@
  */
 
 import { apiClient } from './api/client';
-import type { User, LoginCredentials, RegisterData, AuthResponse } from '../../types';
+import type { User, LoginCredentials, RegisterData, AuthResponse } from '../types';
 
 /**
  * Email verification request
