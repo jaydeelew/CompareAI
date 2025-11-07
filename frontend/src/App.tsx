@@ -4066,33 +4066,10 @@ function AppContent() {
 
                         {/* Context Warning - Claude-style */}
                         {warningLevel && (
-                          <div style={{
-                            padding: '0.875rem 1rem',
-                            background: warningLevel === 'critical'
-                              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15))'
-                              : warningLevel === 'high'
-                                ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15))'
-                                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.12))',
-                            borderRadius: '12px',
-                            marginTop: '0.75rem',
-                            fontSize: '0.875rem',
-                            border: `1px solid ${warningLevel === 'critical'
-                              ? 'rgba(239, 68, 68, 0.3)'
-                              : warningLevel === 'high'
-                                ? 'rgba(245, 158, 11, 0.3)'
-                                : 'rgba(120, 170, 255, 0.35)'
-                              }`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem'
-                          }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{
-                                color: 'rgba(255, 255, 255, 0.95)',
-                                marginBottom: '0.25rem',
-                                fontWeight: '500'
-                              }}>
-                                <span style={{ marginRight: '0.5rem' }}>{warningIcon}</span>{warningMessage}
+                          <div className={`context-warning ${warningLevel}`}>
+                            <div className="context-warning-content">
+                              <div className="context-warning-message">
+                                <span className="context-warning-icon">{warningIcon}</span>{warningMessage}
                               </div>
                             </div>
                           </div>
@@ -4164,26 +4141,12 @@ function AppContent() {
                 >
                   <div className="models-header-buttons">
                     <button
+                      className="clear-all-button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedModels([]);
                       }}
                       disabled={selectedModels.length === 0 || isFollowUpMode}
-                      style={{
-                        padding: 0,
-                        fontSize: '0.75rem',
-                        border: 'none',
-                        background: 'transparent',
-                        color: (selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b',
-                        borderRadius: '6px',
-                        cursor: (selectedModels.length === 0 || isFollowUpMode) ? 'not-allowed' : 'pointer',
-                        opacity: (selectedModels.length === 0 || isFollowUpMode) ? 0.5 : 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: 'var(--models-header-control-height)',
-                        aspectRatio: '1 / 1'
-                      }}
                       title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
                       aria-label={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
                     >
@@ -4192,22 +4155,20 @@ function AppContent() {
                         viewBox="0 0 24 24" fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                         aria-hidden="true"
-                        style={{ height: '100%', width: '100%' }}
                         preserveAspectRatio="xMidYMid meet"
                       >
                         <rect
                           x="5" y="5" width="14" height="14"
-                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b'}
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                         <path
                           d="M9 9l6 6M15 9l-6 6"
-                          stroke={(selectedModels.length === 0 || isFollowUpMode) ? '#9ca3af' : '#f59e0b'}
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                       </svg>
                     </button>
                     <button
+                      className="collapse-all-button"
                       onClick={(e) => {
                         e.stopPropagation();
                         collapseAllDropdowns();
@@ -4215,33 +4176,16 @@ function AppContent() {
                       disabled={openDropdowns.size === 0}
                       title={"Collapse all model providers"}
                       aria-label={"Collapse all model providers"}
-                      style={{
-                        padding: 0,
-                        fontSize: '0.75rem',
-                        border: 'none',
-                        background: 'transparent',
-                        color: openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6',
-                        borderRadius: '6px',
-                        cursor: openDropdowns.size === 0 ? 'not-allowed' : 'pointer',
-                        opacity: openDropdowns.size === 0 ? 0.5 : 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: 'var(--models-header-control-height)',
-                        aspectRatio: '1 / 1'
-                      }}
                     >
                       {/* Double chevrons up icon (collapse all) */}
                       <svg
                         viewBox="0 0 24 24" fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                         aria-hidden="true"
-                        style={{ height: '100%', width: '100%' }}
                         preserveAspectRatio="xMidYMid meet"
                       >
                         <path
                           d="M7 13l5-5 5 5M7 18l5-5 5 5"
-                          stroke={openDropdowns.size === 0 ? '#9ca3af' : '#3b82f6'}
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                       </svg>
@@ -4249,17 +4193,8 @@ function AppContent() {
                   </div>
                   <div className="models-header-right">
                     <div
-                      className="models-count-indicator"
+                      className={`models-count-indicator ${selectedModels.length > 0 ? 'has-selected' : 'empty'}`}
                       title="Total selections"
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: selectedModels.length > 0 ? '#2563eb' : '#f3f4f6',
-                        color: selectedModels.length > 0 ? '#ffffff' : '#6b7280',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        border: `1px solid ${selectedModels.length > 0 ? '#ffffff33' : '#e5e7eb'}`
-                      }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {selectedModels.length} of {maxModelsLimit} selected
@@ -4319,32 +4254,16 @@ function AppContent() {
                                   <span className="provider-name">{provider}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span
-                                    className="provider-count"
-                                    style={{
-                                      padding: '0.25rem 0.5rem',
-                                      fontSize: '0.875rem',
-                                      fontWeight: '600',
-                                      borderRadius: '8px',
-                                      background: (() => {
-                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                        return selectedCount > 0 ? '#2563eb' : '#f3f4f6';
-                                      })(),
-                                      color: (() => {
-                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                        return selectedCount > 0 ? '#ffffff' : '#6b7280';
-                                      })(),
-                                      border: (() => {
-                                        const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                        return `1px solid ${selectedCount > 0 ? '#ffffff33' : '#e5e7eb'}`;
-                                      })()
-                                    }}
-                                  >
-                                    {(() => {
-                                      const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                      return `${selectedCount} of ${models.length} selected`;
-                                    })()}
-                                  </span>
+                                  {(() => {
+                                    const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                    return (
+                                      <span
+                                        className={`provider-count ${selectedCount > 0 ? 'has-selected' : 'empty'}`}
+                                      >
+                                        {selectedCount} of {models.length} selected
+                                      </span>
+                                    );
+                                  })()}
                                   {(() => {
                                     const providerModels = modelsByProvider[provider] || [];
                                     // Filter out unavailable models (where available === false)
@@ -4358,23 +4277,12 @@ function AppContent() {
 
                                     return (
                                       <div
+                                        className={`provider-select-all ${isDisabled ? 'disabled' : ''} ${allProviderModelsSelected ? 'all-selected' : ''}`}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           if (!isDisabled) {
                                             toggleAllForProvider(provider);
                                           }
-                                        }}
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          fontSize: '1.2rem',
-                                          border: 'none',
-                                          background: 'transparent',
-                                          color: isDisabled ? '#9ca3af' : (allProviderModelsSelected ? '#f59e0b' : '#9ca3af'),
-                                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                          opacity: isDisabled ? 0.5 : 1,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          transition: 'color 0.2s ease'
                                         }}
                                         title={isDisabled ?
                                           (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
@@ -4403,52 +4311,24 @@ function AppContent() {
                                       <label
                                         key={model.id}
                                         className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                                        style={{
-                                          opacity: isDisabled ? 0.5 : 1,
-                                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                          position: 'relative'
-                                        }}
                                       >
                                         <input
                                           type="checkbox"
                                           checked={isSelected}
                                           disabled={isDisabled}
                                           onChange={() => !isDisabled && handleModelToggle(model.id)}
-                                          className="model-checkbox"
-                                          style={{
-                                            borderColor: isFollowUpMode && !isSelected && wasOriginallySelected ? 'red' : undefined
-                                          }}
+                                          className={`model-checkbox ${isFollowUpMode && !isSelected && wasOriginallySelected ? 'follow-up-deselected' : ''}`}
                                         />
                                         <div className="model-info">
                                           <h4>
                                             {model.name}
                                             {isFollowUpMode && !isSelected && !wasOriginallySelected && (
-                                              <span
-                                                style={{
-                                                  fontSize: '0.7rem',
-                                                  marginLeft: '0.5rem',
-                                                  padding: '0.125rem 0.375rem',
-                                                  background: 'rgba(156, 163, 175, 0.2)',
-                                                  color: '#6b7280',
-                                                  borderRadius: '4px',
-                                                  fontWeight: '500'
-                                                }}
-                                              >
+                                              <span className="model-badge not-in-conversation">
                                                 Not in conversation
                                               </span>
                                             )}
                                             {isUnavailable && (
-                                              <span
-                                                style={{
-                                                  fontSize: '0.7rem',
-                                                  marginLeft: '0.5rem',
-                                                  padding: '0.125rem 0.375rem',
-                                                  background: 'rgba(245, 158, 11, 0.2)',
-                                                  color: '#f59e0b',
-                                                  borderRadius: '4px',
-                                                  fontWeight: '500'
-                                                }}
-                                              >
+                                              <span className="model-badge coming-soon">
                                                 Coming Soon
                                               </span>
                                             )}

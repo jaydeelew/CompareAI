@@ -92,20 +92,35 @@
 
 .provider-count {
   font-size: 0.875rem;
-  color: var(--text-muted);
-  background: var(--bg-primary);
+  font-weight: 600;
   padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   border: 1px solid var(--border-color);
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  color: var(--text-muted);
+  background: var(--bg-primary);
 }
 
-/* Style counter with soft orange background and white text when provider has selected models */
+/* Provider count with selected models - matches models-count-indicator */
+.provider-count.has-selected {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #ffffff33;
+}
+
+/* Provider count without selected models - matches models-count-indicator */
+.provider-count.empty {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+/* Legacy support - override to match models-count-indicator colors */
 .provider-dropdown.has-selected-models .provider-count {
-  background: #f59e0b;
-  color: white;
-  border-color: #f59e0b;
-  font-weight: 500;
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #ffffff33;
+  font-weight: 600;
 }
 
 .dropdown-arrow {
@@ -151,6 +166,20 @@
 .model-option.selected {
   background: rgba(37, 99, 235, 0.05);
   border-color: var(--primary-color);
+}
+
+.model-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-option:not(.disabled) {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.model-option {
+  position: relative;
 }
 
 .model-checkbox {
@@ -841,6 +870,7 @@
 }
 
 /* Animation for new messages */
+@keyframes fadeInUp {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -1005,6 +1035,7 @@
 }
 
 /* Clockwise rotation for outer ring */
+@keyframes rotateClockwise {
   0% {
     transform: rotate(0deg);
   }
@@ -1015,6 +1046,7 @@
 }
 
 /* Counter-clockwise rotation for inner ring */
+@keyframes rotateCounterClockwise {
   0% {
     transform: rotate(0deg);
   }
@@ -1024,3 +1056,167 @@
   }
 }
 
+/* Models Count Indicator - Hybrid approach with CSS classes */
+.models-count-indicator {
+  padding: 0.5rem 1rem;
+  border-radius: 8px !important;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  cursor: default;
+  /* Height and display are set by layout.css, but ensure they're applied */
+  height: var(--models-header-control-height);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.models-count-indicator.has-selected {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #ffffff33;
+  border-radius: 8px !important;
+}
+
+.models-count-indicator.empty {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px !important;
+}
+
+/* Clear All Button (X icon) */
+.clear-all-button {
+  padding: 0;
+  font-size: 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--models-header-control-height);
+  aspect-ratio: 1 / 1;
+  transition: all 0.2s ease;
+}
+
+.clear-all-button:not(:disabled) {
+  color: #f59e0b;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.clear-all-button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.clear-all-button svg {
+  height: 100%;
+  width: 100%;
+}
+
+.clear-all-button:not(:disabled) svg rect,
+.clear-all-button:not(:disabled) svg path {
+  stroke: #f59e0b;
+}
+
+.clear-all-button:disabled svg rect,
+.clear-all-button:disabled svg path {
+  stroke: #9ca3af;
+}
+
+/* Collapse All Button */
+.collapse-all-button {
+  padding: 0;
+  font-size: 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--models-header-control-height);
+  aspect-ratio: 1 / 1;
+  transition: all 0.2s ease;
+}
+
+.collapse-all-button:not(:disabled) {
+  color: #3b82f6;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.collapse-all-button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.collapse-all-button svg {
+  height: 100%;
+  width: 100%;
+}
+
+.collapse-all-button:not(:disabled) svg path {
+  stroke: #3b82f6;
+}
+
+.collapse-all-button:disabled svg path {
+  stroke: #9ca3af;
+}
+
+/* Provider Select All Asterisk */
+.provider-select-all {
+  padding: 0.25rem 0.5rem;
+  font-size: 1.2rem;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.provider-select-all:not(.disabled) {
+  color: #9ca3af;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.provider-select-all.disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.provider-select-all.all-selected {
+  color: #f59e0b;
+  cursor: pointer;
+  opacity: 1;
+}
+
+/* Model Checkbox - Follow-up mode border */
+.model-checkbox.follow-up-deselected {
+  border-color: red;
+}
+
+/* Model Badges */
+.model-badge {
+  font-size: 0.7rem;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.model-badge.not-in-conversation {
+  background: rgba(156, 163, 175, 0.2);
+  color: #6b7280;
+}
+
+.model-badge.coming-soon {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}

@@ -161,3 +161,44 @@
   text-align: center;
 }
 
+/* Context Warning Banner */
+.context-warning {
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.context-warning.critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.context-warning.high {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.context-warning.medium,
+.context-warning.info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.12));
+  border: 1px solid rgba(120, 170, 255, 0.35);
+}
+
+.context-warning-content {
+  flex: 1;
+}
+
+.context-warning-message {
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.context-warning-icon {
+  margin-right: 0.5rem;
+}
+
