@@ -1247,8 +1247,10 @@ function AppContent() {
           // Add assistant message to current round
           if (currentRound) {
             // Check for duplicate assistant messages (same model, content, and timestamp within 1 second)
+            // Compare model IDs as strings to ensure proper matching
             const isDuplicate = currentRound.assistants.some(asm =>
-              asm.model_id === msg.model_id &&
+              asm.model_id && msg.model_id &&
+              String(asm.model_id) === String(msg.model_id) &&
               asm.content === msg.content &&
               Math.abs(new Date(asm.created_at).getTime() - new Date(msg.created_at).getTime()) < 1000
             );
@@ -1281,7 +1283,12 @@ function AppContent() {
           });
 
           // Add assistant message for this specific model if it exists in this round
-          const modelAssistant = round.assistants.find(asm => asm.model_id === modelId);
+          // Compare model IDs as strings to ensure proper matching
+          const modelAssistant = round.assistants.find(asm => {
+            if (!asm.model_id) return false;
+            // Convert both to strings for comparison to handle type differences
+            return String(asm.model_id) === String(modelId);
+          });
           if (modelAssistant) {
             messagesByModel[modelId].push({
               id: modelAssistant.id ? (typeof modelAssistant.id === 'string' ? createMessageId(modelAssistant.id) : createMessageId(String(modelAssistant.id))) : createMessageId(`${Date.now()}-${Math.random()}`),
@@ -1363,11 +1370,13 @@ function AppContent() {
 
   // Refresh history when dropdown is opened for authenticated users
   useEffect(() => {
-    if (showHistoryDropdown && isAuthenticated) {
-      loadHistoryFromAPI();
-    } else if (showHistoryDropdown && !isAuthenticated) {
-      const history = loadHistoryFromLocalStorage();
-      setConversationHistory(history);
+    if (showHistoryDropdown) {
+      if (isAuthenticated) {
+        loadHistoryFromAPI();
+      } else {
+        const history = loadHistoryFromLocalStorage();
+        setConversationHistory(history);
+      }
     }
   }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
