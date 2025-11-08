@@ -105,8 +105,8 @@ def check_anonymous_rate_limit(identifier: str) -> Tuple[bool, int]:
 
     current_count = user_data["count"]
 
-    # Anonymous (unregistered) users get 10 model responses per day
-    is_allowed = current_count < 10
+    # Anonymous (unregistered) users get model responses per day based on configuration
+    is_allowed = current_count < ANONYMOUS_DAILY_LIMIT
 
     return is_allowed, current_count
 

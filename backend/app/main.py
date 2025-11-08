@@ -48,6 +48,8 @@ from .routers.api import model_stats
 from .config import (
     TIER_LIMITS,
     EXTENDED_TIER_LIMITS,
+    MODEL_LIMITS,
+    ANONYMOUS_DAILY_LIMIT,
     validate_tier_limits,
     get_tier_max_tokens,
     validate_config,
@@ -140,10 +142,12 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(api.router, prefix="/api")
 
 # Maximum number of models allowed per request
-MAX_MODELS_PER_REQUEST = 9
+# Use the maximum model limit from configuration (pro_plus tier)
+MAX_MODELS_PER_REQUEST: int = max(MODEL_LIMITS.values()) if MODEL_LIMITS else 9
 
 # Rate limiting configuration
-MAX_DAILY_COMPARISONS = 10
+# Use anonymous daily limit from configuration
+MAX_DAILY_COMPARISONS: int = ANONYMOUS_DAILY_LIMIT
 
 # Note: model_stats is now imported from .routers.api to share the same storage
 
@@ -172,9 +176,12 @@ def check_rate_limit(identifier: str) -> tuple[bool, int]:
     """
     Check if the identifier (IP or fingerprint) has exceeded the daily limit.
     Returns (is_allowed, current_count)
+    
+    NOTE: This function appears to be legacy code. Consider using
+    check_anonymous_rate_limit from rate_limiting module instead.
     """
     today = datetime.now().date().isoformat()
-    user_data = rate_limit_storage[identifier]
+    user_data = anonymous_rate_limit_storage[identifier]
 
     # Reset count if it's a new day
     if user_data["date"] != today:
@@ -188,10 +195,15 @@ def check_rate_limit(identifier: str) -> tuple[bool, int]:
     return is_allowed, current_count
 
 
-def increment_usage(identifier: str):
-    """Increment the usage count for the identifier"""
+def increment_usage(identifier: str) -> None:
+    """
+    Increment the usage count for the identifier.
+    
+    NOTE: This function appears to be legacy code. Consider using
+    increment_anonymous_usage from rate_limiting module instead.
+    """
     today = datetime.now().date().isoformat()
-    user_data = rate_limit_storage[identifier]
+    user_data = anonymous_rate_limit_storage[identifier]
 
     if user_data["date"] != today:
         user_data["count"] = 1

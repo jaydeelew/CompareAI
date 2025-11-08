@@ -260,37 +260,40 @@ async def send_subscription_confirmation_email(email: EmailStr, tier: str, perio
     tier_display = tier.replace("_", " ").title()
     period_display = "Monthly" if period == "monthly" else "Yearly"
 
-    # Get tier benefits
+    # Import configuration to get tier limits
+    from .config import get_daily_limit, get_model_limit, get_conversation_limit
+    
+    # Get tier benefits from configuration
     benefits = {
         "starter": [
-            "50 model responses per day",
-            "6 models max per comparison",
+            f"{get_daily_limit('starter')} model responses per day",
+            f"{get_model_limit('starter')} models max per comparison",
             "Email support (48-hour response)",
             "Usage analytics",
-            "10 conversations saved",
+            f"{get_conversation_limit('starter')} conversations saved",
         ],
         "starter_plus": [
-            "100 model responses per day",
-            "6 models max per comparison",
+            f"{get_daily_limit('starter_plus')} model responses per day",
+            f"{get_model_limit('starter_plus')} models max per comparison",
             "Email support (48-hour response)",
             "Usage analytics",
-            "20 conversations saved",
+            f"{get_conversation_limit('starter_plus')} conversations saved",
         ],
         "pro": [
-            "200 model responses per day",
-            "9 models max per comparison",
+            f"{get_daily_limit('pro')} model responses per day",
+            f"{get_model_limit('pro')} models max per comparison",
             "Priority email support (24-hour response)",
             "Usage analytics",
             "Export conversations",
-            "40 conversations saved",
+            f"{get_conversation_limit('pro')} conversations saved",
         ],
         "pro_plus": [
-            "400 model responses per day",
-            "9 models max per comparison",
+            f"{get_daily_limit('pro_plus')} model responses per day",
+            f"{get_model_limit('pro_plus')} models max per comparison",
             "Priority email support (24-hour response)",
             "Usage analytics",
             "Export conversations",
-            "80 conversations saved",
+            f"{get_conversation_limit('pro_plus')} conversations saved",
         ],
     }
 

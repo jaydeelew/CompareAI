@@ -45,7 +45,16 @@ router = APIRouter(tags=["API"])
 model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
 
 # Import configuration constants
-from ..config import TIER_LIMITS, get_conversation_limit
+from ..config import (
+    TIER_LIMITS,
+    ANONYMOUS_DAILY_LIMIT,
+    ANONYMOUS_MODEL_LIMIT,
+    MODEL_LIMITS,
+    SUBSCRIPTION_CONFIG,
+    get_conversation_limit,
+    get_daily_limit,
+    get_model_limit,
+)
 
 
 # Pydantic models for request/response
@@ -293,18 +302,22 @@ async def compare(
         tier_model_limit = get_model_limit(current_user.subscription_tier)
         tier_name = current_user.subscription_tier
     else:
-        tier_model_limit = 3  # Anonymous users get 3 models max
+        tier_model_limit = ANONYMOUS_MODEL_LIMIT  # Anonymous users model limit from configuration
         tier_name = "anonymous"
 
     # Enforce tier-specific model limit
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
         if tier_name == "anonymous":
-            upgrade_message = " Sign up for a free account to compare up to 3 models."
+            free_model_limit = get_model_limit("free")
+            upgrade_message = f" Sign up for a free account to compare up to {free_model_limit} models."
         elif tier_name == "free":
-            upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
+            starter_model_limit = get_model_limit("starter")
+            pro_model_limit = get_model_limit("pro")
+            upgrade_message = f" Upgrade to Starter for {starter_model_limit} models or Pro for {pro_model_limit} models."
         elif tier_name in ["starter", "starter_plus"]:
-            upgrade_message = " Upgrade to Pro for 9 models."
+            pro_model_limit = get_model_limit("pro")
+            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models."
 
         raise HTTPException(
             status_code=400,
@@ -343,10 +356,12 @@ async def compare(
             else:
                 # Free tier - no overages allowed
                 models_available = max(0, daily_limit - usage_count)
+                starter_limit = get_daily_limit("starter")
+                pro_limit = get_daily_limit("pro")
                 raise HTTPException(
                     status_code=429,
                     detail=f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. "
-                    f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity and overage options.",
+                    f"Upgrade to Starter ({starter_limit}/day) or Pro ({pro_limit}/day) for more capacity and overage options.",
                 )
 
         # Don't increment here - wait until we know if requests succeeded
@@ -366,20 +381,22 @@ async def compare(
 
         # Check if user has enough model responses remaining
         if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
-            models_available = max(0, 10 - max(ip_count, fingerprint_count))
+            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
+            free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit of 10 model responses exceeded. You have {models_available} remaining and need {num_models}. "
-                f"Sign up for a free account (20 model responses/day) to continue.",
+                detail=f"Daily limit of {ANONYMOUS_DAILY_LIMIT} model responses exceeded. You have {models_available} remaining and need {num_models}. "
+                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
         # Check if this request would exceed the limit
-        if ip_count + num_models > 10 or (req.browser_fingerprint and fingerprint_count + num_models > 10):
-            models_available = max(0, 10 - max(ip_count, fingerprint_count))
+        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT):
+            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
+            free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
                 detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
-                f"Sign up for a free account (20 model responses/day) to continue.",
+                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
         # Don't increment here - wait until we know if requests succeeded
@@ -585,18 +602,22 @@ async def compare_stream(
         tier_model_limit = get_model_limit(current_user.subscription_tier)
         tier_name = current_user.subscription_tier
     else:
-        tier_model_limit = 3  # Anonymous users get 3 models max
+        tier_model_limit = ANONYMOUS_MODEL_LIMIT  # Anonymous users model limit from configuration
         tier_name = "anonymous"
 
     # Enforce tier-specific model limit
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
         if tier_name == "anonymous":
-            upgrade_message = " Sign up for a free account to compare up to 3 models."
+            free_model_limit = get_model_limit("free")
+            upgrade_message = f" Sign up for a free account to compare up to {free_model_limit} models."
         elif tier_name == "free":
-            upgrade_message = " Upgrade to Starter for 6 models or Pro for 9 models."
+            starter_model_limit = get_model_limit("starter")
+            pro_model_limit = get_model_limit("pro")
+            upgrade_message = f" Upgrade to Starter for {starter_model_limit} models or Pro for {pro_model_limit} models."
         elif tier_name in ["starter", "starter_plus"]:
-            upgrade_message = " Upgrade to Pro for 9 models."
+            pro_model_limit = get_model_limit("pro")
+            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models."
 
         raise HTTPException(
             status_code=400,
@@ -641,17 +662,20 @@ async def compare_stream(
             fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
 
         if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
-            models_available = max(0, 10 - max(ip_count, fingerprint_count))
+            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
+            free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit of 10 model responses exceeded. Sign up for a free account (20 model responses/day) to continue.",
+                detail=f"Daily limit of {ANONYMOUS_DAILY_LIMIT} model responses exceeded. Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
-        if ip_count + num_models > 10 or (req.browser_fingerprint and fingerprint_count + num_models > 10):
-            models_available = max(0, 10 - max(ip_count, fingerprint_count))
+        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT):
+            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
+            free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}.",
+                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
+                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
         # Don't increment here - wait until we know if requests succeeded

@@ -10,7 +10,7 @@ from .mock_responses import stream_mock_response, get_mock_response
 from .types import ConnectionQualityDict
 
 # Import configuration
-from .config import settings
+from .config import settings, TIER_LIMITS, get_tier_max_tokens
 
 OPENROUTER_API_KEY = settings.openrouter_api_key
 
@@ -594,9 +594,8 @@ def call_openrouter_streaming(
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        # Get tier-based max_tokens limit
-        tier_limits = {"brief": 2000, "standard": 4000, "extended": 8192}
-        tier_max_tokens = tier_limits.get(tier, 4000)
+        # Get tier-based max_tokens limit from configuration
+        tier_max_tokens = get_tier_max_tokens(tier)
 
         # Don't exceed model's maximum capability
         model_max_tokens = get_model_max_tokens(model_id)
@@ -709,9 +708,8 @@ def call_openrouter(
         # Add the current prompt as user message
         messages.append({"role": "user", "content": prompt})
 
-        # Get tier-based max_tokens limit
-        tier_limits = {"brief": 2000, "standard": 4000, "extended": 8192}
-        tier_max_tokens = tier_limits.get(tier, 4000)
+        # Get tier-based max_tokens limit from configuration
+        tier_max_tokens = get_tier_max_tokens(tier)
 
         # Don't exceed model's maximum capability
         model_max_tokens = get_model_max_tokens(model_id)
