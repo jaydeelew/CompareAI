@@ -2216,7 +2216,10 @@ function AppContent() {
   const handleFollowUp = () => {
     followUpJustActivatedRef.current = true;
     setIsFollowUpMode(true);
-    setInput('');
+    // Only clear input if it's empty - preserve text if user has typed something
+    if (!input.trim()) {
+      setInput('');
+    }
     setIsModelsHidden(true); // Collapse the models section when entering follow-up mode
 
     // Scroll to top of page smoothly
