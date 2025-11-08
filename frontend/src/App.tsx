@@ -2269,7 +2269,10 @@ function AppContent() {
 
   const handleNewComparison = () => {
     setIsFollowUpMode(false);
-    setInput('');
+    // Only clear input if it's empty - preserve text if user has typed something
+    if (!input.trim()) {
+      setInput('');
+    }
     setConversations([]);
     setResponse(null);
     setClosedCards(new Set());
