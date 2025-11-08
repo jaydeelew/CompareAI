@@ -1164,11 +1164,25 @@ function AppContent() {
     if (!isAuthenticated) return null;
 
     try {
-      const data = await getConversation(id);
+      const conversationId = createConversationId(id);
+      const data = await getConversation(conversationId);
       return {
         input_data: data.input_data,
         models_used: data.models_used,
-        messages: data.messages,
+        messages: data.messages.map((msg) => {
+          const storedMessage: StoredMessage = {
+            role: msg.role,
+            content: msg.content,
+            created_at: msg.created_at,
+          };
+          if (msg.model_id !== null && msg.model_id !== undefined) {
+            storedMessage.model_id = createModelId(msg.model_id);
+          }
+          if (msg.id !== undefined && msg.id !== null) {
+            storedMessage.id = createMessageId(String(msg.id));
+          }
+          return storedMessage;
+        }),
       };
     } catch (error) {
       if (error instanceof ApiError) {
