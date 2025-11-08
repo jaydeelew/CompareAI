@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import asyncio
 import os
 import json
+import logging
 from collections import defaultdict
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -49,8 +50,21 @@ from .config import (
     EXTENDED_TIER_LIMITS,
     validate_tier_limits,
     get_tier_max_tokens,
+    validate_config,
+    log_configuration,
+    settings,
 )
 
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO if settings.environment == "development" else logging.WARNING,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CompareAI API", version="1.0.0")
 
@@ -59,12 +73,34 @@ app = FastAPI(title="CompareAI API", version="1.0.0")
 @app.on_event("startup")
 async def startup_event():
     """
-    Initialize database tables on application startup.
-    PostgreSQL handles concurrent table creation safely.
+    Initialize application on startup.
+    
+    This function:
+    1. Validates configuration
+    2. Logs configuration (with masked secrets)
+    3. Creates database tables
     """
     try:
+        # Validate configuration
+        logger.info("Validating configuration...")
+        validate_config()
+        
+        # Log configuration (with masked secrets)
+        log_configuration()
+        
+        # Initialize database tables
+        logger.info("Initializing database tables...")
         Base.metadata.create_all(bind=engine, checkfirst=True)
-    except Exception:
+        logger.info("Database initialization complete")
+        
+        logger.info("Application startup complete")
+    except ValueError as e:
+        # Configuration validation failed
+        logger.error(f"Startup failed: {e}")
+        raise
+    except Exception as e:
+        # Other startup errors
+        logger.error(f"Startup error: {e}", exc_info=True)
         # Let the application continue, as tables may already exist
         pass
 

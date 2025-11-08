@@ -34,6 +34,8 @@ from .constants import (
 from .validation import (
     validate_config,
     validate_tier_limits,
+    log_configuration,
+    mask_secret,
 )
 
 # Import helper functions (re-exported for backwards compatibility)
@@ -62,6 +64,8 @@ __all__ = [
     # Validation
     "validate_config",
     "validate_tier_limits",
+    "log_configuration",
+    "mask_secret",
     # Helper functions
     "get_model_limit",
     "get_daily_limit",
