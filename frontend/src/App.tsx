@@ -4062,6 +4062,29 @@ function AppContent() {
                 >
                   <div className="models-header-buttons">
                     <button
+                      className="collapse-all-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        collapseAllDropdowns();
+                      }}
+                      disabled={openDropdowns.size === 0}
+                      title={"Collapse all model providers"}
+                      aria-label={"Collapse all model providers"}
+                    >
+                      {/* Double chevrons up icon (collapse all) */}
+                      <svg
+                        viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <path
+                          d="M7 13l5-5 5 5M7 18l5-5 5 5"
+                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
                       className="clear-all-button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -4084,29 +4107,6 @@ function AppContent() {
                         />
                         <path
                           d="M9 9l6 6M15 9l-6 6"
-                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      className="collapse-all-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        collapseAllDropdowns();
-                      }}
-                      disabled={openDropdowns.size === 0}
-                      title={"Collapse all model providers"}
-                      aria-label={"Collapse all model providers"}
-                    >
-                      {/* Double chevrons up icon (collapse all) */}
-                      <svg
-                        viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                        preserveAspectRatio="xMidYMid meet"
-                      >
-                        <path
-                          d="M7 13l5-5 5 5M7 18l5-5 5 5"
                           strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
                         />
                       </svg>
