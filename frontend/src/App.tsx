@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
 // Import all CSS modules directly (better for Vite than CSS @import)
 import './styles/variables.css';
@@ -21,7 +21,6 @@ import { Footer } from './components';
 import { TermsOfService } from './components/TermsOfService';
 import {
   ANONYMOUS_DAILY_LIMIT,
-  getModelLimit,
   getConversationLimit,
   getExtendedLimit,
   getDailyLimit,
@@ -62,9 +61,124 @@ import {
 import { getAvailableModels } from './services/modelsService';
 import { ApiError } from './services/api/errors';
 import { apiClient } from './services/api/client';
+import {
+  useConversationHistory,
+  useBrowserFingerprint,
+  useRateLimitStatus,
+  useModelSelection,
+  useModelComparison,
+} from './hooks';
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
+  
+  // Custom hooks for state management
+  const browserFingerprintHook = useBrowserFingerprint();
+  const { browserFingerprint, setBrowserFingerprint } = browserFingerprintHook;
+  
+  const rateLimitHook = useRateLimitStatus({ isAuthenticated, browserFingerprint });
+  const { usageCount, setUsageCount, extendedUsageCount, setExtendedUsageCount } = rateLimitHook;
+  
+  const modelSelectionHook = useModelSelection({ isAuthenticated, user });
+  const {
+    selectedModels,
+    setSelectedModels,
+    originalSelectedModels,
+    setOriginalSelectedModels,
+    maxModelsLimit,
+  } = modelSelectionHook;
+  
+  const comparisonHook = useModelComparison();
+  const {
+    input,
+    setInput,
+    isExtendedMode,
+    setIsExtendedMode,
+    isLoading,
+    setIsLoading,
+    error,
+    setError,
+    response,
+    setResponse,
+    processingTime,
+    setProcessingTime,
+    conversations,
+    setConversations,
+    isFollowUpMode,
+    setIsFollowUpMode,
+    closedCards,
+    setClosedCards,
+    activeResultTabs,
+    setActiveResultTabs,
+    currentAbortController,
+    setCurrentAbortController,
+    userCancelledRef,
+    followUpJustActivatedRef,
+    hasScrolledToResultsRef,
+    lastAlignedRoundRef,
+    autoScrollPausedRef,
+    scrollListenersRef,
+    userInteractingRef,
+    lastScrollTopRef,
+    isScrollLocked,
+    setIsScrollLocked,
+    isScrollLockedRef,
+    syncingFromElementRef,
+    lastSyncTimeRef,
+  } = comparisonHook;
+  
+  // State not covered by hooks (declare before callbacks that use them)
+  const selectedModelsGridRef = useRef<HTMLDivElement>(null);
+  const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [, setUserMessageTimestamp] = useState<string>('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
+  const modelsSectionRef = useRef<HTMLDivElement>(null);
+  const compareButtonRef = useRef<HTMLButtonElement>(null);
+  const [isAnimatingButton, setIsAnimatingButton] = useState(false);
+  const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
+  const animationTimeoutRef = useRef<number | null>(null);
+  const [isModelsHidden, setIsModelsHidden] = useState(false);
+  
+  // Callback for when the active conversation is deleted
+  const handleDeleteActiveConversation = useCallback(() => {
+    setIsFollowUpMode(false);
+    setInput('');
+    setConversations([]);
+    setResponse(null);
+    setClosedCards(new Set());
+    setError(null);
+    setSelectedModels([]);
+    setOriginalSelectedModels([]);
+    setIsModelsHidden(false);
+    setOpenDropdowns(new Set());
+  }, [setIsFollowUpMode, setInput, setConversations, setResponse, setClosedCards, setError, setSelectedModels, setOriginalSelectedModels]);
+
+  const conversationHistoryHook = useConversationHistory({ 
+    isAuthenticated, 
+    user,
+    onDeleteActiveConversation: handleDeleteActiveConversation,
+  });
+  const {
+    conversationHistory,
+    setConversationHistory,
+    isLoadingHistory,
+    setIsLoadingHistory,
+    historyLimit,
+    currentVisibleComparisonId,
+    setCurrentVisibleComparisonId,
+    showHistoryDropdown,
+    setShowHistoryDropdown,
+    // Note: The following functions are overridden below with App.tsx versions that have more complex logic
+    // loadHistoryFromAPI: loadHistoryFromAPIHook,
+    // loadHistoryFromLocalStorage: loadHistoryFromLocalStorageHook,
+    // saveConversationToLocalStorage: saveConversationToLocalStorageHook,
+    // deleteConversation: deleteConversationHook,
+    // loadConversationFromAPI: loadConversationFromAPIHook,
+    // loadConversationFromLocalStorage: loadConversationFromLocalStorageFromHook,
+  } = conversationHistoryHook;
   // Track wide layout to coordinate header control alignment with toggle
   const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -96,21 +210,8 @@ function AppContent() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
 
-  // Get max models based on user tier
-  const getMaxModelsForUser = () => {
-    if (!isAuthenticated || !user) {
-      return getModelLimit('anonymous');
-    }
-    return getModelLimit(user.subscription_tier);
-  };
-
-  const maxModelsLimit = getMaxModelsForUser();
-
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
-
-  // Ref to track if we've scrolled to results section in current comparison
-  const hasScrolledToResultsRef = useRef(false);
 
   // State to trigger verification from another tab
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
@@ -585,76 +686,6 @@ function AppContent() {
       console.error('Copy failed:', err);
     }
   };
-  const [response, setResponse] = useState<CompareResponse | null>(null);
-  const [input, setInput] = useState('');
-  const [isExtendedMode, setIsExtendedMode] = useState(false);
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const selectedModelsGridRef = useRef<HTMLDivElement>(null);
-  const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
-  const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
-  const [processingTime, setProcessingTime] = useState<number | null>(null);
-  const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
-  const [closedCards, setClosedCards] = useState<Set<string>>(new Set());
-  const [conversations, setConversations] = useState<ModelConversation[]>([]);
-  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
-
-  // Conversation history state
-  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
-  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  // Track the ID of the currently visible comparison to highlight it in history dropdown
-  const [currentVisibleComparisonId, setCurrentVisibleComparisonId] = useState<string | null>(null);
-
-  // Get history limit based on tier - use useMemo to ensure it updates when user/auth changes
-  const historyLimit = useMemo(() => {
-    if (!isAuthenticated || !user) return 2; // Anonymous
-    const tier = user.subscription_tier || 'free';
-    const limits: { [key: string]: number } = {
-      anonymous: 2,
-      free: 3,
-      starter: 10,
-      starter_plus: 20,
-      pro: 50,
-      pro_plus: 100,
-    };
-    return limits[tier] || 2;
-  }, [isAuthenticated, user]);
-  const [, setUserMessageTimestamp] = useState<string>('');
-  const [originalSelectedModels, setOriginalSelectedModels] = useState<string[]>([]);
-  const userCancelledRef = useRef(false);
-  const followUpJustActivatedRef = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const lastAlignedRoundRef = useRef<number>(0); // Track which round was last aligned
-  const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
-  const modelsSectionRef = useRef<HTMLDivElement>(null);
-  const compareButtonRef = useRef<HTMLButtonElement>(null);
-  const [isAnimatingButton, setIsAnimatingButton] = useState(false);
-  const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
-  const animationTimeoutRef = useRef<number | null>(null);
-
-  // Auto-scroll control state - tracks which models have auto-scroll paused by user
-  const autoScrollPausedRef = useRef<Set<string>>(new Set()); // Ref for immediate access without state delay
-  const scrollListenersRef = useRef<Map<string, { scroll: () => void; wheel: (e: WheelEvent) => void; touchstart: () => void; mousedown: () => void }>>(new Map());
-  const userInteractingRef = useRef<Set<string>>(new Set()); // Track which models user is actively interacting with
-  const lastScrollTopRef = useRef<Map<string, number>>(new Map()); // Track last scroll position to detect user scrolling
-
-  // Freemium usage tracking state
-  const [usageCount, setUsageCount] = useState(0);
-  const [extendedUsageCount, setExtendedUsageCount] = useState(0);
-  const [browserFingerprint, setBrowserFingerprint] = useState('');
-  const [isModelsHidden, setIsModelsHidden] = useState(false);
-
-  // Tab switching state - tracks active tab for each conversation
-  const [activeResultTabs, setActiveResultTabs] = useState<ActiveResultTabs>({});
-
-  // Scroll lock state - when enabled, all model result cards scroll together
-  const [isScrollLocked, setIsScrollLocked] = useState(false);
-  const isScrollLockedRef = useRef(false); // Ref to allow listeners to access current state without closure issues
-  const syncingFromElementRef = useRef<HTMLElement | null>(null); // Element currently initiating a sync (prevents infinite scroll loops)
-  const lastSyncTimeRef = useRef<number>(0); // Timestamp of last sync to differentiate user scrolls from programmatic scrolls
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -851,6 +882,7 @@ function AppContent() {
   const allModels = Object.values(modelsByProvider).flat();
 
   // Load conversation history from localStorage (anonymous users)
+  // Note: This is a local version with App.tsx-specific logic
   const loadHistoryFromLocalStorage = useCallback((): ConversationSummary[] => {
     try {
       const stored = localStorage.getItem('compareai_conversation_history');
@@ -870,7 +902,7 @@ function AppContent() {
 
   // Save conversation to localStorage (anonymous users)
   // Returns the conversationId of the saved conversation
-  const saveConversationToLocalStorage = (inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false): string => {
+  const saveConversationToLocalStorage = useCallback((inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false): string => {
     try {
       const history = loadHistoryFromLocalStorage();
 
@@ -1041,7 +1073,7 @@ function AppContent() {
       console.error('Failed to save conversation to localStorage:', e);
       return '';
     }
-  };
+  }, [loadHistoryFromLocalStorage, setConversationHistory]);
 
   // Load conversation history from API (authenticated users)
   const loadHistoryFromAPI = useCallback(async () => {
