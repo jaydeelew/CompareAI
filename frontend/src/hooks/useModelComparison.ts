@@ -10,7 +10,7 @@
  */
 
 import { useState, useRef, useCallback } from 'react';
-import type { CompareResponse, ModelConversation, ActiveResultTabs } from '../types';
+import type { CompareResponse, ModelConversation, ActiveResultTabs, ConversationMessage } from '../types';
 
 export interface UseModelComparisonReturn {
   // Comparison state
@@ -72,6 +72,8 @@ export interface UseModelComparisonReturn {
   // Helper functions
   resetComparisonState: () => void;
   cancelComparison: () => void;
+  getFirstUserMessage: () => ConversationMessage | undefined;
+  getConversationsWithMessages: (selectedModels: string[]) => ModelConversation[];
 }
 
 export function useModelComparison(): UseModelComparisonReturn {
@@ -143,6 +145,25 @@ export function useModelComparison(): UseModelComparisonReturn {
     setIsLoading(false);
   }, [currentAbortController]);
   
+  // Get first user message from conversations (useful for saving)
+  const getFirstUserMessage = useCallback((): ConversationMessage | undefined => {
+    if (conversations.length === 0) return undefined;
+    
+    const allUserMessages = conversations
+      .flatMap(conv => conv.messages)
+      .filter(msg => msg.type === 'user')
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    return allUserMessages[0];
+  }, [conversations]);
+  
+  // Get conversations with messages for selected models
+  const getConversationsWithMessages = useCallback((selectedModels: string[]): ModelConversation[] => {
+    return conversations.filter(conv =>
+      selectedModels.includes(conv.modelId) && conv.messages.length > 0
+    );
+  }, [conversations]);
+  
   return {
     // Comparison state
     input,
@@ -198,6 +219,8 @@ export function useModelComparison(): UseModelComparisonReturn {
     // Helper functions
     resetComparisonState,
     cancelComparison,
+    getFirstUserMessage,
+    getConversationsWithMessages,
   };
 }
 

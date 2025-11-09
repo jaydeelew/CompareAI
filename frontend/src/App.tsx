@@ -125,6 +125,8 @@ function AppContent() {
     isScrollLockedRef,
     syncingFromElementRef,
     lastSyncTimeRef,
+    getFirstUserMessage,
+    // getConversationsWithMessages, // Available from hook if needed
   } = comparisonHook;
   
   // State not covered by hooks (declare before callbacks that use them)
@@ -171,11 +173,12 @@ function AppContent() {
     setCurrentVisibleComparisonId,
     showHistoryDropdown,
     setShowHistoryDropdown,
+    syncHistoryAfterComparison,
     // Note: The following functions are overridden below with App.tsx versions that have more complex logic
-    // loadHistoryFromAPI: loadHistoryFromAPIHook,
+    // loadHistoryFromAPI - defined below with App-specific state management
+    // saveConversationToLocalStorage - defined below with complex localStorage cleanup
+    // deleteConversation - defined below with UI state reset logic
     // loadHistoryFromLocalStorage: loadHistoryFromLocalStorageHook,
-    // saveConversationToLocalStorage: saveConversationToLocalStorageHook,
-    // deleteConversation: deleteConversationHook,
     // loadConversationFromAPI: loadConversationFromAPIHook,
     // loadConversationFromLocalStorage: loadConversationFromLocalStorageFromHook,
   } = conversationHistoryHook;
@@ -3124,51 +3127,12 @@ function AppContent() {
             // For registered users, reload history from API after stream completes
             // Backend already saved the conversation, we just need to refresh the list
             setTimeout(async () => {
-              // Clear cache for conversations endpoint to force fresh data
-              apiClient.deleteCache('GET:/conversations');
-              await loadHistoryFromAPI();
-              // After history is loaded, find the newly saved comparison and set it as active
-              // Use a small delay to ensure conversationHistory state is updated
-              setTimeout(() => {
-                // Access conversationHistory from state using functional update
-                setConversationHistory(currentHistory => {
-                  setConversations(currentConversations => {
-                    const conversationsWithMessages = currentConversations.filter(conv =>
-                      selectedModels.includes(conv.modelId) &&
-                      conv.messages.length > 0
-                    );
-
-                    if (conversationsWithMessages.length > 0) {
-                      const allUserMessages = conversationsWithMessages
-                        .flatMap(conv => conv.messages)
-                        .filter(msg => msg.type === 'user')
-                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-                      const firstUserMessage = allUserMessages[0];
-                      if (firstUserMessage) {
-                        const inputData = firstUserMessage.content;
-                        // Find matching conversation in history (should be the most recent one)
-                        const matchingConversation = currentHistory.find((summary: ConversationSummary) => {
-                          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
-                          const inputMatches = summary.input_data === inputData;
-                          return modelsMatch && inputMatches;
-                        });
-
-                        if (matchingConversation) {
-                          // Clear cache for this specific conversation to ensure fresh data on reload
-                          apiClient.deleteCache(`GET:/conversations/${matchingConversation.id}`);
-                          // Set this as the active comparison so it shows as highlighted in dropdown
-                          setCurrentVisibleComparisonId(String(matchingConversation.id));
-                        }
-                      }
-                    }
-
-                    return currentConversations;
-                  });
-                  return currentHistory; // Return unchanged
-                });
-              }, 100);
-            }, 1500); // Give backend more time to finish saving (background task)
+              // Get the first user message to find the matching conversation
+              const firstUserMessage = getFirstUserMessage();
+              if (firstUserMessage) {
+                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels);
+              }
+            }, 1500); // Give backend more time to finish saving (background task
           } else if (!isAuthenticated && isFollowUpMode) {
             // Save follow-up updates after stream completes (anonymous users)
             setTimeout(() => {
@@ -3210,49 +3174,11 @@ function AppContent() {
             // For registered users, reload history from API after follow-up completes
             // Backend already saved the conversation update, we just need to refresh the list
             setTimeout(async () => {
-              // Clear cache for conversations endpoint to force fresh data
-              apiClient.deleteCache('GET:/conversations');
-              await loadHistoryFromAPI();
-              // After history is loaded, find the updated comparison and set it as active
-              setTimeout(() => {
-                // Access conversationHistory from state using functional update
-                setConversationHistory((currentHistory: ConversationSummary[]) => {
-                  setConversations(currentConversations => {
-                    const conversationsWithMessages = currentConversations.filter(conv =>
-                      selectedModels.includes(conv.modelId) &&
-                      conv.messages.length > 0
-                    );
-
-                    if (conversationsWithMessages.length > 0) {
-                      const allUserMessages = conversationsWithMessages
-                        .flatMap(conv => conv.messages)
-                        .filter(msg => msg.type === 'user')
-                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-                      const firstUserMessage = allUserMessages[0];
-                      if (firstUserMessage) {
-                        const inputData = firstUserMessage.content;
-                        // Find matching conversation in history
-                        const matchingConversation = currentHistory.find((summary: ConversationSummary) => {
-                          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
-                          const inputMatches = summary.input_data === inputData;
-                          return modelsMatch && inputMatches;
-                        });
-
-                        if (matchingConversation) {
-                          // Clear cache for this specific conversation to ensure fresh data on reload
-                          apiClient.deleteCache(`GET:/conversations/${matchingConversation.id}`);
-                          // Set this as the active comparison so it shows as highlighted in dropdown
-                          setCurrentVisibleComparisonId(String(matchingConversation.id));
-                        }
-                      }
-                    }
-
-                    return currentConversations;
-                  });
-                  return currentHistory; // Return unchanged
-                });
-              }, 100);
+              // Get the first user message to find the matching conversation
+              const firstUserMessage = getFirstUserMessage();
+              if (firstUserMessage) {
+                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels);
+              }
             }, 1500); // Give backend more time to finish saving (background task)
           }
         }

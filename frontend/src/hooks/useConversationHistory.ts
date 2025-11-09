@@ -40,6 +40,7 @@ export interface UseConversationHistoryReturn {
   deleteConversation: (summary: ConversationSummary, e: React.MouseEvent) => Promise<void>;
   loadConversationFromAPI: (conversationId: ConversationId) => Promise<ModelConversation[] | null>;
   loadConversationFromLocalStorage: (conversationId: string) => ModelConversation[];
+  syncHistoryAfterComparison: (inputData: string, selectedModels: string[]) => Promise<void>;
 }
 
 export function useConversationHistory({
@@ -352,6 +353,49 @@ export function useConversationHistory({
     }
   }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
 
+  /**
+   * Sync conversation history after a comparison completes
+   * For authenticated users: reload from API and set the new comparison as active
+   * This ensures the new comparison shows up immediately in the history dropdown
+   * 
+   * @param inputData - The input text from the comparison
+   * @param selectedModels - The models that were compared
+   */
+  const syncHistoryAfterComparison = useCallback(async (inputData: string, selectedModels: string[]) => {
+    if (!isAuthenticated) {
+      // For anonymous users, saveConversationToLocalStorage already updates state immediately
+      return;
+    }
+
+    // Clear cache for conversations endpoint to force fresh data
+    apiClient.deleteCache('GET:/conversations');
+    
+    // Reload history from API (backend has already saved the conversation)
+    await loadHistoryFromAPI();
+    
+    // Find the newly saved comparison and set it as active
+    // Use a small delay to ensure conversationHistory state is updated
+    setTimeout(() => {
+      setConversationHistory(currentHistory => {
+        // Find matching conversation in history (should be the most recent one)
+        const matchingConversation = currentHistory.find((summary: ConversationSummary) => {
+          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
+          const inputMatches = summary.input_data === inputData;
+          return modelsMatch && inputMatches;
+        });
+
+        if (matchingConversation) {
+          // Clear cache for this specific conversation to ensure fresh data on reload
+          apiClient.deleteCache(`GET:/conversations/${matchingConversation.id}`);
+          // Set this as the active comparison so it shows as highlighted in dropdown
+          setCurrentVisibleComparisonId(String(matchingConversation.id));
+        }
+        
+        return currentHistory; // Return unchanged
+      });
+    }, 100);
+  }, [isAuthenticated, loadHistoryFromAPI]);
+
   return {
     conversationHistory,
     setConversationHistory,
@@ -368,6 +412,7 @@ export function useConversationHistory({
     deleteConversation,
     loadConversationFromAPI,
     loadConversationFromLocalStorage,
+    syncHistoryAfterComparison,
   };
 }
 
