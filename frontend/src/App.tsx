@@ -61,6 +61,7 @@ import {
 } from './services/conversationService';
 import { getAvailableModels } from './services/modelsService';
 import { ApiError } from './services/api/errors';
+import { apiClient } from './services/api/client';
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
@@ -1083,6 +1084,9 @@ function AppContent() {
       try {
         await deleteConversationFromAPI(summary.id);
 
+        // Clear cache for conversations endpoint to force fresh data
+        apiClient.deleteCache('GET:/conversations');
+
         // If this was the active item, reset screen to default BEFORE reloading history
         // This prevents any auto-loading logic from triggering
         if (isActiveItem) {
@@ -1099,7 +1103,7 @@ function AppContent() {
           setCurrentVisibleComparisonId(null);
         }
 
-        // Reload history from API after reset
+        // Reload history from API after reset (will fetch fresh data due to cache clear)
         await loadHistoryFromAPI();
       } catch (error) {
         if (error instanceof ApiError) {
@@ -1165,6 +1169,8 @@ function AppContent() {
 
     try {
       const conversationId = createConversationId(id);
+      // Clear cache for this specific conversation to ensure we get the latest data
+      apiClient.deleteCache(`GET:/conversations/${id}`);
       const data = await getConversation(conversationId);
       return {
         input_data: data.input_data,
@@ -2801,6 +2807,8 @@ function AppContent() {
                   if (isAuthenticated && !isFollowUpMode) {
                     // Refresh history from API after a short delay to allow backend to save
                     setTimeout(() => {
+                      // Clear cache for conversations endpoint to force fresh data
+                      apiClient.deleteCache('GET:/conversations');
                       loadHistoryFromAPI();
                     }, 1000);
                   }
@@ -3084,6 +3092,8 @@ function AppContent() {
             // For registered users, reload history from API after stream completes
             // Backend already saved the conversation, we just need to refresh the list
             setTimeout(async () => {
+              // Clear cache for conversations endpoint to force fresh data
+              apiClient.deleteCache('GET:/conversations');
               await loadHistoryFromAPI();
               // After history is loaded, find the newly saved comparison and set it as active
               // Use a small delay to ensure conversationHistory state is updated
@@ -3113,6 +3123,8 @@ function AppContent() {
                         });
 
                         if (matchingConversation) {
+                          // Clear cache for this specific conversation to ensure fresh data on reload
+                          apiClient.deleteCache(`GET:/conversations/${matchingConversation.id}`);
                           // Set this as the active comparison so it shows as highlighted in dropdown
                           setCurrentVisibleComparisonId(String(matchingConversation.id));
                         }
@@ -3166,6 +3178,8 @@ function AppContent() {
             // For registered users, reload history from API after follow-up completes
             // Backend already saved the conversation update, we just need to refresh the list
             setTimeout(async () => {
+              // Clear cache for conversations endpoint to force fresh data
+              apiClient.deleteCache('GET:/conversations');
               await loadHistoryFromAPI();
               // After history is loaded, find the updated comparison and set it as active
               setTimeout(() => {
@@ -3194,6 +3208,8 @@ function AppContent() {
                         });
 
                         if (matchingConversation) {
+                          // Clear cache for this specific conversation to ensure fresh data on reload
+                          apiClient.deleteCache(`GET:/conversations/${matchingConversation.id}`);
                           // Set this as the active comparison so it shows as highlighted in dropdown
                           setCurrentVisibleComparisonId(String(matchingConversation.id));
                         }
