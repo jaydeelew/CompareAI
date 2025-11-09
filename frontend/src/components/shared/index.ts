@@ -15,3 +15,4 @@ export type { LoadingSpinnerProps } from './LoadingSpinner';
 
 export { DoneSelectingCard } from './DoneSelectingCard';
 
+export { ErrorBoundary } from './ErrorBoundary';

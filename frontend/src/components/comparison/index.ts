@@ -15,3 +15,5 @@ export type { ResultsDisplayProps } from './ResultsDisplay';
 
 export { TierSelector } from './TierSelector';
 export type { TierSelectorProps } from './TierSelector';
+
+export { ComparisonForm } from './ComparisonForm';

@@ -20,10 +20,10 @@ import { AdminPanel } from './components/admin';
 import { Footer } from './components';
 import { TermsOfService } from './components/TermsOfService';
 import { Navigation, Hero, MockModeBanner } from './components/layout';
-import { DoneSelectingCard } from './components/shared';
+import { DoneSelectingCard, ErrorBoundary } from './components/shared';
+import { ComparisonForm } from './components/comparison';
 import {
   ANONYMOUS_DAILY_LIMIT,
-  getConversationLimit,
   getExtendedLimit,
   getDailyLimit,
 } from './config/constants';
@@ -43,10 +43,8 @@ import {
   generateBrowserFingerprint,
   showNotification,
   getSafeId,
-  formatDate,
   formatTime,
   formatNumber,
-  truncatePrompt,
   formatConversationMessage,
 } from './utils';
 import {
@@ -138,7 +136,6 @@ function AppContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
   const modelsSectionRef = useRef<HTMLDivElement>(null);
-  const compareButtonRef = useRef<HTMLButtonElement>(null);
   const [isAnimatingButton, setIsAnimatingButton] = useState(false);
   const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
@@ -3148,384 +3145,37 @@ function AppContent() {
               visibleTooltip={visibleTooltip}
               onCapabilityTileTap={handleCapabilityTileTap}
             >
-              {/* Comparison Form - hero-input-section wrapper provided by Hero component */}
-                  <div className="follow-up-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    {isFollowUpMode ? (
-                      <>
-                        <h2 style={{ margin: 0 }}>
-                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Follow Up Mode
-                        </h2>
-                        <button
-                          onClick={handleNewComparison}
-                          className="textarea-icon-button new-inquiry-button"
-                          title="Exit follow up mode"
-                          disabled={isLoading}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            minWidth: '32px',
-                            padding: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            style={{
-                              width: '22px',
-                              height: '22px',
-                              display: 'block',
-                              margin: 0,
-                              transform: 'translate(0px, 1px)'
-                            }}
-                          >
-                            <path d="M12 2v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                          </svg>
-                        </button>
-                        <span style={{
-                          fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
-                          fontWeight: 700,
-                          color: 'transparent',
-                          textAlign: 'center',
-                          margin: 0,
-                          letterSpacing: '-0.025em',
-                          textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                          background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)',
-                          WebkitBackgroundClip: 'text',
-                          backgroundClip: 'text'
-                        }}>
-                          {conversations.length > 0 ? (conversations[0]?.messages.length || 0) + (input.trim() ? 1 : 0) : 0} message context
-                        </span>
-                      </>
-                    ) : (
-                      <h2>Enter Your Prompt</h2>
-                    )}
-                  </div>
-
-                  <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
-                    {/* History Toggle Button - Left side inside textarea */}
-                    <div className="history-toggle-wrapper">
-                      <button
-                        type="button"
-                        className={`history-toggle-button ${showHistoryDropdown ? 'active' : ''}`}
-                        onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
-                        title="Load previous conversations"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M6 9l6 6 6-6" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <textarea
-                      ref={textareaRef}
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (isFollowUpMode) {
-                            handleContinueConversation();
-                          } else {
-                            handleSubmitClick();
-                          }
-                        }
-                      }}
-                      placeholder={isFollowUpMode
-                        ? "Enter your follow-up here"
-                        : "Let's get started..."
-                      }
-                      className="hero-input-textarea"
-                      rows={1}
-                    />
-
-                    {/* History List - Inline, extends textarea depth */}
-                    {showHistoryDropdown && (() => {
-                      // Show all items in history - no filtering
-                      // Active comparison will be visually indicated
-
-                      // Hide scrollbar when tier limit is 3 or less (anonymous: 2, free: 3)
-                      // Show scrollbar for tiers with more than 3 saved comparisons
-                      const shouldHideScrollbar = historyLimit <= 3;
-
-                      // Calculate max-height based on tier limit:
-                      // Each item is approximately: padding (1rem top + 1rem bottom) + prompt (~22px) + margin (0.5rem) + meta (~14px) ≈ ~80-85px
-                      // Message is approximately: padding (0.5rem top + 0.5rem bottom) + text (~40px) ≈ ~60px
-                      // Anonymous (2 items + message): ~170px + ~60px = ~230px
-                      // Free (3 items + message): ~255px + ~60px = ~315px
-                      // Others: 300px (shows 3 with scroll, message would be scrollable)
-                      const getMaxHeight = () => {
-                        // Check if we're showing the tier limit message (when at display limit)
-                        const displayedCount = Math.min(conversationHistory.length, historyLimit);
-                        const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                        const tierLimits: { [key: string]: number } = {
-                          anonymous: 2,
-                          free: 3,
-                          starter: 10,
-                          starter_plus: 20,
-                          pro: 50,
-                          pro_plus: 100,
-                        };
-                        const tierLimit = tierLimits[userTier] || 2;
-                        const isShowingMessage = displayedCount === tierLimit;
-
-                        if (historyLimit === 2) {
-                          // Anonymous: 2 items + message if at limit
-                          return isShowingMessage ? '230px' : '170px';
-                        }
-                        if (historyLimit === 3) {
-                          // Free: 3 items + message if at limit
-                          return isShowingMessage ? '315px' : '255px';
-                        }
-                        // For higher tiers (starter, pro, etc.): Show 3 items initially, or 3 items + message if at limit
-                        // The message will be visible in the scrollable area for tiers with many items
-                        // For tiers with 10+ items, showing all items + message would be too tall, so scrollable is appropriate
-                        return isShowingMessage ? '360px' : '300px'; // Add ~60px for message on higher tiers too
-                      };
-
-                      return (
-                        <div
-                          className={`history-inline-list ${shouldHideScrollbar ? 'no-scrollbar' : 'scrollable'}`}
-                          style={{ maxHeight: getMaxHeight() }}
-                        >
-                          {isLoadingHistory ? (
-                            <div className="history-loading">Loading...</div>
-                          ) : conversationHistory.length === 0 ? (
-                            <div className="history-empty">No conversation history</div>
-                          ) : (
-                            <>
-                              {conversationHistory
-                                .slice(0, historyLimit) // Limit to tier's maximum saved comparisons
-                                .map((summary) => {
-                                  // Check if this is the currently active/selected comparison
-                                  const isActive = currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId;
-
-                                  return (
-                                    <div
-                                      key={summary.id}
-                                      className={`history-item ${isActive ? 'history-item-active' : ''}`}
-                                      onClick={() => loadConversation(summary)}
-                                      title={summary.input_data}
-                                    >
-                                      <div className="history-item-content">
-                                        <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
-                                        <div className="history-item-meta">
-                                          <span className="history-item-models">{summary.models_used.length} model{summary.models_used.length !== 1 ? 's' : ''}</span>
-                                          <span className="history-item-date">{formatDate(summary.created_at)}</span>
-                                        </div>
-                                      </div>
-                                      <button
-                                        className="history-item-delete"
-                                        onClick={(e) => deleteConversation(summary, e)}
-                                        title="Delete conversation"
-                                        aria-label="Delete conversation"
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-
-                              {/* Tier limit message for users at limit - only for Anonymous and Free tiers */}
-                              {(() => {
-                                const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-                                const tierLimit = getConversationLimit(userTier);
-
-                                // Only show message for anonymous and free tiers
-                                if (userTier !== 'anonymous' && userTier !== 'free') {
-                                  return null;
-                                }
-
-                                // Check if the number of visible items in the dropdown equals or exceeds the tier limit
-                                // For free tier: show message when 3+ items are visible (meaning user has reached storage limit of 4)
-                                // For anonymous: show message when 2+ items are visible
-                                const visibleCount = conversationHistory.length;
-                                // Show message when we have tierLimit or more items (after filtering)
-                                // This indicates user has reached their storage limit (tierLimit + 1 saved)
-                                const isAtLimit = visibleCount >= tierLimit;
-
-                                if (!isAtLimit) {
-                                  return null;
-                                }
-
-                                if (!isAuthenticated) {
-                                  return (
-                                    <div className="history-signup-prompt">
-                                      <div className="history-signup-message">
-                                        <span className="history-signup-line">You can only save the last 2 comparisons.</span>
-                                        <span className="history-signup-line"> Sign up for a free account to save more!</span>
-                                      </div>
-                                    </div>
-                                  );
-                                } else {
-                                  // For free tier, show a specific reminder about the 3 saves limit
-                                  return (
-                                    <div className="history-signup-prompt">
-                                      <div className="history-signup-message">
-                                        <span className="history-signup-line">You only have 3 saves for your tier.</span>
-                                        <span className="history-signup-line"> Upgrade to Starter for 10 saved comparisons or Pro for 50!</span>
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                              })()}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    <div className="textarea-actions">
-                      {(() => {
-                        // Check if user has reached daily limits
-                        const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-
-                        const regularLimit = getDailyLimit(userTier);
-                        const extendedLimit = getExtendedLimit(userTier);
-
-                        // Calculate current usage
-                        const currentRegularUsage = isAuthenticated && user
-                          ? user.daily_usage_count
-                          : usageCount;
-                        const currentExtendedUsage = isAuthenticated && user
-                          ? user.daily_extended_usage
-                          : extendedUsageCount;
-
-                        const regularRemaining = regularLimit - currentRegularUsage;
-                        const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
-                        const hasNoRemainingRegularResponses = regularRemaining <= 0;
-
-                        const handleClick = (e: React.MouseEvent) => {
-                          if ((hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isExtendedMode) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return;
-                          }
-                          handleExtendedModeToggle();
-                        };
-
-                        const getTitle = () => {
-                          if (isExtendedMode) {
-                            return 'Disable Extended mode)';
-                          }
-                          if (hasNoRemainingRegularResponses) {
-                            return `No remaining model responses today.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`;
-                          }
-                          if (hasReachedExtendedLimit) {
-                            return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
-                          }
-                          // Format tier name for display (handle _plus suffix specially)
-                          let tierDisplayName: string;
-                          if (userTier.endsWith('_plus')) {
-                            const baseTier = userTier.replace('_plus', '');
-                            tierDisplayName = baseTier.charAt(0).toUpperCase() + baseTier.slice(1) + '+';
-                          } else {
-                            tierDisplayName = userTier.split('_')
-                              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                              .join(' ');
-                          }
-                          return `${tierDisplayName} tier users get ${extendedLimit} extended interactions`;
-                        };
-
-                        return (
-                          <button
-                            className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
-                            onClick={handleClick}
-                            disabled={isLoading}
-                            style={(hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isLoading ? { cursor: 'not-allowed' } : undefined}
-                            title={getTitle()}
-                          >
-                            E
-                          </button>
-                        );
-                      })()}
-                      <button
-                        ref={compareButtonRef}
-                        onClick={isFollowUpMode ? handleContinueConversation : handleSubmitClick}
-                        disabled={(() => {
-                          // Check if input exceeds tier limit
-                          const usesExtendedTier = isExtendedMode; // Only extended if explicitly enabled
-                          const tierLimit = usesExtendedTier ? 15000 : 5000;
-                          const exceedsLimit = input.length > tierLimit;
-
-                          return isLoading ||
-                            exceedsLimit ||
-                            (isFollowUpMode && conversations.length > 0 && (conversations[0]?.messages.length || 0) >= 24);
-                        })()}
-                        className={`textarea-icon-button submit-button ${!isFollowUpMode && (selectedModels.length === 0 || !input.trim()) ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-                        title={(() => {
-                          const msgCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-                          if (msgCount >= 24) return 'Maximum conversation length reached - start a new comparison';
-                          const usesExtendedTier = isExtendedMode; // Only extended if explicitly enabled
-                          const tierLimit = usesExtendedTier ? 15000 : 5000;
-                          if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
-                          return isFollowUpMode ? 'Continue conversation' : 'Compare models';
-                        })()}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Usage Preview - Regular Mode */}
-                  {!isFollowUpMode && selectedModels.length > 0 && input.trim() && renderUsagePreview()}
-
-                  {/* Context Warning & Usage Preview - Industry Best Practice 2025 */}
-                  {isFollowUpMode && conversations.length > 0 && (() => {
-                    const messageCount = conversations[0]?.messages.length || 0;
-
-                    // Calculate warning level - encourage starting fresh conversations at appropriate intervals
-                    let warningLevel: 'info' | 'medium' | 'high' | 'critical' | null = null;
-                    let warningMessage = '';
-                    let warningIcon = '';
-
-                    if (messageCount >= 24) {
-                      warningLevel = 'critical';
-                      warningIcon = '🚫';
-                      warningMessage = 'Maximum conversation length reached (24 messages). Please start a fresh comparison for continued assistance.';
-                    } else if (messageCount >= 20) {
-                      warningLevel = 'critical';
-                      warningIcon = '✨';
-                      warningMessage = 'Time for a fresh start! Starting a new comparison will give you the best response quality and speed.';
-                    } else if (messageCount >= 14) {
-                      warningLevel = 'high';
-                      warningIcon = '💡';
-                      warningMessage = 'Consider starting a fresh comparison! New conversations help maintain optimal context and response quality.';
-                    } else if (messageCount >= 10) {
-                      warningLevel = 'medium';
-                      warningIcon = '🎯';
-                      warningMessage = 'Pro tip: Fresh comparisons provide more focused and relevant responses!';
-                    } else if (messageCount >= 6) {
-                      warningLevel = 'info';
-                      warningIcon = 'ℹ️';
-                      warningMessage = 'Reminder: Starting a new comparison helps keep responses sharp and context-focused.';
-                    }
-
-                    return (
-                      <>
-                        {/* Usage Preview - Simple text line */}
-                        {messageCount > 0 && renderUsagePreview()}
-
-                        {/* Context Warning - Claude-style */}
-                        {warningLevel && (
-                          <div className={`context-warning ${warningLevel}`}>
-                            <div className="context-warning-content">
-                              <div className="context-warning-message">
-                                <span className="context-warning-icon">{warningIcon}</span>{warningMessage}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+              <ErrorBoundary>
+                <ComparisonForm
+                  input={input}
+                  setInput={setInput}
+                  textareaRef={textareaRef}
+                  isFollowUpMode={isFollowUpMode}
+                  isExtendedMode={isExtendedMode}
+                  isLoading={isLoading}
+                  isAnimatingButton={isAnimatingButton}
+                  isAnimatingTextarea={isAnimatingTextarea}
+                  isAuthenticated={isAuthenticated}
+                  user={user}
+                  usageCount={usageCount}
+                  extendedUsageCount={extendedUsageCount}
+                  conversations={conversations}
+                  showHistoryDropdown={showHistoryDropdown}
+                  setShowHistoryDropdown={setShowHistoryDropdown}
+                  conversationHistory={conversationHistory}
+                  isLoadingHistory={isLoadingHistory}
+                  historyLimit={historyLimit}
+                  currentVisibleComparisonId={currentVisibleComparisonId}
+                  onSubmitClick={handleSubmitClick}
+                  onContinueConversation={handleContinueConversation}
+                  onNewComparison={handleNewComparison}
+                  onExtendedModeToggle={handleExtendedModeToggle}
+                  onLoadConversation={loadConversation}
+                  onDeleteConversation={deleteConversation}
+                  getExtendedRecommendation={getExtendedRecommendation}
+                  renderUsagePreview={renderUsagePreview}
+                />
+              </ErrorBoundary>
             </Hero>
 
             {error && (
@@ -3534,8 +3184,8 @@ function AppContent() {
               </div>
             )}
 
-
-            <section className="models-section" ref={modelsSectionRef}>
+            <ErrorBoundary>
+              <section className="models-section" ref={modelsSectionRef}>
               <div
                 className="models-section-header"
                 data-has-models={selectedModels.length > 0 && isWideLayout ? 'true' : undefined}
@@ -3827,7 +3477,8 @@ function AppContent() {
                   )}
                 </>
               )}
-            </section>
+              </section>
+            </ErrorBoundary>
 
             {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
             {!isAuthenticated && (usageCount > 0 || usageCount >= ANONYMOUS_DAILY_LIMIT || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
@@ -3901,7 +3552,8 @@ function AppContent() {
             )}
 
             {(response || conversations.length > 0) && (
-              <section className="results-section">
+              <ErrorBoundary>
+                <section className="results-section">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                   <h2 style={{ margin: 0 }}>Comparison Results</h2>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -4166,7 +3818,8 @@ function AppContent() {
                       );
                     })}
                 </div>
-              </section>
+                </section>
+              </ErrorBoundary>
             )}
           </main>
 
