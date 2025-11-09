@@ -13,3 +13,5 @@ export type { InputProps, TextareaProps } from './Input';
 export { LoadingSpinner, FullPageLoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 
+export { DoneSelectingCard } from './DoneSelectingCard';
+
