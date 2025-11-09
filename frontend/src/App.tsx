@@ -54,9 +54,7 @@ import {
   compareStream,
 } from './services/compareService';
 import {
-  getConversations,
   getConversation,
-  deleteConversation as deleteConversationFromAPI,
 } from './services/conversationService';
 import { getAvailableModels } from './services/modelsService';
 import { ApiError } from './services/api/errors';
@@ -174,13 +172,13 @@ function AppContent() {
     showHistoryDropdown,
     setShowHistoryDropdown,
     syncHistoryAfterComparison,
-    // Note: The following functions are overridden below with App.tsx versions that have more complex logic
-    // loadHistoryFromAPI - defined below with App-specific state management
-    // saveConversationToLocalStorage - defined below with complex localStorage cleanup
-    // deleteConversation - defined below with UI state reset logic
-    // loadHistoryFromLocalStorage: loadHistoryFromLocalStorageHook,
-    // loadConversationFromAPI: loadConversationFromAPIHook,
-    // loadConversationFromLocalStorage: loadConversationFromLocalStorageFromHook,
+    // Now using hook versions - migrated from App.tsx local implementations
+    loadHistoryFromAPI,
+    saveConversationToLocalStorage,
+    deleteConversation,
+    loadHistoryFromLocalStorage,
+    // Note: loadConversationFromAPI and loadConversationFromLocalStorage are defined locally below
+    // as they return different types (raw conversation data vs ModelConversation[])
   } = conversationHistoryHook;
   // Track wide layout to coordinate header control alignment with toggle
   const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
@@ -884,303 +882,12 @@ function AppContent() {
   // Get all models in a flat array for compatibility
   const allModels = Object.values(modelsByProvider).flat();
 
-  // Load conversation history from localStorage (anonymous users)
-  // Note: This is a local version with App.tsx-specific logic
-  const loadHistoryFromLocalStorage = useCallback((): ConversationSummary[] => {
-    try {
-      const stored = localStorage.getItem('compareai_conversation_history');
-      if (stored) {
-        const history = JSON.parse(stored) as ConversationSummary[];
-        // Sort by created_at DESC
-        // Don't limit here - let the dropdown filtering and slicing handle the limit
-        // This ensures we have enough items even after filtering out the active conversation
-        return history
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      }
-    } catch (e) {
-      console.error('Failed to load conversation history from localStorage:', e);
-    }
-    return [];
-  }, []);
-
-  // Save conversation to localStorage (anonymous users)
-  // Returns the conversationId of the saved conversation
-  const saveConversationToLocalStorage = useCallback((inputData: string, modelsUsed: string[], conversationsToSave: ModelConversation[], isUpdate: boolean = false): string => {
-    try {
-      const history = loadHistoryFromLocalStorage();
-
-      // Count total messages across all conversations
-      const totalMessages = conversationsToSave.reduce((sum, conv) => sum + conv.messages.length, 0);
-
-      let conversationId: string;
-      let existingConversation: ConversationSummary | undefined;
-
-      if (isUpdate) {
-        // Find existing conversation by matching first user message and models
-        existingConversation = history.find(conv => {
-          const modelsMatch = JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort());
-          // Check if the input_data matches (first query)
-          // OR check if any stored conversation has a first user message matching this inputData
-          if (modelsMatch) {
-            // Load the conversation to check its first user message
-            try {
-              const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
-              if (storedData) {
-                const parsed = JSON.parse(storedData) as { messages?: StoredMessage[]; input_data?: string };
-                // Check if the first user message in stored data matches our inputData
-                const firstStoredUserMsg = parsed.messages?.find((m: StoredMessage) => m.role === 'user');
-                if (firstStoredUserMsg && firstStoredUserMsg.content === inputData) {
-                  return true;
-                }
-                // Also check if input_data field matches
-                if (parsed.input_data === inputData) {
-                  return true;
-                }
-              }
-            } catch {
-              // If we can't parse, fall back to input_data match
-              return conv.input_data === inputData;
-            }
-          }
-          return false;
-        });
-
-        if (existingConversation) {
-          conversationId = String(existingConversation.id);
-        } else {
-          // Couldn't find existing, create new (shouldn't happen)
-          conversationId = Date.now().toString();
-          isUpdate = false;
-        }
-      } else {
-        // Create new conversation
-        conversationId = Date.now().toString();
-      }
-
-      // Create or update conversation summary
-      const conversationSummary: ConversationSummary = existingConversation ? {
-        ...existingConversation,
-        message_count: totalMessages,
-        // Keep original created_at for existing conversations
-      } : {
-        id: createConversationId(conversationId),
-        input_data: inputData,
-        models_used: modelsUsed.map(id => createModelId(id)),
-        created_at: new Date().toISOString(),
-        message_count: totalMessages,
-      };
-
-      // Update history list
-      let updatedHistory: ConversationSummary[];
-      if (isUpdate && existingConversation) {
-        // Update existing entry in place
-        updatedHistory = history.map(conv =>
-          conv.id === conversationId ? conversationSummary : conv
-        );
-      } else {
-        // Remove any existing conversation with the same input and models (to prevent duplicates)
-        const filteredHistory = history.filter(conv =>
-          !(conv.input_data === inputData &&
-            JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
-        );
-
-        // For new conversations: add the new one and limit to 2 most recent after sorting
-        // When user has A & B and runs C, comparison C appears at top and A is deleted
-        // Always add the new conversation - we'll limit to 2 most recent after sorting
-        filteredHistory.unshift(conversationSummary);
-        updatedHistory = filteredHistory;
-      }
-
-      // Sort by created_at DESC
-      const sorted = updatedHistory.sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      // For anonymous users, save maximum of 2 conversations
-      // When comparison 3 is made, comparison 1 is deleted and comparison 3 appears at the top
-      // Keep only the 2 most recent conversations
-      const limited = sorted.slice(0, 2);
-
-      // Store summary list (save maximum 2 in localStorage)
-      localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
-
-      // Store full conversation data with ID as key
-      // Format: messages with role and model_id for proper reconstruction
-      const conversationMessages: StoredMessage[] = [];
-      const seenUserMessages = new Set<string>(); // Track user messages to avoid duplicates
-
-      // Group messages from conversations by model
-      conversationsToSave.forEach(conv => {
-        conv.messages.forEach(msg => {
-          if (msg.type === 'user') {
-            // Deduplicate user messages - same content and timestamp (within 1 second) = same message
-            const userKey = `${msg.content}-${new Date(msg.timestamp).getTime()}`;
-            if (!seenUserMessages.has(userKey)) {
-              seenUserMessages.add(userKey);
-              conversationMessages.push({
-                role: 'user',
-                content: msg.content,
-                created_at: msg.timestamp,
-              });
-            }
-          } else {
-            conversationMessages.push({
-              role: 'assistant',
-              model_id: conv.modelId,
-              content: msg.content,
-              created_at: msg.timestamp,
-            });
-          }
-        });
-      });
-
-      // Get existing conversation data to preserve created_at if updating
-      const existingData = isUpdate && existingConversation
-        ? JSON.parse(localStorage.getItem(`compareai_conversation_${conversationId}`) || '{}')
-        : null;
-
-      localStorage.setItem(`compareai_conversation_${conversationId}`, JSON.stringify({
-        input_data: inputData, // Always keep first query as input_data
-        models_used: modelsUsed,
-        created_at: existingData?.created_at || conversationSummary.created_at,
-        messages: conversationMessages,
-      }));
-
-      // Delete full conversation data for any conversations that are no longer in the limited list
-      // This ensures we only keep data for the 2 most recent comparisons
-      const limitedIds = new Set(limited.map(conv => conv.id));
-      const keysToDelete: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
-          // Extract the conversation ID from the key (format: compareai_conversation_{id})
-          const convId = key.replace('compareai_conversation_', '');
-          if (!limitedIds.has(createConversationId(convId))) {
-            keysToDelete.push(key);
-          }
-        }
-      }
-      // Delete the old conversation data
-      keysToDelete.forEach(key => {
-        localStorage.removeItem(key);
-        console.log(`🗑️ Deleted old conversation data: ${key}`);
-      });
-
-      // Reload all saved conversations from localStorage to state
-      // This ensures dropdown can show all saved conversations, and filtering/slicing handles the display limit
-      const reloadedHistory = loadHistoryFromLocalStorage();
-      setConversationHistory(reloadedHistory);
-
-      return conversationId;
-    } catch (e) {
-      console.error('Failed to save conversation to localStorage:', e);
-      return '';
-    }
-  }, [loadHistoryFromLocalStorage, setConversationHistory]);
-
-  // Load conversation history from API (authenticated users)
-  const loadHistoryFromAPI = useCallback(async () => {
-    if (!isAuthenticated) return;
-
-    setIsLoadingHistory(true);
-    try {
-      const data = await getConversations();
-      // Ensure created_at is a string if it's not already, and models_used is always an array
-      const formattedData: ConversationSummary[] = Array.isArray(data) ? data.map((item) => {
-        const summary: ConversationSummary = {
-          ...item,
-          created_at: typeof item.created_at === 'string' ? item.created_at : new Date(item.created_at).toISOString(),
-          models_used: Array.isArray(item.models_used) ? item.models_used : [],
-        };
-        return summary;
-      }) : [];
-      setConversationHistory(formattedData);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        console.error('Failed to load conversation history:', error.status, error.message);
-      } else {
-        console.error('Failed to load conversation history from API:', error);
-      }
-      setConversationHistory([]);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, [isAuthenticated]);
-
-  // Delete conversation from API (authenticated users) or localStorage (anonymous users)
-  const deleteConversation = useCallback(async (summary: ConversationSummary, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the loadConversation onClick
-
-    // Check if the deleted item is the currently active comparison
-    const isActiveItem = currentVisibleComparisonId && String(summary.id) === currentVisibleComparisonId;
-
-    if (isAuthenticated && typeof summary.id === 'number') {
-      // Delete from API
-      try {
-        await deleteConversationFromAPI(summary.id);
-
-        // Clear cache for conversations endpoint to force fresh data
-        apiClient.deleteCache('GET:/conversations');
-
-        // If this was the active item, reset screen to default BEFORE reloading history
-        // This prevents any auto-loading logic from triggering
-        if (isActiveItem) {
-          setIsFollowUpMode(false);
-          setInput('');
-          setConversations([]);
-          setResponse(null);
-          setClosedCards(new Set());
-          setError(null);
-          setSelectedModels([]); // Unselect all models
-          setOriginalSelectedModels([]);
-          setIsModelsHidden(false);
-          setOpenDropdowns(new Set()); // Close all provider dropdowns
-          setCurrentVisibleComparisonId(null);
-        }
-
-        // Reload history from API after reset (will fetch fresh data due to cache clear)
-        await loadHistoryFromAPI();
-      } catch (error) {
-        if (error instanceof ApiError) {
-          console.error('Failed to delete conversation:', error.message);
-        } else {
-          console.error('Failed to delete conversation from API:', error);
-        }
-      }
-    } else if (!isAuthenticated && typeof summary.id === 'string') {
-      // Delete from localStorage
-      try {
-        // Remove the conversation data
-        localStorage.removeItem(`compareai_conversation_${summary.id}`);
-
-        // If this was the active item, reset screen to default BEFORE updating history
-        // This prevents any auto-loading logic from triggering
-        if (isActiveItem) {
-          setIsFollowUpMode(false);
-          setInput('');
-          setConversations([]);
-          setResponse(null);
-          setClosedCards(new Set());
-          setError(null);
-          setSelectedModels([]); // Unselect all models
-          setOriginalSelectedModels([]);
-          setIsModelsHidden(false);
-          setOpenDropdowns(new Set()); // Close all provider dropdowns
-          setCurrentVisibleComparisonId(null);
-        }
-
-        // Update state using functional update to ensure we work with latest state
-        setConversationHistory((prevHistory) => {
-          const updatedHistory = prevHistory.filter(conv => conv.id !== summary.id);
-          // Sync localStorage with the updated state
-          localStorage.setItem('compareai_conversation_history', JSON.stringify(updatedHistory));
-          return updatedHistory;
-        });
-      } catch (e) {
-        console.error('Failed to delete conversation from localStorage:', e);
-      }
-    }
-  }, [isAuthenticated, loadHistoryFromAPI, currentVisibleComparisonId]);
+  // Note: The following functions are now provided by the useConversationHistory hook above:
+  // - loadHistoryFromLocalStorage
+  // - saveConversationToLocalStorage  
+  // - loadHistoryFromAPI
+  // - deleteConversation
+  // These functions have been migrated to the hook and are destructured from conversationHistoryHook
 
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {

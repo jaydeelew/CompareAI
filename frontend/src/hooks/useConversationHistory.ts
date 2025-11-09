@@ -105,19 +105,34 @@ export function useConversationHistory({
       let existingConversation: ConversationSummary | undefined;
 
       if (isUpdate) {
-        // Find existing conversation by matching input and models
+        // Find existing conversation by matching first user message and models
         existingConversation = history.find((conv) => {
           if (typeof conv.id !== 'string') return false;
-          if (conv.input_data !== inputData) return false;
-          const sortedConvModels = [...conv.models_used].sort();
-          const sortedModelsUsed = [...modelsUsed].sort();
-          if (sortedConvModels.length !== sortedModelsUsed.length) return false;
-          for (let i = 0; i < sortedConvModels.length; i++) {
-            if (sortedConvModels[i] !== sortedModelsUsed[i]) {
-              return false;
+          const modelsMatch = JSON.stringify([...conv.models_used].sort()) === JSON.stringify([...modelsUsed].sort());
+          // Check if the input_data matches (first query)
+          // OR check if any stored conversation has a first user message matching this inputData
+          if (modelsMatch) {
+            // Load the conversation to check its first user message
+            try {
+              const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
+              if (storedData) {
+                const parsed = JSON.parse(storedData) as { messages?: any[]; input_data?: string };
+                // Check if the first user message in stored data matches our inputData
+                const firstStoredUserMsg = parsed.messages?.find((m: any) => m.role === 'user');
+                if (firstStoredUserMsg && firstStoredUserMsg.content === inputData) {
+                  return true;
+                }
+                // Also check if input_data field matches
+                if (parsed.input_data === inputData) {
+                  return true;
+                }
+              }
+            } catch {
+              // If we can't parse, fall back to input_data match
+              return conv.input_data === inputData;
             }
           }
-          return true;
+          return false;
         });
 
         if (existingConversation) {
@@ -156,7 +171,7 @@ export function useConversationHistory({
         // Remove any existing conversation with the same input and models (to prevent duplicates)
         const filteredHistory = history.filter(conv =>
           !(conv.input_data === inputData &&
-            JSON.stringify(conv.models_used.sort()) === JSON.stringify(modelsUsed.sort()))
+            JSON.stringify([...conv.models_used].sort()) === JSON.stringify([...modelsUsed].sort()))
         );
 
         // For new conversations: add the new one and limit to 2 most recent after sorting
@@ -172,30 +187,79 @@ export function useConversationHistory({
       );
 
       // For anonymous users, save maximum of 2 conversations
+      // When comparison 3 is made, comparison 1 is deleted and comparison 3 appears at the top
+      // Keep only the 2 most recent conversations
       const limited = sorted.slice(0, 2);
 
-      // Save to localStorage
+      // Store summary list (save maximum 2 in localStorage)
       localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
 
-      // Save the full conversation data
-      const conversationData = {
-        id: conversationId,
-        input_data: inputData,
+      // Store full conversation data with ID as key
+      // Format: messages with role and model_id for proper reconstruction
+      const conversationMessages: any[] = [];
+      const seenUserMessages = new Set<string>(); // Track user messages to avoid duplicates
+
+      // Group messages from conversations by model
+      conversationsToSave.forEach(conv => {
+        conv.messages.forEach(msg => {
+          if (msg.type === 'user') {
+            // Deduplicate user messages - same content and timestamp (within 1 second) = same message
+            const userKey = `${msg.content}-${new Date(msg.timestamp).getTime()}`;
+            if (!seenUserMessages.has(userKey)) {
+              seenUserMessages.add(userKey);
+              conversationMessages.push({
+                role: 'user',
+                content: msg.content,
+                created_at: msg.timestamp,
+              });
+            }
+          } else {
+            conversationMessages.push({
+              role: 'assistant',
+              model_id: conv.modelId,
+              content: msg.content,
+              created_at: msg.timestamp,
+            });
+          }
+        });
+      });
+
+      // Get existing conversation data to preserve created_at if updating
+      const existingData = isUpdate && existingConversation
+        ? JSON.parse(localStorage.getItem(`compareai_conversation_${conversationId}`) || '{}')
+        : null;
+
+      localStorage.setItem(`compareai_conversation_${conversationId}`, JSON.stringify({
+        input_data: inputData, // Always keep first query as input_data
         models_used: modelsUsed,
-        conversations: conversationsToSave.map((conv) => ({
-          modelId: conv.modelId,
-          messages: conv.messages,
-        })),
-        created_at: conversationSummary.created_at,
-      };
+        created_at: existingData?.created_at || conversationSummary.created_at,
+        messages: conversationMessages,
+      }));
 
-      localStorage.setItem(
-        `compareai_conversation_${conversationId}`,
-        JSON.stringify(conversationData)
-      );
+      // Delete full conversation data for any conversations that are no longer in the limited list
+      // This ensures we only keep data for the 2 most recent comparisons
+      const limitedIds = new Set(limited.map(conv => conv.id));
+      const keysToDelete: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
+          // Extract the conversation ID from the key (format: compareai_conversation_{id})
+          const convId = key.replace('compareai_conversation_', '');
+          if (!limitedIds.has(createConversationId(convId))) {
+            keysToDelete.push(key);
+          }
+        }
+      }
+      // Delete the old conversation data
+      keysToDelete.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🗑️ Deleted old conversation data: ${key}`);
+      });
 
-      // Update state immediately for UI
-      setConversationHistory(limited);
+      // Reload all saved conversations from localStorage to state
+      // This ensures dropdown can show all saved conversations, and filtering/slicing handles the display limit
+      const reloadedHistory = loadHistoryFromLocalStorage();
+      setConversationHistory(reloadedHistory);
 
       return conversationId;
     } catch (e) {
