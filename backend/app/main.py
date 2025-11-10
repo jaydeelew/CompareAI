@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Any
+from contextlib import asynccontextmanager
 from .model_runner import run_models, call_openrouter_streaming, clean_model_response, OPENROUTER_MODELS, MODELS_BY_PROVIDER
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
@@ -68,20 +69,17 @@ logging.basicConfig(
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CompareAI API", version="1.0.0")
 
-
-# Create database tables on startup
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """
-    Initialize application on startup.
+    Lifespan event handler for FastAPI application.
     
-    This function:
-    1. Validates configuration
-    2. Logs configuration (with masked secrets)
-    3. Creates database tables
+    This function handles startup and shutdown events:
+    - Startup: Validates configuration, logs configuration, creates database tables
+    - Shutdown: Cleanup tasks (if needed)
     """
+    # Startup
     try:
         # Validate configuration
         logger.info("Validating configuration...")
@@ -105,6 +103,14 @@ async def startup_event():
         logger.error(f"Startup error: {e}", exc_info=True)
         # Let the application continue, as tables may already exist
         pass
+    
+    yield
+    
+    # Shutdown (if needed)
+    # Add any cleanup tasks here
+
+
+app = FastAPI(title="CompareAI API", version="1.0.0", lifespan=lifespan)
 
 
 # Add CORS middleware BEFORE including routers

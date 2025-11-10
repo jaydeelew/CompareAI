@@ -33,6 +33,11 @@ class TestValidationUtilities:
     
     def test_email_validation(self):
         """Test email validation."""
+        import re
+        
+        # Simple email validation regex pattern
+        email_pattern = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+        
         valid_emails = [
             "user@example.com",
             "test.user@example.co.uk",
@@ -45,23 +50,45 @@ class TestValidationUtilities:
             "user @example.com",
         ]
         
-        # Add your email validation tests here
+        # Test valid emails
         for email in valid_emails:
-            assert "@" in email
+            assert email_pattern.match(email) is not None, f"{email} should be valid"
+        
+        # Test invalid emails
         for email in invalid_emails:
-            assert "@" not in email or email.count("@") != 1
+            assert email_pattern.match(email) is None, f"{email} should be invalid"
     
     def test_password_validation(self):
         """Test password validation."""
-        # Add password validation tests based on your requirements
-        weak_passwords = ["123", "abc", "password"]
-        strong_passwords = ["SecurePass123!", "MyP@ssw0rd", "Str0ng!P@ss"]
+        from app.auth import validate_password_strength
         
-        # Placeholder - implement based on your password requirements
+        # Weak passwords that should fail validation
+        weak_passwords = [
+            "123",           # Too short, no uppercase, no special char
+            "abc",           # Too short, no digit, no uppercase, no special char
+            "password",      # No digit, no uppercase, no special char
+            "Password1",     # No special character
+            "PASSWORD1!",    # No lowercase letter
+            "password1!",    # No uppercase letter
+            "Password!",     # No digit
+        ]
+        
+        # Strong passwords that should pass validation
+        strong_passwords = [
+            "SecurePass123!",
+            "MyP@ssw0rd",
+            "Str0ng!P@ss",
+        ]
+        
+        # Test weak passwords - should all fail validation
         for password in weak_passwords:
-            assert len(password) < 8  # Assuming minimum 8 characters
+            is_valid, error_message = validate_password_strength(password)
+            assert not is_valid, f"Password '{password}' should be invalid: {error_message}"
+        
+        # Test strong passwords - should all pass validation
         for password in strong_passwords:
-            assert len(password) >= 8
+            is_valid, error_message = validate_password_strength(password)
+            assert is_valid, f"Password '{password}' should be valid: {error_message}"
 
 
 class TestFormattingUtilities:
@@ -128,16 +155,23 @@ class TestConstants:
         from app.config import TIER_LIMITS
         
         assert isinstance(TIER_LIMITS, dict)
-        assert "free" in TIER_LIMITS or "anonymous" in TIER_LIMITS
+        # TIER_LIMITS contains response tiers: brief, standard, extended
+        expected_keys = ["brief", "standard", "extended"]
+        for key in expected_keys:
+            assert key in TIER_LIMITS, f"TIER_LIMITS missing response tier: {key}"
+            assert isinstance(TIER_LIMITS[key], dict)
+            assert "input_chars" in TIER_LIMITS[key]
+            assert "output_tokens" in TIER_LIMITS[key]
     
     def test_extended_tier_limits_exist(self):
         """Test that extended tier limits are properly defined."""
         from app.config import EXTENDED_TIER_LIMITS
         
         assert isinstance(EXTENDED_TIER_LIMITS, dict)
-        # Check for expected keys
-        expected_keys = ["brief", "standard", "extended"]
+        # EXTENDED_TIER_LIMITS contains subscription tiers: anonymous, free, starter, etc.
+        expected_keys = ["anonymous", "free"]
         for key in expected_keys:
-            if key in EXTENDED_TIER_LIMITS:
-                assert isinstance(EXTENDED_TIER_LIMITS[key], dict)
+            assert key in EXTENDED_TIER_LIMITS, f"EXTENDED_TIER_LIMITS missing subscription tier: {key}"
+            assert isinstance(EXTENDED_TIER_LIMITS[key], int)
+            assert EXTENDED_TIER_LIMITS[key] > 0
 

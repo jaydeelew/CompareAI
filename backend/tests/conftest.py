@@ -179,7 +179,7 @@ def authenticated_client(client, test_user):
     """
     Create a test client with authenticated user.
     
-    Returns a tuple of (client, user, token) for making authenticated requests.
+    Returns a tuple of (client, user, access_token, refresh_token) for making authenticated requests.
     """
     # Login to get token
     response = client.post(
@@ -190,10 +190,12 @@ def authenticated_client(client, test_user):
         },
     )
     assert response.status_code == 200
-    token = response.json()["access_token"]
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]  # Login endpoint always returns refresh_token
     
     # Set authorization header
-    client.headers = {"Authorization": f"Bearer {token}"}
+    client.headers = {"Authorization": f"Bearer {access_token}"}
     
-    return client, test_user, token
+    return client, test_user, access_token, refresh_token
 

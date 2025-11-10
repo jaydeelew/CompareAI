@@ -9,6 +9,7 @@ Tests cover:
 - Rate limit handling workflows
 """
 import pytest
+from unittest.mock import patch
 from fastapi import status
 
 
@@ -61,18 +62,15 @@ class TestAnonymousUserWorkflow:
         """Test anonymous user can make comparisons."""
         fingerprint = "test-anonymous-fingerprint"
         
-        # Set fingerprint header if your API uses it
-        # client.headers = {"X-Fingerprint": fingerprint}
-        
         # Make comparison request
         response = client.post(
             "/api/compare",
             json={
-                "prompt": "What is AI?",
+                "input_data": "What is AI?",
                 "models": ["gpt-4"],
                 "tier": "brief",
+                "browser_fingerprint": fingerprint,
             },
-            headers={"X-Fingerprint": fingerprint} if hasattr(client, 'headers') else {}
         )
         
         # Should either succeed or return rate limit error
@@ -82,8 +80,19 @@ class TestAnonymousUserWorkflow:
             status.HTTP_401_UNAUTHORIZED,  # If auth is required
         ]
     
-    def test_anonymous_rate_limit_workflow(self, client):
+    @patch('app.routers.api.run_models')
+    def test_anonymous_rate_limit_workflow(self, mock_run_models, client):
         """Test anonymous user hitting rate limits."""
+        # Mock run_models to return successful results so they count against rate limits
+        # Patch where it's used (app.routers.api) rather than where it's defined
+        # This ensures the mock works when called via run_in_executor in a thread pool
+        def mock_run_models_func(prompt, model_list, tier=None, conversation_history=None):
+            # Return successful results for all models (not error messages)
+            # This simulates successful API calls that count against rate limits
+            return {model: f"Mock response for {model}" for model in model_list}
+        
+        mock_run_models.side_effect = mock_run_models_func
+        
         fingerprint = "test-rate-limit-fingerprint"
         
         responses = []
@@ -91,20 +100,27 @@ class TestAnonymousUserWorkflow:
             response = client.post(
                 "/api/compare",
                 json={
-                    "prompt": f"Test prompt {i}",
+                    "input_data": f"Test prompt {i}",
                     "models": ["gpt-4"],
                     "tier": "brief",
+                    "browser_fingerprint": fingerprint,
                 },
-                headers={"X-Fingerprint": fingerprint} if hasattr(client, 'headers') else {}
             )
             responses.append(response.status_code)
             
-            # Stop if we hit rate limit
+            # Stop early if we hit rate limit to avoid unnecessary iterations
             if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
                 break
         
-        # Should eventually hit rate limit
-        assert status.HTTP_429_TOO_MANY_REQUESTS in responses or len(responses) < 50
+        # Should eventually hit rate limit (anonymous limit is 10 model responses per day)
+        # After 10 successful requests, the 11th should return 429
+        assert status.HTTP_429_TOO_MANY_REQUESTS in responses, (
+            f"Expected to hit rate limit but got status codes: {responses[:15]}. "
+            f"Total requests made: {len(responses)}"
+        )
+        
+        # Verify that mock was called (at least once before rate limit)
+        assert mock_run_models.called, "run_models mock should have been called"
 
 
 class TestAuthenticatedUserWorkflow:
@@ -112,7 +128,7 @@ class TestAuthenticatedUserWorkflow:
     
     def test_authenticated_comparison_workflow(self, authenticated_client):
         """Test complete authenticated user comparison flow."""
-        client, user, token = authenticated_client
+        client, user, token, _ = authenticated_client
         
         # Step 1: Check rate limit status
         # Adjust endpoint based on your implementation
@@ -123,7 +139,7 @@ class TestAuthenticatedUserWorkflow:
         compare_response = client.post(
             "/api/compare",
             json={
-                "prompt": "Explain machine learning",
+                "input_data": "Explain machine learning",
                 "models": ["gpt-4", "claude-3-opus"],
                 "tier": "standard",
             }
@@ -144,7 +160,7 @@ class TestAuthenticatedUserWorkflow:
     
     def test_authenticated_user_tier_upgrade_workflow(self, authenticated_client, test_user_admin):
         """Test user tier upgrade workflow."""
-        client, user, token = authenticated_client
+        client, user, token, _ = authenticated_client
         
         # Admin upgrades user tier
         admin_client = client
@@ -171,7 +187,7 @@ class TestAuthenticatedUserWorkflow:
         compare_response = user_client.post(
             "/api/compare",
             json={
-                "prompt": "Test",
+                "input_data": "Test",
                 "models": ["gpt-4"],
                 "tier": "standard",
             }
@@ -205,8 +221,8 @@ class TestAdminWorkflow:
         # Step 3: Get system stats
         stats_response = client.get("/api/admin/stats")
         if stats_response.status_code == status.HTTP_200_OK:
-            stats = stats_response.status_code
-            assert isinstance(stats, (dict, int))
+            stats = stats_response.json()
+            assert isinstance(stats, dict)
         
         # Step 4: View usage logs
         logs_response = client.get("/api/admin/usage-logs")
@@ -220,14 +236,14 @@ class TestErrorRecoveryWorkflow:
     
     def test_rate_limit_recovery(self, authenticated_client):
         """Test that users can make requests after rate limit resets."""
-        client, user, token = authenticated_client
+        client, user, token, _ = authenticated_client
         
         # Exhaust rate limit
         for _ in range(100):
             response = client.post(
                 "/api/compare",
                 json={
-                    "prompt": "Test",
+                    "input_data": "Test",
                     "models": ["gpt-4"],
                     "tier": "brief",
                 }
@@ -242,10 +258,13 @@ class TestErrorRecoveryWorkflow:
     
     def test_authentication_token_refresh_workflow(self, authenticated_client):
         """Test token refresh workflow."""
-        client, user, token = authenticated_client
+        client, user, token, refresh_token = authenticated_client
         
         # Refresh token
-        refresh_response = client.post("/api/auth/refresh")
+        refresh_response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token}
+        )
         if refresh_response.status_code == status.HTTP_200_OK:
             new_token = refresh_response.json()["access_token"]
             

@@ -16,7 +16,7 @@ class TestAdminAuthentication:
     
     def test_admin_endpoint_requires_admin(self, authenticated_client):
         """Test that admin endpoints require admin privileges."""
-        client, user, token = authenticated_client
+        client, user, token, _ = authenticated_client
         
         # Regular user should not have admin access
         response = client.get("/api/admin/users")
@@ -103,10 +103,10 @@ class TestUserManagement:
         )
         token = response.json()["access_token"]
         client.headers = {"Authorization": f"Bearer {token}"}
-        
-        response = client.patch(
+    
+        response = client.put(
             f"/api/admin/users/{test_user.id}",
-            json={"subscription_tier": "premium"}
+            json={"subscription_tier": "pro"}
         )
         # Adjust based on your implementation
         assert response.status_code in [

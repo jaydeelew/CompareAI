@@ -168,7 +168,7 @@ async def list_users(
     total_pages = (total + per_page - 1) // per_page
 
     return AdminUserListResponse(
-        users=[AdminUserResponse.from_orm(user) for user in users],
+        users=[AdminUserResponse.model_validate(user) for user in users],
         total=total,
         page=page,
         per_page=per_page,
@@ -187,7 +187,7 @@ async def get_user(user_id: int, current_user: User = Depends(get_current_admin_
     # Ensure usage is reset if it's a new day
     ensure_usage_reset(user, db)
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.post("/users", response_model=AdminUserResponse, status_code=status.HTTP_201_CREATED)
@@ -238,10 +238,11 @@ async def create_user(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.put("/users/{user_id}", response_model=AdminUserResponse)
+@router.patch("/users/{user_id}", response_model=AdminUserResponse)
 async def update_user(
     user_id: int,
     user_data: AdminUserUpdate,
@@ -249,7 +250,7 @@ async def update_user(
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
-    """Update user details."""
+    """Update user details. Supports both PUT and PATCH methods."""
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -273,7 +274,7 @@ async def update_user(
     }
 
     # Update fields
-    update_data = user_data.dict(exclude_unset=True)
+    update_data = user_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         if hasattr(user, field):
             setattr(user, field, value)
@@ -300,7 +301,7 @@ async def update_user(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -545,7 +546,7 @@ async def toggle_user_active(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.post("/users/{user_id}/reset-usage", response_model=AdminUserResponse)
@@ -595,7 +596,7 @@ async def reset_user_usage(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.post("/users/{user_id}/toggle-mock-mode", response_model=AdminUserResponse)
@@ -643,7 +644,7 @@ async def toggle_mock_mode(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.post("/users/{user_id}/change-tier", response_model=AdminUserResponse)
@@ -697,7 +698,7 @@ async def change_user_tier(
         request=request,
     )
 
-    return AdminUserResponse.from_orm(user)
+    return AdminUserResponse.model_validate(user)
 
 
 @router.get("/settings")

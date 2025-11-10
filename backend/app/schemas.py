@@ -4,7 +4,7 @@ Pydantic schemas for request/response validation.
 This module defines all data models for API requests and responses.
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, field_serializer
+from pydantic import BaseModel, EmailStr, Field, field_validator, field_serializer, ConfigDict
 from typing import Optional, List, Dict, Literal
 from datetime import datetime, date
 
@@ -65,8 +65,7 @@ class UserResponse(BaseModel):
     extended_usage_reset_date: Optional[date] = None
     daily_extended_usage: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TokenResponse(BaseModel):
@@ -196,8 +195,7 @@ class UsageHistory(BaseModel):
             raise ValueError("models_used cannot be empty")
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -230,8 +228,7 @@ class UserPreferencesResponse(BaseModel):
     email_notifications: bool
     usage_alerts: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -249,8 +246,7 @@ class ConversationListItem(BaseModel):
     created_at: datetime
     message_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationMessage(BaseModel):
@@ -272,8 +268,7 @@ class ConversationMessage(BaseModel):
             raise ValueError("Role must be either 'user' or 'assistant'")
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationSummary(BaseModel):
@@ -285,8 +280,7 @@ class ConversationSummary(BaseModel):
     created_at: datetime
     message_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationDetail(BaseModel):
@@ -299,8 +293,7 @@ class ConversationDetail(BaseModel):
     created_at: datetime
     messages: List[ConversationMessage]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -327,8 +320,7 @@ class AdminUserResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdminUserCreate(BaseModel):
@@ -398,8 +390,7 @@ class AdminActionLogResponse(BaseModel):
     user_agent: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdminStatsResponse(BaseModel):
