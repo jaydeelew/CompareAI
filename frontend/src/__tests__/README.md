@@ -93,10 +93,98 @@ describe('myService', () => {
 
 ## Test Utilities
 
+### Setup
+
 The `setup.ts` file configures:
 - `@testing-library/jest-dom` matchers (toBeInTheDocument, etc.)
 - Global mocks (matchMedia, IntersectionObserver, ResizeObserver)
 - Test cleanup after each test
+
+### Test Utilities (`utils/`)
+
+The `utils/` directory provides comprehensive testing utilities:
+
+#### Test Render Helpers (`test-utils.tsx`)
+
+Custom render function with providers:
+
+```typescript
+import { renderWithProviders, createMockUser } from '@/__tests__/utils';
+
+const mockUser = createMockUser({ email: 'test@example.com' });
+
+const { getByText } = renderWithProviders(<MyComponent />, {
+  authState: { user: mockUser, isAuthenticated: true },
+  route: '/dashboard',
+});
+```
+
+#### Test Data Factories (`test-factories.ts`)
+
+Create mock data with sensible defaults:
+
+```typescript
+import { createMockUser, createMockCompareResponse } from '@/__tests__/utils';
+
+const user = createMockUser({ subscription_tier: 'premium' });
+const response = createMockCompareResponse(['gpt-4', 'claude-3']);
+```
+
+Available factories:
+- `createMockUser`, `createMockAdminUser`, `createMockPremiumUser`
+- `createMockModel`, `createMockModelsByProvider`
+- `createMockConversationMessage`, `createMockStoredMessage`
+- `createMockCompareResponse`, `createMockRateLimitStatus`
+- `createMockStreamEvent`, `createMockStreamEvents`
+- And more...
+
+#### Mock API Responses (`mock-api-responses.ts`)
+
+Mock response data for all endpoints:
+
+```typescript
+import { mockCompareResponse, mockLoginResponse } from '@/__tests__/utils';
+
+const compareResponse = mockCompareResponse(payload, { metadata: customMetadata });
+const loginResponse = mockLoginResponse({ email: 'user@example.com' });
+```
+
+#### Mock Services (`mock-services.ts`)
+
+Mock service implementations for testing:
+
+```typescript
+import { vi } from 'vitest';
+import { mockCompare, mockGetRateLimitStatus } from '@/__tests__/utils';
+
+vi.mock('../../services/compareService', () => ({
+  compare: mockCompare,
+  getRateLimitStatus: mockGetRateLimitStatus,
+}));
+```
+
+Or use `setupMockServices()` in `beforeEach`:
+
+```typescript
+import { setupMockServices } from '@/__tests__/utils';
+
+beforeEach(() => {
+  setupMockServices();
+});
+```
+
+### Importing Utilities
+
+Import all utilities from the index:
+
+```typescript
+import {
+  renderWithProviders,
+  createMockUser,
+  mockCompare,
+  mockCompareResponse,
+} from '@/__tests__/utils';
+```
 
 ## Coverage
 
