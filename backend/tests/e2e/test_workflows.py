@@ -40,8 +40,8 @@ class TestUserRegistrationWorkflow:
         # Step 3: Login with new credentials
         login_response = client.post(
             "/api/auth/login",
-            data={
-                "username": email,
+            json={
+                "email": email,
                 "password": password,
             },
         )
@@ -150,8 +150,8 @@ class TestAuthenticatedUserWorkflow:
         admin_client = client
         admin_response = admin_client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -187,8 +187,8 @@ class TestAdminWorkflow:
         # Step 1: Admin login
         login_response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )

@@ -32,8 +32,8 @@ class TestAdminAuthentication:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -60,8 +60,8 @@ class TestUserManagement:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -78,8 +78,8 @@ class TestUserManagement:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -96,8 +96,8 @@ class TestUserManagement:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -124,8 +124,8 @@ class TestSystemConfiguration:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )
@@ -142,8 +142,8 @@ class TestSystemConfiguration:
         # Login as admin
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user_admin.email,
+            json={
+                "email": test_user_admin.email,
                 "password": "secret",
             },
         )

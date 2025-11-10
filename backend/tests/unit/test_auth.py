@@ -77,8 +77,8 @@ class TestUserLogin:
         """Test successful login with correct credentials."""
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user.email,
+            json={
+                "email": test_user.email,
                 "password": "secret",  # Default test password
             },
         )
@@ -92,8 +92,8 @@ class TestUserLogin:
         """Test login with incorrect password."""
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": test_user.email,
+            json={
+                "email": test_user.email,
                 "password": "wrongpassword",
             },
         )
@@ -103,8 +103,8 @@ class TestUserLogin:
         """Test login with non-existent user."""
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": "nonexistent@example.com",
+            json={
+                "email": "nonexistent@example.com",
                 "password": "SomePassword123!",
             },
         )
@@ -127,8 +127,8 @@ class TestUserLogin:
         
         response = client.post(
             "/api/auth/login",
-            data={
-                "username": unverified_user.email,
+            json={
+                "email": unverified_user.email,
                 "password": "password123",
             },
         )

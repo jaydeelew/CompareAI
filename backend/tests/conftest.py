@@ -184,8 +184,8 @@ def authenticated_client(client, test_user):
     # Login to get token
     response = client.post(
         "/api/auth/login",
-        data={
-            "username": test_user.email,
+        json={
+            "email": test_user.email,
             "password": "secret",  # Default test password
         },
     )
