@@ -491,6 +491,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Test side effects
    - Test error handling
 
+5. **Write Service Tests** (1 day)
+   - Test all service modules
+   - Test API client methods
+   - Test error handling
+   - Test request/response transformations
+   - Mock API responses
+   - Test edge cases
+
 **Deliverables:**
 - ✅ Complete frontend test infrastructure
 - ✅ Component tests
@@ -861,6 +869,8 @@ git commit -m "chore: remove backup files"
 - [ ] Backend test infrastructure
 - [ ] Frontend test infrastructure
 - [ ] Write critical tests
+- [x] Hook tests (Week 10, Task 4)
+- [x] Service tests (Week 10, Task 5)
 - [ ] E2E testing setup
 - [ ] Achieve 70%+ coverage
 
