@@ -260,3 +260,232 @@ class TestRateLimitEdgeCases:
         assert len(results) == 10
         assert all(isinstance(r[0], bool) and isinstance(r[1], int) and isinstance(r[2], int) for r in results)
 
+
+class TestAllTierRateLimits:
+    """Tests for rate limiting across all subscription tiers."""
+    
+    def test_free_tier_limit(self, db_session, test_user_free):
+        """Test free tier has correct daily limit."""
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_free, db_session
+        )
+        assert daily_limit == 20  # From SUBSCRIPTION_CONFIG
+        assert can_proceed is True  # Should be within limit initially
+    
+    def test_starter_tier_limit(self, db_session, test_user_starter):
+        """Test starter tier has correct daily limit."""
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_starter, db_session
+        )
+        assert daily_limit == 50  # From SUBSCRIPTION_CONFIG
+        assert can_proceed is True
+    
+    def test_starter_plus_tier_limit(self, db_session, test_user_starter_plus):
+        """Test starter_plus tier has correct daily limit."""
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_starter_plus, db_session
+        )
+        assert daily_limit == 100  # From SUBSCRIPTION_CONFIG
+        assert can_proceed is True
+    
+    def test_pro_tier_limit(self, db_session, test_user_pro):
+        """Test pro tier has correct daily limit."""
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_pro, db_session
+        )
+        assert daily_limit == 200  # From SUBSCRIPTION_CONFIG
+        assert can_proceed is True
+    
+    def test_pro_plus_tier_limit(self, db_session, test_user_pro_plus):
+        """Test pro_plus tier has correct daily limit."""
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_pro_plus, db_session
+        )
+        assert daily_limit == 400  # From SUBSCRIPTION_CONFIG
+        assert can_proceed is True
+    
+    def test_free_tier_exceeds_limit(self, db_session, test_user_free):
+        """Test free tier rate limit enforcement."""
+        # Increment usage to exceed free tier limit (20)
+        for _ in range(21):
+            increment_user_usage(test_user_free, db_session)
+            db_session.refresh(test_user_free)
+        
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_free, db_session
+        )
+        assert can_proceed is False
+        assert current_count >= daily_limit
+    
+    def test_starter_tier_exceeds_limit(self, db_session, test_user_starter):
+        """Test starter tier rate limit enforcement."""
+        # Increment usage to exceed starter tier limit (50)
+        for _ in range(51):
+            increment_user_usage(test_user_starter, db_session)
+            db_session.refresh(test_user_starter)
+        
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_starter, db_session
+        )
+        assert can_proceed is False
+        assert current_count >= daily_limit
+    
+    def test_pro_tier_exceeds_limit(self, db_session, test_user_pro):
+        """Test pro tier rate limit enforcement."""
+        # Increment usage to exceed pro tier limit (200)
+        for _ in range(201):
+            increment_user_usage(test_user_pro, db_session)
+            db_session.refresh(test_user_pro)
+        
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user_pro, db_session
+        )
+        assert can_proceed is False
+        assert current_count >= daily_limit
+
+
+class TestRateLimitReset:
+    """Tests for rate limit reset functionality."""
+    
+    def test_daily_usage_reset_on_new_day(self, db_session, test_user):
+        """Test that usage count resets on new day."""
+        from datetime import date, timedelta
+        
+        # Set usage count to a high value
+        test_user.daily_usage_count = 100
+        test_user.usage_reset_date = date.today() - timedelta(days=1)  # Yesterday
+        db_session.commit()
+        
+        # Check rate limit (should reset automatically)
+        can_proceed, current_count, daily_limit = check_user_rate_limit(
+            test_user, db_session
+        )
+        
+        # Usage should be reset to 0
+        assert current_count == 0
+        assert test_user.usage_reset_date == date.today()
+    
+    def test_extended_usage_reset_on_new_day(self, db_session, test_user):
+        """Test that extended usage count resets on new day."""
+        from datetime import date, timedelta
+        from app.rate_limiting import check_extended_tier_limit
+        
+        # Set extended usage count to a high value
+        test_user.daily_extended_usage = 10
+        test_user.extended_usage_reset_date = date.today() - timedelta(days=1)  # Yesterday
+        db_session.commit()
+        
+        # Check extended tier limit (should reset automatically)
+        can_proceed, current_count, daily_limit = check_extended_tier_limit(
+            test_user, db_session
+        )
+        
+        # Usage should be reset to 0
+        assert current_count == 0
+        assert test_user.extended_usage_reset_date == date.today()
+
+
+class TestAnonymousRateLimitEdgeCases:
+    """Tests for anonymous rate limiting edge cases."""
+    
+    def test_anonymous_multiple_fingerprints(self):
+        """Test that different fingerprints have separate limits."""
+        fingerprint1 = "fingerprint-1"
+        fingerprint2 = "fingerprint-2"
+        
+        # Increment fingerprint1 multiple times
+        for _ in range(5):
+            increment_anonymous_usage(fingerprint1)
+        
+        # Check both fingerprints
+        can_proceed1, count1 = check_anonymous_rate_limit(fingerprint1)
+        can_proceed2, count2 = check_anonymous_rate_limit(fingerprint2)
+        
+        # Fingerprint1 should have more usage than fingerprint2
+        assert count1 > count2
+    
+    def test_anonymous_limit_reset_on_new_day(self):
+        """Test anonymous limit resets on new day."""
+        from datetime import date, timedelta
+        from app.rate_limiting import anonymous_rate_limit_storage
+        
+        fingerprint = "reset-test-fingerprint"
+        
+        # Set count to high value with yesterday's date
+        anonymous_rate_limit_storage[fingerprint] = {
+            "count": 100,
+            "date": str(date.today() - timedelta(days=1)),
+            "first_seen": None
+        }
+        
+        # Check rate limit (should reset)
+        can_proceed, remaining = check_anonymous_rate_limit(fingerprint)
+        
+        # Should reset to 0 or fresh count
+        assert remaining >= 0
+        assert anonymous_rate_limit_storage[fingerprint]["date"] == str(date.today())
+
+
+class TestExtendedTierLimitEdgeCases:
+    """Tests for extended tier limit edge cases."""
+    
+    def test_extended_limit_all_tiers(self, db_session):
+        """Test extended limits for all subscription tiers."""
+        from tests.factories import (
+            create_free_user, create_starter_user, create_pro_user
+        )
+        from app.rate_limiting import check_extended_tier_limit
+        from app.config import EXTENDED_TIER_LIMITS
+        
+        # Test free tier
+        free_user = create_free_user(db_session)
+        _, _, free_limit = check_extended_tier_limit(free_user, db_session)
+        assert free_limit == EXTENDED_TIER_LIMITS["free"]
+        
+        # Test starter tier
+        starter_user = create_starter_user(db_session)
+        _, _, starter_limit = check_extended_tier_limit(starter_user, db_session)
+        assert starter_limit == EXTENDED_TIER_LIMITS["starter"]
+        
+        # Test pro tier
+        pro_user = create_pro_user(db_session)
+        _, _, pro_limit = check_extended_tier_limit(pro_user, db_session)
+        assert pro_limit == EXTENDED_TIER_LIMITS["pro"]
+    
+    def test_extended_limit_exceeded(self, db_session, test_user):
+        """Test extended tier limit enforcement."""
+        from app.rate_limiting import check_extended_tier_limit, increment_extended_usage
+        
+        # Get the limit for this user's tier
+        _, _, daily_limit = check_extended_tier_limit(test_user, db_session)
+        
+        # Increment usage to exceed limit
+        for _ in range(daily_limit + 1):
+            increment_extended_usage(test_user, db_session)
+            db_session.refresh(test_user)
+        
+        can_proceed, current_count, _ = check_extended_tier_limit(
+            test_user, db_session
+        )
+        assert can_proceed is False
+        assert current_count > daily_limit
+    
+    def test_anonymous_extended_limit(self):
+        """Test anonymous extended tier limit."""
+        from app.rate_limiting import (
+            check_anonymous_extended_limit,
+            increment_anonymous_extended_usage
+        )
+        from app.config import EXTENDED_TIER_LIMITS
+        
+        fingerprint = "anonymous-extended-test"
+        anonymous_limit = EXTENDED_TIER_LIMITS["anonymous"]
+        
+        # Increment to exceed limit
+        for _ in range(anonymous_limit + 1):
+            increment_anonymous_extended_usage(fingerprint)
+        
+        can_proceed, current_count = check_anonymous_extended_limit(fingerprint)
+        assert can_proceed is False
+        assert current_count > anonymous_limit
+

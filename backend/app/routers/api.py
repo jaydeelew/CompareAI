@@ -289,6 +289,13 @@ async def compare(
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
 
+    # Validate tier is valid
+    if req.tier not in TIER_LIMITS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid tier '{req.tier}'. Valid tiers are: {', '.join(TIER_LIMITS.keys())}",
+        )
+
     # Validate tier limits
     if not validate_tier_limits(req.input_data, req.tier):
         tier_limit = TIER_LIMITS[req.tier]["input_chars"]
@@ -588,6 +595,13 @@ async def compare_stream(
 
     if not req.models:
         raise HTTPException(status_code=400, detail="At least one model must be selected")
+
+    # Validate tier is valid
+    if req.tier not in TIER_LIMITS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid tier '{req.tier}'. Valid tiers are: {', '.join(TIER_LIMITS.keys())}",
+        )
 
     # Validate tier limits
     if not validate_tier_limits(req.input_data, req.tier):

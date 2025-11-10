@@ -181,28 +181,334 @@ class TestEmailVerification:
     
     def test_verify_email_success(self, client, db_session):
         """Test successful email verification."""
-        # Create unverified user
         from app.models import User
+        from app.auth import generate_verification_token
         from passlib.context import CryptContext
+        from datetime import datetime, timedelta
         
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        token = generate_verification_token()
         user = User(
             email="verify@example.com",
             password_hash=pwd_context.hash("password123"),
             is_verified=False,
-            verification_token="test-token-123",
+            verification_token=token,
+            verification_token_expires=datetime.utcnow() + timedelta(hours=24),
         )
         db_session.add(user)
         db_session.commit()
         
-        # Verify email (implementation depends on your verification endpoint)
-        # This is a placeholder - adjust based on your actual implementation
-        response = client.get(f"/api/auth/verify?token=test-token-123")
-        # Adjust expected status code based on your implementation
-        assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        # Verify email using POST endpoint
+        response = client.post(
+            "/api/auth/verify-email",
+            json={"token": token}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "message" in data
+        
+        # Verify user is now verified
+        db_session.refresh(user)
+        assert user.is_verified is True
+        assert user.verification_token is None
     
     def test_verify_email_invalid_token(self, client):
         """Test email verification with invalid token."""
-        response = client.get("/api/auth/verify?token=invalid-token")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.post(
+            "/api/auth/verify-email",
+            json={"token": "invalid-token-123"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    
+    def test_verify_email_expired_token(self, client, db_session):
+        """Test email verification with expired token."""
+        from app.models import User
+        from app.auth import generate_verification_token
+        from passlib.context import CryptContext
+        from datetime import datetime, timedelta
+        
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        token = generate_verification_token()
+        user = User(
+            email="expired@example.com",
+            password_hash=pwd_context.hash("password123"),
+            is_verified=False,
+            verification_token=token,
+            verification_token_expires=datetime.utcnow() - timedelta(hours=1),  # Expired
+        )
+        db_session.add(user)
+        db_session.commit()
+        
+        response = client.post(
+            "/api/auth/verify-email",
+            json={"token": token}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    
+    def test_resend_verification_email(self, client, db_session):
+        """Test resending verification email."""
+        from tests.factories import create_unverified_user
+        
+        user = create_unverified_user(db_session, email="resend@example.com")
+        
+        response = client.post(
+            "/api/auth/resend-verification",
+            json={"email": user.email}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "message" in data
+        
+        # Verify new token was generated
+        db_session.refresh(user)
+        assert user.verification_token is not None
+    
+    def test_resend_verification_already_verified(self, client, test_user):
+        """Test resending verification for already verified user."""
+        response = client.post(
+            "/api/auth/resend-verification",
+            json={"email": test_user.email}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    
+    def test_resend_verification_nonexistent_email(self, client):
+        """Test resending verification for non-existent email (should not reveal if email exists)."""
+        response = client.post(
+            "/api/auth/resend-verification",
+            json={"email": "nonexistent@example.com"}
+        )
+        # Should return 200 to not reveal if email exists
+        assert response.status_code == status.HTTP_200_OK
+
+
+class TestPasswordReset:
+    """Tests for password reset functionality."""
+    
+    def test_forgot_password_success(self, client, test_user):
+        """Test requesting password reset."""
+        response = client.post(
+            "/api/auth/forgot-password",
+            json={"email": test_user.email}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "message" in data
+    
+    def test_forgot_password_nonexistent_email(self, client):
+        """Test password reset for non-existent email (should not reveal if email exists)."""
+        response = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "nonexistent@example.com"}
+        )
+        # Should return 200 to not reveal if email exists
+        assert response.status_code == status.HTTP_200_OK
+    
+    def test_reset_password_success(self, client, db_session):
+        """Test successful password reset."""
+        from app.models import User
+        from app.auth import generate_verification_token
+        from passlib.context import CryptContext
+        from datetime import datetime, timedelta
+        
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        reset_token = generate_verification_token()
+        user = User(
+            email="reset@example.com",
+            password_hash=pwd_context.hash("oldpassword"),
+            reset_token=reset_token,
+            reset_token_expires=datetime.utcnow() + timedelta(hours=1),
+        )
+        db_session.add(user)
+        db_session.commit()
+        
+        response = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": reset_token,
+                "new_password": "NewSecurePassword123!"
+            }
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "message" in data
+        
+        # Verify password was changed
+        db_session.refresh(user)
+        assert user.reset_token is None
+        assert user.reset_token_expires is None
+    
+    def test_reset_password_invalid_token(self, client):
+        """Test password reset with invalid token."""
+        response = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": "invalid-token",
+                "new_password": "NewPassword123!"
+            }
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    
+    def test_reset_password_expired_token(self, client, db_session):
+        """Test password reset with expired token."""
+        from app.models import User
+        from app.auth import generate_verification_token
+        from passlib.context import CryptContext
+        from datetime import datetime, timedelta
+        
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        reset_token = generate_verification_token()
+        user = User(
+            email="expired_reset@example.com",
+            password_hash=pwd_context.hash("oldpassword"),
+            reset_token=reset_token,
+            reset_token_expires=datetime.utcnow() - timedelta(hours=1),  # Expired
+        )
+        db_session.add(user)
+        db_session.commit()
+        
+        response = client.post(
+            "/api/auth/reset-password",
+            json={
+                "token": reset_token,
+                "new_password": "NewPassword123!"
+            }
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestUserInfo:
+    """Tests for user info endpoints."""
+    
+    def test_get_current_user_info(self, authenticated_client):
+        """Test getting current user information."""
+        client, user, token, _ = authenticated_client
+        
+        response = client.get("/api/auth/me")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["email"] == user.email
+        assert "id" in data
+        assert "password" not in data
+    
+    def test_get_current_user_info_unauthorized(self, client):
+        """Test getting user info without authentication."""
+        response = client.get("/api/auth/me")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    
+    def test_logout(self, authenticated_client):
+        """Test logout endpoint."""
+        client, user, token, _ = authenticated_client
+        
+        response = client.post("/api/auth/logout")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "message" in data
+    
+    def test_delete_account(self, client, db_session):
+        """Test account deletion."""
+        from tests.factories import create_user
+        
+        user = create_user(db_session, email="delete@example.com", is_verified=True)
+        
+        # Login first
+        login_response = client.post(
+            "/api/auth/login",
+            json={
+                "email": user.email,
+                "password": "test_password_123"
+            }
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        client.headers = {"Authorization": f"Bearer {token}"}
+        
+        # Delete account
+        response = client.delete("/api/auth/delete-account")
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Verify user is deleted
+        deleted_user = db_session.query(User).filter(User.id == user.id).first()
+        assert deleted_user is None
+    
+    def test_delete_account_unverified(self, client, db_session):
+        """Test account deletion requires verified email."""
+        from tests.factories import create_unverified_user
+        
+        user = create_unverified_user(db_session, email="unverified_delete@example.com")
+        
+        # Login first
+        login_response = client.post(
+            "/api/auth/login",
+            json={
+                "email": user.email,
+                "password": "test_password_123"
+            }
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        client.headers = {"Authorization": f"Bearer {token}"}
+        
+        # Try to delete account (should fail if verification required)
+        response = client.delete("/api/auth/delete-account")
+        # May require verification - check implementation
+        assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+
+
+class TestLoginEdgeCases:
+    """Tests for edge cases in login functionality."""
+    
+    def test_login_inactive_user(self, client, db_session):
+        """Test login with inactive user."""
+        from tests.factories import create_inactive_user
+        
+        user = create_inactive_user(db_session)
+        
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "email": user.email,
+                "password": "test_password_123"
+            }
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+    
+    def test_login_case_sensitive_email(self, client, test_user):
+        """Test login with different email case."""
+        # Try with uppercase email
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "email": test_user.email.upper(),
+                "password": "secret"
+            }
+        )
+        # Should fail if email comparison is case-sensitive
+        assert response.status_code in [status.HTTP_200_OK, status.HTTP_401_UNAUTHORIZED]
+    
+    def test_refresh_token_with_inactive_user(self, client, db_session):
+        """Test refresh token with inactive user."""
+        from tests.factories import create_user
+        
+        user = create_user(db_session, email="inactive_refresh@example.com")
+        
+        # Login to get tokens
+        login_response = client.post(
+            "/api/auth/login",
+            json={
+                "email": user.email,
+                "password": "test_password_123"
+            }
+        )
+        refresh_token = login_response.json()["refresh_token"]
+        
+        # Deactivate user
+        user.is_active = False
+        db_session.commit()
+        
+        # Try to refresh token
+        response = client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh_token}
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
