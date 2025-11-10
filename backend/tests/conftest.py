@@ -18,6 +18,12 @@ os.environ.setdefault('MAIL_USERNAME', '')
 os.environ.setdefault('MAIL_PASSWORD', '')
 os.environ.setdefault('MAIL_FROM', '')
 
+# Set required environment variables for tests (works in both dev and production)
+# These are dummy values for testing - actual API calls would fail, but tests don't make real API calls
+os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-testing-only-not-for-production-use-32chars')
+os.environ.setdefault('OPENROUTER_API_KEY', 'test-api-key-for-testing-only')
+os.environ.setdefault('ENVIRONMENT', 'development')  # Use development mode for tests
+
 # Mock email service functions before importing app to avoid fastapi_mail import issues
 # This is a known bug in fastapi-mail 1.5.2 where SecretStr is not imported
 email_service_mock = MagicMock()

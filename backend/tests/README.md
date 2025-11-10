@@ -69,6 +69,84 @@ pytest -m e2e
 pytest -m "not slow"
 ```
 
+### Stop on first failure
+```bash
+# Stop immediately when the first test fails
+pytest -x
+
+# Stop after N failures
+pytest --maxfail=3
+```
+
+### Controlling Output Verbosity
+
+The default test output can be verbose. Here are options to reduce output:
+
+#### Quiet Modes
+```bash
+# Minimal output (only dots for passed, F for failed)
+pytest -q
+
+# Even quieter (no progress dots)
+pytest -qq
+
+# Quiet with short summary
+pytest -q --tb=short
+```
+
+#### Traceback Control
+```bash
+# No traceback at all (just test names)
+pytest --tb=no
+
+# One line per failure
+pytest --tb=line
+
+# Minimal traceback (shorter than short)
+pytest --tb=line -q
+```
+
+#### Disable Coverage Output
+```bash
+# Run without coverage (faster, less output)
+pytest --no-cov
+
+# Or disable just the terminal coverage report
+pytest --cov=app --cov-report=html --cov-report=xml
+```
+
+#### Suppress Warnings
+```bash
+# Disable all warnings
+pytest --disable-warnings
+
+# Combine with quiet mode
+pytest -q --disable-warnings
+```
+
+#### Early Exit Options
+```bash
+# Stop on first failure (less output if tests fail early)
+pytest -x
+
+# Stop after N failures
+pytest --maxfail=3
+```
+
+#### Recommended Quiet Commands
+```bash
+# Minimal output: quiet, no traceback, no warnings, no coverage
+pytest -q --tb=no --disable-warnings --no-cov
+
+# Quiet with minimal traceback (good middle ground)
+pytest -q --tb=line --disable-warnings
+
+# Quiet with short traceback (default but quieter)
+pytest -q --tb=short
+```
+
+**Note:** The default configuration includes `-v` (verbose) in `pyproject.toml`. You can override it by passing `-q` on the command line.
+
 ## Test Configuration
 
 Test configuration is in `pyproject.toml` under `[tool.pytest.ini_options]`.
@@ -117,4 +195,9 @@ def test_api_endpoint(authenticated_client):
 - Each test gets a fresh database session
 - Authentication tokens are automatically handled by fixtures
 - Tests are isolated - each test runs independently
+- **Environment Compatibility**: Tests work in both development and production environments
+  - Tests use in-memory SQLite (no external database needed)
+  - Email service is mocked (no email configuration needed)
+  - Required environment variables (`SECRET_KEY`, `OPENROUTER_API_KEY`) are automatically set in `conftest.py` with test values
+  - Tests run in development mode by default (config validation warnings instead of errors)
 
