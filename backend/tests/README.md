@@ -159,14 +159,81 @@ Key settings:
 
 ## Fixtures
 
-Common fixtures are defined in `conftest.py`:
+Common fixtures are defined in `conftest.py` and `factories.py`:
+
+### Database Fixtures
 
 - `db_session`: Fresh database session for each test (in-memory SQLite)
+  - Creates all tables before test
+  - Drops all tables after test
+  - Provides complete isolation between tests
+
+### API Client Fixtures
+
 - `client`: Test client with database dependency override
-- `test_user`: Standard test user (free tier, verified)
-- `test_user_premium`: Premium tier test user
-- `test_user_admin`: Admin test user
-- `authenticated_client`: Test client with authenticated user (returns client, user, token)
+- `authenticated_client`: Test client with authenticated free tier user
+  - Returns: `(client, user, access_token, refresh_token)`
+- `authenticated_client_starter`: Test client with authenticated starter tier user
+- `authenticated_client_pro`: Test client with authenticated pro tier user
+- `authenticated_client_admin`: Test client with authenticated admin user
+- `authenticated_client_super_admin`: Test client with authenticated super_admin user
+
+### User Fixtures (All Subscription Tiers)
+
+- `test_user`: Free tier user (backward compatible, password: "secret")
+- `test_user_free`: Free tier user (uses factories)
+- `test_user_starter`: Starter tier user
+- `test_user_starter_plus`: Starter Plus tier user
+- `test_user_pro`: Pro tier user
+- `test_user_pro_plus`: Pro Plus tier user
+- `test_user_premium`: Premium tier user (backward compatible, alias for pro)
+- `test_user_admin`: Admin user (role: "admin")
+- `test_user_super_admin`: Super admin user (role: "super_admin")
+- `test_user_moderator`: Moderator user (role: "moderator")
+- `test_user_unverified`: Unverified user (is_verified=False)
+- `test_user_inactive`: Inactive user (is_active=False)
+
+### Factory Functions (from `factories.py`)
+
+The `factories.py` module provides factory functions for creating test data:
+
+**User Factories:**
+- `create_user()`: Create a user with custom attributes
+- `create_free_user()`, `create_starter_user()`, `create_starter_plus_user()`, `create_pro_user()`, `create_pro_plus_user()`: Create users for each tier
+- `create_admin_user()`, `create_super_admin_user()`, `create_moderator_user()`: Create users with different roles
+- `create_unverified_user()`, `create_inactive_user()`: Create users with specific states
+
+**Other Factories:**
+- `create_user_preference()`: Create user preferences
+- `create_conversation()`: Create a conversation
+- `create_conversation_message()`: Create conversation messages
+- `create_usage_log()`: Create usage log entries
+- `create_subscription_history()`: Create subscription history entries
+- `create_payment_transaction()`: Create payment transactions
+- `create_admin_action_log()`: Create admin action logs
+- `create_app_settings()`: Create/update app settings
+
+**Mock Data Generators:**
+- `generate_compare_request()`: Generate mock compare request payloads
+- `generate_model_response()`: Generate mock model responses
+- `generate_compare_response()`: Generate mock compare responses
+- `generate_auth_tokens()`: Generate mock auth tokens
+- `generate_user_response()`: Generate mock user response payloads
+
+**Example:**
+```python
+from tests.factories import create_pro_user, create_conversation, generate_compare_request
+
+def test_example(db_session):
+    # Create a pro user
+    user = create_pro_user(db_session)
+    
+    # Create a conversation
+    conversation = create_conversation(db_session, user)
+    
+    # Generate mock request data
+    request_data = generate_compare_request(models=["openai/gpt-4"])
+```
 
 ## Writing Tests
 

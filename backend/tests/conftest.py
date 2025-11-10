@@ -3,6 +3,12 @@ Shared test fixtures and configuration for pytest.
 
 This module provides common fixtures used across all test modules,
 including database setup, API client, and test data factories.
+
+Phase 4, Week 9, Task 2: Enhanced test fixtures with:
+- Database fixtures (in-memory SQLite for tests)
+- User fixtures (different subscription tiers)
+- API client fixtures
+- Integration with factories module for mock data generation
 """
 import sys
 import os
@@ -12,6 +18,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from typing import Tuple, Optional
 
 # Set environment variables to avoid email configuration issues
 os.environ.setdefault('MAIL_USERNAME', '')
@@ -41,6 +48,22 @@ from app.main import app
 from app.database import Base, get_db
 from app.models import User, UsageLog
 
+# Import factories for creating test data
+from .factories import (
+    create_user,
+    create_free_user,
+    create_starter_user,
+    create_starter_plus_user,
+    create_pro_user,
+    create_pro_plus_user,
+    create_admin_user,
+    create_super_admin_user,
+    create_moderator_user,
+    create_unverified_user,
+    create_inactive_user,
+    DEFAULT_TEST_PASSWORD,
+)
+
 
 # In-memory SQLite database for testing
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -61,10 +84,16 @@ def db_session():
     """
     Create a fresh database session for each test.
     
-    This fixture:
-    - Creates all tables before the test
-    - Yields a database session
-    - Drops all tables after the test
+    This fixture provides an in-memory SQLite database that is:
+    - Created fresh for each test (function scope)
+    - Automatically cleaned up after each test
+    - Isolated from other tests
+    
+    Usage:
+        def test_example(db_session):
+            user = User(...)
+            db_session.add(user)
+            db_session.commit()
     """
     # Create all tables
     Base.metadata.create_all(bind=test_engine)
@@ -76,7 +105,7 @@ def db_session():
         yield session
     finally:
         session.close()
-        # Drop all tables after test
+        # Drop all tables after test to ensure clean state
         Base.metadata.drop_all(bind=test_engine)
 
 
@@ -104,98 +133,246 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+# ============================================================================
+# User Fixtures - All Subscription Tiers
+# ============================================================================
+
 @pytest.fixture
 def test_user(db_session):
     """
-    Create a test user in the database.
+    Create a free tier test user.
     
     Returns a User instance with default test credentials.
-    Password: "secret"
-    """
-    from passlib.context import CryptContext
+    Password: "test_password_123" (or use DEFAULT_TEST_PASSWORD from factories)
     
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    user = User(
+    Backward compatibility: Also accepts "secret" as password for existing tests.
+    """
+    return create_free_user(
+        db_session,
         email="test@example.com",
-        password_hash=pwd_context.hash("secret"),
-        is_verified=True,
-        subscription_tier="free",
-        is_active=True,
+        password="secret",  # Keep backward compatibility
     )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
+
+
+@pytest.fixture
+def test_user_free(db_session):
+    """Create a free tier user using factories."""
+    return create_free_user(db_session)
+
+
+@pytest.fixture
+def test_user_starter(db_session):
+    """Create a starter tier user."""
+    return create_starter_user(db_session)
+
+
+@pytest.fixture
+def test_user_starter_plus(db_session):
+    """Create a starter_plus tier user."""
+    return create_starter_plus_user(db_session)
+
+
+@pytest.fixture
+def test_user_pro(db_session):
+    """Create a pro tier user."""
+    return create_pro_user(db_session)
+
+
+@pytest.fixture
+def test_user_pro_plus(db_session):
+    """Create a pro_plus tier user."""
+    return create_pro_plus_user(db_session)
 
 
 @pytest.fixture
 def test_user_premium(db_session):
     """
-    Create a premium tier test user.
+    Create a premium tier test user (pro tier).
+    
+    Backward compatibility fixture - uses pro tier.
     Password: "secret"
     """
-    from passlib.context import CryptContext
-    
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    user = User(
+    return create_pro_user(
+        db_session,
         email="premium@example.com",
-        password_hash=pwd_context.hash("secret"),
-        is_verified=True,
-        subscription_tier="pro",  # Using "pro" as premium tier
-        is_active=True,
+        password="secret",  # Keep backward compatibility
     )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
 
 
 @pytest.fixture
 def test_user_admin(db_session):
     """
     Create an admin test user.
-    Password: "secret"
-    """
-    from passlib.context import CryptContext
     
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    user = User(
+    Password: "secret" (backward compatibility)
+    """
+    return create_admin_user(
+        db_session,
         email="admin@example.com",
-        password_hash=pwd_context.hash("secret"),
-        is_verified=True,
-        subscription_tier="pro",
-        is_admin=True,
+        password="secret",  # Keep backward compatibility
         role="admin",
-        is_active=True,
     )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
 
+
+@pytest.fixture
+def test_user_super_admin(db_session):
+    """Create a super_admin user."""
+    return create_super_admin_user(db_session)
+
+
+@pytest.fixture
+def test_user_moderator(db_session):
+    """Create a moderator user."""
+    return create_moderator_user(db_session)
+
+
+@pytest.fixture
+def test_user_unverified(db_session):
+    """Create an unverified user."""
+    return create_unverified_user(db_session)
+
+
+@pytest.fixture
+def test_user_inactive(db_session):
+    """Create an inactive user."""
+    return create_inactive_user(db_session)
+
+
+# ============================================================================
+# API Client Fixtures
+# ============================================================================
 
 @pytest.fixture
 def authenticated_client(client, test_user):
     """
-    Create a test client with authenticated user.
+    Create a test client with authenticated free tier user.
     
     Returns a tuple of (client, user, access_token, refresh_token) for making authenticated requests.
+    
+    Usage:
+        def test_example(authenticated_client):
+            client, user, access_token, refresh_token = authenticated_client
+            response = client.get("/api/endpoint")
     """
     # Login to get token
     response = client.post(
         "/api/auth/login",
         json={
             "email": test_user.email,
-            "password": "secret",  # Default test password
+            "password": "secret",  # Default test password for backward compatibility
         },
     )
     assert response.status_code == 200
     data = response.json()
     access_token = data["access_token"]
-    refresh_token = data["refresh_token"]  # Login endpoint always returns refresh_token
+    refresh_token = data["refresh_token"]
     
     # Set authorization header
     client.headers = {"Authorization": f"Bearer {access_token}"}
     
     return client, test_user, access_token, refresh_token
+
+
+@pytest.fixture
+def authenticated_client_starter(client, test_user_starter):
+    """Create an authenticated client with starter tier user."""
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": test_user_starter.email,
+            "password": DEFAULT_TEST_PASSWORD,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+    
+    client.headers = {"Authorization": f"Bearer {access_token}"}
+    return client, test_user_starter, access_token, refresh_token
+
+
+@pytest.fixture
+def authenticated_client_pro(client, test_user_pro):
+    """Create an authenticated client with pro tier user."""
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": test_user_pro.email,
+            "password": DEFAULT_TEST_PASSWORD,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+    
+    client.headers = {"Authorization": f"Bearer {access_token}"}
+    return client, test_user_pro, access_token, refresh_token
+
+
+@pytest.fixture
+def authenticated_client_admin(client, test_user_admin):
+    """Create an authenticated client with admin user."""
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": test_user_admin.email,
+            "password": "secret",  # Backward compatibility
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+    
+    client.headers = {"Authorization": f"Bearer {access_token}"}
+    return client, test_user_admin, access_token, refresh_token
+
+
+@pytest.fixture
+def authenticated_client_super_admin(client, test_user_super_admin):
+    """Create an authenticated client with super_admin user."""
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": test_user_super_admin.email,
+            "password": DEFAULT_TEST_PASSWORD,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+    
+    client.headers = {"Authorization": f"Bearer {access_token}"}
+    return client, test_user_super_admin, access_token, refresh_token
+
+
+def create_authenticated_client(client, user: User, password: str = DEFAULT_TEST_PASSWORD) -> Tuple[TestClient, User, str, str]:
+    """
+    Helper function to create an authenticated client for any user.
+    
+    Args:
+        client: TestClient instance
+        user: User instance to authenticate
+        password: User password (default: DEFAULT_TEST_PASSWORD)
+        
+    Returns:
+        Tuple of (client, user, access_token, refresh_token)
+    """
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": user.email,
+            "password": password,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+    
+    client.headers = {"Authorization": f"Bearer {access_token}"}
+    return client, user, access_token, refresh_token
 
