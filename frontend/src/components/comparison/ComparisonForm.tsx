@@ -186,6 +186,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
           }
           className="hero-input-textarea"
           rows={1}
+          data-testid="comparison-input-textarea"
         />
 
         {/* History List */}
@@ -379,6 +380,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
               if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
               return isFollowUpMode ? 'Continue conversation' : 'Compare models';
             })()}
+            data-testid="comparison-submit-button"
           >
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

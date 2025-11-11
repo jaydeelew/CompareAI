@@ -98,12 +98,14 @@ export function Navigation({
               <button
                 className="nav-button-text"
                 onClick={onSignInClick}
+                data-testid="nav-sign-in-button"
               >
                 Sign In
               </button>
               <button
                 className="nav-button-primary"
                 onClick={onSignUpClick}
+                data-testid="nav-sign-up-button"
               >
                 Sign Up
               </button>

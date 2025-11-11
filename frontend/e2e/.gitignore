@@ -1,0 +1,10 @@
+# Playwright test results
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Screenshots and videos
+*.png
+*.jpg
+*.webm
+

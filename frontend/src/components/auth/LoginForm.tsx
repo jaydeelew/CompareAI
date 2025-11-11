@@ -75,6 +75,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
                         required
                         autoComplete="email"
                         disabled={isLoading}
+                        data-testid="login-email-input"
                     />
                 </div>
 
@@ -90,6 +91,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
                             required
                             autoComplete="current-password"
                             disabled={isLoading}
+                            data-testid="login-password-input"
                         />
                         <button
                             type="button"
@@ -107,6 +109,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegis
                     type="submit"
                     className="auth-submit-btn"
                     disabled={isLoading}
+                    data-testid="login-submit-button"
                 >
                     {isLoading ? 'Signing in...' : 'Sign In'}
                 </button>
