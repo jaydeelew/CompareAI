@@ -125,7 +125,7 @@ def validate_config() -> None:
                 errors.append(f"SUBSCRIPTION_CONFIG['{tier}'] missing required field: {field}")
     
     # Validate tier limits are consistent
-    for tier in ["brief", "standard", "extended"]:
+    for tier in ["standard", "extended"]:
         if tier not in TIER_LIMITS:
             errors.append(f"TIER_LIMITS missing tier: {tier}")
         else:
@@ -308,7 +308,7 @@ def validate_tier_limits(input_data: str, tier: str) -> bool:
     
     Args:
         input_data: Input text to validate
-        tier: Response tier (brief, standard, extended)
+        tier: Response tier (standard, extended)
         
     Returns:
         True if input is within limits, False otherwise

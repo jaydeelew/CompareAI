@@ -73,7 +73,7 @@ def get_tier_max_tokens(tier: str) -> int:
     Get maximum output tokens for a given response tier.
     
     Args:
-        tier: Response tier (brief, standard, extended)
+        tier: Response tier (standard, extended)
         
     Returns:
         Maximum output tokens for the tier

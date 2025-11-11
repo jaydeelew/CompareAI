@@ -119,16 +119,13 @@ def get_mock_response(tier: str = "standard") -> str:
     Get a mock response based on the requested tier.
     
     Args:
-        tier: Response tier ('standard', 'extended', or 'brief')
+        tier: Response tier ('standard' or 'extended')
         
     Returns:
         Mock response string appropriate for the tier
     """
     if tier == "extended":
         return MOCK_RESPONSE_EXTENDED
-    elif tier == "brief":
-        # For brief tier, return a truncated version of the standard response
-        return MOCK_RESPONSE_STANDARD.split('\n\n')[0] + "\n\nI hope this brief overview helps!"
     else:
         # Default to standard
         return MOCK_RESPONSE_STANDARD
@@ -139,7 +136,7 @@ def stream_mock_response(tier: str = "standard", chunk_size: int = 50):
     Generator that yields mock response in chunks to simulate streaming.
     
     Args:
-        tier: Response tier ('standard', 'extended', or 'brief')
+        tier: Response tier ('standard' or 'extended')
         chunk_size: Number of characters per chunk (default: 50)
         
     Yields:

@@ -565,7 +565,7 @@ def call_openrouter_streaming(
     Args:
         prompt: User prompt text
         model_id: Model identifier
-        tier: Response tier ('brief', 'standard', or 'extended')
+        tier: Response tier ('standard' or 'extended')
         conversation_history: Optional conversation history
         use_mock: If True, return mock responses instead of calling API (admin testing feature)
     """
@@ -647,7 +647,6 @@ def call_openrouter_streaming(
         # After streaming completes, handle finish_reason warnings
         if finish_reason == "length":
             tier_messages = {
-                "brief": "\n\n⚠️ **Brief tier limit reached.** Response truncated at 2,000 tokens. Upgrade to Standard (4,000) or Extended (8,000) for longer responses.",
                 "standard": "\n\n⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "\n\n⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
@@ -681,7 +680,7 @@ def call_openrouter(
     Args:
         prompt: User prompt text
         model_id: Model identifier
-        tier: Response tier ('brief', 'standard', or 'extended')
+        tier: Response tier ('standard' or 'extended')
         conversation_history: Optional conversation history
         use_mock: If True, return mock responses instead of calling API (admin testing feature)
     """
@@ -768,7 +767,6 @@ def call_openrouter(
         if finish_reason == "length":
             # Model hit token limit - response was cut off mid-thought
             tier_messages = {
-                "brief": "⚠️ **Brief tier limit reached.** Response truncated at 2,000 tokens. Upgrade to Standard (4,000) or Extended (8,000) for longer responses.",
                 "standard": "⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }

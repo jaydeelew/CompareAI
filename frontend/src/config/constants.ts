@@ -68,7 +68,6 @@ export const DAILY_LIMITS = {
 // Input/output character and token limits for each response tier
 
 export const TIER_LIMITS = {
-  brief: { input_chars: 1000, output_tokens: 2000 },
   standard: { input_chars: 5000, output_tokens: 4000 },
   extended: { input_chars: 15000, output_tokens: 8192 },
 } as const;
@@ -134,7 +133,7 @@ export function getExtendedLimit(tier: SubscriptionTier | string): number {
  * Validate input length against tier limits.
  * 
  * @param inputData - Input text to validate
- * @param tier - Response tier (brief, standard, extended)
+ * @param tier - Response tier (standard, extended)
  * @returns True if input is within limits, False otherwise
  */
 export function validateTierLimits(inputData: string, tier: ResponseTier | string): boolean {
@@ -148,7 +147,7 @@ export function validateTierLimits(inputData: string, tier: ResponseTier | strin
 /**
  * Get maximum output tokens for a given response tier.
  * 
- * @param tier - Response tier (brief, standard, extended)
+ * @param tier - Response tier (standard, extended)
  * @returns Maximum output tokens for the tier
  */
 export function getTierMaxTokens(tier: ResponseTier | string): number {

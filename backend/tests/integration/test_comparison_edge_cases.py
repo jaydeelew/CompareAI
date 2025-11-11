@@ -26,7 +26,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": "",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -41,7 +41,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": "   \n\t  ",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -55,7 +55,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": "Test prompt",
                 "models": [],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -70,7 +70,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": "Test prompt",
                 "models": ["invalid-model-id-12345"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         # Should either fail validation or return error in results
@@ -98,7 +98,7 @@ class TestComparisonInputValidation:
         """Test input that exceeds tier character limit."""
         client, user, token, _ = authenticated_client
         
-        # Create input that exceeds brief tier limit (assuming it's 500 chars)
+        # Create input that exceeds standard tier limit (5000 chars)
         long_input = "a" * 10000
         
         response = client.post(
@@ -106,7 +106,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": long_input,
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -124,7 +124,7 @@ class TestComparisonInputValidation:
             json={
                 "input_data": "Test prompt",
                 "models": many_models,
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         # Should either fail validation or succeed but only use allowed models
@@ -176,7 +176,7 @@ class TestComparisonRateLimitingEdgeCases:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         # Should succeed (now at limit)
@@ -192,7 +192,7 @@ class TestComparisonRateLimitingEdgeCases:
                 json={
                     "input_data": "Test prompt 2",
                     "models": ["gpt-4"],
-                    "tier": "brief"
+                    "tier": "standard"
                 }
             )
             assert response2.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -216,7 +216,7 @@ class TestComparisonRateLimitingEdgeCases:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         # Should succeed because limit was reset
@@ -244,7 +244,7 @@ class TestComparisonErrorHandling:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -271,7 +271,7 @@ class TestComparisonErrorHandling:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4", "claude-3-opus"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         # Should succeed but with some failed models
@@ -294,7 +294,7 @@ class TestComparisonErrorHandling:
                 json={
                     "input_data": "Test prompt",
                     "models": ["gpt-4"],
-                    "tier": "brief"
+                    "tier": "standard"
                 }
             )
         
@@ -326,7 +326,7 @@ class TestComparisonStreamingEdgeCases:
             json={
                 "input_data": "",
                 "models": ["gpt-4"],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -340,7 +340,7 @@ class TestComparisonStreamingEdgeCases:
             json={
                 "input_data": "Test prompt",
                 "models": [],
-                "tier": "brief"
+                "tier": "standard"
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -373,7 +373,7 @@ class TestComparisonAnonymousUserEdgeCases:
                 json={
                     "input_data": f"Test prompt {i}",
                     "models": ["gpt-4"],
-                    "tier": "brief"
+                    "tier": "standard"
                 }
             )
             responses.append(response.status_code)
@@ -390,7 +390,7 @@ class TestComparisonAnonymousUserEdgeCases:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
                 "browser_fingerprint": fingerprint
             }
         )
@@ -414,7 +414,7 @@ class TestComparisonConversationHistory:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
                 "conversation_history": [
                     {"invalid": "format"}
                 ]
@@ -436,7 +436,7 @@ class TestComparisonConversationHistory:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
                 "conversation_history": []
             }
         )
@@ -462,7 +462,7 @@ class TestComparisonConversationHistory:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
                 "conversation_history": long_history
             }
         )

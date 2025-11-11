@@ -39,7 +39,6 @@ export interface CompareResponse {
  * Comparison tier (affects input/output limits)
  */
 export const COMPARISON_TIER = {
-  BRIEF: 'brief',
   STANDARD: 'standard',
   EXTENDED: 'extended',
 } as const;

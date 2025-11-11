@@ -75,7 +75,7 @@ Successfully created the foundational component directory structure as specified
    - Filtering by selected models and closed cards
    - Active tab management
 
-4. **TierSelector.tsx** - Brief/Standard/Extended mode toggle
+4. **TierSelector.tsx** - Standard/Extended mode toggle
    - Simple button component
    - Active/recommended states
    - Disabled state support

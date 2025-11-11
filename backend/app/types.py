@@ -17,7 +17,7 @@ SubscriptionTier = Literal["free", "starter", "starter_plus", "pro", "pro_plus",
 SubscriptionStatus = Literal["active", "cancelled", "expired"]
 SubscriptionPeriod = Literal["monthly", "yearly"]
 UserRole = Literal["user", "moderator", "admin", "super_admin"]
-ResponseTier = Literal["brief", "standard", "extended"]
+ResponseTier = Literal["standard", "extended"]
 
 
 # ============================================================================

@@ -355,7 +355,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    │   ├── ResultsDisplay.tsx        # Results rendering
    │   ├── ResultCard.tsx            # Individual result card
    │   ├── StreamingIndicator.tsx    # Loading/streaming UI
-   │   └── TierSelector.tsx          # Brief/Standard/Extended
+   │   └── TierSelector.tsx          # Standard/Extended
    ├── conversation/
    │   ├── ConversationHistory.tsx   # History sidebar
    │   ├── ConversationList.tsx      # List of conversations

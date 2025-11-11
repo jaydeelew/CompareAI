@@ -77,7 +77,7 @@ class CompareRequest(BaseModel):
     models: list[str]
     conversation_history: list[ConversationMessage] = []  # Optional conversation context
     browser_fingerprint: Optional[str] = None  # Optional browser fingerprint for rate limiting
-    tier: str = "standard"  # brief, standard, extended
+    tier: str = "standard"  # standard, extended
     conversation_id: Optional[int] = None  # Optional conversation ID for follow-ups (most reliable matching)
     
     model_config = ConfigDict(

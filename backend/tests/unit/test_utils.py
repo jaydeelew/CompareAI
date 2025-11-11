@@ -155,8 +155,8 @@ class TestConstants:
         from app.config import TIER_LIMITS
         
         assert isinstance(TIER_LIMITS, dict)
-        # TIER_LIMITS contains response tiers: brief, standard, extended
-        expected_keys = ["brief", "standard", "extended"]
+        # TIER_LIMITS contains response tiers: standard, extended
+        expected_keys = ["standard", "extended"]
         for key in expected_keys:
             assert key in TIER_LIMITS, f"TIER_LIMITS missing response tier: {key}"
             assert isinstance(TIER_LIMITS[key], dict)

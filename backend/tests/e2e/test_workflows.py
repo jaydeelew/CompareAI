@@ -68,7 +68,7 @@ class TestAnonymousUserWorkflow:
             json={
                 "input_data": "What is AI?",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
                 "browser_fingerprint": fingerprint,
             },
         )
@@ -102,7 +102,7 @@ class TestAnonymousUserWorkflow:
                 json={
                     "input_data": f"Test prompt {i}",
                     "models": ["gpt-4"],
-                    "tier": "brief",
+                    "tier": "standard",
                     "browser_fingerprint": fingerprint,
                 },
             )
@@ -245,7 +245,7 @@ class TestErrorRecoveryWorkflow:
                 json={
                     "input_data": "Test",
                     "models": ["gpt-4"],
-                    "tier": "brief",
+                    "tier": "standard",
                 }
             )
             if response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:

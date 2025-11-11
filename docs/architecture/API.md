@@ -367,13 +367,12 @@ Compare multiple AI models with a single prompt.
 - `models` (array[string], required): List of model IDs to compare
 - `conversation_history` (array, optional): Previous messages for context
 - `browser_fingerprint` (string, optional): Browser fingerprint for anonymous rate limiting
-- `tier` (string, optional): `"brief"`, `"standard"`, or `"extended"` (default: `"standard"`)
+- `tier` (string, optional): `"standard"` or `"extended"` (default: `"standard"`)
 - `conversation_id` (integer, optional): ID of existing conversation for follow-ups
 
 **Tier Limits:**
-- `brief`: 500 characters input, 1000 tokens output
-- `standard`: 2000 characters input, 4000 tokens output
-- `extended`: 5000 characters input, 8000 tokens output
+- `standard`: 5000 characters input, 4000 tokens output
+- `extended`: 15000 characters input, 8192 tokens output
 
 **Response:** `200 OK`
 ```json

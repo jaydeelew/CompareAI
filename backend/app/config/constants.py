@@ -93,7 +93,6 @@ EXTENDED_TIER_LIMITS: Dict[str, int] = {
 # Input/output character and token limits for each response tier
 
 TIER_LIMITS: Dict[str, TierLimitsDict] = {
-    "brief": {"input_chars": 1000, "output_tokens": 2000},
     "standard": {"input_chars": 5000, "output_tokens": 4000},
     "extended": {"input_chars": 15000, "output_tokens": 8192},
 }

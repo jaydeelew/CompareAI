@@ -27,7 +27,7 @@ class TestModelRunnerMockMode:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=True
         )
         assert isinstance(result, str)
@@ -38,7 +38,7 @@ class TestModelRunnerMockMode:
         chunks = list(call_openrouter_streaming(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=True
         ))
         assert len(chunks) > 0
@@ -47,12 +47,6 @@ class TestModelRunnerMockMode:
     
     def test_call_openrouter_different_tiers(self):
         """Test calling OpenRouter with different tiers."""
-        brief_result = call_openrouter(
-            prompt="Test",
-            model_id="gpt-4",
-            tier="brief",
-            use_mock=True
-        )
         standard_result = call_openrouter(
             prompt="Test",
             model_id="gpt-4",
@@ -67,7 +61,6 @@ class TestModelRunnerMockMode:
         )
         
         # All should return strings
-        assert isinstance(brief_result, str)
         assert isinstance(standard_result, str)
         assert isinstance(extended_result, str)
 
@@ -145,7 +138,7 @@ class TestModelRunnerBatchProcessing:
         results = run_models_batch(
             prompt="Test prompt",
             model_batch=models,
-            tier="brief"
+            tier="standard"
         )
         
         assert isinstance(results, dict)
@@ -159,7 +152,7 @@ class TestModelRunnerBatchProcessing:
         results = run_models_batch(
             prompt="Test prompt",
             model_batch=[],
-            tier="brief"
+            tier="standard"
         )
         
         assert isinstance(results, dict)
@@ -197,7 +190,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -214,7 +207,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -238,7 +231,7 @@ class TestModelRunnerErrorHandling:
         results = run_models_batch(
             prompt="Test prompt",
             model_batch=models,
-            tier="brief"
+            tier="standard"
         )
         
         # Should have results for all models (even if some are errors)
@@ -249,16 +242,6 @@ class TestModelRunnerErrorHandling:
 
 class TestModelRunnerTierLimits:
     """Tests for tier-based limits."""
-    
-    def test_brief_tier_limits(self):
-        """Test brief tier token limits."""
-        result = call_openrouter(
-            prompt="Test prompt",
-            model_id="gpt-4",
-            tier="brief",
-            use_mock=True
-        )
-        assert isinstance(result, str)
     
     def test_standard_tier_limits(self):
         """Test standard tier token limits."""
@@ -287,7 +270,7 @@ class TestModelRunnerTierLimits:
             {"role": "assistant", "content": "Answer 1"},
         ]
         
-        for tier in ["brief", "standard", "extended"]:
+        for tier in ["standard", "extended"]:
             result = call_openrouter(
                 prompt="Follow-up question",
                 model_id="gpt-4",

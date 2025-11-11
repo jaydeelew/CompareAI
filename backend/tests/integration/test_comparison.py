@@ -40,7 +40,7 @@ class TestComparisonEndpoint:
             json={
                 "input_data": "What is 2+2?",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         # Adjust expected status based on your implementation
@@ -82,7 +82,7 @@ class TestComparisonEndpoint:
                 json={
                     "input_data": "Test",
                     "models": ["gpt-4"],
-                    "tier": "brief",
+                    "tier": "standard",
                 }
             )
             responses.append(response.status_code)
@@ -112,7 +112,7 @@ class TestModelSelection:
             json={
                 "input_data": "Test",
                 "models": ["invalid-model-name"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         # Endpoint processes invalid models and returns errors in results, not as HTTP errors
@@ -139,7 +139,7 @@ class TestStreamingResponse:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             },
         )
         # TestClient handles StreamingResponse automatically
@@ -156,26 +156,7 @@ class TestStreamingResponse:
 
 
 class TestTierSelection:
-    """Tests for tier selection (brief/standard/extended)."""
-    
-    def test_brief_tier(self, authenticated_client):
-        """Test comparison with brief tier."""
-        client, user, token, _ = authenticated_client
-        
-        response = client.post(
-            "/api/compare",
-            json={
-                "input_data": "Short prompt",
-                "models": ["gpt-4"],
-                "tier": "brief",
-            }
-        )
-        # Should accept brief tier
-        assert response.status_code in [
-            status.HTTP_200_OK,
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            status.HTTP_400_BAD_REQUEST,
-        ]
+    """Tests for tier selection (standard/extended)."""
     
     def test_standard_tier(self, authenticated_client):
         """Test comparison with standard tier."""
@@ -257,7 +238,7 @@ class TestTierSelection:
         """Test comparison with input exceeding tier limit."""
         client, user, token, _ = authenticated_client
         
-        # Create input that exceeds brief tier limit (1000 chars)
+        # Create input that exceeds standard tier limit (5000 chars)
         long_input = "x" * 2000
         
         response = client.post(
@@ -265,7 +246,7 @@ class TestTierSelection:
             json={
                 "input_data": long_input,
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -331,7 +312,7 @@ class TestStreamingComparison:
             json={
                 "input_data": "Test prompt",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         assert response.status_code in [
@@ -409,7 +390,7 @@ class TestComparisonResults:
             json={
                 "input_data": "What is 2+2?",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         
@@ -429,7 +410,7 @@ class TestComparisonResults:
             json={
                 "input_data": "Test",
                 "models": ["gpt-4"],
-                "tier": "brief",
+                "tier": "standard",
             }
         )
         

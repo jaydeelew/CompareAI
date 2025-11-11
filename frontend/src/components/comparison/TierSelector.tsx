@@ -19,7 +19,7 @@ export interface TierSelectorProps {
 }
 
 /**
- * TierSelector component for toggling between Brief/Standard and Extended modes
+ * TierSelector component for toggling between Standard and Extended modes
  * 
  * This component allows users to select between different tier levels for their queries.
  * Extended mode allows longer prompts and more detailed responses.

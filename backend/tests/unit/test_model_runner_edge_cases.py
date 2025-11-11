@@ -34,7 +34,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -56,7 +56,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -81,7 +81,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -106,7 +106,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         )
         
@@ -119,7 +119,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="Test prompt",
             model_id="invalid-model-id-12345",
-            tier="brief",
+            tier="standard",
             use_mock=True  # Use mock to avoid actual API call
         )
         
@@ -131,7 +131,7 @@ class TestModelRunnerErrorHandling:
         result = call_openrouter(
             prompt="",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=True
         )
         
@@ -168,7 +168,7 @@ class TestStreamingErrorHandling:
         chunks = list(call_openrouter_streaming(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         ))
         
@@ -190,7 +190,7 @@ class TestStreamingErrorHandling:
         chunks = list(call_openrouter_streaming(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=False
         ))
         
@@ -202,7 +202,7 @@ class TestStreamingErrorHandling:
         chunks = list(call_openrouter_streaming(
             prompt="Test prompt",
             model_id="gpt-4",
-            tier="brief",
+            tier="standard",
             use_mock=True
         ))
         
@@ -218,7 +218,7 @@ class TestRunModelsEdgeCases:
         results = run_models(
             prompt="Test prompt",
             model_list=[],
-            tier="brief",
+            tier="standard",
             conversation_history=[]
         )
         
@@ -231,7 +231,7 @@ class TestRunModelsEdgeCases:
         results = run_models(
             prompt="Test prompt",
             model_list=["gpt-4"],
-            tier="brief",
+            tier="standard",
             conversation_history=[],
         )
         
@@ -245,7 +245,7 @@ class TestRunModelsEdgeCases:
         results = run_models(
             prompt="Test prompt",
             model_list=["gpt-4", "claude-3-opus", "gpt-3.5-turbo"],
-            tier="brief",
+            tier="standard",
             conversation_history=[],
         )
         
@@ -263,7 +263,7 @@ class TestRunModelsEdgeCases:
         results = run_models(
             prompt="Test prompt",
             model_list=["gpt-4", "invalid-model-id"],
-            tier="brief",
+            tier="standard",
             conversation_history=[],
         )
         
@@ -281,7 +281,7 @@ class TestRunModelsEdgeCases:
         results = run_models(
             prompt="Follow-up question",
             model_list=["gpt-4"],
-            tier="brief",
+            tier="standard",
             conversation_history=conversation_history,
         )
         
@@ -331,17 +331,6 @@ class TestCleanModelResponse:
 class TestTierLimits:
     """Tests for tier limit handling."""
     
-    def test_brief_tier_limit(self):
-        """Test brief tier limit enforcement."""
-        # Brief tier should have lower token limit
-        result = call_openrouter(
-            prompt="Test prompt",
-            model_id="gpt-4",
-            tier="brief",
-            use_mock=True
-        )
-        assert isinstance(result, str)
-    
     def test_standard_tier_limit(self):
         """Test standard tier limit enforcement."""
         result = call_openrouter(
@@ -385,7 +374,7 @@ class TestConcurrentModelCalls:
         results = run_models(
             prompt="Test prompt",
             model_list=["gpt-4", "claude-3-opus", "gpt-3.5-turbo"],
-            tier="brief",
+            tier="standard",
             conversation_history=[],
         )
         end_time = time.time()

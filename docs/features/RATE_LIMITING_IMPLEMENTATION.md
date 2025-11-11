@@ -75,7 +75,7 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
 5. **Updated `CompareRequest` Model** - Located in `backend/app/routers/api.py`
    - Added optional `browser_fingerprint` field
-   - Added `tier` field: "brief", "standard", or "extended"
+   - Added `tier` field: "standard" or "extended"
 
 ### Frontend Changes (`frontend/src/App.tsx`)
 

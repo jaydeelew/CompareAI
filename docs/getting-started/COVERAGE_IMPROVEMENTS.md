@@ -82,7 +82,7 @@ Comprehensive edge case and error scenario tests were added to improve test cove
 - Empty and very long prompt handling
 - Streaming error handling (connection errors, timeouts, partial failures)
 - Response cleaning edge cases (normal, whitespace, empty, error responses)
-- Tier limit handling (brief, standard, extended, invalid tiers)
+- Tier limit handling (standard, extended, invalid tiers)
 - Concurrent model calls
 
 **Key Tests:**

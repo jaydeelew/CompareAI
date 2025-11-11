@@ -110,7 +110,7 @@ class TestAnonymousRateLimiting:
 
 
 class TestExtendedTierLimiting:
-    """Tests for extended tier (brief/standard/extended) rate limiting."""
+    """Tests for extended tier (standard/extended) rate limiting."""
     
     def test_extended_tier_limit_check(self, db_session, test_user):
         """Test extended tier limit checking."""

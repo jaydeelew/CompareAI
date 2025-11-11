@@ -19,7 +19,7 @@ export interface CompareRequestPayload {
   models: string[];
   conversation_history?: Array<{ role: string; content: string }>;
   browser_fingerprint?: string;
-  tier: 'brief' | 'standard' | 'extended';
+  tier: 'standard' | 'extended';
   conversation_id?: number;
 }
 
