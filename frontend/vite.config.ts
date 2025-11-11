@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    // Bundle analyzer - generates stats.html in dist/ after build
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap', // treemap, sunburst, network
+    }),
   ],
   cacheDir: '/tmp/vite-cache',
   server: {
@@ -18,17 +27,43 @@ export default defineConfig({
     }
   },
   build: {
-    // Ensure assets are chunked properly with hashes
+    // Target modern browsers for smaller bundles
+    target: 'esnext',
+    // Minify with esbuild (faster than terser)
+    minify: 'esbuild',
+    // Enable source maps for production debugging (optional, increases bundle size)
+    sourcemap: false,
+    // Optimize chunk splitting
     rollupOptions: {
       output: {
         // Ensure JS files have content hashes
         entryFileNames: 'assets/[name].[hash].js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash].[ext]',
+        // Manual chunk splitting for better caching
+        manualChunks: (id) => {
+          // Split node_modules into separate chunks
+          if (id.includes('node_modules')) {
+            // Vendor chunks
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('katex')) {
+              return 'vendor-katex';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            // Other vendor dependencies
+            return 'vendor';
+          }
+        },
       },
     },
     // Generate manifest for asset tracking (optional but useful for debugging)
     manifest: true,
+    // Chunk size warning limit (500KB)
+    chunkSizeWarningLimit: 500,
   },
   test: {
     globals: true,
