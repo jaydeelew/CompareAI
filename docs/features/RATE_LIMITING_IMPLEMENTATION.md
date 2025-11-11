@@ -4,7 +4,7 @@
 
 This document describes the **multi-layer anti-abuse system** implemented to prevent users from exceeding daily limits. The system uses **model-based pricing** where each AI model response counts individually toward the daily limit.
 
-**Updated October 22, 2025:** Switched from comparison-based to model-based rate limiting. All tiers now support up to 9 models per comparison.
+**Updated October 22, 2025:** Switched from comparison-based to model-based rate limiting. Model limits are tiered: Free (3), Starter/Starter Plus (6), Pro/Pro Plus (9).
 
 ## Architecture
 
@@ -30,44 +30,52 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
 ## What Was Changed
 
-### Backend Changes (`backend/app/main.py`)
+### Backend Changes
 
-1. **Rate Limiting Configuration (Model-Based)**
+1. **Rate Limiting Configuration (Model-Based)** - Located in `backend/app/config/constants.py`
 
    ```python
    # MODEL-BASED PRICING: daily_limit = model responses per day
+   # model_limit = max models per comparison (tiered: 3/6/6/9/9)
    SUBSCRIPTION_CONFIG = {
-       "free": {"daily_limit": 20, "model_limit": 9, "overage_allowed": False},  # Registered users
-       "starter": {"daily_limit": 150, "model_limit": 9, "overage_allowed": True},
-       "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
+       "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False},
+       "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True},
+       "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True},
+       "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True},
+       "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True}
    }
-   # Anonymous (unregistered) users: 10 model responses/day
+   # Anonymous (unregistered) users: 10 model responses/day, max 3 models per comparison
    ```
 
-2. **Helper Functions (Model-Based)**
+2. **Helper Functions (Model-Based)** - Located in `backend/app/rate_limiting.py`
 
-   - `get_client_ip(request)`: Extracts IP from request (handles proxies)
-   - `check_rate_limit(identifier)`: Checks if identifier exceeded limit
-   - `increment_usage(identifier, count)`: Increments usage by number of models used
+   - `get_client_ip(request)`: Extracts IP from request (handles proxies) - in `backend/app/routers/api.py`
+   - `check_anonymous_rate_limit(identifier)`: Checks if anonymous identifier exceeded limit
+   - `increment_anonymous_usage(identifier, count)`: Increments anonymous usage by number of models used
    - `check_user_rate_limit(user, db)`: Checks authenticated user's model response limit
    - `increment_user_usage(user, db, count)`: Increments user's usage by model count
+   - `check_extended_tier_limit(user, db)`: Checks Extended tier limit for authenticated users
+   - `increment_extended_usage(user, db, count)`: Increments Extended tier usage
 
-3. **Updated `/compare` Endpoint (Model-Based)**
+3. **Updated `/api/compare` Endpoint (Model-Based)** - Located in `backend/app/routers/api.py`
 
-   - Enforces uniform 9 model limit per comparison (all tiers)
+   - Enforces tier-specific model limits per comparison (Free: 3, Starter/Starter Plus: 6, Pro/Pro Plus: 9)
    - Calculates model responses needed for the request
    - Checks if user has enough model responses remaining
    - Returns 429 error if limit would be exceeded
-   - Increments counters by number of models used (not just +1)
+   - Increments counters by number of successful models used (not just +1)
    - Tracks overage model responses for paid tiers
+   - Supports Extended tier limiting (separate daily limit for Extended mode)
 
-4. **Added New Endpoint**
+4. **Added New Endpoints**
 
-   - `GET /rate-limit-status`: Check current usage status
+   - `GET /api/rate-limit-status`: Check current usage status
+   - `POST /api/dev/reset-rate-limit`: Development-only endpoint to reset rate limits
    - Useful for debugging and user transparency
 
-5. **Updated `CompareRequest` Model**
+5. **Updated `CompareRequest` Model** - Located in `backend/app/routers/api.py`
    - Added optional `browser_fingerprint` field
+   - Added `tier` field: "brief", "standard", or "extended"
 
 ### Frontend Changes (`frontend/src/App.tsx`)
 
@@ -92,11 +100,11 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 - Optimized for SHA-256 hash storage
 - Prevents database overflow errors that were occurring with raw fingerprint data
 
-**Migration Script:**
+**Database Schema:**
 
-- Added `backend/migrate_fingerprint_column.py` to update existing databases
-- Automatically detects SQLite vs PostgreSQL
-- Safe, non-destructive migration
+- `browser_fingerprint` column is `String(64)` optimized for SHA-256 hash storage
+- Database tables are automatically created via SQLAlchemy on startup
+- No manual migration script needed - schema is managed by SQLAlchemy migrations
 
 ### Dependencies (`backend/requirements.txt`)
 
@@ -124,6 +132,7 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
    - For anonymous (unregistered): IP count + models ≤ 10? ✓
    - For authenticated free: usage + models ≤ 20? ✓
    - For authenticated paid: usage + models ≤ tier limit? ✓
+   - If Extended tier: Also check Extended tier limit separately
    ↓
 5. If limit would be exceeded:
    → Return 429 error with specific message
@@ -149,6 +158,23 @@ This prevents collisions between IP and fingerprint tracking.
 
 Counters automatically reset at midnight (based on date comparison).
 
+### Extended Tier Limiting ✨ _New Feature_
+
+Extended tier has **separate daily limits** from regular usage:
+
+- **Anonymous:** 2 Extended interactions/day
+- **Free:** 5 Extended interactions/day
+- **Starter:** 10 Extended interactions/day
+- **Starter Plus:** 20 Extended interactions/day
+- **Pro:** 40 Extended interactions/day
+- **Pro Plus:** 80 Extended interactions/day
+
+**How it works:**
+- Extended mode is triggered when user explicitly selects "Extended" tier
+- Each Extended request counts as 1 Extended interaction (regardless of model count)
+- Regular model responses still count toward daily model response limit
+- Both limits must be satisfied for Extended requests to proceed
+
 ## Installation & Deployment
 
 ### 1. Install Backend Dependencies
@@ -166,30 +192,18 @@ docker-compose build
 docker-compose up -d
 ```
 
-### 2. Run Database Migration ✨ _Required as of Oct 18, 2025_
-
-```bash
-# If running locally with virtual environment
-cd backend
-python migrate_fingerprint_column.py
-
-# If using Docker
-docker-compose run --rm backend python migrate_fingerprint_column.py
-```
-
-This updates the `browser_fingerprint` column to support SHA-256 hashes.
-
-### 3. Restart Backend
+### 2. Restart Backend
 
 ```bash
 # If running locally
-python backend/app/main.py
+cd backend
+uvicorn app.main:app --reload
 
 # If using Docker
 docker-compose restart backend
 ```
 
-### 4. Rebuild Frontend (if needed)
+### 3. Rebuild Frontend (if needed)
 
 ```bash
 cd frontend
@@ -217,11 +231,11 @@ npm run build
 
 **Free Tier User (Registered):**
 1. Make 6 comparisons using 3 models each (6 × 3 = 18 model responses)
-2. Alternatively, make 2 comparisons using 9 models each (2 × 9 = 18 model responses)
-3. On the next attempt with 3+ models:
+2. On the next attempt with 3 models:
    - Should see error about exceeding 20 model responses
    - Message shows exactly how many responses available vs. needed
-   - Encouraged to upgrade to Starter
+   - Note: Free tier only allows 3 models per comparison (not 9)
+   - Encouraged to upgrade to Starter (6 models/comparison, 50/day)
 
 ### Test 3: Bypass Attempts
 
@@ -244,15 +258,20 @@ npm run build
 
 ```bash
 # Check your current rate limit status
-curl "http://localhost:8000/rate-limit-status"
+curl "http://localhost:8000/api/rate-limit-status"
 
-# Response example (model-based):
+# Response example for anonymous user (model-based):
 {
+  "daily_usage": 7,  # model responses used
+  "daily_limit": 10,  # for anonymous (unregistered) users
+  "remaining_usage": 3,  # model responses remaining
+  "subscription_tier": "anonymous",
+  "usage_reset_date": "2025-01-15",
+  "authenticated": false,
   "ip_address": "192.168.1.100",
-  "ip_usage_count": 7,  # model responses used
-  "max_daily_limit": 10,  # for anonymous (unregistered) users
-  "remaining": 3,  # model responses remaining
-  "is_limited": false
+  "daily_extended_usage": 0,
+  "daily_extended_limit": 2,
+  "remaining_extended_usage": 2
 }
 
 # Authenticated free user example:
@@ -260,8 +279,14 @@ curl "http://localhost:8000/rate-limit-status"
   "daily_usage": 15,  # model responses used today
   "daily_limit": 20,  # for free registered tier
   "remaining_usage": 5,  # model responses remaining
+  "daily_extended_usage": 2,
+  "daily_extended_limit": 5,
+  "remaining_extended_usage": 3,
   "subscription_tier": "free",
-  "model_limit": 9  # max models per comparison (uniform)
+  "usage_reset_date": "2025-01-15",
+  "authenticated": true,
+  "email": "user@example.com",
+  "subscription_status": "active"
 }
 ```
 
@@ -279,10 +304,12 @@ curl "http://localhost:8000/rate-limit-status"
    - Focused comparison: Use 3 models (3 responses)
    - Comprehensive analysis: Use 9 models (9 responses)
 
-3. **Uniform Capabilities:** All tiers have same model access
-   - Free, Starter, and Pro can all use up to 9 models per comparison
-   - Only difference is daily capacity (30/150/450 model responses)
-   - No artificial feature restrictions
+3. **Tiered Model Access:** Model limits scale with subscription tier
+   - Free: 3 models per comparison, 20 responses/day
+   - Starter: 6 models per comparison, 50 responses/day
+   - Starter Plus: 6 models per comparison, 100 responses/day
+   - Pro: 9 models per comparison, 200 responses/day
+   - Pro Plus: 9 models per comparison, 400 responses/day
 
 4. **Better Cost Alignment:** 
    - Our cost: $0.0166 per model response
@@ -292,11 +319,12 @@ curl "http://localhost:8000/rate-limit-status"
 
 **Example Scenarios:**
 
-- **Anonymous User:** 3 comparisons × 3 models = 9 responses (within 10/day limit)
-- **Free Registered User:** 6 comparisons × 3 models = 18 responses (within 20/day limit)
-- **Efficient Starter User:** 50 comparisons × 3 models = 150 responses (fits Starter tier)
-- **Power Pro User:** 50 comparisons × 9 models = 450 responses (needs Pro tier)
-- **Variable User:** Mix of 1-9 models per comparison based on task complexity
+- **Anonymous User:** 3 comparisons × 3 models = 9 responses (within 10/day limit, max 3 models/comparison)
+- **Free Registered User:** 6 comparisons × 3 models = 18 responses (within 20/day limit, max 3 models/comparison)
+- **Efficient Starter User:** 8 comparisons × 6 models = 48 responses (within 50/day limit, max 6 models/comparison)
+- **Power Pro User:** 22 comparisons × 9 models = 198 responses (within 200/day limit, max 9 models/comparison)
+- **Pro Plus User:** 44 comparisons × 9 models = 396 responses (within 400/day limit, max 9 models/comparison)
+- **Variable User:** Mix of 1-9 models per comparison based on tier and task complexity
 
 ## Security Considerations
 
@@ -346,47 +374,80 @@ Consider upgrading to persistent storage:
 
 ### Change Model Response Limits
 
-Edit `backend/app/rate_limiting.py`:
+Edit `backend/app/config/constants.py`:
 
 ```python
 # Adjust limits for each tier
-SUBSCRIPTION_CONFIG = {
-    "free": {"daily_limit": 20, "model_limit": 9, "overage_allowed": False},  # Registered users
-    "starter": {"daily_limit": 150, "model_limit": 9, "overage_allowed": True},
-    "pro": {"daily_limit": 450, "model_limit": 9, "overage_allowed": True}
+SUBSCRIPTION_CONFIG: Dict[str, TierConfigDict] = {
+    "free": {
+        "daily_limit": 20,  # Model responses per day
+        "model_limit": 3,  # Max models per comparison
+        "overage_allowed": False,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },
+    "starter": {
+        "daily_limit": 50,
+        "model_limit": 6,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },
+    "starter_plus": {
+        "daily_limit": 100,
+        "model_limit": 6,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },
+    "pro": {
+        "daily_limit": 200,
+        "model_limit": 9,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },
+    "pro_plus": {
+        "daily_limit": 400,
+        "model_limit": 9,
+        "overage_allowed": True,
+        "overage_price": None,
+        "extended_overage_price": None,
+    },
 }
-```
 
-For anonymous (unregistered) users, update in `check_anonymous_rate_limit()`:
-```python
-is_allowed = current_count < 10  # Change 10 to your desired limit
-```
+# Anonymous user limits
+ANONYMOUS_DAILY_LIMIT: int = 10  # Model responses per day
+ANONYMOUS_MODEL_LIMIT: int = 3  # Max models per comparison
 
-### Change Daily Limit (Legacy Documentation)
-
-Edit `backend/app/main.py`:
-
-```python
-MAX_DAILY_COMPARISONS = 20  # Change from 10 to 20
+# Extended tier limits (separate from regular usage)
+EXTENDED_TIER_LIMITS: Dict[str, int] = {
+    "anonymous": 2,
+    "free": 5,
+    "starter": 10,
+    "starter_plus": 20,
+    "pro": 40,
+    "pro_plus": 80,
+}
 ```
 
 ### Disable Rate Limiting (Development)
 
-Comment out the rate limiting section in `/compare` endpoint:
+Comment out the rate limiting section in `/api/compare` endpoint in `backend/app/routers/api.py`:
 
 ```python
-# # --- RATE LIMITING ENFORCEMENT ---
+# # --- HYBRID RATE LIMITING ---
 # client_ip = get_client_ip(request)
 # ... rest of rate limiting code ...
-# # --- END RATE LIMITING ---
+# # --- END HYBRID RATE LIMITING ---
 ```
 
 ### Add Whitelist IPs
 
-Add this to `check_rate_limit()` function:
+Add this to `check_anonymous_rate_limit()` function in `backend/app/rate_limiting.py`:
 
 ```python
-def check_rate_limit(identifier: str) -> tuple[bool, int]:
+def check_anonymous_rate_limit(identifier: str) -> Tuple[bool, int]:
     # Whitelist for development/testing
     WHITELIST_IPS = ["127.0.0.1", "192.168.1.100"]
     if identifier.startswith("ip:") and identifier[3:] in WHITELIST_IPS:
@@ -407,13 +468,24 @@ Rate limit check passed - IP: 192.168.1.100 (6/10), Fingerprint: eyJ1c2VyQWdlbnQ
 
 ### Check Rate Limit Storage
 
-Add a debug endpoint (development only):
+Use the existing development endpoint:
+
+```bash
+# Reset rate limits (development only)
+curl -X POST "http://localhost:8000/api/dev/reset-rate-limit"
+
+# Check rate limit status
+curl "http://localhost:8000/api/rate-limit-status"
+```
+
+Or add a debug endpoint in `backend/app/routers/api.py` (development only):
 
 ```python
-@app.get("/debug/rate-limits")
+@router.get("/debug/rate-limits")
 async def debug_rate_limits():
     """Debug endpoint to view all rate limit data"""
-    return {"rate_limits": dict(rate_limit_storage)}
+    from ..rate_limiting import anonymous_rate_limit_storage
+    return {"rate_limits": dict(anonymous_rate_limit_storage)}
 ```
 
 ## Future Enhancements
@@ -482,11 +554,12 @@ For most use cases, this level of protection is sufficient!
 - Migration script added for seamless database updates
 
 **Action Required:**
-If you're updating from a previous version, run the migration script:
+No manual migration needed - the database schema is automatically managed by SQLAlchemy. The `browser_fingerprint` column is already configured as `String(64)` in the `UsageLog` model.
 
-```bash
-cd backend
-python migrate_fingerprint_column.py
-```
-
-See `DEPLOYMENT_NEEDED.md` for detailed deployment instructions.
+**Current Implementation Status:**
+- ✅ Model-based rate limiting (each model response counts individually)
+- ✅ Tiered model limits (3/6/6/9/9 models per comparison)
+- ✅ Extended tier limiting (separate daily limits for Extended mode)
+- ✅ SHA-256 hashed browser fingerprints
+- ✅ All subscription tiers (free, starter, starter_plus, pro, pro_plus)
+- ✅ Overage tracking for paid tiers (pricing TBD)

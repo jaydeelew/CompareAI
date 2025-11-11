@@ -27,6 +27,12 @@ Created a new reusable Footer component that displays:
 - Copyright notice
 - Clean, minimal design matching the app's aesthetic
 
+**Footer Text:**
+```
+Need help or have feedback? support@compareintel.com
+© 2025 CompareIntel. All rights reserved.
+```
+
 **Features:**
 - Hover effect on email link
 - Responsive styling

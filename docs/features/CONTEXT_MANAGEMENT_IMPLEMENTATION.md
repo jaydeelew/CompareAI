@@ -95,9 +95,10 @@ is_extended_interaction = conversation_message_count > 6
 **Visual Design:**
 
 - Color-coded backgrounds (blue → yellow → red)
-- Inline "Start Fresh Comparison" button
+- Warning messages displayed above the form
 - Non-intrusive, educational tone
 - Follows Claude's UX patterns (2025)
+- Note: Users can start a new comparison using the "New Comparison" button in the header, but it's not inline with the warning message
 
 #### 3. Hard Limits (`frontend/src/App.tsx`)
 
@@ -114,12 +115,12 @@ disabled={isLoading || (messageCount >= 24)}
 
 #### 4. User Menu Transparency (`frontend/src/components/auth/UserMenu.tsx`)
 
-Added context management info card:
+The UserMenu displays usage statistics:
 
-- Explains 20/24 message limits
-- Clarifies extended interaction tracking
-- Tooltip on "Extended Interactions" label
-- Educational, not punitive
+- Shows daily usage count and extended interaction count
+- Displays progress bars for both metrics
+- Extended interactions are tracked separately from regular interactions
+- Note: Context management limits (20/24 messages) are enforced in the form, not explained in the UserMenu
 
 ---
 
@@ -265,17 +266,16 @@ Total cost controlled: Max 20 messages × $0.05 = $1.00
 - [ ] Verify token counting works with tiktoken
 - [ ] Test truncation at exactly 20 messages
 - [ ] Confirm truncation notification sent to model
-- [ ] Check extended interaction detection (>10 messages)
+- [ ] Check extended interaction detection (>6 messages)
 - [ ] Validate metadata returned in API response
 
 ### Frontend Tests
 
 - [ ] Usage preview appears in follow-up mode
-- [ ] Warning appears at 10, 14, 20, 24 message thresholds
-- [ ] "Start Fresh" button works correctly
+- [ ] Warning appears at 6, 10, 14, 20, 24 message thresholds
 - [ ] Submit button disabled at 24 messages
-- [ ] UserMenu shows context management info
-- [ ] Extended interaction highlighting works
+- [ ] UserMenu shows extended interaction usage statistics
+- [ ] Extended interaction highlighting works in usage preview
 
 ### Integration Tests
 

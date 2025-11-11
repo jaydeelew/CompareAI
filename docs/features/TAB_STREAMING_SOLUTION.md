@@ -15,38 +15,46 @@ Instead of conditionally rendering different components, we now use the **existi
 
 ### Changes Made to `frontend/src/App.tsx`:
 
-#### 1. **Start Streaming - Set Tabs to Raw** (Lines 1359-1364)
+#### 1. **Start Streaming - Set Tabs to Raw** (Lines 2456-2461)
 
 ```typescript
 // Set all selected models to 'raw' tab to show streaming content immediately
-const rawTabs: { [modelId: string]: "raw" } = {};
-selectedModels.forEach((modelId) => {
-  rawTabs[modelId] = "raw";
+const rawTabs: ActiveResultTabs = {} as ActiveResultTabs;
+selectedModels.forEach(modelId => {
+  rawTabs[createModelId(modelId)] = RESULT_TAB.RAW;
 });
 setActiveResultTabs(rawTabs);
 ```
 
-#### 2. **Streaming Complete - Switch to Formatted** (Lines 1459-1464)
+#### 2. **Streaming Complete - Switch to Formatted** (Lines 2546-2552)
 
 ```typescript
-// Switch all model tabs to 'formatted' to show beautifully rendered results
-const formattedTabs: { [modelId: string]: "formatted" } = {};
-selectedModels.forEach((modelId) => {
-  formattedTabs[modelId] = "formatted";
-});
-setActiveResultTabs(formattedTabs);
+// Check if ALL models are done - if so, switch to formatted view
+if (completedModels.size === selectedModels.length) {
+  const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+  selectedModels.forEach(modelId => {
+    formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED;
+  });
+  setActiveResultTabs(formattedTabs);
+}
 ```
 
-#### 3. **Simplified Rendering** (Lines 2551-2562)
+#### 3. **Simplified Rendering** (Lines 3818-3829)
 
 ```typescript
 <div className="message-content">
-  {(activeResultTabs[conversation.modelId] || "formatted") === "formatted" ? (
+  {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
     /* Full LaTeX rendering for formatted view */
-    <LatexRenderer className="result-output">{message.content}</LatexRenderer>
+    <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
+      <LatexRenderer className="result-output">
+        {message.content}
+      </LatexRenderer>
+    </Suspense>
   ) : (
     /* Raw text for immediate streaming display */
-    <pre className="result-output raw-output">{message.content}</pre>
+    <pre className="result-output raw-output">
+      {message.content}
+    </pre>
   )}
 </div>
 ```
@@ -168,11 +176,13 @@ Expected:
 
 ```typescript
 {
-  "anthropic/claude-3.5-sonnet": "raw",     // During streaming
-  "openai/gpt-4o": "formatted",              // After streaming
-  "google/gemini-2.5-flash": "raw"           // Still streaming
+  "anthropic/claude-3.5-sonnet": RESULT_TAB.RAW,     // During streaming
+  "openai/gpt-4o": RESULT_TAB.FORMATTED,              // After streaming
+  "google/gemini-2.5-flash": RESULT_TAB.RAW           // Still streaming
 }
 ```
+
+Note: Model IDs are normalized using `createModelId()` helper function.
 
 Each model independently tracks its tab state, allowing:
 

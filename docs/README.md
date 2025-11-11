@@ -22,28 +22,27 @@ System architecture and design documentation:
 ### Development
 Development workflows, best practices, and guides:
 
-- **[Development Workflow](DEV_WORKFLOW.md)** - Development and deployment workflows
+- **[Development Workflow](development/DEV_WORKFLOW.md)** - Development and deployment workflows
 - **[Performance Monitoring](development/PERFORMANCE_MONITORING.md)** - Performance tracking and optimization
 - **[Testing Guide](development/TESTING.md)** - Testing strategies and best practices
 
 ### Features
 Feature-specific documentation:
 
-- **[Rate Limiting](RATE_LIMITING_IMPLEMENTATION.md)** - Rate limiting implementation details
-- **[Context Management](CONTEXT_MANAGEMENT_IMPLEMENTATION.md)** - Conversation context handling
-- **[Streaming](STREAMING_SUMMARY.md)** - Server-Sent Events (SSE) streaming implementation
-- **[LaTeX Rendering](LATEX_STREAMING_FIX.md)** - LaTeX/KaTeX rendering in streaming responses
-- **[Tab Streaming](TAB_STREAMING_SOLUTION.md)** - Tab-based streaming solution
+- **[Rate Limiting](features/RATE_LIMITING_IMPLEMENTATION.md)** - Rate limiting implementation details
+- **[Context Management](features/CONTEXT_MANAGEMENT_IMPLEMENTATION.md)** - Conversation context handling
+- **[Streaming](features/STREAMING_SUMMARY.md)** - Server-Sent Events (SSE) streaming implementation
+- **[Tab Streaming](features/TAB_STREAMING_SOLUTION.md)** - Tab-based streaming solution
 - **[Image Optimization](features/IMAGE_OPTIMIZATION.md)** - Image optimization and lazy loading
-- **[Support Email](SUPPORT_EMAIL_IMPLEMENTATION.md)** - Support email system
+- **[Support Email](features/SUPPORT_EMAIL_IMPLEMENTATION.md)** - Support email system
 
 ### Planning
 Planning and analysis documents:
 
-- **[Feature Recommendations](FEATURE_RECOMMENDATIONS.md)** - Future feature suggestions
-- **[Future Optimizations](FUTURE_OPTIMIZATIONS.md)** - Optimization opportunities
-- **[Overage Pricing Analysis](OVERAGE_PRICING_ANALYSIS.md)** - Pricing model analysis
-- **[Cache Busting Setup](CACHE_BUSTING_SETUP.md)** - Cache invalidation strategy
+- **[Feature Recommendations](planning/FEATURE_RECOMMENDATIONS.md)** - Future feature suggestions
+- **[Future Optimizations](planning/FUTURE_OPTIMIZATIONS.md)** - Optimization opportunities
+- **[Overage Pricing Analysis](planning/OVERAGE_PRICING_ANALYSIS.md)** - Pricing model analysis
+- **[Cache Busting Setup](planning/CACHE_BUSTING_SETUP.md)** - Cache invalidation strategy
 
 ### Refactoring
 Refactoring progress and component guides:
@@ -57,15 +56,13 @@ Refactoring progress and component guides:
 ### Testing
 Testing documentation:
 
-- **[Testing Context Management](TESTING_CONTEXT_MANAGEMENT.md)** - Testing guide for context management
-- **[Streaming Quick Test](STREAMING_QUICK_TEST.md)** - Quick test guide for streaming
-- **[Streaming Spaces Fix](STREAMING_SPACES_FIX.md)** - Streaming whitespace fixes
+- **[Testing Context Management](testing/TESTING_CONTEXT_MANAGEMENT.md)** - Testing guide for context management
 
 ## 🚀 Quick Links
 
 ### For New Developers
 1. Start with [Environment Setup](getting-started/ENVIRONMENT_SETUP.md)
-2. Review [Development Workflow](DEV_WORKFLOW.md)
+2. Review [Development Workflow](development/DEV_WORKFLOW.md)
 3. Read [API Documentation](architecture/API.md) for endpoint details
 
 ### For Contributors
@@ -76,7 +73,7 @@ Testing documentation:
 ### For API Users
 1. See [API Documentation](architecture/API.md) for complete endpoint reference
 2. Review [Authentication Flow](architecture/AUTHENTICATION.md) for auth setup
-3. Check [Rate Limiting](RATE_LIMITING_IMPLEMENTATION.md) for usage limits
+3. Check [Rate Limiting](features/RATE_LIMITING_IMPLEMENTATION.md) for usage limits
 
 ## 📖 Documentation Standards
 

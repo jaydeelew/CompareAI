@@ -1,8 +1,24 @@
 # Testing Context Management - Quick Start Guide
 
 **Date:** October 24, 2025  
+**Last Updated:** January 2025  
 **Estimated Time:** 15-20 minutes  
 **Prerequisites:** Backend + Frontend running locally
+
+---
+
+## 📋 Key Concepts
+
+**Important Distinction:**
+- **Extended Mode** (Frontend): User-controlled toggle button (E) that enables extended tier limits (15K chars, 8K tokens). Counts as 1 extended interaction per request.
+- **Extended Interaction Tracking** (Backend): Analytics tracking when `conversation_message_count > 6`. This is separate from Extended mode and happens automatically.
+
+**Message Count Thresholds:**
+- **6+ messages:** Info warning appears, backend tracks as extended interaction
+- **10+ messages:** Medium warning appears
+- **14+ messages:** High warning appears
+- **20+ messages:** Critical warning, backend truncates history to 20 messages
+- **24+ messages:** Critical warning, submit button disabled
 
 ---
 
@@ -21,8 +37,9 @@
    - "What are the main types?"
    - "Which is most popular?"
 3. **Expected behavior:**
-   - ✅ No warnings
-   - ✅ No extended interaction indicator
+   - ✅ No warnings (warnings start at 6+ messages)
+   - ✅ Usage preview shows model count (appears in follow-up mode)
+   - ✅ Extended mode toggle available but not required
    - ✅ Smooth operation
 
 ---
@@ -36,8 +53,8 @@
    - Keep asking follow-up questions
 
 3. **Expected behavior at 11 messages:**
-   - ℹ️ Blue info box appears: "Tip: New comparisons often provide more focused responses"
-   - 💜 Purple usage preview shows "X extended interactions" (where X = number of models)
+   - 🎯 Medium warning box appears: "Pro tip: Fresh comparisons provide more focused and relevant responses!"
+   - Usage preview shows model count and extended usage (if Extended mode is enabled)
    - ✨ "Start Fresh Comparison" button available
    - Submit still works normally
 
@@ -48,8 +65,8 @@
 1. **Continue following up to 15 messages**
 
 2. **Expected behavior at 15 messages:**
-   - 💡 Yellow warning box: "Long conversation detected..."
-   - Usage preview still shows extended interaction
+   - 💡 High warning box: "Consider starting a fresh comparison! New conversations help maintain optimal context and response quality."
+   - Usage preview still shows model count
    - "Start Fresh" button prominent
    - Submit still works
 
@@ -60,10 +77,11 @@
 1. **Continue to 21 messages**
 
 2. **Expected behavior at 21 messages:**
-   - ⚠️ Red/orange warning: "Conversation approaching maximum length..."
+   - ✨ Critical warning: "Time for a fresh start! Starting a new comparison will give you the best response quality and speed."
    - Warning is more urgent in tone
    - "Start Fresh" button very prominent
    - Submit still works (for now)
+   - Backend truncates conversation history to 20 messages
 
 ---
 
@@ -84,32 +102,30 @@
 
 ### Visual Elements
 
-**Usage Preview Box (appears at message 7+):**
+**Usage Preview Box (appears at message 1+ in follow-up mode):**
 
 ```
-This follow-up will use:
-• 3 model responses
-• X extended interactions [in purple] (where X = number of models)
-💡 Extended interactions use more context but same cost...
+3 models selected of 47 remaining model responses • 1 extended use selected of 4 remaining
 ```
+
+**Note:** Extended interactions are counted as **1 per request** (not per model). The usage preview only shows extended usage when Extended mode is explicitly enabled by the user (via the Extended mode toggle button).
 
 **Warning Progression:**
 
-- 6 msgs: Blue info box, "Using extended context mode"
-- 10 msgs: Blue info box, gentle tone
-- 14 msgs: Yellow warning, stronger language
-- 20 msgs: Red warning, urgent tone
-- 24 msgs: Red critical, submit disabled
+- **6 msgs:** ℹ️ Info level (blue): "Reminder: Starting a new comparison helps keep responses sharp and context-focused."
+- **10 msgs:** 🎯 Medium level: "Pro tip: Fresh comparisons provide more focused and relevant responses!"
+- **14 msgs:** 💡 High level: "Consider starting a fresh comparison! New conversations help maintain optimal context and response quality."
+- **20 msgs:** ✨ Critical level: "Time for a fresh start! Starting a new comparison will give you the best response quality and speed." (Backend truncates to 20 messages)
+- **24 msgs:** 🚫 Critical level: "Maximum conversation length reached (24 messages). Please start a fresh comparison for continued assistance." (Submit button disabled)
 
 **UserMenu (click profile):**
 
 ```
 Today's Usage: X model responses
-Extended Interactions: Y of Z remaining [with ℹ️ tooltip]
+Extended Interactions: Y of Z remaining [with progress bar]
 
-💡 Context Management
-Conversations auto-limit at 20 messages (backend)
-and 24 messages (frontend)...
+Note: Extended interactions are tracked separately from regular model responses.
+Extended mode can be enabled via the Extended mode toggle button (E) in the form.
 ```
 
 ---
@@ -169,8 +185,16 @@ and 24 messages (frontend)...
 
 ### Edge Case 4: Anonymous vs Authenticated Limits
 
-**Scenario:** Anonymous user with 2 extended interactions, authenticated with 5  
+**Scenario:** Anonymous user with 2 extended interactions/day, authenticated with 5/day  
 **Expected:** Different limits enforced correctly
+
+### Edge Case 5: Extended Mode vs Extended Interaction Tracking
+
+**Scenario:** User has 6+ messages but Extended mode toggle is OFF  
+**Expected:** 
+- Backend still tracks as extended interaction (analytics)
+- Frontend usage preview does NOT show extended usage
+- Extended mode is user-controlled, separate from message count tracking
 
 ---
 
@@ -182,8 +206,10 @@ and 24 messages (frontend)...
 
 ```
 📊 Extended interaction detected: X messages in history
-✓ Incremented extended usage for user@email.com: +Y models
+✓ Incremented extended usage for user@email.com: +1 extended interaction
 ```
+
+**Note:** Extended interactions are counted as 1 per request (not per model). Backend tracks extended interactions when `conversation_message_count > 6`, but frontend Extended mode is user-controlled via toggle.
 
 **Network tab:**
 
@@ -209,7 +235,8 @@ Extended interaction detected: Z messages
 - [ ] No conversation can exceed 24 messages frontend
 - [ ] Warning appears at 6, 10, 14, 20, 24 message thresholds
 - [ ] Submit button disabled at 24 messages
-- [ ] Usage preview shows extended interaction at >6 messages
+- [ ] Usage preview appears in follow-up mode (message 1+)
+- [ ] Usage preview shows extended usage when Extended mode is enabled
 - [ ] "Start Fresh" button works correctly
 - [ ] UserMenu shows context management info
 - [ ] Backend truncates to 20 messages
@@ -247,9 +274,10 @@ Extended interaction detected: Z messages
 
 ### Extended interaction not counting?
 
-- Check metadata in network response
-- Verify user's `daily_extended_usage` field
-- Check backend condition: `conversation_message_count > 10`
+- Check metadata in network response: `is_extended_interaction` flag
+- Verify user's `daily_extended_usage` field in database
+- Check backend condition: `conversation_message_count > 6` (not > 10)
+- **Important:** Frontend Extended mode (user toggle) is separate from backend extended interaction tracking (analytics based on message count)
 
 ---
 
@@ -298,9 +326,9 @@ Tester: _____________
 - [ ] Pass  [ ] Fail
 Notes: _____________________
 
-### Test 2: Extended Mode Actives (6-9 messages)
+### Test 2: Info Warning Appears (6-9 messages)
 - [ ] Pass  [ ] Fail
-Notes: Extended context mode should trigger, info message appears
+Notes: Info warning should appear at 6+ messages, usage preview visible
 
 ### Test 3: Medium Conversation (10-13 messages)
 - [ ] Pass  [ ] Fail
@@ -351,8 +379,8 @@ User Starts Comparison
     Follow-up 6+
          ↓
     [Messages: 11-13]
-    ℹ️ INFO: Gentle suggestion
-    💜 Extended interaction marked
+    🎯 MEDIUM: Pro tip message
+    (Backend tracks extended interaction if >6 messages)
          ↓
     Follow-up 8+
          ↓

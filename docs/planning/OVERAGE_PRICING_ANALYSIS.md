@@ -377,7 +377,7 @@ For existing users during transition:
 
 - [ ] Backend implementation (rate_limiting.py)
 - [ ] Frontend updates (UserMenu, App.tsx)
-- [ ] Documentation updates (README, RATE_LIMITING_IMPLEMENTATION.md)
+- [ ] Documentation updates (README, ../features/RATE_LIMITING_IMPLEMENTATION.md)
 - [ ] Testing and validation
 
 ### 🔜 Future:
@@ -420,6 +420,6 @@ For existing users during transition:
 **Status:** Implementation in progress, pricing TBD
 
 **Related Documents:**
-- `RATE_LIMITING_IMPLEMENTATION.md` - Technical implementation details
+- `../features/RATE_LIMITING_IMPLEMENTATION.md` - Technical implementation details
 - `backend/app/rate_limiting.py` - Rate limiting configuration
 - `README.md` - Project overview and quick reference
