@@ -32,7 +32,8 @@ describe('date utilities', () => {
     it('should parse Date objects', () => {
       const dateObj = new Date('2025-01-15T12:00:00Z');
       const parsed = parseDate(dateObj);
-      expect(parsed).toBe(dateObj);
+      expect(parsed).toEqual(dateObj);
+      expect(parsed?.getTime()).toBe(dateObj.getTime());
     });
 
     it('should parse timestamps', () => {

@@ -19,8 +19,15 @@ export function useBrowserFingerprint(): UseBrowserFingerprintReturn {
   // Generate browser fingerprint on mount
   useEffect(() => {
     const generateFingerprint = async () => {
-      const fingerprint = await generateBrowserFingerprint();
-      setBrowserFingerprint(fingerprint);
+      try {
+        const fingerprint = await generateBrowserFingerprint();
+        setBrowserFingerprint(fingerprint);
+      } catch (error) {
+        // Handle error gracefully - keep fingerprint empty on error
+        // This ensures the app continues to work even if fingerprint generation fails
+        console.error('Failed to generate browser fingerprint:', error);
+        setBrowserFingerprint('');
+      }
     };
 
     generateFingerprint();

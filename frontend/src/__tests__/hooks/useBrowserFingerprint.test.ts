@@ -63,21 +63,18 @@ describe('useBrowserFingerprint', () => {
       expect(result.current.browserFingerprint).toBe('manual-fingerprint');
     });
 
-  // Note: Error handling test skipped - the hook doesn't currently handle errors
-  // TODO: Add error handling to useBrowserFingerprint hook and re-enable this test
-  it.skip('should handle fingerprint generation errors gracefully', async () => {
-      // This test will be enabled when error handling is added to the hook
-      const error = new Error('Fingerprint generation failed');
-      vi.mocked(fingerprintUtils.generateBrowserFingerprint).mockRejectedValue(error);
-      
-      const { result } = renderHook(() => useBrowserFingerprint());
-      
-      await waitFor(() => {
-        expect(fingerprintUtils.generateBrowserFingerprint).toHaveBeenCalled();
-      }, { timeout: 1000 });
-      
-      // When error handling is implemented, fingerprint should remain empty on error
-      expect(result.current.browserFingerprint).toBe('');
+  it('should handle fingerprint generation errors gracefully', async () => {
+    const error = new Error('Fingerprint generation failed');
+    vi.mocked(fingerprintUtils.generateBrowserFingerprint).mockRejectedValue(error);
+    
+    const { result } = renderHook(() => useBrowserFingerprint());
+    
+    await waitFor(() => {
+      expect(fingerprintUtils.generateBrowserFingerprint).toHaveBeenCalled();
+    }, { timeout: 1000 });
+    
+    // Fingerprint should remain empty on error
+    expect(result.current.browserFingerprint).toBe('');
   });
 
   it('should only generate fingerprint once on mount', async () => {

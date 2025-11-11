@@ -124,9 +124,16 @@ describe('ErrorBoundary', () => {
       expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     });
 
-    it.skip('should not show error details in production mode', () => {
-      // Skipping this test as import.meta.env.DEV cannot be mocked at runtime
-      // The environment variable is set at build time by Vite
+    it('should not show error details when showErrorDetails is false', () => {
+      render(
+        <ErrorBoundary showErrorDetails={false}>
+          <ThrowError shouldThrow={true} />
+        </ErrorBoundary>
+      );
+      
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+      // Error details should not be shown when showErrorDetails is false
+      expect(screen.queryByText(/error details/i)).not.toBeInTheDocument();
     });
   });
 
@@ -143,10 +150,40 @@ describe('ErrorBoundary', () => {
       expect(reloadButton).toHaveTextContent(/reload page/i);
     });
 
-    it.skip('should reload page when reload button is clicked', async () => {
-      // Skipping this test as window.location.reload cannot be easily mocked
-      // The reload functionality is tested by verifying the button exists and is clickable
-      // Actual reload behavior is browser-dependent and hard to test in unit tests
+    it('should reload page when reload button is clicked', async () => {
+      // Mock window.location.reload using Object.defineProperty for better compatibility
+      const reloadSpy = vi.fn();
+      const originalReload = window.location.reload;
+      
+      Object.defineProperty(window, 'location', {
+        value: {
+          ...window.location,
+          reload: reloadSpy,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      render(
+        <ErrorBoundary>
+          <ThrowError shouldThrow={true} />
+        </ErrorBoundary>
+      );
+      
+      const reloadButton = screen.getByRole('button', { name: /reload page/i });
+      await userEvent.click(reloadButton);
+      
+      expect(reloadSpy).toHaveBeenCalledTimes(1);
+      
+      // Restore original reload
+      Object.defineProperty(window, 'location', {
+        value: {
+          ...window.location,
+          reload: originalReload,
+        },
+        writable: true,
+        configurable: true,
+      });
     });
   });
 });

@@ -20,7 +20,12 @@
  */
 export function parseDate(date: string | Date | number): Date | null {
   try {
-    return new Date(date);
+    const parsed = new Date(date);
+    // Check if date is invalid
+    if (isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -96,7 +101,7 @@ export function getDateDiff(
   const d1 = typeof date1 === 'string' ? parseDate(date1) : date1;
   const d2 = typeof date2 === 'string' ? parseDate(date2) : date2;
   
-  if (!d1 || !d2) return 0;
+  if (!d1 || !d2 || isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
   
   return d2.getTime() - d1.getTime();
 }
@@ -121,7 +126,7 @@ export function formatLocaleDate(
   options?: Intl.DateTimeFormatOptions
 ): string {
   const date = parseDate(dateString);
-  if (!date) return '';
+  if (!date || isNaN(date.getTime())) return '';
   
   return date.toLocaleDateString(locale, options);
 }

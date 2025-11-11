@@ -5,6 +5,7 @@ interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  showErrorDetails?: boolean; // Allow controlling error details visibility for testing
 }
 
 interface State {
@@ -63,7 +64,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p style={{ margin: '0 0 1rem 0' }}>
             We encountered an unexpected error. Please try refreshing the page.
           </p>
-          {import.meta.env.DEV && this.state.error && (
+          {this.props.showErrorDetails !== false && import.meta.env.DEV && this.state.error && (
             <details style={{ marginTop: '1rem' }}>
               <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
                 Error details (development only)

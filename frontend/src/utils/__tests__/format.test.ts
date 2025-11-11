@@ -104,7 +104,7 @@ describe('format utilities', () => {
       const text = 'This is a very long text that should be truncated';
       const result = truncatePrompt(text, 20);
       expect(result.length).toBe(23); // 20 chars + '...'
-      expect(result).toEndWith('...');
+      expect(result.endsWith('...')).toBe(true);
     });
 
     it('should use default maxLength of 60', () => {
