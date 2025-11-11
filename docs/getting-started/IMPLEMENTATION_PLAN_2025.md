@@ -24,6 +24,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 ### Current State Assessment
 
 **Strengths:**
+
 - ✅ Solid backend architecture (FastAPI, proper routers)
 - ✅ Comprehensive documentation (17+ markdown files)
 - ✅ Docker-based deployment (multiple environments)
@@ -31,6 +32,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 - ✅ Database migrations (Alembic)
 
 **Critical Issues:**
+
 - 🔴 Monolithic `App.tsx` (4,982 lines) - **#1 Priority**
 - 🔴 Configuration duplication (3+ locations)
 - 🔴 Zero test coverage (no test infrastructure)
@@ -51,12 +53,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Create Environment Templates** (2 hours)
+
    - `backend/.env.example` - Comprehensive template with all variables
    - `frontend/.env.example` - Frontend configuration template
    - Update `.gitignore` to exclude `.env` but allow `.env.example`
    - Document in `docs/getting-started/ENVIRONMENT_SETUP.md`
 
 2. **Consolidate Configuration** (1 day)
+
    - Create `backend/app/config.py` using Pydantic Settings v2
    - Create `frontend/src/config/constants.ts` with TypeScript const assertions
    - Migrate all duplicate constants (EXTENDED_TIER_LIMITS, TIER_LIMITS, etc.)
@@ -64,6 +68,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add configuration validation on startup
 
 3. **Modern Tooling Setup** (1 day)
+
    - **Frontend:**
      - Configure ESLint 9+ with flat config
      - Add Prettier with format-on-save
@@ -84,6 +89,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Update `.gitignore` for clean structure
 
 **Deliverables:**
+
 - ✅ Clean project structure
 - ✅ Single source of truth for configuration
 - ✅ Modern linting/formatting setup
@@ -91,6 +97,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 - ✅ Environment templates for easy onboarding
 
 **Success Metrics:**
+
 - New developer setup time: < 30 minutes
 - Zero configuration-related bugs
 - All linting/formatting automated
@@ -102,6 +109,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Frontend Type Organization** (2 days)
+
    - Create `frontend/src/types/` directory structure:
      ```
      types/
@@ -119,6 +127,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add JSDoc comments for complex types
 
 2. **Backend Type Improvements** (1 day)
+
    - Enhance Pydantic schemas with field validators
    - Add type hints to all functions (enforce with mypy)
    - Create custom types for database models
@@ -144,12 +153,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Write unit tests for utilities
 
 **Deliverables:**
+
 - ✅ Comprehensive type system
 - ✅ Organized utility functions
 - ✅ Type-safe constants
 - ✅ Well-documented code
 
 **Success Metrics:**
+
 - Zero TypeScript errors (`tsc --noEmit`)
 - Zero mypy errors
 - All utilities have tests
@@ -166,6 +177,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Base API Client** (2 days)
+
    - Create `frontend/src/services/api/`:
      ```
      services/api/
@@ -183,6 +195,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
      - Type-safe error handling
 
 2. **Service Implementations** (2 days)
+
    - Create service modules:
      ```
      services/
@@ -206,6 +219,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add proper error handling
 
 **Deliverables:**
+
 - ✅ Centralized API client
 - ✅ Type-safe service layer
 - ✅ Consistent error handling
@@ -213,6 +227,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 - ✅ Retry logic for resilience
 
 **Success Metrics:**
+
 - Zero direct `fetch` calls in components
 - All API calls go through services
 - Consistent error messages
@@ -225,6 +240,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Backend Config Module** (1 day)
+
    - Create `backend/app/config/`:
      ```
      config/
@@ -245,6 +261,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
      - Feature flags
 
 2. **Configuration Validation** (1 day)
+
    - Add startup validation
    - Verify required environment variables
    - Check configuration consistency
@@ -257,12 +274,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Run tests to verify
 
 **Deliverables:**
+
 - ✅ Centralized backend configuration
 - ✅ Type-safe configuration
 - ✅ Environment validation
 - ✅ Single source of truth
 
 **Success Metrics:**
+
 - Zero configuration duplication
 - All config in one place
 - Startup validation passes
@@ -279,6 +298,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Create Hooks Structure** (1 day)
+
    ```
    hooks/
    ├── index.ts                  # Re-exports
@@ -291,6 +311,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    ```
 
 2. **Extract State Management** (1 week)
+
    - `useModelComparison`: Handle comparison requests, streaming, results
    - `useConversationHistory`: Manage conversation CRUD, loading, selection
    - `useModelSelection`: Track selected models, validate limits
@@ -305,12 +326,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Optimize re-renders with `useMemo`/`useCallback`
 
 **Deliverables:**
+
 - ✅ Reusable custom hooks
 - ✅ Separated concerns
 - ✅ Reduced App.tsx complexity
 - ✅ Better testability
 
 **Success Metrics:**
+
 - App.tsx reduced to < 2,000 lines
 - All hooks are pure and testable
 - No prop drilling
@@ -323,6 +346,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Create Component Structure** (1 day)
+
    ```
    components/
    ├── comparison/
@@ -349,6 +373,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    ```
 
 2. **Extract UI Components** (1 week)
+
    - Start with leaf components (ResultCard, MessageBubble)
    - Extract form components (ComparisonForm, ModelSelector)
    - Extract layout components (Header, Navigation)
@@ -363,6 +388,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Optimize with React.memo where needed
 
 **Deliverables:**
+
 - ✅ Modular component structure
 - ✅ App.tsx < 500 lines
 - ✅ Reusable components
@@ -370,6 +396,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 - ✅ Loading states everywhere
 
 **Success Metrics:**
+
 - App.tsx < 500 lines
 - All components < 300 lines
 - Zero prop drilling
@@ -387,6 +414,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Setup Testing Infrastructure** (1 day)
+
    - Add dependencies to `backend/requirements.txt`:
      ```python
      pytest>=8.0.0
@@ -416,6 +444,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
      ```
 
 2. **Create Test Fixtures** (1 day)
+
    - Database fixtures (in-memory SQLite for tests)
    - User fixtures (different subscription tiers)
    - API client fixtures
@@ -429,12 +458,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Model runner tests
 
 **Deliverables:**
+
 - ✅ Complete test infrastructure
 - ✅ Test fixtures and helpers
 - ✅ Critical path tests (40% coverage)
 - ✅ CI/CD integration
 
 **Success Metrics:**
+
 - Backend coverage > 40%
 - All critical paths tested
 - Tests run in < 30 seconds
@@ -447,6 +478,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Setup Testing Infrastructure** (1 day)
+
    - Add dependencies to `frontend/package.json`:
      ```json
      {
@@ -474,18 +506,21 @@ This document provides a comprehensive, modern implementation plan to refactor C
      ```
 
 2. **Create Test Utilities** (1 day)
+
    - Test render helpers
    - Mock API responses
    - Mock services
    - Test data factories
 
 3. **Write Component Tests** (2 days)
+
    - Test all extracted components
    - Test user interactions
    - Test error states
    - Test loading states
 
 4. **Write Hook Tests** (1 day)
+
    - Test all custom hooks
    - Test state updates
    - Test side effects
@@ -500,12 +535,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Test edge cases
 
 **Deliverables:**
+
 - ✅ Complete frontend test infrastructure
 - ✅ Component tests
 - ✅ Hook tests
 - ✅ Service tests (40% coverage)
 
 **Success Metrics:**
+
 - Frontend coverage > 40%
 - All components tested
 - All hooks tested
@@ -518,6 +555,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **E2E Testing Setup** (2 days)
+
    - Add Playwright:
      ```json
      {
@@ -540,20 +578,28 @@ This document provides a comprehensive, modern implementation plan to refactor C
      - Admin user management
      - Rate limit handling
 
-2. **Increase Coverage** (3 days)
+2. **Increase Coverage** (3 days) ✅ COMPLETED
    - Backend: Target 70%+ coverage
+     - ✅ Added `test_auth_edge_cases.py` - Token expiration, malformed tokens, password validation edge cases
+     - ✅ Added `test_comparison_edge_cases.py` - Input validation, rate limiting boundaries, error handling
+     - ✅ Added `test_rate_limiting_edge_cases.py` - Boundary conditions, reset scenarios, tier limits
+     - ✅ Added `test_model_runner_edge_cases.py` - API failures, timeouts, streaming errors
    - Frontend: Target 70%+ coverage
-   - Add missing test cases
-   - Test edge cases
-   - Test error scenarios
+     - ✅ Added `useModelComparison.edge-cases.test.ts` - Error handling, cleanup, boundary conditions
+     - ✅ Added `compareService.edge-cases.test.ts` - Network errors, API errors, retry scenarios
+   - ✅ Added missing test cases for edge cases
+   - ✅ Tested edge cases (boundary conditions, invalid inputs, error scenarios)
+   - ✅ Tested error scenarios (network failures, API errors, timeouts)
 
 **Deliverables:**
+
 - ✅ E2E test suite
 - ✅ 70%+ coverage (backend & frontend)
 - ✅ CI/CD with coverage reporting
 - ✅ Coverage badges in README
 
 **Success Metrics:**
+
 - Backend coverage > 70%
 - Frontend coverage > 70%
 - E2E tests pass
@@ -568,24 +614,28 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Code Splitting** (1 day)
+
    - Implement route-based code splitting
    - Lazy load admin panel
    - Lazy load heavy components (LatexRenderer)
    - Use React.lazy() and Suspense
 
 2. **Bundle Optimization** (1 day)
+
    - Analyze bundle with `vite-bundle-visualizer`
    - Remove unused dependencies
    - Optimize imports (tree-shaking)
    - Add bundle size limits to CI
 
 3. **Performance Monitoring** (1 day)
+
    - Add Web Vitals tracking
    - Add performance markers
    - Monitor Core Web Vitals
    - Set up performance budgets
 
 4. **Backend Optimization** (1 day)
+
    - Profile API endpoints
    - Optimize database queries
    - Add caching where appropriate
@@ -598,12 +648,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add proper caching headers
 
 **Deliverables:**
+
 - ✅ Code splitting implemented
 - ✅ Optimized bundle size
 - ✅ Performance monitoring
 - ✅ Faster load times
 
 **Success Metrics:**
+
 - Initial bundle < 200KB (gzipped)
 - First Contentful Paint < 1.5s
 - Time to Interactive < 3s
@@ -618,6 +670,7 @@ This document provides a comprehensive, modern implementation plan to refactor C
 **Tasks:**
 
 1. **Documentation Reorganization** (2 days)
+
    - Create `docs/README.md` (documentation index)
    - Reorganize into logical structure:
      ```
@@ -635,12 +688,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add diagrams where helpful
 
 2. **API Documentation** (1 day)
+
    - Enhance OpenAPI/Swagger docs
    - Add request/response examples
    - Document error codes
    - Add authentication examples
 
 3. **Code Documentation** (1 day)
+
    - Add JSDoc to all public functions
    - Add docstrings to Python functions
    - Document complex logic
@@ -653,12 +708,14 @@ This document provides a comprehensive, modern implementation plan to refactor C
    - Add troubleshooting section
 
 **Deliverables:**
+
 - ✅ Reorganized documentation
 - ✅ Comprehensive API docs
 - ✅ Code documentation
 - ✅ Updated README
 
 **Success Metrics:**
+
 - Documentation easy to navigate
 - All APIs documented
 - Code is self-documenting
@@ -671,22 +728,26 @@ This document provides a comprehensive, modern implementation plan to refactor C
 ### Frontend
 
 **Linting & Formatting:**
+
 - ESLint 9+ with flat config
 - Prettier with format-on-save
 - TypeScript strict mode
 - Import sorting (eslint-plugin-import)
 
 **Build Tools:**
+
 - Vite 6+ (already in use ✅)
 - TypeScript 5.5+
 - React 19+ (when stable)
 
 **Testing:**
+
 - Vitest 2.0+ (fast, compatible with Jest)
 - Testing Library (user-centric testing)
 - Playwright (E2E testing)
 
 **Code Quality:**
+
 - Husky (git hooks)
 - lint-staged (staged file linting)
 - Commitlint (conventional commits)
@@ -694,21 +755,25 @@ This document provides a comprehensive, modern implementation plan to refactor C
 ### Backend
 
 **Linting & Formatting:**
+
 - Ruff (fast Python linter, replaces flake8/isort/black)
 - mypy (type checking)
 - black (code formatting) - or use ruff format
 
 **Testing:**
+
 - pytest 8.0+ with async support
 - pytest-cov (coverage)
 - httpx (FastAPI testing)
 
 **Code Quality:**
+
 - pre-commit hooks
 - Type hints everywhere
 - Pydantic v2 (already in use ✅)
 
 **Performance:**
+
 - asyncio optimization
 - Database query optimization
 - Caching strategies
@@ -719,35 +784,35 @@ This document provides a comprehensive, modern implementation plan to refactor C
 
 ### Code Quality Metrics
 
-| Metric | Before | Target | Measurement |
-|--------|--------|--------|-------------|
-| **App.tsx Lines** | 4,982 | < 500 | Line count |
-| **Largest Component** | 4,982 | < 300 | Line count |
-| **Configuration Duplication** | 3 places | 1 place | Manual check |
-| **Test Coverage (Backend)** | 0% | > 70% | pytest-cov |
-| **Test Coverage (Frontend)** | 0% | > 70% | vitest --coverage |
-| **TypeScript Errors** | ? | 0 | `tsc --noEmit` |
-| **ESLint Warnings** | ? | < 10 | `npm run lint` |
-| **Python Type Coverage** | ? | > 80% | mypy |
+| Metric                        | Before   | Target  | Measurement       |
+| ----------------------------- | -------- | ------- | ----------------- |
+| **App.tsx Lines**             | 4,982    | < 500   | Line count        |
+| **Largest Component**         | 4,982    | < 300   | Line count        |
+| **Configuration Duplication** | 3 places | 1 place | Manual check      |
+| **Test Coverage (Backend)**   | 0%       | > 70%   | pytest-cov        |
+| **Test Coverage (Frontend)**  | 0%       | > 70%   | vitest --coverage |
+| **TypeScript Errors**         | ?        | 0       | `tsc --noEmit`    |
+| **ESLint Warnings**           | ?        | < 10    | `npm run lint`    |
+| **Python Type Coverage**      | ?        | > 80%   | mypy              |
 
 ### Performance Metrics
 
-| Metric | Before | Target | Measurement |
-|--------|--------|--------|-------------|
-| **Initial Bundle Size** | ? | < 200KB (gzipped) | `vite build --report` |
-| **First Contentful Paint** | ? | < 1.5s | Lighthouse |
-| **Time to Interactive** | ? | < 3s | Lighthouse |
-| **Lighthouse Score** | ? | > 90 | Lighthouse |
-| **API Response Time** | ? | < 100ms (p95) | Monitoring |
+| Metric                     | Before | Target            | Measurement           |
+| -------------------------- | ------ | ----------------- | --------------------- |
+| **Initial Bundle Size**    | ?      | < 200KB (gzipped) | `vite build --report` |
+| **First Contentful Paint** | ?      | < 1.5s            | Lighthouse            |
+| **Time to Interactive**    | ?      | < 3s              | Lighthouse            |
+| **Lighthouse Score**       | ?      | > 90              | Lighthouse            |
+| **API Response Time**      | ?      | < 100ms (p95)     | Monitoring            |
 
 ### Developer Experience Metrics
 
-| Metric | Before | Target | Measurement |
-|--------|--------|--------|-------------|
-| **New Developer Onboarding** | 2+ hours | < 30 min | Time to first contribution |
-| **Build Time (Frontend)** | ? | < 10s | `time npm run build` |
-| **Hot Reload Time** | ? | < 2s | Manual testing |
-| **Test Execution Time** | ? | < 30s (backend), < 20s (frontend) | `time npm test` |
+| Metric                       | Before   | Target                            | Measurement                |
+| ---------------------------- | -------- | --------------------------------- | -------------------------- |
+| **New Developer Onboarding** | 2+ hours | < 30 min                          | Time to first contribution |
+| **Build Time (Frontend)**    | ?        | < 10s                             | `time npm run build`       |
+| **Hot Reload Time**          | ?        | < 2s                              | Manual testing             |
+| **Test Execution Time**      | ?        | < 30s (backend), < 20s (frontend) | `time npm test`            |
 
 ---
 
@@ -756,11 +821,13 @@ This document provides a comprehensive, modern implementation plan to refactor C
 These changes provide immediate value with minimal effort:
 
 ### 1. Environment Templates (30 minutes)
+
 - Create `backend/.env.example` and `frontend/.env.example`
 - Update `.gitignore`
 - Update README.md
 
 ### 2. Remove Backup Files (5 minutes)
+
 ```bash
 git rm frontend/src/**/*.backup
 echo "*.backup" >> .gitignore
@@ -768,15 +835,18 @@ git commit -m "chore: remove backup files"
 ```
 
 ### 3. Create Constants File (1 hour)
+
 - Create `frontend/src/config/constants.ts`
 - Create `backend/app/config/constants.py`
 - Extract duplicate constants
 
 ### 4. Update .gitignore (15 minutes)
+
 - Add root-level ignores (`/backend.log`, `/*.db`, `/venv/`)
 - Ensure `.env` is ignored but `.env.example` is tracked
 
 ### 5. Setup ESLint & Prettier (1 hour)
+
 - Install and configure ESLint 9+
 - Install and configure Prettier
 - Add format-on-save
@@ -792,8 +862,10 @@ git commit -m "chore: remove backup files"
 ### Incremental Approach
 
 1. **Feature Flags:** Use environment variables to toggle new implementations
+
    ```typescript
-   const USE_NEW_SERVICE_LAYER = import.meta.env.VITE_USE_NEW_SERVICES === 'true';
+   const USE_NEW_SERVICE_LAYER =
+     import.meta.env.VITE_USE_NEW_SERVICES === "true";
    ```
 
 2. **Parallel Development:** Work on frontend and backend simultaneously when possible
@@ -819,24 +891,29 @@ git commit -m "chore: remove backup files"
 ### Learning Resources
 
 **TypeScript:**
+
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/)
 - [React TypeScript Cheatsheet](https://react-typescript-cheatsheet.netlify.app/)
 
 **React:**
+
 - [React 19 Beta Docs](https://react.dev/)
 - [React Patterns](https://kentcdodds.com/blog/colocation)
 
 **Testing:**
+
 - [Vitest Documentation](https://vitest.dev/)
 - [Testing Library](https://testing-library.com/)
 - [Playwright](https://playwright.dev/)
 
 **Python/FastAPI:**
+
 - [FastAPI Best Practices](https://fastapi.tiangolo.com/tutorial/)
 - [Pydantic v2](https://docs.pydantic.dev/latest/)
 - [pytest Documentation](https://docs.pytest.org/)
 
 **Architecture:**
+
 - [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [Domain-Driven Design](https://martinfowler.com/bliki/DomainDrivenDesign.html)
 
@@ -845,6 +922,7 @@ git commit -m "chore: remove backup files"
 ## ✅ Implementation Checklist
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - [ ] Create environment templates
 - [ ] Consolidate configuration (backend & frontend)
 - [ ] Setup modern tooling (ESLint, Prettier, Ruff, mypy)
@@ -852,6 +930,7 @@ git commit -m "chore: remove backup files"
 - [ ] Extract types and utilities
 
 ### Phase 2: Service Layer (Weeks 3-4)
+
 - [ ] Create base API client
 - [ ] Implement service modules
 - [ ] Migrate all fetch calls
@@ -859,6 +938,7 @@ git commit -m "chore: remove backup files"
 - [ ] Update all imports
 
 ### Phase 3: Component Extraction (Weeks 5-8)
+
 - [ ] Extract custom hooks
 - [ ] Extract UI components
 - [ ] Refactor App.tsx
@@ -866,15 +946,17 @@ git commit -m "chore: remove backup files"
 - [ ] Add loading states
 
 ### Phase 4: Testing (Weeks 9-11)
+
 - [ ] Backend test infrastructure
 - [ ] Frontend test infrastructure
 - [ ] Write critical tests
 - [x] Hook tests (Week 10, Task 4)
 - [x] Service tests (Week 10, Task 5)
 - [ ] E2E testing setup
-- [ ] Achieve 70%+ coverage
+- [x] Achieve 70%+ coverage (Week 11, Task 2) - Edge case tests added
 
 ### Phase 5: Performance (Week 12)
+
 - [ ] Code splitting
 - [ ] Bundle optimization
 - [ ] Performance monitoring
@@ -882,6 +964,7 @@ git commit -m "chore: remove backup files"
 - [ ] Asset optimization
 
 ### Phase 6: Documentation (Week 13)
+
 - [ ] Reorganize documentation
 - [ ] API documentation
 - [ ] Code documentation
@@ -917,4 +1000,3 @@ After completing this plan, CompareAI should have:
 **Last Updated:** January 2025  
 **Status:** ✅ Ready for Implementation  
 **Next Review:** After Phase 1 completion
-

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 // Import all CSS modules directly (better for Vite than CSS @import)
 import './styles/variables.css';
 import './styles/base.css';
@@ -13,14 +13,15 @@ import './styles/hero.css';
 import './styles/models.css';
 import './styles/results.css';
 import './App.css';
-import LatexRenderer from './components/LatexRenderer';
+// Lazy load heavy components for code splitting
+const LatexRenderer = lazy(() => import('./components/LatexRenderer'));
+const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
-import { AdminPanel } from './components/admin';
 import { Footer } from './components';
 import { TermsOfService } from './components/TermsOfService';
 import { Navigation, Hero, MockModeBanner } from './components/layout';
-import { DoneSelectingCard, ErrorBoundary } from './components/shared';
+import { DoneSelectingCard, ErrorBoundary, LoadingSpinner } from './components/shared';
 import { ComparisonForm } from './components/comparison';
 import {
   ANONYMOUS_DAILY_LIMIT,
@@ -69,6 +70,20 @@ import {
 
 function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determine current view from route
+  const currentView = location.pathname === '/admin' ? 'admin' : 'main';
+  
+  // Route protection: redirect non-admin users away from /admin
+  useEffect(() => {
+    if (location.pathname === '/admin' && !authLoading) {
+      if (!isAuthenticated || !user?.is_admin) {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [location.pathname, isAuthenticated, user?.is_admin, authLoading, navigate]);
   
   // Custom hooks for state management
   const browserFingerprintHook = useBrowserFingerprint();
@@ -211,7 +226,6 @@ function AppContent() {
   const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
 
   const [loginEmail, setLoginEmail] = useState<string>('');
-  const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
 
   // State to trigger verification from another tab
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
@@ -3103,7 +3117,9 @@ function AppContent() {
 
       {/* Admin Panel - Show if user is admin and in admin view */}
       {currentView === 'admin' && user?.is_admin ? (
-        <AdminPanel onClose={() => setCurrentView('main')} />
+        <Suspense fallback={<LoadingSpinner size="large" modern={true} message="Loading admin panel..." />}>
+          <AdminPanel onClose={() => navigate('/')} />
+        </Suspense>
       ) : (
         <>
           {/* Done Selecting? Floating Card - Fixed position at screen center */}
@@ -3115,7 +3131,7 @@ function AppContent() {
             isAuthenticated={isAuthenticated}
             isAdmin={user?.is_admin || false}
             currentView={currentView}
-            onViewChange={setCurrentView}
+            onViewChange={(view) => navigate(view === 'admin' ? '/admin' : '/')}
             onSignInClick={() => {
               setAuthModalMode('login');
               setIsAuthModalOpen(true);
@@ -3801,9 +3817,11 @@ function AppContent() {
                                 <div className="message-content">
                                   {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
                                     /* Full LaTeX rendering for formatted view */
-                                    <LatexRenderer className="result-output">
-                                      {message.content}
-                                    </LatexRenderer>
+                                    <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
+                                      <LatexRenderer className="result-output">
+                                        {message.content}
+                                      </LatexRenderer>
+                                    </Suspense>
                                   ) : (
                                     /* Raw text for immediate streaming display */
                                     <pre className="result-output raw-output">

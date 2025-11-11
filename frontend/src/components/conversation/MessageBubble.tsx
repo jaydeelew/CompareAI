@@ -1,7 +1,9 @@
-import React from 'react';
-import LatexRenderer from '../LatexRenderer';
+import React, { lazy, Suspense } from 'react';
 import { formatTime } from '../../utils';
 import { RESULT_TAB, type ResultTab } from '../../types';
+
+// Lazy load LatexRenderer for code splitting
+const LatexRenderer = lazy(() => import('../LatexRenderer'));
 
 /**
  * MessageBubble component props
@@ -98,7 +100,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       <div className="message-content">
         {activeTab === RESULT_TAB.FORMATTED ? (
           /* Full LaTeX rendering for formatted view */
-          <LatexRenderer className="result-output">{content}</LatexRenderer>
+          <Suspense fallback={<pre className="result-output raw-output">{content}</pre>}>
+            <LatexRenderer className="result-output">{content}</LatexRenderer>
+          </Suspense>
         ) : (
           /* Raw text for immediate streaming display */
           <pre className="result-output raw-output">{content}</pre>
