@@ -1,3 +1,19 @@
+"""
+Model runner for OpenRouter API integration.
+
+This module handles communication with OpenRouter API to access 50+ AI models
+from various providers. It provides both synchronous and streaming interfaces
+for model comparisons, with support for conversation history, tier-based limits,
+and error handling.
+
+Key Features:
+- Concurrent model execution for fast comparisons
+- Server-Sent Events (SSE) streaming support
+- Token counting and tier limit enforcement
+- Mock mode for testing (admin feature)
+- Connection quality tracking
+"""
+
 import os
 from openai import OpenAI
 from dotenv import load_dotenv

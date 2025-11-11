@@ -16,6 +16,15 @@ from datetime import datetime, date
 
 class UserRegister(BaseModel):
     """Schema for user registration request."""
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "password": "SecurePass123!"
+            }
+        }
+    )
 
     email: EmailStr
     password: str = Field(..., min_length=8)
@@ -39,6 +48,15 @@ class UserRegister(BaseModel):
 
 class UserLogin(BaseModel):
     """Schema for user login request."""
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "password": "SecurePass123!"
+            }
+        }
+    )
 
     email: EmailStr
     password: str
@@ -70,6 +88,16 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     """Schema for authentication token response."""
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer"
+            }
+        }
+    )
 
     access_token: str
     refresh_token: str

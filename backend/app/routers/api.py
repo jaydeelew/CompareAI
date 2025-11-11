@@ -7,7 +7,7 @@ that are used by the frontend for the core AI comparison functionality.
 
 from fastapi import APIRouter, Request, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, Union
 from sqlalchemy.orm import Session
 from collections import defaultdict
@@ -61,6 +61,15 @@ from ..config import (
 class ConversationMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "role": "user",
+                "content": "What is artificial intelligence?"
+            }
+        }
+    )
 
 
 class CompareRequest(BaseModel):
@@ -70,11 +79,50 @@ class CompareRequest(BaseModel):
     browser_fingerprint: Optional[str] = None  # Optional browser fingerprint for rate limiting
     tier: str = "standard"  # brief, standard, extended
     conversation_id: Optional[int] = None  # Optional conversation ID for follow-ups (most reliable matching)
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "input_data": "Explain quantum computing in simple terms",
+                "models": ["openai/gpt-4", "anthropic/claude-3-opus", "google/gemini-pro"],
+                "conversation_history": [
+                    {
+                        "role": "user",
+                        "content": "What is AI?"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "AI stands for Artificial Intelligence..."
+                    }
+                ],
+                "tier": "standard",
+                "conversation_id": 123
+            }
+        }
+    )
 
 
 class CompareResponse(BaseModel):
     results: dict[str, str]
     metadata: dict[str, Any]
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "results": {
+                    "openai/gpt-4": "Quantum computing is a type of computing that uses quantum mechanical phenomena...",
+                    "anthropic/claude-3-opus": "Quantum computing leverages quantum mechanics to process information...",
+                    "google/gemini-pro": "Quantum computing uses quantum bits (qubits) instead of classical bits..."
+                },
+                "metadata": {
+                    "processing_time_ms": 3500,
+                    "models_successful": 3,
+                    "models_failed": 0,
+                    "estimated_cost": 0.012
+                }
+            }
+        }
+    )
 
 
 # Helper functions

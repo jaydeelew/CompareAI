@@ -234,35 +234,234 @@ frontend/
 └── package.json
 ```
 
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Frontend (React)                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │   App.tsx    │  │  Components  │  │   Services   │         │
+│  │  (Main UI)   │  │  (Modular)   │  │  (API Layer) │         │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
+│         │                 │                 │                  │
+│         └─────────────────┴─────────────────┘                  │
+│                            │                                    │
+│                            ▼                                    │
+│                   ┌─────────────────┐                          │
+│                   │  Auth Context   │                          │
+│                   │  (JWT Tokens)    │                          │
+│                   └────────┬─────────┘                          │
+└────────────────────────────┼────────────────────────────────────┘
+                             │ HTTP/HTTPS
+                             │ REST API + SSE
+┌────────────────────────────┼────────────────────────────────────┐
+│                            ▼                                    │
+│                   ┌─────────────────┐                          │
+│                   │   FastAPI App   │                          │
+│                   │   (Python)      │                          │
+│                   └────────┬─────────┘                          │
+│                            │                                    │
+│         ┌──────────────────┼──────────────────┐                │
+│         │                  │                  │                 │
+│         ▼                  ▼                  ▼                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Auth      │  │   API       │  │   Admin     │            │
+│  │   Router    │  │   Router    │  │   Router    │            │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬───────┘            │
+│         │               │                 │                     │
+│         └───────────────┴─────────────────┘                     │
+│                            │                                    │
+│                            ▼                                    │
+│              ┌─────────────────────────────┐                    │
+│              │   Rate Limiting & Config    │                    │
+│              └──────────────┬──────────────┘                    │
+│                             │                                    │
+│         ┌───────────────────┼───────────────────┐                │
+│         │                   │                   │                │
+│         ▼                   ▼                   ▼                │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │
+│  │  Database   │   │ OpenRouter  │   │  Email       │          │
+│  │ (SQLite/    │   │    API      │   │  Service     │          │
+│  │ PostgreSQL) │   │             │   │ (SendGrid)   │          │
+│  └─────────────┘   └─────────────┘   └─────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+1. **Frontend (React + TypeScript)**
+   - Modular component architecture
+   - Service layer for API calls
+   - Context API for authentication state
+   - Server-Sent Events (SSE) for streaming
+
+2. **Backend (FastAPI + Python)**
+   - RESTful API with OpenAPI/Swagger docs
+   - JWT-based authentication
+   - Rate limiting per subscription tier
+   - Background tasks for email sending
+
+3. **Database (SQLite/PostgreSQL)**
+   - User management and authentication
+   - Conversation history
+   - Usage tracking and analytics
+   - Admin action logs
+
+4. **External Services**
+   - OpenRouter API (50+ AI models)
+   - SendGrid/SMTP (email verification)
+   - Stripe (payment processing - planned)
+
 ## Documentation
+
+**📚 [Complete Documentation Index](docs/README.md)** - Start here for all documentation
 
 **Getting Started:**
 - [Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md) - Complete environment configuration guide
-- [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md) - Development & deployment guide
+- [Tooling Setup](docs/getting-started/TOOLING_SETUP.md) - Development tools configuration
+- [Development Workflow](docs/DEV_WORKFLOW.md) - Development & deployment guide
 
-**Core Documentation:**
-- [RATE_LIMITING_IMPLEMENTATION.md](docs/RATE_LIMITING_IMPLEMENTATION.md) - Rate limiting details
-- [OVERAGE_PRICING_ANALYSIS.md](docs/OVERAGE_PRICING_ANALYSIS.md) - Pricing model & financials
-- [CACHE_BUSTING_SETUP.md](docs/CACHE_BUSTING_SETUP.md) - Cache busting strategy
+**Architecture:**
+- [API Documentation](docs/architecture/API.md) - Complete API reference with examples
+- [Authentication Guide](docs/architecture/AUTHENTICATION.md) - JWT authentication & authorization
+- [Database Schema](docs/architecture/DATABASE.md) - Database models and relationships
 
-**Feature Documentation:**
-- [CONTEXT_MANAGEMENT_IMPLEMENTATION.md](docs/CONTEXT_MANAGEMENT_IMPLEMENTATION.md) - Conversation context management
-- [LATEX_STREAMING_FIX.md](docs/LATEX_STREAMING_FIX.md) - LaTeX rendering in streaming responses
-- [TAB_STREAMING_SOLUTION.md](docs/TAB_STREAMING_SOLUTION.md) - Tab-based streaming implementation
-- [STREAMING_SUMMARY.md](docs/STREAMING_SUMMARY.md) - Streaming functionality overview
-- [SUPPORT_EMAIL_IMPLEMENTATION.md](docs/SUPPORT_EMAIL_IMPLEMENTATION.md) - Support email system
+**Features:**
+- [Rate Limiting](docs/RATE_LIMITING_IMPLEMENTATION.md) - Rate limiting implementation details
+- [Context Management](docs/CONTEXT_MANAGEMENT_IMPLEMENTATION.md) - Conversation context handling
+- [Streaming](docs/STREAMING_SUMMARY.md) - Server-Sent Events (SSE) streaming
+- [Image Optimization](docs/features/IMAGE_OPTIMIZATION.md) - Image optimization and lazy loading
+- [Performance Monitoring](docs/development/PERFORMANCE_MONITORING.md) - Performance tracking
 
-**Additional Resources:**
-- [ENV_SETUP_GUIDE.md](docs/ENV_SETUP_GUIDE.md) - Legacy environment setup guide (see [Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md) for updated version)
-- [TESTING_CONTEXT_MANAGEMENT.md](docs/TESTING_CONTEXT_MANAGEMENT.md) - Testing guide for context management
-- [STREAMING_QUICK_TEST.md](docs/STREAMING_QUICK_TEST.md) - Quick test guide for streaming
-- [STREAMING_SPACES_FIX.md](docs/STREAMING_SPACES_FIX.md) - Streaming whitespace fixes
-- [FEATURE_RECOMMENDATIONS.md](docs/FEATURE_RECOMMENDATIONS.md) - Future feature recommendations
-- [FUTURE_OPTIMIZATIONS.md](docs/FUTURE_OPTIMIZATIONS.md) - Optimization suggestions
+**Planning:**
+- [Implementation Plan 2025](docs/getting-started/IMPLEMENTATION_PLAN_2025.md) - Comprehensive refactoring plan
+- [Feature Recommendations](docs/planning/FEATURE_RECOMMENDATIONS.md) - Future feature suggestions
+- [Future Optimizations](docs/planning/FUTURE_OPTIMIZATIONS.md) - Optimization opportunities
+- [Overage Pricing Analysis](docs/planning/OVERAGE_PRICING_ANALYSIS.md) - Pricing model analysis
 
 ## Contributing
 
-Contributions welcome! Fork, create a feature branch, and submit a PR. Follow TypeScript/FastAPI best practices and test with multiple models.
+We welcome contributions! Please follow these guidelines:
+
+### Getting Started
+
+1. **Fork the repository** and clone your fork
+2. **Set up your development environment** following the [Environment Setup Guide](docs/getting-started/ENVIRONMENT_SETUP.md)
+3. **Create a feature branch** from `main`:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+### Development Guidelines
+
+**Code Style:**
+- **Frontend:** Follow TypeScript best practices, use ESLint/Prettier
+- **Backend:** Follow PEP 8, use type hints, add docstrings
+- **Commits:** Use conventional commits (feat:, fix:, docs:, etc.)
+
+**Testing:**
+- Write tests for new features
+- Ensure all tests pass before submitting PR
+- Test with multiple AI models when applicable
+
+**Documentation:**
+- Update relevant documentation files
+- Add JSDoc/docstrings for new functions
+- Update API documentation if endpoints change
+
+### Pull Request Process
+
+1. **Update your branch** with latest changes from `main`
+2. **Write clear commit messages** describing your changes
+3. **Test thoroughly** - ensure no regressions
+4. **Update documentation** if needed
+5. **Submit PR** with:
+   - Clear description of changes
+   - Reference to related issues
+   - Screenshots (for UI changes)
+
+### Code Review
+
+- PRs require at least one approval
+- Address review feedback promptly
+- Keep PRs focused and under 500 lines when possible
+
+### Reporting Issues
+
+When reporting bugs or requesting features:
+- Use the issue templates
+- Provide clear reproduction steps
+- Include environment details
+- Add screenshots/logs when relevant
+
+## Troubleshooting
+
+### Common Issues
+
+**Backend won't start:**
+```bash
+# Check environment variables
+cd backend
+cat .env  # Ensure SECRET_KEY and OPENROUTER_API_KEY are set
+
+# Check database
+python -c "from app.database import engine; engine.connect()"
+
+# Check logs
+tail -f backend.log
+```
+
+**Frontend build errors:**
+```bash
+# Clear node_modules and reinstall
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+
+# Check TypeScript errors
+npm run type-check
+```
+
+**Database migration issues:**
+```bash
+cd backend
+# Check current migration status
+alembic current
+
+# Create new migration
+alembic revision --autogenerate -m "Description"
+
+# Apply migrations
+alembic upgrade head
+```
+
+**Rate limiting issues:**
+- Check user's subscription tier in database
+- Verify rate limit configuration in `backend/app/config.py`
+- Check usage reset dates are correct
+
+**Email not sending:**
+- Verify email configuration in `.env`
+- Check SendGrid API key (if using SendGrid)
+- Check SMTP settings (if using SMTP)
+- Email sending is optional in development mode
+
+**CORS errors:**
+- Verify `allowed_origins` in `backend/app/main.py`
+- Check frontend URL matches allowed origins
+- Ensure credentials are included in requests
+
+**OpenRouter API errors:**
+- Verify `OPENROUTER_API_KEY` is set correctly
+- Check API key has sufficient credits
+- Verify model IDs are correct (check `/api/models`)
+
+### Getting Help
+
+- **Documentation:** Check [docs/README.md](docs/README.md) for comprehensive guides
+- **API Docs:** Visit `http://localhost:8000/docs` for interactive API documentation
+- **Issues:** Search existing issues or create a new one
+- **Discussions:** Use GitHub Discussions for questions
 
 ## License
 
