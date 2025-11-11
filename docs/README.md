@@ -24,7 +24,6 @@ Development workflows, best practices, and guides:
 
 - **[Development Workflow](development/DEV_WORKFLOW.md)** - Development and deployment workflows
 - **[Performance Monitoring](development/PERFORMANCE_MONITORING.md)** - Performance tracking and optimization
-- **[Testing Guide](development/TESTING.md)** - Testing strategies and best practices
 
 ### Features
 Feature-specific documentation:
@@ -54,9 +53,10 @@ Refactoring progress and component guides:
 - **[Phase 3 Week 7-8 Task 2](refactoring/PHASE3_WEEK7-8_TASK2_COMPLETED.md)** - Component extraction completion
 
 ### Testing
-Testing documentation:
+Comprehensive testing guides:
 
-- **[Testing Context Management](testing/TESTING_CONTEXT_MANAGEMENT.md)** - Testing guide for context management
+- **[Backend Testing](testing/BACKEND_TESTING.md)** - Complete guide to backend testing with pytest
+- **[Frontend Testing](testing/FRONTEND_TESTING.md)** - Complete guide to frontend testing with Vitest and Playwright
 
 ## 🚀 Quick Links
 
@@ -68,7 +68,7 @@ Testing documentation:
 ### For Contributors
 1. Review [Implementation Plan 2025](getting-started/IMPLEMENTATION_PLAN_2025.md)
 2. Check [Component Usage Guide](refactoring/COMPONENT_USAGE_GUIDE.md)
-3. Follow [Testing Guide](development/TESTING.md)
+3. Follow [Backend Testing Guide](testing/BACKEND_TESTING.md) and [Frontend Testing Guide](testing/FRONTEND_TESTING.md)
 
 ### For API Users
 1. See [API Documentation](architecture/API.md) for complete endpoint reference
