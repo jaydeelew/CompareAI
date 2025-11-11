@@ -62,7 +62,11 @@ export default defineConfig({
     },
     // Generate manifest for asset tracking (optional but useful for debugging)
     manifest: true,
-    // Chunk size warning limit (500KB)
+    // Chunk size warning limit (500KB) - aligns with PERFORMANCE_BUDGETS
+    // Performance budgets are enforced via:
+    // 1. This warning limit (build-time)
+    // 2. scripts/check-bundle-size.js (CI/CD)
+    // 3. Runtime monitoring via utils/performance.ts
     chunkSizeWarningLimit: 500,
   },
   test: {

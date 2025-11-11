@@ -16,4 +16,5 @@ export * from './useRateLimitStatus';
 export * from './useModelSelection';
 export * from './useModelComparison';
 export * from './useDebounce';
+export * from './usePerformance';
 

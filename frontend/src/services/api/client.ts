@@ -39,6 +39,7 @@ import {
   loggingRequestInterceptor,
   loggingResponseInterceptor,
 } from './interceptors';
+import { PerformanceMarker } from '../../utils/performance';
 
 /**
  * Default retry configuration
@@ -334,7 +335,7 @@ export class ApiClient {
       };
 
       try {
-        // Execute fetch
+        // Execute fetch with performance tracking
         const fullUrl = finalUrl.startsWith('http')
           ? finalUrl
           : `${this.baseURL}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
@@ -342,41 +343,52 @@ export class ApiClient {
         // Remove internal properties before passing to fetch
         const { _timeoutId, _cacheKey, getToken, enableCache, cacheTTL, timeout, retry, maxRetries, retryDelay, skipAuth, ...fetchConfig } = finalConfig as any;
         
-        const response = await fetch(fullUrl, fetchConfig);
-
-        // Cleanup timeout
-        cleanup();
-
-        // Apply response interceptors (will throw on error)
-        const processedResponse = await this.applyResponseInterceptors(
-          response,
-          finalConfig
-        );
-
-        // Parse response
-        const data = await this.parseResponse<T>(processedResponse);
-
-        // Cache GET responses
-        if ((config.method === 'GET' || !config.method) && config.enableCache !== false) {
-          const cacheKey = config._cacheKey || `${config.method || 'GET'}:${url}`;
-          const cacheTTL = config.cacheTTL ?? (this.cache ? DEFAULT_CACHE_CONFIG.defaultTTL : 0);
+        // Track API request performance
+        const endpointName = url.replace(/^\//, '').replace(/\//g, ':') || 'root';
+        const method = (config.method || 'GET').toUpperCase();
+        const perfMarkerName = `api:${method}:${endpointName}`;
+        PerformanceMarker.start(perfMarkerName);
+        
+        try {
+          const response = await fetch(fullUrl, fetchConfig);
           
-          if (cacheKey && this.cache && cacheTTL > 0) {
-            this.cache.set(cacheKey, data, cacheTTL);
-          }
-        }
+          // Cleanup timeout
+          cleanup();
 
-        return {
-          data,
-          status: processedResponse.status,
-          statusText: processedResponse.statusText,
-          headers: processedResponse.headers,
-          response: processedResponse,
-        };
-      } catch (error) {
-        cleanup();
-        throw error;
-      }
+          // Apply response interceptors (will throw on error)
+          const processedResponse = await this.applyResponseInterceptors(
+            response,
+            finalConfig
+          );
+
+          // Parse response
+          const data = await this.parseResponse<T>(processedResponse);
+
+          // Cache GET responses
+          if ((config.method === 'GET' || !config.method) && config.enableCache !== false) {
+            const cacheKey = config._cacheKey || `${config.method || 'GET'}:${url}`;
+            const cacheTTL = config.cacheTTL ?? (this.cache ? DEFAULT_CACHE_CONFIG.defaultTTL : 0);
+            
+            if (cacheKey && this.cache && cacheTTL > 0) {
+              this.cache.set(cacheKey, data, cacheTTL);
+            }
+          }
+
+          PerformanceMarker.end(perfMarkerName);
+
+          return {
+            data,
+            status: processedResponse.status,
+            statusText: processedResponse.statusText,
+            headers: processedResponse.headers,
+            response: processedResponse,
+          };
+        } catch (error) {
+          // Always end performance marker, even on error
+          PerformanceMarker.end(perfMarkerName);
+          cleanup();
+          throw error;
+        }
     } catch (error) {
       // Handle cancellation
       if (error instanceof Error && error.name === 'AbortError') {

@@ -55,3 +55,15 @@ export {
   formatLocaleDate,
 } from './date';
 
+// Performance utilities
+export {
+  initWebVitals,
+  PerformanceMarker,
+  measureApiRequest,
+  measureRender,
+  getPerformanceSummary,
+  checkPerformanceBudgets,
+  PERFORMANCE_BUDGETS,
+} from './performance';
+export type { PerformanceMetric, PerformanceCallback } from './performance';
+
