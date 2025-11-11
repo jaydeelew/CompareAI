@@ -1,11 +1,43 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { imagetools } from 'vite-imagetools'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    // Image optimization - automatically generates WebP/AVIF variants
+    imagetools({
+      defaultDirectives: (url) => {
+        // Generate modern formats with quality optimization
+        if (url.searchParams.has('url')) {
+          return new URLSearchParams({
+            format: 'webp;avif',
+            quality: '80',
+            as: 'picture',
+          })
+        }
+        return new URLSearchParams()
+      },
+      // Generate responsive images
+      extendOutputFormats: (builtins) => {
+        return {
+          ...builtins,
+          // Custom format for responsive images
+          responsive: (metadata) => {
+            return {
+              srcset: [
+                { src: metadata.src, width: 320 },
+                { src: metadata.src, width: 640 },
+                { src: metadata.src, width: 1024 },
+                { src: metadata.src, width: 1920 },
+              ],
+            }
+          },
+        }
+      },
+    }),
     // Bundle analyzer - generates stats.html in dist/ after build
     visualizer({
       filename: 'dist/stats.html',

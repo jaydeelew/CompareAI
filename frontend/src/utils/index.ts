@@ -67,3 +67,16 @@ export {
 } from './performance';
 export type { PerformanceMetric, PerformanceCallback } from './performance';
 
+// Image optimization utilities
+export {
+  isExternalImage,
+  supportsWebP,
+  supportsAVIF,
+  optimizeImageUrl,
+  generateSrcSet,
+  generateSizes,
+  createOptimizedImageAttrs,
+  imageAttrsToHtml,
+} from './image';
+export type { ImageOptimizationOptions } from './image';
+

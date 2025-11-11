@@ -788,10 +788,25 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return match;
         });
 
-        // Images
+        // Images - with lazy loading and optimization
         processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) => {
-            const titleAttr = title ? ` title="${title}"` : '';
-            return `<img src="${url}" alt="${alt}"${titleAttr} style="max-width: 100%; height: auto;" />`;
+            const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
+            // Add lazy loading and optimization attributes
+            // For external images, use basic lazy loading
+            // For internal images, vite-imagetools will handle optimization
+            const isExternal = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
+            const loadingAttr = isExternal ? 'loading="lazy"' : 'loading="lazy"';
+            const decodingAttr = 'decoding="async"';
+            const styleAttr = 'style="max-width: 100%; height: auto; transition: opacity 0.3s ease-in-out;"';
+            
+            // For internal images, add optimization query params if not already present
+            let optimizedUrl = url;
+            if (!isExternal && !url.includes('?')) {
+                // Add width hint for optimization (vite-imagetools will process this)
+                optimizedUrl = `${url}?w=1024&q=80`;
+            }
+            
+            return `<img src="${optimizedUrl}" alt="${alt.replace(/"/g, '&quot;')}"${titleAttr} ${loadingAttr} ${decodingAttr} ${styleAttr} />`;
         });
 
         return processed;

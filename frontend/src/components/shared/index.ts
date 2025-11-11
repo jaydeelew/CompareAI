@@ -16,3 +16,6 @@ export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { DoneSelectingCard } from './DoneSelectingCard';
 
 export { ErrorBoundary } from './ErrorBoundary';
+
+export { LazyImage } from './LazyImage';
+export type { LazyImageProps } from './LazyImage';
