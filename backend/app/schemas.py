@@ -21,13 +21,15 @@ class UserRegister(BaseModel):
         json_schema_extra={
             "example": {
                 "email": "user@example.com",
-                "password": "SecurePass123!"
+                "password": "SecurePass123!",
+                "recaptcha_token": "03AGdBq24..."
             }
         }
     )
 
     email: EmailStr
     password: str = Field(..., min_length=8)
+    recaptcha_token: Optional[str] = None
 
     @field_validator("password")
     @classmethod

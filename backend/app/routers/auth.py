@@ -5,12 +5,15 @@ This module handles all authentication-related endpoints including
 user registration, login, email verification, and password resets.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, Optional
+from collections import defaultdict
 import os
+import httpx
 from ..database import get_db
+from ..config import settings
 from ..models import User, UserPreference
 from ..schemas import (
     UserRegister,
@@ -36,17 +39,124 @@ from ..email_service import send_verification_email, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Rate limiting for login attempts
+# Track failed login attempts per IP address
+failed_login_attempts: Dict[str, list] = defaultdict(list)
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from request."""
+    # Check for forwarded IP (when behind proxy/load balancer)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # Take the first IP in the chain
+        return forwarded.split(",")[0].strip()
+    # Fallback to direct client IP
+    return request.client.host if request.client else "unknown"
+
+
+def check_login_rate_limit(client_ip: str) -> None:
+    """
+    Check if IP has exceeded login attempt rate limit.
+    
+    Raises HTTPException if rate limit exceeded.
+    """
+    now = datetime.utcnow()
+    
+    # Clean old attempts outside lockout window
+    failed_login_attempts[client_ip] = [
+        attempt for attempt in failed_login_attempts[client_ip]
+        if attempt > now - timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+    ]
+    
+    # Check if limit exceeded
+    if len(failed_login_attempts[client_ip]) >= MAX_LOGIN_ATTEMPTS:
+        oldest_attempt = min(failed_login_attempts[client_ip])
+        lockout_until = oldest_attempt + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+        remaining_seconds = int((lockout_until - now).total_seconds())
+        
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many login attempts. Please try again in {remaining_seconds} seconds."
+        )
+
+
+def record_failed_login(client_ip: str) -> None:
+    """Record a failed login attempt for the given IP."""
+    failed_login_attempts[client_ip].append(datetime.utcnow())
+
+
+def clear_login_attempts(client_ip: str) -> None:
+    """Clear failed login attempts for the given IP (on successful login)."""
+    if client_ip in failed_login_attempts:
+        del failed_login_attempts[client_ip]
+
+
+async def verify_recaptcha(token: Optional[str]) -> bool:
+    """
+    Verify reCAPTCHA v3 token with Google's API.
+    
+    Args:
+        token: reCAPTCHA token from frontend
+        
+    Returns:
+        bool: True if verification passes, False otherwise
+    """
+    # If reCAPTCHA is not configured, skip verification (for development)
+    if not settings.recaptcha_secret_key:
+        return True
+    
+    # If token is not provided and reCAPTCHA is configured, fail
+    if not token:
+        return False
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                "https://www.google.com/recaptcha/api/siteverify",
+                data={
+                    "secret": settings.recaptcha_secret_key,
+                    "response": token,
+                },
+            )
+            result = response.json()
+            
+            if not result.get("success", False):
+                return False
+            
+            score = result.get("score", 0.0)
+            # reCAPTCHA v3 returns a score (0.0 to 1.0)
+            # Score >= 0.5 is typically considered human
+            # You can adjust this threshold based on your needs
+            if score < 0.5:
+                return False
+            
+            return True
+    except Exception as e:
+        # Fail closed - if verification fails, reject registration
+        return False
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Register a new user account.
 
+    - Validates reCAPTCHA v3 token (if configured)
     - Creates user with hashed password
     - Generates email verification token
     - Sends verification email
     - Returns access token, refresh token, and user data
     """
+    # Verify reCAPTCHA if configured
+    if not await verify_recaptcha(user_data.recaptcha_token):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="reCAPTCHA verification failed. Please try again."
+        )
+    
     try:
         # Check if user already exists
         existing_user = db.query(User).filter(User.email == user_data.email).first()
@@ -120,21 +230,34 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
+async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """
     Login user and return JWT tokens.
 
     - Validates email and password
     - Returns access token (30 min) and refresh token (7 days)
     - Requires active account (but not verified email)
+    - Rate limited: 5 attempts per 15 minutes per IP
     """
+    client_ip = get_client_ip(request)
+    
+    # Check rate limiting before processing login
+    check_login_rate_limit(client_ip)
+    
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user or not verify_password(user_data.password, user.password_hash):
+        # Record failed attempt
+        record_failed_login(client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     if not user.is_active:
+        # Record failed attempt (account inactive)
+        record_failed_login(client_ip)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+
+    # Clear failed attempts on successful login
+    clear_login_attempts(client_ip)
 
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id)})

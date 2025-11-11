@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # API Keys
     openrouter_api_key: str
     
+    # reCAPTCHA v3 (Optional - for registration protection)
+    recaptcha_secret_key: Optional[str] = None
+    
     # Email (Optional)
     mail_username: Optional[str] = None
     mail_password: Optional[str] = None
