@@ -139,17 +139,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Base API Client class
- */
-export class ApiClient {
-  private baseURL: string;
-  private retryConfig: RetryConfig;
-  private cache: ResponseCache | null = null;
-  private getToken?: () => string | null;
-  private requestInterceptors: RequestInterceptor[] = [];
-  private responseInterceptors: ResponseInterceptor[] = [];
-  private errorInterceptors: ErrorInterceptor[] = [];
+  /**
+   * Base API Client class
+   */
+  export class ApiClient {
+    private baseURL: string;
+    private retryConfig: RetryConfig;
+    private cache: ResponseCache | null = null;
+    private getToken?: () => string | null;
+    private requestInterceptors: RequestInterceptor[] = [];
+    private responseInterceptors: ResponseInterceptor[] = [];
+    private errorInterceptors: ErrorInterceptor[] = [];
+    private requestCounter: number = 0;
 
   constructor(config: ApiClientConfig) {
     this.baseURL = config.baseURL.replace(/\/$/, ''); // Remove trailing slash
@@ -346,10 +347,16 @@ export class ApiClient {
         // Track API request performance
         const endpointName = url.replace(/^\//, '').replace(/\//g, ':') || 'root';
         const method = (config.method || 'GET').toUpperCase();
-        const perfMarkerName = `api:${method}:${endpointName}`;
-        PerformanceMarker.start(perfMarkerName);
+        // Generate unique marker name per request to avoid conflicts with concurrent requests (React Strict Mode)
+        // Use request counter + attempt number for uniqueness
+        const requestId = ++this.requestCounter;
+        const perfMarkerName = `api:${method}:${endpointName}:${requestId}${attempt > 0 ? `:attempt${attempt}` : ''}`;
+        let markerStarted = false;
         
         try {
+          PerformanceMarker.start(perfMarkerName);
+          markerStarted = true;
+          
           const response = await fetch(fullUrl, fetchConfig);
           
           // Cleanup timeout
@@ -374,7 +381,9 @@ export class ApiClient {
             }
           }
 
-          PerformanceMarker.end(perfMarkerName);
+          if (markerStarted && PerformanceMarker.isStarted(perfMarkerName)) {
+            PerformanceMarker.end(perfMarkerName);
+          }
 
           return {
             data,
@@ -384,11 +393,17 @@ export class ApiClient {
             response: processedResponse,
           };
         } catch (error) {
-          // Always end performance marker, even on error
-          PerformanceMarker.end(perfMarkerName);
+          // Only end performance marker if it was started and still exists
+          if (markerStarted && PerformanceMarker.isStarted(perfMarkerName)) {
+            PerformanceMarker.end(perfMarkerName);
+          }
           cleanup();
           throw error;
         }
+      } catch (error) {
+        // Re-throw fetch errors to outer catch for retry logic
+        throw error;
+      }
     } catch (error) {
       // Handle cancellation
       if (error instanceof Error && error.name === 'AbortError') {

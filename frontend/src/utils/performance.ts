@@ -5,7 +5,8 @@
  * application performance and Core Web Vitals metrics.
  */
 
-import { onCLS, onFID, onFCP, onLCP, onTTFB, onINP, Metric } from 'web-vitals';
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
+import type { Metric } from 'web-vitals';
 
 /**
  * Performance budget thresholds (in milliseconds or score)
@@ -121,11 +122,6 @@ export function initWebVitals(callback?: PerformanceCallback): void {
     reportMetric(metric, PERFORMANCE_BUDGETS.LCP, callback);
   });
   
-  // First Input Delay (FID) - deprecated but still useful
-  onFID((metric) => {
-    reportMetric(metric, PERFORMANCE_BUDGETS.FID, callback);
-  });
-  
   // Cumulative Layout Shift (CLS)
   onCLS((metric) => {
     reportMetric(metric, PERFORMANCE_BUDGETS.CLS, callback);
@@ -163,6 +159,13 @@ export class PerformanceMarker {
   }
   
   /**
+   * Check if a performance marker was started
+   */
+  static isStarted(name: string): boolean {
+    return this.marks.has(name);
+  }
+
+  /**
    * Mark the end of a performance measurement and return duration
    */
   static end(name: string): number | null {
@@ -170,7 +173,10 @@ export class PerformanceMarker {
     const startTime = this.marks.get(name);
     
     if (!startTime) {
-      console.warn(`Performance marker "${name}" was not started`);
+      // Only warn in development, and only if it's not a known issue (like cached responses)
+      if (import.meta.env.DEV) {
+        console.warn(`Performance marker "${name}" was not started`);
+      }
       return null;
     }
     

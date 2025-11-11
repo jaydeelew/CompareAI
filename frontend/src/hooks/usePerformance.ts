@@ -6,7 +6,8 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { PerformanceMarker, initWebVitals, PerformanceCallback } from '../utils/performance';
+import { PerformanceMarker, initWebVitals } from '../utils/performance';
+import type { PerformanceCallback } from '../utils/performance';
 
 /**
  * Hook to track Web Vitals metrics
