@@ -237,7 +237,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
                           key={summary.id}
                           className={`history-item ${isActive ? 'history-item-active' : ''}`}
                           onClick={() => onLoadConversation(summary)}
-                          title={summary.input_data}
                         >
                           <div className="history-item-content">
                             <div className="history-item-prompt">{truncatePrompt(summary.input_data)}</div>
@@ -249,8 +248,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
                           <button
                             className="history-item-delete"
                             onClick={(e) => onDeleteConversation(summary, e)}
-                            title="Delete conversation"
-                            aria-label="Delete conversation"
                           >
                             ×
                           </button>
