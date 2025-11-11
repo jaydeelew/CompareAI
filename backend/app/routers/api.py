@@ -118,8 +118,17 @@ def log_usage_to_db(usage_log: UsageLog, db: Session) -> None:
 
 @router.get("/models")
 async def get_available_models() -> Dict[str, Any]:
-    """Get list of available AI models."""
-    return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
+    """
+    Get list of available AI models.
+    
+    OPTIMIZATION: Uses caching since model list is static data.
+    """
+    from ..cache import get_cached_models, CACHE_KEY_MODELS
+    
+    def get_models():
+        return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
+    
+    return get_cached_models(get_models)
 
 
 @router.get("/anonymous-mock-mode-status")
@@ -127,13 +136,21 @@ async def get_anonymous_mock_mode_status(db: Session = Depends(get_db)):
     """
     Public endpoint to check if anonymous mock mode is enabled.
     Only returns status in development environment.
+    
+    OPTIMIZATION: Uses caching to avoid repeated database queries.
     """
     is_development = os.environ.get("ENVIRONMENT") == "development"
     
     if not is_development:
         return {"anonymous_mock_mode_enabled": False, "is_development": False}
     
-    settings = db.query(AppSettings).first()
+    # Use cache to avoid repeated database queries
+    from ..cache import get_cached_app_settings, CACHE_KEY_APP_SETTINGS
+    
+    def get_settings():
+        return db.query(AppSettings).first()
+    
+    settings = get_cached_app_settings(get_settings)
     
     # If no settings exist yet, create default ones
     if not settings:
@@ -143,6 +160,9 @@ async def get_anonymous_mock_mode_status(db: Session = Depends(get_db)):
         db.add(settings)
         db.commit()
         db.refresh(settings)
+        # Invalidate cache after creating new settings
+        from ..cache import invalidate_app_settings_cache
+        invalidate_app_settings_cache()
     
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
@@ -465,7 +485,10 @@ async def compare(
     else:
         # Check if global anonymous mock mode is enabled (development only)
         if is_development:
-            settings = db.query(AppSettings).first()
+            from ..cache import get_cached_app_settings
+            def get_settings():
+                return db.query(AppSettings).first()
+            settings = get_cached_app_settings(get_settings)
             if settings and settings.anonymous_mock_mode_enabled:
                 use_mock = True
                 print(f"🎭 Anonymous mock mode active (global setting)")
@@ -774,7 +797,10 @@ async def compare_stream(
             # Check if global anonymous mock mode is enabled (development only)
             is_development = os.environ.get("ENVIRONMENT") == "development"
             if is_development:
-                settings = db.query(AppSettings).first()
+                from ..cache import get_cached_app_settings
+                def get_settings():
+                    return db.query(AppSettings).first()
+                settings = get_cached_app_settings(get_settings)
                 if settings and settings.anonymous_mock_mode_enabled:
                     use_mock = True
                     print(f"🎭 Anonymous mock mode active (global setting)")
@@ -1192,6 +1218,24 @@ async def get_conversations(
 
     print(f"📥 Found {len(conversations)} conversations in database for user_id={current_user.id}")
 
+    # OPTIMIZATION: Get message counts in a single query instead of N+1 queries
+    # This dramatically improves performance when there are many conversations
+    conversation_ids = [conv.id for conv in conversations]
+    message_counts = {}
+    if conversation_ids:
+        # Single query to get all message counts
+        from sqlalchemy import func
+        count_results = (
+            db.query(
+                ConversationMessageModel.conversation_id,
+                func.count(ConversationMessageModel.id).label("count")
+            )
+            .filter(ConversationMessageModel.conversation_id.in_(conversation_ids))
+            .group_by(ConversationMessageModel.conversation_id)
+            .all()
+        )
+        message_counts = {conv_id: count for conv_id, count in count_results}
+
     # Convert to summaries with message counts
     summaries = []
     for conv in conversations:
@@ -1201,10 +1245,8 @@ async def get_conversations(
         except (json.JSONDecodeError, TypeError):
             models_used = []
 
-        # Count messages
-        message_count = db.query(ConversationMessageModel).filter(
-            ConversationMessageModel.conversation_id == conv.id
-        ).count()
+        # Get message count from pre-fetched data (default to 0 if not found)
+        message_count = message_counts.get(conv.id, 0)
 
         summaries.append(
             ConversationSummary(

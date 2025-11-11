@@ -713,7 +713,13 @@ async def get_app_settings(current_user: User = Depends(get_current_admin_user),
     
     is_development = os.environ.get("ENVIRONMENT") == "development"
     
-    settings = db.query(AppSettings).first()
+    # Use cache to avoid repeated database queries
+    from ..cache import get_cached_app_settings, invalidate_app_settings_cache
+    
+    def get_settings():
+        return db.query(AppSettings).first()
+    
+    settings = get_cached_app_settings(get_settings)
     
     # If no settings exist yet, create default ones
     if not settings:
@@ -723,6 +729,7 @@ async def get_app_settings(current_user: User = Depends(get_current_admin_user),
         db.add(settings)
         db.commit()
         db.refresh(settings)
+        invalidate_app_settings_cache()
     
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled if is_development else False,
@@ -757,7 +764,12 @@ async def toggle_anonymous_mock_mode(
             detail="Anonymous mock mode is only available in development environment"
         )
     
-    settings = db.query(AppSettings).first()
+    from ..cache import get_cached_app_settings, invalidate_app_settings_cache
+    
+    def get_settings():
+        return db.query(AppSettings).first()
+    
+    settings = get_cached_app_settings(get_settings)
     
     # If no settings exist yet, create default ones
     if not settings:
@@ -773,6 +785,9 @@ async def toggle_anonymous_mock_mode(
     settings.anonymous_mock_mode_enabled = not settings.anonymous_mock_mode_enabled
     db.commit()
     db.refresh(settings)
+    
+    # Invalidate cache after updating settings
+    invalidate_app_settings_cache()
     
     # Log admin action
     log_admin_action(

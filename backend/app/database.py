@@ -38,16 +38,37 @@ else:
 old_default = "sqlite:///./compareintel.db"
 DATABASE_URL = settings.database_url if settings.database_url != old_default else default_db_path
 
-# Create SQLAlchemy engine
-# For PostgreSQL in production, add connection pooling settings
-engine = create_engine(
-    DATABASE_URL,
-    # Uncomment these for PostgreSQL production settings:
-    # pool_size=10,
-    # max_overflow=20,
-    # pool_pre_ping=True,  # Verify connections before using them
-    echo=False,  # Set to True for SQL query logging during development
-)
+# Create SQLAlchemy engine with optimized connection pooling
+# Connection pooling improves performance by reusing database connections
+is_postgresql = DATABASE_URL.startswith("postgresql")
+is_sqlite = "sqlite" in DATABASE_URL
+
+if is_postgresql:
+    # PostgreSQL: Use connection pooling for better performance
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=10,  # Number of connections to maintain
+        max_overflow=20,  # Additional connections allowed beyond pool_size
+        pool_pre_ping=True,  # Verify connections before using them (prevents stale connections)
+        pool_recycle=3600,  # Recycle connections after 1 hour
+        echo=False,  # Set to True for SQL query logging during development
+    )
+elif is_sqlite:
+    # SQLite: Use check_same_thread=False for async compatibility
+    # Connection pooling is less critical for SQLite but still helps
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},  # Allow multi-threaded access
+        pool_pre_ping=True,  # Verify connections before using them
+        echo=False,  # Set to True for SQL query logging during development
+    )
+else:
+    # Fallback for other database types
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        echo=False,
+    )
 
 # Enable foreign keys for SQLite (required for CASCADE deletes to work)
 # SQLite disables foreign key constraints by default, so we must enable them

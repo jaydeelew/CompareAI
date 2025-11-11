@@ -142,6 +142,11 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Add profiling middleware for performance monitoring
+# This should be added AFTER CORS middleware but BEFORE routers
+from .middleware.profiling import ProfilingMiddleware
+app.add_middleware(ProfilingMiddleware)
+
 # Include routers AFTER middleware
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
