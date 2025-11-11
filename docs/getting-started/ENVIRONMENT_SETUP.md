@@ -44,6 +44,20 @@ These variables **must** be set for the backend to run:
 
 ### Optional Variables
 
+#### Security Configuration
+
+**`RECAPTCHA_SECRET_KEY`** (Backend)
+- **Purpose:** reCAPTCHA v3 secret key for bot protection on registration
+- **Get it:** [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin)
+- **Note:** If not set, reCAPTCHA verification is skipped (useful for development)
+- **Example:** `RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe`
+
+**`VITE_RECAPTCHA_SITE_KEY`** (Frontend)
+- **Purpose:** reCAPTCHA v3 site key for frontend integration
+- **Get it:** [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin) (same account as secret key)
+- **Note:** If not set, reCAPTCHA is skipped on frontend
+- **Example:** `VITE_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI`
+
 #### Database Configuration
 
 **`DATABASE_URL`**
@@ -184,12 +198,14 @@ MAIL_FROM=your-email@gmail.com
 | `ENVIRONMENT` | ❌ No | `development` | Affects CORS/errors |
 | `FRONTEND_URL` | ❌ No | `http://localhost:5173` | For email links |
 | `MAIL_*` | ❌ No | None | Email optional |
+| `RECAPTCHA_SECRET_KEY` | ❌ No | None | Bot protection (optional) |
 
 ### Frontend
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
 | `VITE_API_URL` | ❌ No | `/api` | Works with proxy |
+| `VITE_RECAPTCHA_SITE_KEY` | ❌ No | None | Bot protection (optional) |
 
 ---
 

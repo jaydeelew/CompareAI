@@ -62,6 +62,7 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
     {
       email: data.email,
       password: data.password,
+      recaptcha_token: data.recaptcha_token,
     }
   );
   return response.data;

@@ -141,6 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 body: JSON.stringify({
                     email: data.email,
                     password: data.password,
+                    recaptcha_token: data.recaptcha_token,
                 }),
             });
 

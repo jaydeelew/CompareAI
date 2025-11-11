@@ -62,6 +62,8 @@ export interface RegisterData {
   password: string;
   /** Optional password confirmation */
   confirm_password?: string;
+  /** reCAPTCHA v3 token */
+  recaptcha_token?: string;
 }
 
 /**

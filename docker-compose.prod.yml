@@ -19,6 +19,7 @@ services:
       target: build
       args:
         - VITE_API_URL=/api
+        - VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY:-}
     volumes:
       - ./frontend/dist:/app/dist
     depends_on:

@@ -18,6 +18,10 @@ ENV NODE_OPTIONS="--openssl-legacy-provider"
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}
 
+# reCAPTCHA v3 site key (optional - can be empty for development)
+ARG VITE_RECAPTCHA_SITE_KEY
+ENV VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
+
 # Build the app
 RUN npm run build
 

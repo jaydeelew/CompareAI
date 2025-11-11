@@ -7,6 +7,16 @@ import { Eye, EyeClosed } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthForms.css';
 
+// Declare grecaptcha type for TypeScript
+declare global {
+    interface Window {
+        grecaptcha: {
+            ready: (callback: () => void) => void;
+            execute: (siteKey: string, options: { action: string }) => Promise<string>;
+        };
+    }
+}
+
 interface RegisterFormProps {
     onSuccess?: () => void;
     onSwitchToLogin?: () => void;
@@ -21,6 +31,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // Load reCAPTCHA script with site key on component mount
+    useEffect(() => {
+        const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+        if (siteKey && !window.grecaptcha) {
+            // Check if script is already being loaded
+            const existingScript = document.querySelector(`script[src*="recaptcha/api.js"]`);
+            if (existingScript) {
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    }, []);
 
     // Auto-sync password to confirm password field when password changes
     const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +157,44 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         return true;
     };
 
+    const getRecaptchaToken = async (): Promise<string | null> => {
+        const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+        
+        // If reCAPTCHA is not configured, skip
+        if (!siteKey) {
+            return null;
+        }
+
+        // Wait for grecaptcha to be available with timeout
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds total
+        while (!window.grecaptcha && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+
+        if (!window.grecaptcha) {
+            return null;
+        }
+
+        try {
+            return await new Promise<string | null>((resolve) => {
+                window.grecaptcha.ready(async () => {
+                    try {
+                        const token = await window.grecaptcha.execute(siteKey, {
+                            action: 'register'
+                        });
+                        resolve(token);
+                    } catch (error) {
+                        resolve(null);
+                    }
+                });
+            });
+        } catch (error) {
+            return null;
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -140,7 +206,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         setIsLoading(true);
 
         try {
-            await register({ email, password });
+            // Get reCAPTCHA token if configured
+            const recaptchaToken = await getRecaptchaToken();
+            
+            await register({ 
+                email, 
+                password,
+                recaptcha_token: recaptchaToken || undefined
+            });
             onSuccess?.();
         } catch (err) {
             console.error('Registration error:', err);

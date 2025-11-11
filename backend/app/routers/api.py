@@ -529,7 +529,6 @@ async def compare(
         # Check if mock mode is enabled for this authenticated user
         if current_user.mock_mode_enabled and is_development:
             use_mock = True
-            print(f"🎭 Mock mode active for user {current_user.email}")
     else:
         # Check if global anonymous mock mode is enabled (development only)
         if is_development:
@@ -539,7 +538,6 @@ async def compare(
             settings = get_cached_app_settings(get_settings)
             if settings and settings.anonymous_mock_mode_enabled:
                 use_mock = True
-                print(f"🎭 Anonymous mock mode active (global setting)")
 
     # Track start time for processing metrics
     start_time = datetime.now()
@@ -575,25 +573,19 @@ async def compare(
             # Increment regular usage count
             if current_user:
                 increment_user_usage(current_user, db, count=successful_models)
-                print(f"✓ Incremented regular usage for {current_user.email}: +{successful_models} model responses")
             else:
                 increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                 if req.browser_fingerprint:
                     increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-                print(f"✓ Incremented anonymous regular usage: +{successful_models} model responses")
             
             # Increment extended usage - only count 1 per request regardless of model count
             if req.tier == "extended":
                 if current_user:
                     increment_extended_usage(current_user, db, count=1)
-                    print(f"✓ Incremented extended usage for {current_user.email}: +1 extended interaction")
                 else:
                     increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
                     if req.browser_fingerprint:
                         increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
-                    print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
-        elif failed_models > 0:
-            print(f"✗ No successful models - not counting against user limits ({failed_models} failed)")
 
         # Calculate processing time
         processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -807,7 +799,6 @@ async def compare_stream(
     # So 6+ messages is a more reasonable threshold for context-heavy requests
     if conversation_message_count > 6:
         is_extended_interaction = True
-        print(f"📊 Extended interaction detected: {conversation_message_count} messages in history")
 
     # Track start time for processing metrics
     start_time = datetime.now()
@@ -839,8 +830,6 @@ async def compare_stream(
             if current_user.mock_mode_enabled:
                 if is_development or current_user.role in ["admin", "super_admin"]:
                     use_mock = True
-            if use_mock:
-                print(f"🎭 Mock mode active for user {current_user.email} (dev_mode: {is_development})")
         else:
             # Check if global anonymous mock mode is enabled (development only)
             is_development = os.environ.get("ENVIRONMENT") == "development"
@@ -851,7 +840,6 @@ async def compare_stream(
                 settings = get_cached_app_settings(get_settings)
                 if settings and settings.anonymous_mock_mode_enabled:
                     use_mock = True
-                    print(f"🎭 Anonymous mock mode active (global setting)")
 
         try:
             # Send all start events at once (concurrent processing begins simultaneously)
@@ -993,14 +981,12 @@ async def compare_stream(
                         increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
                         if increment_user_obj:
                             increment_user_usage(increment_user_obj, increment_db, count=successful_models)
-                            print(f"✓ Incremented regular usage for {increment_user_obj.email}: +{successful_models} model responses")
                     finally:
                         increment_db.close()
                 else:
                     increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                     if req.browser_fingerprint:
                         increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-                    print(f"✓ Incremented anonymous regular usage: +{successful_models} model responses")
                 
                 # Increment extended usage - only count 1 per request regardless of model count
                 if req.tier == "extended":
@@ -1011,16 +997,12 @@ async def compare_stream(
                             increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
                             if increment_user_obj:
                                 increment_extended_usage(increment_user_obj, increment_db, count=1)
-                                print(f"✓ Incremented extended usage for {increment_user_obj.email}: +1 extended interaction")
                         finally:
                             increment_db.close()
                     else:
                         increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
                         if req.browser_fingerprint:
                             increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
-                        print(f"✓ Incremented anonymous extended usage: +1 extended interaction")
-            elif failed_models > 0:
-                print(f"✗ No successful models - not counting against user limits ({failed_models} failed)")
 
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -1057,13 +1039,11 @@ async def compare_stream(
             background_tasks.add_task(log_usage_to_db, usage_log, log_db)
 
             # Save conversation to database for authenticated users
-            print(f"🔍 Check save condition: user_id={user_id}, successful_models={successful_models}")
             if user_id and successful_models > 0:
                 def save_conversation_to_db():
                     """Save conversation and messages to database."""
                     conv_db = SessionLocal()
                     try:
-                        print(f"💾 Starting to save conversation for user_id={user_id}, successful_models={successful_models}")
                         # Determine if this is a follow-up or new conversation
                         is_follow_up = bool(req.conversation_history and len(req.conversation_history) > 0)
                         
@@ -1082,7 +1062,6 @@ async def compare_stream(
                                 )
                                 if conversation_by_id:
                                     existing_conversation = conversation_by_id
-                                    print(f"💾 Found conversation by ID: {req.conversation_id}")
                             
                             # Method 2: If no conversation_id provided, match by models + input_data + timestamp
                             if not existing_conversation:
@@ -1122,7 +1101,6 @@ async def compare_stream(
                                         
                                         if models_match and input_matches:
                                             existing_conversation = conv
-                                            print(f"💾 Found conversation by matching: id={conv.id}, models={conv_models}, input={conv.input_data[:50]}...")
                                             break
                                     except (json.JSONDecodeError, TypeError):
                                         continue
@@ -1131,7 +1109,6 @@ async def compare_stream(
                         if existing_conversation:
                             conversation = existing_conversation
                             conversation.updated_at = datetime.now()
-                            print(f"💾 Updating existing conversation id={conversation.id}")
                         else:
                             # Create new conversation
                             conversation = Conversation(
@@ -1141,7 +1118,6 @@ async def compare_stream(
                             )
                             conv_db.add(conversation)
                             conv_db.flush()  # Get the ID
-                            print(f"💾 Created new conversation id={conversation.id}")
                         
                         # Save user message (current prompt)
                         # For new conversations, this is the first message
@@ -1170,7 +1146,6 @@ async def compare_stream(
                                 messages_saved += 1
                         
                         conv_db.commit()
-                        print(f"✅ Successfully saved conversation id={conversation.id} with {messages_saved} assistant messages")
                         
                         # Enforce tier-based conversation limits
                         # Store exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
@@ -1194,19 +1169,16 @@ async def compare_stream(
                             for conv_to_delete in conversations_to_delete:
                                 conv_db.delete(conv_to_delete)
                             conv_db.commit()
-                            print(f"🗑️ Deleted {deleted_count} oldest conversations (over storage limit {storage_limit})")
                             
                     except Exception as e:
                         import traceback
-                        print(f"❌ Failed to save conversation to database: {e}")
-                        print(f"Traceback: {traceback.format_exc()}")
+                        # Log error silently (errors should be handled by proper logging infrastructure)
                         conv_db.rollback()
                     finally:
                         conv_db.close()
                 
                 # Save conversation - execute in thread executor to avoid blocking stream
                 # Background tasks don't execute reliably with StreamingResponse, so we run it here
-                print(f"📋 Executing conversation save for user_id={user_id}")
                 loop = asyncio.get_event_loop()
                 loop.run_in_executor(None, save_conversation_to_db)
 
@@ -1236,8 +1208,6 @@ async def get_conversations(
     # Return exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
     return_limit = display_limit
 
-    print(f"📥 GET /conversations - user_id={current_user.id}, tier={tier}, display_limit={display_limit}, return_limit={return_limit}")
-
     # Get all conversations to check if cleanup is needed
     all_conversations = (
         db.query(Conversation)
@@ -1253,7 +1223,6 @@ async def get_conversations(
         for conv_to_delete in conversations_to_delete:
             db.delete(conv_to_delete)
         db.commit()
-        print(f"🗑️ Cleaned up {deleted_count} excess conversations (limit: {display_limit})")
     
     # Get user's conversations ordered by created_at DESC, limited to display_limit
     conversations = (
@@ -1263,8 +1232,6 @@ async def get_conversations(
         .limit(return_limit)
         .all()
     )
-
-    print(f"📥 Found {len(conversations)} conversations in database for user_id={current_user.id}")
 
     # OPTIMIZATION: Get message counts in a single query instead of N+1 queries
     # This dramatically improves performance when there are many conversations
@@ -1306,7 +1273,6 @@ async def get_conversations(
             )
         )
 
-    print(f"📥 Returning {len(summaries)} conversation summaries")
     return summaries
 
 

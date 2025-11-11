@@ -253,7 +253,6 @@ export function useConversationHistory({
       // Delete the old conversation data
       keysToDelete.forEach(key => {
         localStorage.removeItem(key);
-        console.log(`🗑️ Deleted old conversation data: ${key}`);
       });
 
       // Reload all saved conversations from localStorage to state
