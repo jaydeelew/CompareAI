@@ -42,7 +42,7 @@ export {
 } from './validation';
 
 // Error handling utilities
-export { showNotification, formatError } from './error';
+export { showNotification, formatError, isErrorMessage } from './error';
 export type { NotificationType } from './error';
 
 // Date utilities

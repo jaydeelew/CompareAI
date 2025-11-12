@@ -2,6 +2,7 @@ import React from 'react';
 import { MessageBubble } from '../conversation/MessageBubble';
 import { getSafeId } from '../../utils';
 import { RESULT_TAB, type ResultTab, type ConversationMessage } from '../../types';
+import { isErrorMessage } from '../../utils/error';
 
 /**
  * Model type for ResultCard
@@ -66,6 +67,9 @@ export const ResultCard: React.FC<ResultCardProps> = ({
 }) => {
   const latestMessage = messages[messages.length - 1];
   const safeId = getSafeId(modelId);
+  
+  // Fallback error detection: check the message content directly if isError prop is not set correctly
+  const hasError = isError || isErrorMessage(latestMessage?.content);
 
   return (
     <div className={`result-card conversation-card ${className}`.trim()}>
@@ -158,8 +162,8 @@ export const ResultCard: React.FC<ResultCardProps> = ({
               Raw
             </button>
           </div>
-          <span className={`status ${isError ? 'error' : 'success'}`}>
-            {isError ? 'Failed' : 'Success'}
+          <span className={`status ${hasError ? 'error' : 'success'}`}>
+            {hasError ? 'Failed' : 'Success'}
           </span>
         </div>
       </div>

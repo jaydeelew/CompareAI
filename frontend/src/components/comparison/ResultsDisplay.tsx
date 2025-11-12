@@ -2,6 +2,7 @@ import React from 'react';
 import { ResultCard, type Model } from './ResultCard';
 import type { ModelConversation, ActiveResultTabs } from '../../types';
 import { RESULT_TAB, type ResultTab } from '../../types';
+import { isErrorMessage } from '../../utils/error';
 
 /**
  * ResultsDisplay component props
@@ -116,7 +117,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         {visibleConversations.map((conversation) => {
           const model = allModels.find((m) => m.id === conversation.modelId);
           const latestMessage = conversation.messages[conversation.messages.length - 1];
-          const isError = latestMessage?.content.startsWith('Error');
+          const isError = isErrorMessage(latestMessage?.content);
           const activeTab = activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED;
 
           return (

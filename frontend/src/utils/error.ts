@@ -141,3 +141,73 @@ export function formatError(error: unknown, defaultMessage: string = 'An unexpec
   return defaultMessage;
 }
 
+/**
+ * Check if a message content represents an error.
+ * 
+ * Detects error messages from model responses, handling various formats:
+ * - Messages starting with "Error:" (case-insensitive)
+ * - Errors appended mid-stream (e.g., "Response text... Error: Network connection lost")
+ * - Messages with leading/trailing whitespace
+ * - Known backend error patterns
+ * 
+ * @param content - Message content to check
+ * @returns True if the content represents an error, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * isErrorMessage('Error: Network connection lost'); // true
+ * isErrorMessage('error: Something went wrong'); // true
+ * isErrorMessage('  Error: Timeout'); // true
+ * isErrorMessage('Response text... Error: Network connection lost'); // true
+ * isErrorMessage('This is a normal response'); // false
+ * ```
+ */
+export function isErrorMessage(content: string | null | undefined): boolean {
+  if (!content || typeof content !== 'string') {
+    return false;
+  }
+  
+  const trimmed = content.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  
+  // Check if content contains "Error:" anywhere (case-insensitive)
+  // This handles cases where error is appended mid-stream
+  if (!/\bError:/i.test(trimmed)) {
+    return false;
+  }
+  
+  // Find the last occurrence of "Error:" (errors are typically appended at the end)
+  const errorIndex = trimmed.toLowerCase().lastIndexOf('error:');
+  
+  // Check if it matches known backend error patterns
+  const errorText = trimmed.substring(errorIndex);
+  const knownErrorPatterns = [
+    /^Error:\s*(Timeout|Rate\s*limit|Model\s*not\s*available|Authentication\s*failed|Network\s*connection\s*lost)/i,
+    /^Error:\s*\d+/, // Error: 404, Error: 500, etc.
+    /^Error:\s*[A-Z][^.!?]{0,100}$/, // Error: followed by short capitalized description
+  ];
+  
+  if (knownErrorPatterns.some(pattern => pattern.test(errorText))) {
+    return true;
+  }
+  
+  // Heuristic: if "Error:" appears in the last 200 characters, it's likely an appended error
+  const distanceFromEnd = trimmed.length - errorIndex;
+  if (distanceFromEnd <= 200) {
+    return true;
+  }
+  
+  // If "Error:" appears early and content is long/structured, it's likely an explanation
+  if (errorIndex < 100 && trimmed.length > 200) {
+    const hasMultipleSentences = (trimmed.match(/[.!?]\s+/g) || []).length >= 2;
+    if (hasMultipleSentences) {
+      return false; // Likely an explanation
+    }
+  }
+  
+  // Default: treat as error if "Error:" is present
+  return true;
+}
+

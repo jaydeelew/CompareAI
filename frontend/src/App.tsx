@@ -48,6 +48,7 @@ import {
   formatNumber,
   formatConversationMessage,
 } from './utils';
+import { isErrorMessage } from './utils/error';
 import {
   getAnonymousMockModeStatus,
   getRateLimitStatus,
@@ -2725,10 +2726,10 @@ function AppContent() {
               input_length: input.length,
               models_requested: selectedModels.length,
               models_successful: Object.keys(streamingResults).filter(
-                modelId => !streamingResults[modelId].startsWith('Error')
+                modelId => !isErrorMessage(streamingResults[modelId])
               ).length,
               models_failed: Object.keys(streamingResults).filter(
-                modelId => streamingResults[modelId].startsWith('Error')
+                modelId => isErrorMessage(streamingResults[modelId])
               ).length,
               timestamp: new Date().toISOString(),
               processing_time_ms: Date.now() - startTime
@@ -2930,10 +2931,10 @@ function AppContent() {
           input_length: input.length,
           models_requested: selectedModels.length,
           models_successful: Object.keys(streamingResults).filter(
-            modelId => !streamingResults[modelId].startsWith('Error')
+            modelId => !isErrorMessage(streamingResults[modelId])
           ).length,
           models_failed: Object.keys(streamingResults).filter(
-            modelId => streamingResults[modelId].startsWith('Error')
+            modelId => isErrorMessage(streamingResults[modelId])
           ).length,
           timestamp: new Date().toISOString(),
           processing_time_ms: Date.now() - startTime
@@ -3738,7 +3739,7 @@ function AppContent() {
                     .map((conversation) => {
                       const model = allModels.find(m => m.id === conversation.modelId);
                       const latestMessage = conversation.messages[conversation.messages.length - 1];
-                      const isError = latestMessage?.content.startsWith('Error');
+                      const isError = isErrorMessage(latestMessage?.content);
                       const safeId = getSafeId(conversation.modelId);
 
                       return (
