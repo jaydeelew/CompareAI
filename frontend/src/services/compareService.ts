@@ -197,6 +197,9 @@ export async function processStreamEvents(
 /**
  * Get current rate limit status for the user
  * 
+ * Uses short-term caching (30 seconds) to prevent duplicate requests
+ * while still keeping data relatively fresh.
+ * 
  * @param fingerprint - Optional browser fingerprint for anonymous users
  * @returns Promise resolving to rate limit status
  * @throws {ApiError} If the request fails
@@ -205,8 +208,17 @@ export async function getRateLimitStatus(
   fingerprint?: string
 ): Promise<RateLimitStatus> {
   const params = fingerprint ? `?fingerprint=${encodeURIComponent(fingerprint)}` : '';
+  const cacheKey = fingerprint 
+    ? `GET:/rate-limit-status?fingerprint=${encodeURIComponent(fingerprint)}`
+    : 'GET:/rate-limit-status';
+  
   const response = await apiClient.get<RateLimitStatus>(
-    `/rate-limit-status${params}`
+    `/rate-limit-status${params}`,
+    {
+      // Cache for 30 seconds - balances freshness with deduplication
+      cacheTTL: 30 * 1000,
+      _cacheKey: cacheKey,
+    }
   );
   return response.data;
 }
@@ -214,12 +226,19 @@ export async function getRateLimitStatus(
 /**
  * Get anonymous mock mode status (development only)
  * 
+ * Uses caching since this is relatively static configuration data.
+ * 
  * @returns Promise resolving to mock mode status
  * @throws {ApiError} If the request fails
  */
 export async function getAnonymousMockModeStatus(): Promise<AnonymousMockModeStatus> {
   const response = await apiClient.get<AnonymousMockModeStatus>(
-    '/anonymous-mock-mode-status'
+    '/anonymous-mock-mode-status',
+    {
+      // Cache for 5 minutes - mock mode status changes infrequently
+      cacheTTL: 5 * 60 * 1000,
+      _cacheKey: 'GET:/anonymous-mock-mode-status',
+    }
   );
   return response.data;
 }

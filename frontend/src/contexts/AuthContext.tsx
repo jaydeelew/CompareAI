@@ -238,8 +238,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
     };
 
-    // Initialize auth state on mount
+    // Initialize auth state on mount (only once)
     useEffect(() => {
+        let isMounted = true;
+        
         const initAuth = async () => {
             console.log('[Auth] Initializing auth state...');
             const initStartTime = Date.now();
@@ -247,13 +249,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             if (!accessToken) {
                 console.log('[Auth] No access token found, user is not authenticated');
-                setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
                 return;
             }
 
             console.log('[Auth] Access token found, attempting to fetch user data...');
             // Try to fetch user with current access token
             const userData = await fetchCurrentUser(accessToken);
+
+            if (!isMounted) return;
 
             if (userData) {
                 console.log('[Auth] User data fetched successfully during initialization');
@@ -265,13 +271,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 console.log('[Auth] User data fetch failed, attempting token refresh...');
                 // If access token is invalid, try to refresh
                 await refreshToken();
-                const initDuration = Date.now() - initStartTime;
-                console.log('[Auth] Auth initialization completed (after refresh) in', initDuration, 'ms');
+                if (isMounted) {
+                    const initDuration = Date.now() - initStartTime;
+                    console.log('[Auth] Auth initialization completed (after refresh) in', initDuration, 'ms');
+                }
             }
         };
 
         initAuth();
-    }, [fetchCurrentUser, refreshToken]);
+        
+        return () => {
+            isMounted = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount - fetchCurrentUser and refreshToken are stable callbacks
 
     // Set up token refresh interval (refresh every 14 minutes, tokens expire in 15)
     useEffect(() => {

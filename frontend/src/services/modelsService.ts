@@ -27,12 +27,19 @@ export interface AvailableModelsResponse {
 /**
  * Get list of available AI models
  * 
+ * Uses caching with longer TTL since models list is relatively static.
+ * 
  * @returns Promise resolving to available models
  * @throws {ApiError} If the request fails
  */
 export async function getAvailableModels(): Promise<AvailableModelsResponse> {
   const response = await apiClient.get<AvailableModelsResponse>(
-    '/models'
+    '/models',
+    {
+      // Cache models for 10 minutes (they're relatively static)
+      cacheTTL: 10 * 60 * 1000,
+      _cacheKey: 'GET:/models',
+    }
   );
   return response.data;
 }

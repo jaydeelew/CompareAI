@@ -151,6 +151,8 @@ function sleep(ms: number): Promise<void> {
     private responseInterceptors: ResponseInterceptor[] = [];
     private errorInterceptors: ErrorInterceptor[] = [];
     private requestCounter: number = 0;
+    // Request deduplication: track in-flight requests by cache key
+    private inFlightRequests = new Map<string, Promise<ApiResponse<unknown>>>();
 
   constructor(config: ApiClientConfig) {
     this.baseURL = config.baseURL.replace(/\/$/, ''); // Remove trailing slash
@@ -300,12 +302,25 @@ function sleep(ms: number): Promise<void> {
     config: RequestConfig,
     attempt: number = 0
   ): Promise<ApiResponse<T>> {
+    // Generate cache key for request deduplication (only for GET requests)
+    const isGetRequest = (config.method === 'GET' || !config.method);
+    const dedupeKey = isGetRequest && config.enableCache !== false
+      ? config._cacheKey || `${config.method || 'GET'}:${url}`
+      : null;
+
+    // Check for in-flight duplicate request (request deduplication)
+    if (dedupeKey && this.inFlightRequests.has(dedupeKey)) {
+      const inFlightPromise = this.inFlightRequests.get(dedupeKey);
+      if (inFlightPromise) {
+        // Reuse the in-flight request
+        return inFlightPromise as Promise<ApiResponse<T>>;
+      }
+    }
+
     try {
       // Check cache for GET requests
-      if ((config.method === 'GET' || !config.method) && config.enableCache !== false) {
-        const cacheKey = this.cache
-          ? config._cacheKey || `${config.method || 'GET'}:${url}`
-          : null;
+      if (isGetRequest && config.enableCache !== false) {
+        const cacheKey = dedupeKey;
         
         if (cacheKey && this.cache) {
           const cached = this.cache.get<T>(cacheKey);
@@ -321,6 +336,39 @@ function sleep(ms: number): Promise<void> {
           }
         }
       }
+
+      // Create the request promise and track it for deduplication
+      const requestPromise = this.executeRequest<T>(url, config, attempt);
+      
+      // Track in-flight request for deduplication (only GET requests)
+      if (dedupeKey) {
+        this.inFlightRequests.set(dedupeKey, requestPromise as Promise<ApiResponse<unknown>>);
+        
+        // Clean up after request completes (success or failure)
+        requestPromise.finally(() => {
+          this.inFlightRequests.delete(dedupeKey);
+        });
+      }
+
+      return requestPromise;
+    } catch (error) {
+      // Clean up in-flight request on error
+      if (dedupeKey) {
+        this.inFlightRequests.delete(dedupeKey);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Execute the actual request (internal method)
+   */
+  private async executeRequest<T>(
+    url: string,
+    config: RequestConfig,
+    attempt: number = 0
+  ): Promise<ApiResponse<T>> {
+    try {
 
       // Apply request interceptors
       const [finalUrl, finalConfig] = await this.applyRequestInterceptors(
@@ -435,7 +483,7 @@ function sleep(ms: number): Promise<void> {
         await sleep(delay);
 
         // Retry request
-        return this.executeWithRetry<T>(url, config, attempt + 1);
+        return this.executeRequest<T>(url, config, attempt + 1);
       }
 
       // No retry or max retries reached, throw error

@@ -5,7 +5,7 @@
  * and anonymous users. Includes usage counts and tier limits.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getRateLimitStatus, type RateLimitStatus } from '../services/compareService';
 
 export interface UseRateLimitStatusOptions {
@@ -94,8 +94,22 @@ export function useRateLimitStatus({
   }, [isAuthenticated]);
 
   // Fetch rate limit status on mount and when auth/fingerprint changes
+  // Use ref to prevent duplicate calls during React StrictMode double renders
+  const hasFetchedRef = useRef(false);
+  const lastFingerprintRef = useRef<string | null>(null);
+  const lastAuthStateRef = useRef<boolean | null>(null);
+  
   useEffect(() => {
-    if (browserFingerprint || isAuthenticated) {
+    const fingerprintChanged = lastFingerprintRef.current !== browserFingerprint;
+    const authChanged = lastAuthStateRef.current !== isAuthenticated;
+    
+    // Only fetch if:
+    // 1. We haven't fetched yet, OR
+    // 2. Fingerprint or auth state actually changed (not just a re-render)
+    if ((browserFingerprint || isAuthenticated) && (!hasFetchedRef.current || fingerprintChanged || authChanged)) {
+      hasFetchedRef.current = true;
+      lastFingerprintRef.current = browserFingerprint;
+      lastAuthStateRef.current = isAuthenticated;
       fetchRateLimitStatus();
     }
   }, [isAuthenticated, browserFingerprint, fetchRateLimitStatus]);
