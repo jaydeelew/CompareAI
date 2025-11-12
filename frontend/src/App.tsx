@@ -1159,6 +1159,25 @@ function AppContent() {
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
 
       if (firstUserMessage && firstUserMessage.content) {
+        // First, check if the currentVisibleComparisonId is still valid and matches the loaded conversations
+        // This prevents overwriting an explicitly selected conversation when there are multiple matches
+        if (currentVisibleComparisonId) {
+          const currentConversation = conversationHistory.find(
+            summary => String(summary.id) === currentVisibleComparisonId
+          );
+          
+          if (currentConversation) {
+            const currentModelsMatch = JSON.stringify([...currentConversation.models_used].sort()) === JSON.stringify([...selectedModels].sort());
+            const currentInputMatches = currentConversation.input_data === firstUserMessage.content;
+            
+            // If the current ID still matches, keep it (don't search for a different match)
+            if (currentModelsMatch && currentInputMatches) {
+              return;
+            }
+          }
+        }
+
+        // Only if currentVisibleComparisonId doesn't match or doesn't exist, try to find a new match
         const matchingConversation = conversationHistory.find(summary => {
           const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
           const inputMatches = summary.input_data === firstUserMessage.content;
