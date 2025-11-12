@@ -65,10 +65,7 @@ class Settings(BaseSettings):
     
     # Performance Configuration
     # These can be overridden via environment variables.
-    # Configuration optimized for 9-model limit (Pro tier maximum).
-    max_concurrent_requests: int = 9
     individual_model_timeout: int = 120
-    batch_size: int = 9
     
     # Pydantic Settings v2 configuration
     model_config = SettingsConfigDict(

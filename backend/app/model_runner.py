@@ -792,10 +792,14 @@ def call_openrouter(
             return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models_batch(
-    prompt: str, model_batch: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None
-) -> Dict[str, str]:
-    """Run a batch of models with limited concurrency"""
+def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None) -> Dict[str, str]:
+    """
+    Run models concurrently without batching.
+    
+    Note: This function is kept for backward compatibility with the non-streaming endpoint.
+    The application primarily uses the streaming endpoint (/compare-stream) which processes
+    all models concurrently via asyncio tasks.
+    """
     results = {}
 
     def call(model_id):
@@ -804,60 +808,22 @@ def run_models_batch(
         except Exception as e:
             return model_id, f"Error: {str(e)}"
 
-    # Use a limited number of threads to prevent overwhelming the API
-    with concurrent.futures.ThreadPoolExecutor(max_workers=settings.max_concurrent_requests) as executor:
+    # Process all models concurrently without batching limits
+    # Uses default ThreadPoolExecutor which handles concurrency automatically
+    with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit all futures
-        future_to_model = {executor.submit(call, model_id): model_id for model_id in model_batch}
+        future_to_model = {executor.submit(call, model_id): model_id for model_id in model_list}
 
-        # Set a generous timeout for the entire batch to match individual model timeouts
-        batch_timeout = min(300, len(model_batch) * 50)  # 50 seconds per model in batch, max 300s (5 minutes)
-
-        try:
-            # Wait for all futures to complete or timeout
-            for future in concurrent.futures.as_completed(future_to_model, timeout=batch_timeout):
-                model_id = future_to_model[future]
-                try:
-                    _, result = future.result(timeout=2)  # Quick result retrieval
-                    results[model_id] = result
-                except Exception as e:
-                    results[model_id] = f"Error: {str(e)}"
-
-        except concurrent.futures.TimeoutError:
-            # Handle batch timeout - get results from completed futures and mark others as failed
-            pass
-
-        # Handle any remaining incomplete futures
-        for future, model_id in future_to_model.items():
-            if model_id not in results:
-                if future.done():
-                    try:
-                        _, result = future.result(timeout=1)
-                        results[model_id] = result
-                    except Exception as e:
-                        results[model_id] = f"Error: {str(e)}"
-                else:
-                    future.cancel()
-                    results[model_id] = f"Error: Timeout after {batch_timeout}s"
+        # Wait for all futures to complete
+        for future in concurrent.futures.as_completed(future_to_model):
+            model_id = future_to_model[future]
+            try:
+                _, result = future.result()
+                results[model_id] = result
+            except Exception as e:
+                results[model_id] = f"Error: {str(e)}"
 
     return results
-
-
-def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None) -> Dict[str, str]:
-    """Run models with batching to prevent timeouts and API overload"""
-    all_results = {}
-
-    # Process models in batches
-    for i in range(0, len(model_list), settings.batch_size):
-        batch = model_list[i : i + settings.batch_size]
-        try:
-            batch_results = run_models_batch(prompt, batch, tier, conversation_history)
-            all_results.update(batch_results)
-        except Exception as e:
-            # If a batch fails entirely, mark all models in that batch as failed
-            for model_id in batch:
-                all_results[model_id] = f"Error: Batch processing failed - {str(e)}"
-
-    return all_results
 
 
 def test_connection_quality() -> ConnectionQualityDict:

@@ -169,11 +169,9 @@ POST   /api/admin/settings/zero-anonymous-usage        # Reset anonymous usage (
 
 ## Configuration
 
-**Performance Tuning** (`backend/app/model_runner.py`):
+**Performance Tuning** (`backend/app/config/settings.py`):
 
-- `MAX_CONCURRENT_REQUESTS = 9` - Parallel API calls (matches Pro tier limit)
-- `INDIVIDUAL_MODEL_TIMEOUT = 120` - Seconds per model
-- `BATCH_SIZE = 9` - Models per batch (optimized for Pro tier)
+- `INDIVIDUAL_MODEL_TIMEOUT = 120` - Seconds per model timeout (used in streaming endpoint)
 
 **Subscription Tiers** (`backend/app/rate_limiting.py`):
 

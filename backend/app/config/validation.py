@@ -145,28 +145,12 @@ def validate_config() -> None:
     # ========================================================================
     # Performance Settings
     # ========================================================================
-    if settings.max_concurrent_requests < 1:
-        errors.append("max_concurrent_requests must be at least 1")
-    elif settings.max_concurrent_requests > 50:
-        warnings.append(
-            f"max_concurrent_requests is very high ({settings.max_concurrent_requests}). "
-            "This may cause resource exhaustion."
-        )
-    
     if settings.individual_model_timeout < 1:
         errors.append("individual_model_timeout must be at least 1 second")
     elif settings.individual_model_timeout > 600:
         warnings.append(
             f"individual_model_timeout is very high ({settings.individual_model_timeout}s). "
             "This may cause long-running requests."
-        )
-    
-    if settings.batch_size < 1:
-        errors.append("batch_size must be at least 1")
-    elif settings.batch_size > settings.max_concurrent_requests:
-        warnings.append(
-            f"batch_size ({settings.batch_size}) is larger than "
-            f"max_concurrent_requests ({settings.max_concurrent_requests})"
         )
     
     # ========================================================================
@@ -273,9 +257,7 @@ def log_configuration() -> None:
     
     # Performance Settings
     logger.info("Performance Settings:")
-    logger.info(f"  Max Concurrent Requests: {settings.max_concurrent_requests}")
     logger.info(f"  Individual Model Timeout: {settings.individual_model_timeout}s")
-    logger.info(f"  Batch Size: {settings.batch_size}")
     
     # Subscription Configuration Summary
     logger.info("Subscription Tiers:")

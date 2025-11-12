@@ -6,7 +6,7 @@ Tests cover:
 - Conversation history truncation
 - Tier limits
 - Error handling
-- Batch processing
+- Concurrent model processing
 """
 import pytest
 from unittest.mock import patch, MagicMock
@@ -14,7 +14,6 @@ from app.model_runner import (
     call_openrouter,
     call_openrouter_streaming,
     truncate_conversation_history,
-    run_models_batch,
     run_models,
 )
 
@@ -124,43 +123,12 @@ class TestConversationHistoryTruncation:
         assert len(truncated) == 20
 
 
-class TestModelRunnerBatchProcessing:
-    """Tests for batch processing of models."""
-    
-    @patch('app.model_runner.call_openrouter')
-    def test_run_models_batch_mock_mode(self, mock_call):
-        """Test running a batch of models."""
-        # Mock the call_openrouter function
-        mock_call.return_value = "Mock response"
-        
-        models = ["gpt-4", "claude-3-opus", "gpt-3.5-turbo"]
-        
-        results = run_models_batch(
-            prompt="Test prompt",
-            model_batch=models,
-            tier="standard"
-        )
-        
-        assert isinstance(results, dict)
-        assert len(results) == len(models)
-        for model_id in models:
-            assert model_id in results
-            assert isinstance(results[model_id], str)
-    
-    def test_run_models_batch_empty(self):
-        """Test running batch with empty model list."""
-        results = run_models_batch(
-            prompt="Test prompt",
-            model_batch=[],
-            tier="standard"
-        )
-        
-        assert isinstance(results, dict)
-        assert len(results) == 0
+class TestModelRunnerConcurrentProcessing:
+    """Tests for concurrent processing of models."""
     
     @patch('app.model_runner.call_openrouter')
     def test_run_models_mock_mode(self, mock_call):
-        """Test running multiple models with batching."""
+        """Test running multiple models concurrently."""
         # Mock the call_openrouter function
         mock_call.return_value = "Mock response"
         
@@ -176,6 +144,17 @@ class TestModelRunnerBatchProcessing:
         assert len(results) == len(models)
         for model_id in models:
             assert model_id in results
+    
+    def test_run_models_empty(self):
+        """Test running models with empty model list."""
+        results = run_models(
+            prompt="Test prompt",
+            model_list=[],
+            tier="standard"
+        )
+        
+        assert isinstance(results, dict)
+        assert len(results) == 0
 
 
 class TestModelRunnerErrorHandling:
@@ -216,8 +195,8 @@ class TestModelRunnerErrorHandling:
         assert "Error:" in result
     
     @patch('app.model_runner.call_openrouter')
-    def test_run_models_batch_partial_failure(self, mock_call):
-        """Test batch processing with partial failures."""
+    def test_run_models_partial_failure(self, mock_call):
+        """Test concurrent processing with partial failures."""
         # Mock call_openrouter to raise error for one model
         def side_effect(prompt, model_id, tier, conversation_history=None):
             if model_id == "invalid-model":
@@ -228,9 +207,9 @@ class TestModelRunnerErrorHandling:
         
         models = ["gpt-4", "invalid-model"]
         
-        results = run_models_batch(
+        results = run_models(
             prompt="Test prompt",
-            model_batch=models,
+            model_list=models,
             tier="standard"
         )
         
