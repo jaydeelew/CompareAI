@@ -2923,15 +2923,16 @@ function AppContent() {
 
       setResponse(filteredData);
 
-      // Deselect Extended mode after successful Extended request
-      if (isExtendedMode) {
-        setIsExtendedMode(false);
-      }
-
       // Clear input field only if at least one model succeeded
       // Keep input if all models failed so user can retry without retyping
       if (filteredData.metadata.models_successful > 0) {
         setInput('');
+
+        // Deselect Extended mode after successful Extended request
+        // Only deselect if at least one model succeeded (request counted)
+        if (isExtendedMode) {
+          setIsExtendedMode(false);
+        }
       }
 
       // Track usage only if at least one model succeeded
