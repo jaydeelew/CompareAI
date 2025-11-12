@@ -196,13 +196,19 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
           // Calculate max height based on user tier
           // Each entry: 1rem top padding (16px) + content (~23px prompt + 8px margin + ~15px meta) + 1rem bottom padding (16px) ≈ 78px
           // Plus borders between items (1px each)
-          // For 2 entries (anonymous): 2 * 78px + 1px border = 157px, using 165px to ensure full visibility
-          // For 3 entries (free+): 3 * 78px + 2px borders = 236px, using 250px to ensure full visibility
+          // Notification height: ~50px (margin-top 8px + padding 16px + content ~20px + padding 8px)
           const getMaxHeight = () => {
+            // Check if notification should be shown
+            const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+            const tierLimit = getConversationLimit(userTier);
+            const shouldShowNotification = (userTier === 'anonymous' || userTier === 'free') && 
+                                          conversationHistory.length >= tierLimit;
+            const notificationHeight = shouldShowNotification ? 50 : 0;
+            
             if (historyLimit === 2) {
-              return '165px'; // Height for exactly 2 entries (anonymous tier)
+              return `${165 + notificationHeight}px`; // Height for 2 entries + notification if present
             }
-            return '250px'; // Height for exactly 3 entries (free tier and above)
+            return `${250 + notificationHeight}px`; // Height for 3 entries + notification if present
           };
 
           return (
