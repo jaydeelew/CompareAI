@@ -1541,8 +1541,13 @@ function AppContent() {
               }));
             }
           } catch (error) {
-            // Fallback to localStorage if backend is unavailable
-            console.error('Failed to sync usage count from backend, using localStorage:', error);
+            // Silently handle cancellation errors (expected when component unmounts)
+            if (error instanceof Error && error.name === 'CancellationError') {
+              // Fallback to localStorage silently
+            } else {
+              // Fallback to localStorage if backend is unavailable
+              console.error('Failed to sync usage count from backend, using localStorage:', error);
+            }
             const savedUsage = localStorage.getItem('compareai_usage');
             const today = new Date().toDateString();
 
@@ -1558,7 +1563,12 @@ function AppContent() {
           }
         }
       } catch (error) {
-        console.error('Failed to sync usage count with backend:', error);
+        // Silently handle cancellation errors (expected when component unmounts or request is cancelled)
+        if (error instanceof Error && error.name === 'CancellationError') {
+          // Fallback to localStorage silently
+        } else {
+          console.error('Failed to sync usage count with backend:', error);
+        }
         // Fallback to localStorage
         const savedUsage = localStorage.getItem('compareai_usage');
         const today = new Date().toDateString();
@@ -1598,6 +1608,10 @@ function AppContent() {
           setError('No model data received from server');
         }
       } catch (error) {
+        // Silently handle cancellation errors (expected when component unmounts)
+        if (error instanceof Error && error.name === 'CancellationError') {
+          return; // Don't show error for cancelled requests
+        }
         if (error instanceof ApiError) {
           console.error('Failed to fetch models:', error.status, error.message);
           setError(`Failed to fetch models: ${error.message}`);
@@ -2202,7 +2216,12 @@ function AppContent() {
           setUsageCount(latestCount);
         }
       } catch (error) {
-        console.error('Failed to sync usage count before check:', error);
+        // Silently handle cancellation errors (expected when component unmounts)
+        if (error instanceof Error && error.name === 'CancellationError') {
+          // Continue with current state silently
+        } else {
+          console.error('Failed to sync usage count before check:', error);
+        }
         // Continue with current state if fetch fails
       }
     }
@@ -2975,8 +2994,13 @@ function AppContent() {
             }));
           }
         } catch (error) {
-          // Fallback to local increment if backend sync fails
-          console.error('Failed to sync usage count after comparison:', error);
+          // Silently handle cancellation errors (expected when component unmounts)
+          if (error instanceof Error && error.name === 'CancellationError') {
+            // Fallback to local increment silently
+          } else {
+            // Fallback to local increment if backend sync fails
+            console.error('Failed to sync usage count after comparison:', error);
+          }
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
 

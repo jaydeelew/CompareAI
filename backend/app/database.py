@@ -101,11 +101,20 @@ def get_db() -> Generator[Session, None, None]:
     Yields:
         Session: Database session
     """
-    db = SessionLocal()
+    import time
+    db_start = time.time()
     try:
+        db = SessionLocal()
+        db_duration = time.time() - db_start
+        if db_duration > 0.1:  # Log if session creation takes more than 100ms
+            print(f"[DB] Session creation took {db_duration:.3f}s")
         yield db
     finally:
+        close_start = time.time()
         db.close()
+        close_duration = time.time() - close_start
+        if close_duration > 0.1:  # Log if closing takes more than 100ms
+            print(f"[DB] Session close took {close_duration:.3f}s")
 
 
 def init_db() -> None:

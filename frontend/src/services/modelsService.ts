@@ -31,7 +31,9 @@ export interface AvailableModelsResponse {
  * @throws {ApiError} If the request fails
  */
 export async function getAvailableModels(): Promise<AvailableModelsResponse> {
-  const response = await apiClient.get<AvailableModelsResponse>('/models');
+  const response = await apiClient.get<AvailableModelsResponse>(
+    '/models'
+  );
   return response.data;
 }
 

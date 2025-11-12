@@ -51,7 +51,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userData = await response.json();
             return userData;
         } catch (error) {
-            console.error('Error fetching user:', error);
+            // Silently handle cancellation errors (expected when component unmounts)
+            if (error instanceof Error && error.name === 'AbortError') {
+                return null;
+            }
             return null;
         }
     }, []);
@@ -79,9 +82,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 throw new Error('Token refresh failed');
             }
 
-            const data: AuthResponse = await response.json();
+            // Refresh endpoint returns TokenResponse (tokens only, no user)
+            const data = await response.json() as { access_token: string; refresh_token: string; token_type: string };
             saveTokens(data.access_token, data.refresh_token);
-            setUser(data.user);
+            
+            // Fetch user data after refreshing token (refresh endpoint doesn't return user)
+            const userData = await fetchCurrentUser(data.access_token);
+            if (userData) {
+                setUser(userData);
+            } else {
+                // If we can't fetch user, clear tokens
+                clearTokens();
+                setUser(null);
+            }
         } catch (error) {
             console.error('Error refreshing token:', error);
             clearTokens();
@@ -89,10 +102,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [fetchCurrentUser]);
 
     // Login function
     const login = async (credentials: LoginCredentials) => {
+        setIsLoading(true);
+
         try {
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
@@ -106,32 +121,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Login failed');
+                // Try to get error message from response
+                let errorMessage = 'Login failed';
+                const contentType = response.headers.get('content-type');
+                
+                try {
+                    if (contentType && contentType.includes('application/json')) {
+                        const error = await response.json();
+                        errorMessage = error.detail || error.message || JSON.stringify(error);
+                    } else {
+                        // Try to read as text for non-JSON responses
+                        const errorText = await response.text();
+                        errorMessage = errorText || `Server error (${response.status})`;
+                    }
+                } catch (parseError) {
+                    errorMessage = `Server error (${response.status}): ${response.statusText}`;
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const data: AuthResponse = await response.json();
-
-            // The backend login doesn't return user data, so we need to fetch it
             saveTokens(data.access_token, data.refresh_token);
 
-            // Fetch user data
-            const userData = await fetchCurrentUser(data.access_token);
-            if (userData) {
-                setUser(userData);
-                setIsLoading(false); // Set loading to false after successful login
-            } else {
-                throw new Error('Failed to fetch user data');
+            // Fetch user data - don't fail login if this fails
+            try {
+                const userData = await fetchCurrentUser(data.access_token);
+                if (userData) {
+                    setUser(userData);
+                } else {
+                    // Retry in background without blocking
+                    fetchCurrentUser(data.access_token).then(userData => {
+                        if (userData) {
+                            setUser(userData);
+                        }
+                    }).catch(() => {
+                        // Silently fail background retry
+                    });
+                }
+            } catch (userFetchError) {
+                // User fetch failed, but login is still successful
+                // Retry in background without blocking
+                fetchCurrentUser(data.access_token).then(userData => {
+                    if (userData) {
+                        setUser(userData);
+                    }
+                }).catch(() => {
+                    // Silently fail background retry
+                });
             }
+            
+            setIsLoading(false);
         } catch (error) {
-            console.error('Login error:', error);
-            setIsLoading(false); // Set loading to false even on error
+            setIsLoading(false);
             throw error;
         }
     };
 
     // Register function
     const register = async (data: RegisterData) => {
+        setIsLoading(true);
+
         try {
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
@@ -153,10 +203,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const responseData: AuthResponse = await response.json();
             saveTokens(responseData.access_token, responseData.refresh_token);
             setUser(responseData.user);
-            setIsLoading(false); // Set loading to false after successful registration
+            setIsLoading(false);
         } catch (error) {
             console.error('Registration error:', error);
-            setIsLoading(false); // Set loading to false even on error
+            setIsLoading(false);
             throw error;
         }
     };
@@ -191,22 +241,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Initialize auth state on mount
     useEffect(() => {
         const initAuth = async () => {
+            console.log('[Auth] Initializing auth state...');
+            const initStartTime = Date.now();
             const accessToken = getAccessToken();
 
             if (!accessToken) {
+                console.log('[Auth] No access token found, user is not authenticated');
                 setIsLoading(false);
                 return;
             }
 
+            console.log('[Auth] Access token found, attempting to fetch user data...');
             // Try to fetch user with current access token
             const userData = await fetchCurrentUser(accessToken);
 
             if (userData) {
+                console.log('[Auth] User data fetched successfully during initialization');
                 setUser(userData);
                 setIsLoading(false);
+                const initDuration = Date.now() - initStartTime;
+                console.log('[Auth] Auth initialization completed in', initDuration, 'ms');
             } else {
+                console.log('[Auth] User data fetch failed, attempting token refresh...');
                 // If access token is invalid, try to refresh
                 await refreshToken();
+                const initDuration = Date.now() - initStartTime;
+                console.log('[Auth] Auth initialization completed (after refresh) in', initDuration, 'ms');
             }
         };
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from typing import Any
 from contextlib import asynccontextmanager
@@ -147,6 +148,33 @@ app.add_middleware(
 from .middleware.profiling import ProfilingMiddleware
 app.add_middleware(ProfilingMiddleware)
 
+# Global exception handler to ensure all errors return JSON
+# Note: HTTPException is handled by FastAPI automatically, so we only catch other exceptions
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions and return JSON responses."""
+    # Don't handle HTTPException - FastAPI handles it automatically
+    if isinstance(exc, HTTPException):
+        raise exc
+    
+    import traceback
+    error_type = type(exc).__name__
+    error_message = str(exc)
+    traceback_str = traceback.format_exc()
+    
+    # Log the error
+    logger.error(f"Unhandled exception: {error_type}: {error_message}")
+    logger.error(f"Traceback:\n{traceback_str}")
+    
+    # Return JSON error response
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {error_message}",
+            "error_type": error_type
+        }
+    )
+
 # Include routers AFTER middleware
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
@@ -248,8 +276,29 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+async def health_check(db: Session = Depends(get_db)):
+    import time
+    from sqlalchemy import text
+    start = time.time()
+    print(f"[HEALTH] Health check requested at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Test database connection
+    try:
+        # Simple query to test database
+        query_start = time.time()
+        result = db.execute(text("SELECT 1")).scalar()
+        query_duration = time.time() - query_start
+        print(f"[HEALTH] Database query completed in {query_duration:.3f}s, result: {result}")
+        
+        total_duration = time.time() - start
+        print(f"[HEALTH] Health check completed in {total_duration:.3f}s")
+        return {"status": "healthy", "db_connected": True, "duration_ms": int(total_duration * 1000)}
+    except Exception as e:
+        total_duration = time.time() - start
+        print(f"[HEALTH] Health check failed after {total_duration:.3f}s: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "unhealthy", "error": str(e), "duration_ms": int(total_duration * 1000)}
 
 
 def log_usage_to_db(usage_log: UsageLog, db: Session):

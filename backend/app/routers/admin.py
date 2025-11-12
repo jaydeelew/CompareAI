@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import json
 
 from ..database import get_db
-from ..models import User, AdminActionLog, AppSettings, Conversation
+from ..models import User, AdminActionLog, AppSettings, Conversation, UsageLog
 from ..schemas import (
     AdminUserResponse,
     AdminUserCreate,
@@ -22,6 +22,7 @@ from ..schemas import (
     AdminUserListResponse,
     AdminActionLogResponse,
     AdminStatsResponse,
+    VisitorAnalyticsResponse,
 )
 from ..dependencies import get_current_admin_user, require_admin_role
 from ..auth import get_password_hash
@@ -122,6 +123,101 @@ async def get_admin_stats(current_user: User = Depends(get_current_admin_user), 
         recent_registrations=recent_registrations,
         total_usage_today=total_usage_today,
         admin_actions_today=admin_actions_today,
+    )
+
+
+@router.get("/analytics/visitors", response_model=VisitorAnalyticsResponse)
+async def get_visitor_analytics(
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Get visitor analytics statistics."""
+    
+    now = datetime.utcnow()
+    today_start = datetime.combine(now.date(), datetime.min.time())
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+    
+    # Overall stats - all time
+    total_unique_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).scalar() or 0
+    total_unique_devices = db.query(func.count(func.distinct(UsageLog.browser_fingerprint))).filter(
+        UsageLog.browser_fingerprint.isnot(None)
+    ).scalar() or 0
+    total_comparisons = db.query(func.count(UsageLog.id)).scalar() or 0
+    
+    # Time-based unique visitors
+    unique_visitors_today = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+        UsageLog.created_at >= today_start
+    ).scalar() or 0
+    
+    unique_visitors_this_week = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+        UsageLog.created_at >= week_ago
+    ).scalar() or 0
+    
+    unique_visitors_this_month = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+        UsageLog.created_at >= month_ago
+    ).scalar() or 0
+    
+    # Authenticated vs anonymous breakdown
+    authenticated_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+        UsageLog.user_id.isnot(None)
+    ).scalar() or 0
+    
+    anonymous_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+        UsageLog.user_id.is_(None)
+    ).scalar() or 0
+    
+    # Recent activity - comparisons count
+    comparisons_today = db.query(func.count(UsageLog.id)).filter(
+        UsageLog.created_at >= today_start
+    ).scalar() or 0
+    
+    comparisons_this_week = db.query(func.count(UsageLog.id)).filter(
+        UsageLog.created_at >= week_ago
+    ).scalar() or 0
+    
+    comparisons_this_month = db.query(func.count(UsageLog.id)).filter(
+        UsageLog.created_at >= month_ago
+    ).scalar() or 0
+    
+    # Daily breakdown for last 30 days
+    daily_breakdown = []
+    for i in range(30):
+        day_start = datetime.combine((now - timedelta(days=i)).date(), datetime.min.time())
+        day_end = day_start + timedelta(days=1)
+        
+        day_unique_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
+            UsageLog.created_at >= day_start,
+            UsageLog.created_at < day_end
+        ).scalar() or 0
+        
+        day_comparisons = db.query(func.count(UsageLog.id)).filter(
+            UsageLog.created_at >= day_start,
+            UsageLog.created_at < day_end
+        ).scalar() or 0
+        
+        daily_breakdown.append({
+            "date": day_start.date().isoformat(),
+            "unique_visitors": day_unique_visitors,
+            "total_comparisons": day_comparisons,
+        })
+    
+    # Reverse to show oldest first, newest last
+    daily_breakdown.reverse()
+    
+    return VisitorAnalyticsResponse(
+        total_unique_visitors=total_unique_visitors,
+        total_unique_devices=total_unique_devices,
+        total_comparisons=total_comparisons,
+        unique_visitors_today=unique_visitors_today,
+        unique_visitors_this_week=unique_visitors_this_week,
+        unique_visitors_this_month=unique_visitors_this_month,
+        authenticated_visitors=authenticated_visitors,
+        anonymous_visitors=anonymous_visitors,
+        daily_breakdown=daily_breakdown,
+        comparisons_today=comparisons_today,
+        comparisons_this_week=comparisons_this_week,
+        comparisons_this_month=comparisons_this_month,
     )
 
 

@@ -42,6 +42,10 @@ export function useRateLimitStatus({
       );
       setRateLimitStatus(status);
     } catch (error) {
+      // Silently handle cancellation errors (expected when component unmounts)
+      if (error instanceof Error && error.name === 'CancellationError') {
+        return; // Don't log or update state for cancelled requests
+      }
       console.error('Failed to fetch rate limit status:', error);
       setRateLimitStatus(null);
     }

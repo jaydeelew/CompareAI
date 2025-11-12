@@ -26,6 +26,28 @@ export interface AdminStats {
 }
 
 /**
+ * Visitor analytics response
+ */
+export interface VisitorAnalytics {
+  total_unique_visitors: number;
+  total_unique_devices: number;
+  total_comparisons: number;
+  unique_visitors_today: number;
+  unique_visitors_this_week: number;
+  unique_visitors_this_month: number;
+  authenticated_visitors: number;
+  anonymous_visitors: number;
+  daily_breakdown: Array<{
+    date: string;
+    unique_visitors: number;
+    total_comparisons: number;
+  }>;
+  comparisons_today: number;
+  comparisons_this_week: number;
+  comparisons_this_month: number;
+}
+
+/**
  * Admin user list response
  */
 export interface AdminUserList {
@@ -127,6 +149,17 @@ export async function listUsers(params?: {
  */
 export async function getAdminStats(): Promise<AdminStats> {
   const response = await apiClient.get<AdminStats>('/admin/stats');
+  return response.data;
+}
+
+/**
+ * Get visitor analytics statistics
+ * 
+ * @returns Promise resolving to visitor analytics
+ * @throws {ApiError} If the request fails
+ */
+export async function getVisitorAnalytics(): Promise<VisitorAnalytics> {
+  const response = await apiClient.get<VisitorAnalytics>('/admin/analytics/visitors');
   return response.data;
 }
 

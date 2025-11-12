@@ -5,7 +5,7 @@ This module defines all data models for API requests and responses.
 """
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, field_serializer, ConfigDict
-from typing import Optional, List, Dict, Literal
+from typing import Optional, List, Dict, Literal, Any
 from datetime import datetime, date
 
 
@@ -434,3 +434,29 @@ class AdminStatsResponse(BaseModel):
     recent_registrations: int  # Last 7 days
     total_usage_today: int
     admin_actions_today: int
+
+
+class VisitorAnalyticsResponse(BaseModel):
+    """Schema for visitor analytics stats."""
+
+    # Overall stats
+    total_unique_visitors: int  # Unique IPs all time
+    total_unique_devices: int  # Unique browser fingerprints all time
+    total_comparisons: int  # Total usage log entries
+    
+    # Time-based unique visitors
+    unique_visitors_today: int
+    unique_visitors_this_week: int
+    unique_visitors_this_month: int
+    
+    # Authenticated vs anonymous breakdown
+    authenticated_visitors: int  # Visitors with user_id
+    anonymous_visitors: int  # Visitors without user_id
+    
+    # Daily breakdown (last 30 days)
+    daily_breakdown: List[Dict[str, Any]]  # [{date, unique_visitors, total_comparisons}]
+    
+    # Recent activity
+    comparisons_today: int
+    comparisons_this_week: int
+    comparisons_this_month: int

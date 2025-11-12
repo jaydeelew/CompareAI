@@ -239,31 +239,71 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
     - Requires active account (but not verified email)
     - Rate limited: 5 attempts per 15 minutes per IP
     """
-    client_ip = get_client_ip(request)
+    import time
+    start_time = time.time()
+    print(f"[LOGIN] Login request received at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"[LOGIN] Email: {user_data.email}")
     
-    # Check rate limiting before processing login
-    check_login_rate_limit(client_ip)
-    
-    user = db.query(User).filter(User.email == user_data.email).first()
+    try:
+        client_ip = get_client_ip(request)
+        print(f"[LOGIN] Client IP: {client_ip}")
+        
+        # Check rate limiting before processing login
+        print(f"[LOGIN] Checking rate limit...")
+        check_login_rate_limit(client_ip)
+        print(f"[LOGIN] Rate limit check passed")
+        
+        print(f"[LOGIN] Querying database for user...")
+        db_start = time.time()
+        user = db.query(User).filter(User.email == user_data.email).first()
+        db_duration = time.time() - db_start
+        print(f"[LOGIN] Database query completed in {db_duration:.3f}s")
+        
+        if not user:
+            print(f"[LOGIN] User not found")
+            record_failed_login(client_ip)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        
+        print(f"[LOGIN] User found: {user.email}, verifying password...")
+        verify_start = time.time()
+        password_valid = verify_password(user_data.password, user.password_hash)
+        verify_duration = time.time() - verify_start
+        print(f"[LOGIN] Password verification completed in {verify_duration:.3f}s, result: {password_valid}")
 
-    if not user or not verify_password(user_data.password, user.password_hash):
-        # Record failed attempt
-        record_failed_login(client_ip)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        if not password_valid:
+            print(f"[LOGIN] Password verification failed")
+            record_failed_login(client_ip)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
-    if not user.is_active:
-        # Record failed attempt (account inactive)
-        record_failed_login(client_ip)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+        if not user.is_active:
+            print(f"[LOGIN] Account is inactive")
+            record_failed_login(client_ip)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
-    # Clear failed attempts on successful login
-    clear_login_attempts(client_ip)
+        # Clear failed attempts on successful login
+        clear_login_attempts(client_ip)
 
-    # Create tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+        # Create tokens
+        print(f"[LOGIN] Creating tokens...")
+        token_start = time.time()
+        access_token = create_access_token(data={"sub": str(user.id)})
+        refresh_token = create_refresh_token(data={"sub": str(user.id)})
+        token_duration = time.time() - token_start
+        print(f"[LOGIN] Token creation completed in {token_duration:.3f}s")
 
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        total_duration = time.time() - start_time
+        print(f"[LOGIN] Login successful, total time: {total_duration:.3f}s")
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    except HTTPException:
+        total_duration = time.time() - start_time
+        print(f"[LOGIN] Login failed (HTTPException), total time: {total_duration:.3f}s")
+        raise
+    except Exception as e:
+        total_duration = time.time() - start_time
+        print(f"[LOGIN] Login error after {total_duration:.3f}s: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 @router.post("/refresh", response_model=TokenResponse)
