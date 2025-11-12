@@ -34,6 +34,7 @@ Feature-specific documentation:
 - **[Tab Streaming](features/TAB_STREAMING_SOLUTION.md)** - Tab-based streaming solution
 - **[Image Optimization](features/IMAGE_OPTIMIZATION.md)** - Image optimization and lazy loading
 - **[Support Email](features/SUPPORT_EMAIL_IMPLEMENTATION.md)** - Support email system
+- **[Model-Specific Rendering](features/MODEL_SPECIFIC_RENDERING.md)** - Implementation guide for model-specific LaTeX, markdown, and formatting rendering
 
 ### Planning
 Planning and analysis documents:
