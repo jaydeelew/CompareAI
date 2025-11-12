@@ -193,27 +193,16 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
         {showHistoryDropdown && (() => {
           const shouldHideScrollbar = historyLimit <= 3;
           
+          // Calculate max height based on user tier
+          // Each entry: 1rem top padding (16px) + content (~23px prompt + 8px margin + ~15px meta) + 1rem bottom padding (16px) ≈ 78px
+          // Plus borders between items (1px each)
+          // For 2 entries (anonymous): 2 * 78px + 1px border = 157px, using 165px to ensure full visibility
+          // For 3 entries (free+): 3 * 78px + 2px borders = 236px, using 250px to ensure full visibility
           const getMaxHeight = () => {
-            const displayedCount = Math.min(conversationHistory.length, historyLimit);
-            const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-            const tierLimits: { [key: string]: number } = {
-              anonymous: 2,
-              free: 3,
-              starter: 10,
-              starter_plus: 20,
-              pro: 50,
-              pro_plus: 100,
-            };
-            const tierLimit = tierLimits[userTier] || 2;
-            const isShowingMessage = displayedCount === tierLimit;
-
             if (historyLimit === 2) {
-              return isShowingMessage ? '230px' : '170px';
+              return '165px'; // Height for exactly 2 entries (anonymous tier)
             }
-            if (historyLimit === 3) {
-              return isShowingMessage ? '315px' : '255px';
-            }
-            return isShowingMessage ? '360px' : '300px';
+            return '250px'; // Height for exactly 3 entries (free tier and above)
           };
 
           return (
