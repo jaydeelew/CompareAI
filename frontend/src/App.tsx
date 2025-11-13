@@ -614,6 +614,25 @@ function AppContent() {
       return;
     }
 
+    // Check if formatted tab is active, if not temporarily switch to it for copying
+    // Use type assertion to handle string indexing into ActiveResultTabs
+    const currentTab = (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED;
+    const needsTabSwitch = currentTab !== RESULT_TAB.FORMATTED;
+
+    if (needsTabSwitch) {
+      // Temporarily switch to formatted tab to render formatted content
+      switchResultTab(modelId, RESULT_TAB.FORMATTED);
+      // Wait for DOM to update and formatted content to render
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Additional delay to ensure LatexRenderer has rendered
+            setTimeout(resolve, 100);
+          });
+        });
+      });
+    }
+
     // Show immediate feedback and store notification controller to update it when done
     const copyingNotification = showNotification('Copying screenshot...', 'success');
 
@@ -682,6 +701,11 @@ function AppContent() {
       // Restore original styles
       content.style.overflow = prevOverflow;
       content.style.maxHeight = prevMaxHeight;
+
+      // Restore original tab if we switched it
+      if (needsTabSwitch) {
+        switchResultTab(modelId, currentTab);
+      }
     }
   };
 
