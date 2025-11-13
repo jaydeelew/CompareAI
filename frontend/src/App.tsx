@@ -48,7 +48,7 @@ import {
   formatNumber,
   formatConversationMessage,
 } from './utils';
-import { isErrorMessage, type NotificationController } from './utils/error';
+import { isErrorMessage } from './utils/error';
 import {
   getAnonymousMockModeStatus,
   getRateLimitStatus,
