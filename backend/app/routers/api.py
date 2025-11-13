@@ -16,8 +16,20 @@ import asyncio
 import json
 import os
 
-from ..model_runner import OPENROUTER_MODELS, MODELS_BY_PROVIDER, run_models, call_openrouter_streaming, clean_model_response
-from ..models import User, UsageLog, AppSettings, Conversation, ConversationMessage as ConversationMessageModel
+from ..model_runner import (
+    OPENROUTER_MODELS,
+    MODELS_BY_PROVIDER,
+    run_models,
+    call_openrouter_streaming,
+    clean_model_response,
+)
+from ..models import (
+    User,
+    UsageLog,
+    AppSettings,
+    Conversation,
+    ConversationMessage as ConversationMessageModel,
+)
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas import ConversationSummary, ConversationDetail
@@ -42,7 +54,9 @@ router = APIRouter(tags=["API"])
 
 # In-memory storage for model performance tracking
 # This is shared with main.py via import
-model_stats: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None})
+model_stats: Dict[str, Dict[str, Any]] = defaultdict(
+    lambda: {"success": 0, "failure": 0, "last_error": None, "last_success": None}
+)
 
 # Import configuration constants
 from ..config import (
@@ -61,13 +75,10 @@ from ..config import (
 class ConversationMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
-    
+
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "role": "user",
-                "content": "What is artificial intelligence?"
-            }
+            "example": {"role": "user", "content": "What is artificial intelligence?"}
         }
     )
 
@@ -78,25 +89,21 @@ class CompareRequest(BaseModel):
     conversation_history: list[ConversationMessage] = []  # Optional conversation context
     browser_fingerprint: Optional[str] = None  # Optional browser fingerprint for rate limiting
     tier: str = "standard"  # standard, extended
-    conversation_id: Optional[int] = None  # Optional conversation ID for follow-ups (most reliable matching)
-    
+    conversation_id: Optional[int] = (
+        None  # Optional conversation ID for follow-ups (most reliable matching)
+    )
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "input_data": "Explain quantum computing in simple terms",
                 "models": ["openai/gpt-4", "anthropic/claude-3-opus", "google/gemini-pro"],
                 "conversation_history": [
-                    {
-                        "role": "user",
-                        "content": "What is AI?"
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "AI stands for Artificial Intelligence..."
-                    }
+                    {"role": "user", "content": "What is AI?"},
+                    {"role": "assistant", "content": "AI stands for Artificial Intelligence..."},
                 ],
                 "tier": "standard",
-                "conversation_id": 123
+                "conversation_id": 123,
             }
         }
     )
@@ -105,21 +112,21 @@ class CompareRequest(BaseModel):
 class CompareResponse(BaseModel):
     results: dict[str, str]
     metadata: dict[str, Any]
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "results": {
                     "openai/gpt-4": "Quantum computing is a type of computing that uses quantum mechanical phenomena...",
                     "anthropic/claude-3-opus": "Quantum computing leverages quantum mechanics to process information...",
-                    "google/gemini-pro": "Quantum computing uses quantum bits (qubits) instead of classical bits..."
+                    "google/gemini-pro": "Quantum computing uses quantum bits (qubits) instead of classical bits...",
                 },
                 "metadata": {
                     "processing_time_ms": 3500,
                     "models_successful": 3,
                     "models_failed": 0,
-                    "estimated_cost": 0.012
-                }
+                    "estimated_cost": 0.012,
+                },
             }
         }
     )
@@ -168,14 +175,14 @@ def log_usage_to_db(usage_log: UsageLog, db: Session) -> None:
 async def get_available_models() -> Dict[str, Any]:
     """
     Get list of available AI models.
-    
+
     OPTIMIZATION: Uses caching since model list is static data.
     """
     from ..cache import get_cached_models, CACHE_KEY_MODELS
-    
+
     def get_models():
         return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
-    
+
     return get_cached_models(get_models)
 
 
@@ -184,43 +191,45 @@ async def get_anonymous_mock_mode_status(db: Session = Depends(get_db)):
     """
     Public endpoint to check if anonymous mock mode is enabled.
     Only returns status in development environment.
-    
+
     OPTIMIZATION: Uses caching to avoid repeated database queries.
     """
     is_development = os.environ.get("ENVIRONMENT") == "development"
-    
+
     if not is_development:
         return {"anonymous_mock_mode_enabled": False, "is_development": False}
-    
+
     # Use cache to avoid repeated database queries
     from ..cache import get_cached_app_settings, CACHE_KEY_APP_SETTINGS
-    
+
     def get_settings():
         return db.query(AppSettings).first()
-    
+
     settings = get_cached_app_settings(get_settings)
-    
+
     # If no settings exist yet, create default ones
     if not settings:
-        settings = AppSettings(
-            anonymous_mock_mode_enabled=False
-        )
+        settings = AppSettings(anonymous_mock_mode_enabled=False)
         db.add(settings)
         db.commit()
         db.refresh(settings)
         # Invalidate cache after creating new settings
         from ..cache import invalidate_app_settings_cache
+
         invalidate_app_settings_cache()
-    
+
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
-        "is_development": True
+        "is_development": True,
     }
 
 
 @router.get("/rate-limit-status")
 async def get_rate_limit_status(
-    request: Request, fingerprint: Optional[str] = None, current_user: Optional[User] = Depends(get_current_user), db: Session = Depends(get_db)
+    request: Request,
+    fingerprint: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Get current rate limit status for the client.
@@ -294,7 +303,9 @@ async def reset_rate_limit_dev(
     """
     # Only allow in development mode
     if os.environ.get("ENVIRONMENT") != "development":
-        raise HTTPException(status_code=403, detail="This endpoint is only available in development mode")
+        raise HTTPException(
+            status_code=403, detail="This endpoint is only available in development mode"
+        )
 
     client_ip = get_client_ip(request)
     deleted_count = 0
@@ -305,9 +316,11 @@ async def reset_rate_limit_dev(
         current_user.daily_usage_count = 0
         current_user.monthly_overage_count = 0
         current_user.daily_extended_usage = 0
-        
+
         # Delete only this user's conversations (messages deleted via cascade)
-        deleted_count = db.query(Conversation).filter(Conversation.user_id == current_user.id).delete()
+        deleted_count = (
+            db.query(Conversation).filter(Conversation.user_id == current_user.id).delete()
+        )
         db.commit()
 
     # For anonymous users: reset IP-based rate limits
@@ -337,13 +350,16 @@ async def reset_rate_limit_dev(
         "ip_address": client_ip,
         "fingerprint_reset": fingerprint is not None,
         "conversations_deleted": deleted_count,
-        "user_type": "authenticated" if current_user else "anonymous"
+        "user_type": "authenticated" if current_user else "anonymous",
     }
 
 
 @router.post("/compare")
 async def compare(
-    req: CompareRequest, request: Request, db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_current_user)
+    req: CompareRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
 ) -> CompareResponse:
     """
     Compare AI models with hybrid rate limiting.
@@ -385,7 +401,9 @@ async def compare(
         upgrade_message = ""
         if tier_name == "anonymous":
             free_model_limit = get_model_limit("free")
-            upgrade_message = f" Sign up for a free account to compare up to {free_model_limit} models."
+            upgrade_message = (
+                f" Sign up for a free account to compare up to {free_model_limit} models."
+            )
         elif tier_name == "free":
             starter_model_limit = get_model_limit("starter")
             pro_model_limit = get_model_limit("pro")
@@ -427,7 +445,9 @@ async def compare(
                 # Track overage model responses for future billing
                 current_user.monthly_overage_count += models_over_limit
 
-                print(f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses (pricing TBD)")
+                print(
+                    f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses (pricing TBD)"
+                )
             else:
                 # Free tier - no overages allowed
                 models_available = max(0, daily_limit - usage_count)
@@ -442,9 +462,7 @@ async def compare(
         # Don't increment here - wait until we know if requests succeeded
         # Will be incremented below based on successful_models count
         if is_overage:
-            print(
-                f"Authenticated user {current_user.email} - Overage requested"
-            )
+            print(f"Authenticated user {current_user.email} - Overage requested")
     else:
         # Anonymous user - check IP/fingerprint limits (model response based)
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
@@ -452,7 +470,9 @@ async def compare(
         fingerprint_allowed = True
         fingerprint_count = 0
         if req.browser_fingerprint:
-            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
+            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(
+                f"fp:{req.browser_fingerprint}"
+            )
 
         # Check if user has enough model responses remaining
         if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
@@ -465,12 +485,14 @@ async def compare(
             )
 
         # Check if this request would exceed the limit
-        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT):
+        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (
+            req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT
+        ):
             models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
             free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
+                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and chose {num_models}. "
                 f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
@@ -483,7 +505,9 @@ async def compare(
     if req.tier == "extended":
         if current_user:
             # Check Extended tier limit for authenticated users
-            extended_allowed, extended_count, extended_limit = check_extended_tier_limit(current_user, db)
+            extended_allowed, extended_count, extended_limit = check_extended_tier_limit(
+                current_user, db
+            )
 
             if not extended_allowed:
                 raise HTTPException(
@@ -498,16 +522,20 @@ async def compare(
             )
         else:
             # Check Extended tier limit for anonymous users
-            ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(f"ip:{client_ip}")
+            ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(
+                f"ip:{client_ip}"
+            )
             fingerprint_extended_allowed = True
             fingerprint_extended_count = 0
 
             if req.browser_fingerprint:
-                fingerprint_extended_allowed, fingerprint_extended_count = check_anonymous_extended_limit(
-                    f"fp:{req.browser_fingerprint}"
+                fingerprint_extended_allowed, fingerprint_extended_count = (
+                    check_anonymous_extended_limit(f"fp:{req.browser_fingerprint}")
                 )
 
-            if not ip_extended_allowed or (req.browser_fingerprint and not fingerprint_extended_allowed):
+            if not ip_extended_allowed or (
+                req.browser_fingerprint and not fingerprint_extended_allowed
+            ):
                 extended_available = max(0, 2 - max(ip_extended_count, fingerprint_extended_count))
                 raise HTTPException(
                     status_code=429,
@@ -524,7 +552,7 @@ async def compare(
     # Check if mock mode is enabled for this user
     is_development = os.environ.get("ENVIRONMENT") == "development"
     use_mock = False
-    
+
     if current_user:
         # Check if mock mode is enabled for this authenticated user
         if current_user.mock_mode_enabled and is_development:
@@ -533,8 +561,10 @@ async def compare(
         # Check if global anonymous mock mode is enabled (development only)
         if is_development:
             from ..cache import get_cached_app_settings
+
             def get_settings():
                 return db.query(AppSettings).first()
+
             settings = get_cached_app_settings(get_settings)
             if settings and settings.anonymous_mock_mode_enabled:
                 use_mock = True
@@ -547,10 +577,14 @@ async def compare(
             # Mock mode: Create fake successful results
             results = {}
             for model_id in req.models:
-                results[model_id] = f"[MOCK MODE] This is a test response for {model_id}. Mock mode is enabled for testing."
+                results[model_id] = (
+                    f"[MOCK MODE] This is a test response for {model_id}. Mock mode is enabled for testing."
+                )
         else:
             loop = asyncio.get_running_loop()
-            results = await loop.run_in_executor(None, run_models, req.input_data, req.models, req.tier, req.conversation_history)
+            results = await loop.run_in_executor(
+                None, run_models, req.input_data, req.models, req.tier, req.conversation_history
+            )
 
         # Count successful vs failed models
         successful_models = 0
@@ -576,8 +610,10 @@ async def compare(
             else:
                 increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                 if req.browser_fingerprint:
-                    increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-            
+                    increment_anonymous_usage(
+                        f"fp:{req.browser_fingerprint}", count=successful_models
+                    )
+
             # Increment extended usage - only count 1 per request regardless of model count
             if req.tier == "extended":
                 if current_user:
@@ -687,7 +723,9 @@ async def compare_stream(
         upgrade_message = ""
         if tier_name == "anonymous":
             free_model_limit = get_model_limit("free")
-            upgrade_message = f" Sign up for a free account to compare up to {free_model_limit} models."
+            upgrade_message = (
+                f" Sign up for a free account to compare up to {free_model_limit} models."
+            )
         elif tier_name == "free":
             starter_model_limit = get_model_limit("starter")
             pro_model_limit = get_model_limit("pro")
@@ -720,7 +758,9 @@ async def compare_stream(
                 is_overage = True
                 overage_charge = 0.0
                 current_user.monthly_overage_count += models_over_limit
-                print(f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses")
+                print(
+                    f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses"
+                )
             else:
                 models_available = max(0, daily_limit - usage_count)
                 raise HTTPException(
@@ -736,7 +776,9 @@ async def compare_stream(
         fingerprint_allowed = True
         fingerprint_count = 0
         if req.browser_fingerprint:
-            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(f"fp:{req.browser_fingerprint}")
+            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(
+                f"fp:{req.browser_fingerprint}"
+            )
 
         if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
             models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
@@ -746,12 +788,14 @@ async def compare_stream(
                 detail=f"Daily limit of {ANONYMOUS_DAILY_LIMIT} model responses exceeded. Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
-        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT):
+        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (
+            req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT
+        ):
             models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
             free_tier_limit = get_daily_limit("free")
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and need {num_models}. "
+                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and chose {num_models}. "
                 f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
             )
 
@@ -761,24 +805,33 @@ async def compare_stream(
     # --- EXTENDED TIER LIMITING (same as regular endpoint) ---
     if req.tier == "extended":
         if current_user:
-            extended_allowed, extended_count, extended_limit = check_extended_tier_limit(current_user, db)
+            extended_allowed, extended_count, extended_limit = check_extended_tier_limit(
+                current_user, db
+            )
             if not extended_allowed:
-                raise HTTPException(status_code=429, detail=f"Daily Extended tier limit of {extended_limit} exceeded.")
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Daily Extended tier limit of {extended_limit} exceeded.",
+                )
             # Don't increment here - wait until we know requests succeeded
             print(
                 f"Authenticated user {current_user.email} - Extended usage: {extended_count}/{extended_limit} (will increment after success)"
             )
         else:
-            ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(f"ip:{client_ip}")
+            ip_extended_allowed, ip_extended_count = check_anonymous_extended_limit(
+                f"ip:{client_ip}"
+            )
             fingerprint_extended_allowed = True
             fingerprint_extended_count = 0
 
             if req.browser_fingerprint:
-                fingerprint_extended_allowed, fingerprint_extended_count = check_anonymous_extended_limit(
-                    f"fp:{req.browser_fingerprint}"
+                fingerprint_extended_allowed, fingerprint_extended_count = (
+                    check_anonymous_extended_limit(f"fp:{req.browser_fingerprint}")
                 )
 
-            if not ip_extended_allowed or (req.browser_fingerprint and not fingerprint_extended_allowed):
+            if not ip_extended_allowed or (
+                req.browser_fingerprint and not fingerprint_extended_allowed
+            ):
                 raise HTTPException(
                     status_code=429,
                     detail=f"Daily Extended tier limit of 2 exceeded. Sign up for a free account to get 5 Extended interactions per day.",
@@ -802,7 +855,7 @@ async def compare_stream(
 
     # Track start time for processing metrics
     start_time = datetime.now()
-    
+
     # Store user ID for use inside generator (avoid session detachment issues)
     user_id = current_user.id if current_user else None
 
@@ -824,7 +877,7 @@ async def compare_stream(
         # Check if mock mode is enabled for this user
         is_development = os.environ.get("ENVIRONMENT") == "development"
         use_mock = False
-        
+
         if current_user:
             # Check if mock mode is enabled for this authenticated user
             if current_user.mock_mode_enabled:
@@ -835,8 +888,10 @@ async def compare_stream(
             is_development = os.environ.get("ENVIRONMENT") == "development"
             if is_development:
                 from ..cache import get_cached_app_settings
+
                 def get_settings():
                     return db.query(AppSettings).first()
+
                 settings = get_cached_app_settings(get_settings)
                 if settings and settings.anonymous_mock_mode_enabled:
                     use_mock = True
@@ -871,17 +926,27 @@ async def compare_stream(
                         count = 0
                         try:
                             for chunk in call_openrouter_streaming(
-                                req.input_data, model_id, req.tier, req.conversation_history, use_mock
+                                req.input_data,
+                                model_id,
+                                req.tier,
+                                req.conversation_history,
+                                use_mock,
                             ):
                                 content += chunk
                                 count += 1
 
                                 # Push chunk to async queue (thread-safe)
                                 asyncio.run_coroutine_threadsafe(
-                                    chunk_queue.put({"type": "chunk", "model": model_id, "content": chunk, "chunk_count": count}),
+                                    chunk_queue.put(
+                                        {
+                                            "type": "chunk",
+                                            "model": model_id,
+                                            "content": chunk,
+                                            "chunk_count": count,
+                                        }
+                                    ),
                                     loop,
                                 )
-
 
                             return content, False  # content, is_error
 
@@ -889,12 +954,17 @@ async def compare_stream(
                             error_msg = f"Error: {str(e)[:100]}"
                             # Push error as chunk
                             asyncio.run_coroutine_threadsafe(
-                                chunk_queue.put({"type": "chunk", "model": model_id, "content": error_msg}), loop
+                                chunk_queue.put(
+                                    {"type": "chunk", "model": model_id, "content": error_msg}
+                                ),
+                                loop,
                             )
                             return error_msg, True  # error_msg, is_error
 
                     # Run streaming in executor (allows true concurrent execution)
-                    full_content, is_error = await loop.run_in_executor(None, process_stream_to_queue)
+                    full_content, is_error = await loop.run_in_executor(
+                        None, process_stream_to_queue
+                    )
 
                     # Clean the final accumulated content (unless it's an error)
                     if not is_error:
@@ -912,7 +982,9 @@ async def compare_stream(
                     error_msg = f"Error: {str(e)[:100]}"
 
                     # Put error in queue as chunk
-                    await chunk_queue.put({"type": "chunk", "model": model_id, "content": error_msg})
+                    await chunk_queue.put(
+                        {"type": "chunk", "model": model_id, "content": error_msg}
+                    )
 
                     return {"model": model_id, "content": error_msg, "error": True}
 
@@ -971,30 +1043,38 @@ async def compare_stream(
             # In mock mode, all models are considered successful for counting purposes
             # Create a fresh database session to avoid detachment issues
             from ..database import SessionLocal
-            
+
             if successful_models > 0:
                 # Increment regular usage count
                 if user_id:
                     # Create new session and query user fresh
                     increment_db = SessionLocal()
                     try:
-                        increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
+                        increment_user_obj = (
+                            increment_db.query(User).filter(User.id == user_id).first()
+                        )
                         if increment_user_obj:
-                            increment_user_usage(increment_user_obj, increment_db, count=successful_models)
+                            increment_user_usage(
+                                increment_user_obj, increment_db, count=successful_models
+                            )
                     finally:
                         increment_db.close()
                 else:
                     increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
                     if req.browser_fingerprint:
-                        increment_anonymous_usage(f"fp:{req.browser_fingerprint}", count=successful_models)
-                
+                        increment_anonymous_usage(
+                            f"fp:{req.browser_fingerprint}", count=successful_models
+                        )
+
                 # Increment extended usage - only count 1 per request regardless of model count
                 if req.tier == "extended":
                     if user_id:
                         # Create new session for extended increment
                         increment_db = SessionLocal()
                         try:
-                            increment_user_obj = increment_db.query(User).filter(User.id == user_id).first()
+                            increment_user_obj = (
+                                increment_db.query(User).filter(User.id == user_id).first()
+                            )
                             if increment_user_obj:
                                 increment_extended_usage(increment_user_obj, increment_db, count=1)
                         finally:
@@ -1002,7 +1082,9 @@ async def compare_stream(
                     else:
                         increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
                         if req.browser_fingerprint:
-                            increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+                            increment_anonymous_extended_usage(
+                                f"fp:{req.browser_fingerprint}", count=1
+                            )
 
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
@@ -1040,13 +1122,16 @@ async def compare_stream(
 
             # Save conversation to database for authenticated users
             if user_id and successful_models > 0:
+
                 def save_conversation_to_db():
                     """Save conversation and messages to database."""
                     conv_db = SessionLocal()
                     try:
                         # Determine if this is a follow-up or new conversation
-                        is_follow_up = bool(req.conversation_history and len(req.conversation_history) > 0)
-                        
+                        is_follow_up = bool(
+                            req.conversation_history and len(req.conversation_history) > 0
+                        )
+
                         # Try to find existing conversation if this is a follow-up
                         existing_conversation = None
                         if is_follow_up:
@@ -1056,13 +1141,13 @@ async def compare_stream(
                                     conv_db.query(Conversation)
                                     .filter(
                                         Conversation.id == req.conversation_id,
-                                        Conversation.user_id == user_id
+                                        Conversation.user_id == user_id,
                                     )
                                     .first()
                                 )
                                 if conversation_by_id:
                                     existing_conversation = conversation_by_id
-                            
+
                             # Method 2: If no conversation_id provided, match by models + input_data + timestamp
                             if not existing_conversation:
                                 # Extract the original input_data (first user message) from conversation history
@@ -1070,13 +1155,13 @@ async def compare_stream(
                                 original_input_data = None
                                 first_message_timestamp = None
                                 for msg in req.conversation_history:
-                                    if msg.role == 'user':
+                                    if msg.role == "user":
                                         original_input_data = msg.content
                                         # Try to get timestamp if available (from message metadata)
                                         # Note: conversation_history doesn't include timestamps by default,
                                         # but we can use this for future enhancement
                                         break
-                                
+
                                 # Find conversation with matching models AND original input_data
                                 # This ensures follow-ups are added to the correct conversation,
                                 # even if multiple conversations use the same models
@@ -1087,24 +1172,29 @@ async def compare_stream(
                                     .order_by(Conversation.updated_at.desc())
                                     .all()
                                 )
-                                
+
                                 for conv in all_user_conversations:
                                     try:
-                                        conv_models = json.loads(conv.models_used) if conv.models_used else []
+                                        conv_models = (
+                                            json.loads(conv.models_used) if conv.models_used else []
+                                        )
                                         # Match by models AND original input_data to ensure correct conversation
                                         models_match = sorted(conv_models) == req_models_sorted
-                                        input_matches = original_input_data and conv.input_data == original_input_data
-                                        
+                                        input_matches = (
+                                            original_input_data
+                                            and conv.input_data == original_input_data
+                                        )
+
                                         # Additional safeguard: if timestamps are available in future,
                                         # we could also match by comparing conversation.created_at with
                                         # the timestamp of the first user message
-                                        
+
                                         if models_match and input_matches:
                                             existing_conversation = conv
                                             break
                                     except (json.JSONDecodeError, TypeError):
                                         continue
-                        
+
                         # Create or update conversation
                         if existing_conversation:
                             conversation = existing_conversation
@@ -1118,7 +1208,7 @@ async def compare_stream(
                             )
                             conv_db.add(conversation)
                             conv_db.flush()  # Get the ID
-                        
+
                         # Save user message (current prompt)
                         # For new conversations, this is the first message
                         # For follow-ups, this is the new user prompt
@@ -1129,7 +1219,7 @@ async def compare_stream(
                             model_id=None,
                         )
                         conv_db.add(user_msg)
-                        
+
                         # Save assistant messages for each successful model
                         messages_saved = 0
                         for model_id, content in results_dict.items():
@@ -1144,16 +1234,16 @@ async def compare_stream(
                                 )
                                 conv_db.add(assistant_msg)
                                 messages_saved += 1
-                        
+
                         conv_db.commit()
-                        
+
                         # Enforce tier-based conversation limits
                         # Store exactly display_limit conversations (no longer need +1 since we don't filter in frontend)
                         user_obj = conv_db.query(User).filter(User.id == user_id).first()
                         tier = user_obj.subscription_tier if user_obj else "free"
                         display_limit = get_conversation_limit(tier)
                         storage_limit = display_limit  # Store exactly the display limit
-                        
+
                         # Get all conversations for user
                         all_conversations = (
                             conv_db.query(Conversation)
@@ -1161,7 +1251,7 @@ async def compare_stream(
                             .order_by(Conversation.created_at.desc())
                             .all()
                         )
-                        
+
                         # Delete oldest conversations if over storage limit
                         if len(all_conversations) > storage_limit:
                             conversations_to_delete = all_conversations[storage_limit:]
@@ -1169,14 +1259,15 @@ async def compare_stream(
                             for conv_to_delete in conversations_to_delete:
                                 conv_db.delete(conv_to_delete)
                             conv_db.commit()
-                            
+
                     except Exception as e:
                         import traceback
+
                         # Log error silently (errors should be handled by proper logging infrastructure)
                         conv_db.rollback()
                     finally:
                         conv_db.close()
-                
+
                 # Save conversation - execute in thread executor to avoid blocking stream
                 # Background tasks don't execute reliably with StreamingResponse, so we run it here
                 loop = asyncio.get_event_loop()
@@ -1189,7 +1280,6 @@ async def compare_stream(
             error_msg = f"Error: {str(e)[:200]}"
             print(f"Error in generate_stream: {error_msg}")
             yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
-
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
@@ -1215,7 +1305,7 @@ async def get_conversations(
         .order_by(Conversation.created_at.desc())
         .all()
     )
-    
+
     # Clean up any conversations beyond the limit (in case deletion left extra conversations)
     if len(all_conversations) > display_limit:
         conversations_to_delete = all_conversations[display_limit:]
@@ -1223,7 +1313,7 @@ async def get_conversations(
         for conv_to_delete in conversations_to_delete:
             db.delete(conv_to_delete)
         db.commit()
-    
+
     # Get user's conversations ordered by created_at DESC, limited to display_limit
     conversations = (
         db.query(Conversation)
@@ -1240,10 +1330,11 @@ async def get_conversations(
     if conversation_ids:
         # Single query to get all message counts
         from sqlalchemy import func
+
         count_results = (
             db.query(
                 ConversationMessageModel.conversation_id,
-                func.count(ConversationMessageModel.id).label("count")
+                func.count(ConversationMessageModel.id).label("count"),
             )
             .filter(ConversationMessageModel.conversation_id.in_(conversation_ids))
             .group_by(ConversationMessageModel.conversation_id)
@@ -1315,6 +1406,7 @@ async def get_conversation(
 
     # Convert messages to schema format
     from ..schemas import ConversationMessage as ConversationMessageSchema
+
     message_schemas = [
         ConversationMessageSchema(
             id=msg.id,

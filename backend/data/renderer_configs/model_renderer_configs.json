@@ -4,14 +4,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -62,14 +62,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -120,14 +120,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -178,7 +178,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       },
@@ -190,7 +190,7 @@
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -246,14 +246,14 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -304,7 +304,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       },
@@ -316,7 +316,7 @@
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -367,7 +367,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
@@ -379,7 +379,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -435,7 +435,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -447,7 +447,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -503,7 +503,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -515,7 +515,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -571,7 +571,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -583,7 +583,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -639,7 +639,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -651,7 +651,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -702,14 +702,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -760,14 +760,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -818,7 +818,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
@@ -830,7 +830,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -881,14 +881,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -939,7 +939,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       },
@@ -956,7 +956,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1007,7 +1007,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
@@ -1019,7 +1019,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1070,14 +1070,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -1128,14 +1128,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -1191,7 +1191,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1203,7 +1203,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1259,7 +1259,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1271,7 +1271,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1327,7 +1327,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1339,7 +1339,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1395,7 +1395,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1407,7 +1407,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1463,7 +1463,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1475,7 +1475,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1531,7 +1531,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1543,7 +1543,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1599,7 +1599,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1611,7 +1611,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1662,14 +1662,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -1720,7 +1720,7 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
@@ -1732,7 +1732,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1788,7 +1788,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -1800,7 +1800,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -1851,14 +1851,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -1909,14 +1909,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -1972,14 +1972,14 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2030,14 +2030,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2093,7 +2093,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2105,7 +2105,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2161,7 +2161,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2173,7 +2173,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2229,7 +2229,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2241,7 +2241,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2297,7 +2297,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2309,7 +2309,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2360,14 +2360,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2423,7 +2423,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2435,7 +2435,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2491,7 +2491,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2503,7 +2503,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2554,14 +2554,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2617,14 +2617,14 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2680,14 +2680,14 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2743,7 +2743,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -2755,7 +2755,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -2806,14 +2806,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2864,14 +2864,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2927,14 +2927,14 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -2985,14 +2985,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -3043,14 +3043,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -3101,14 +3101,14 @@
     "version": "1.0.0",
     "displayMathDelimiters": [
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 1
       }
     ],
     "inlineMathDelimiters": [
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 1
       }
@@ -3164,7 +3164,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -3176,7 +3176,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
@@ -3232,7 +3232,7 @@
         "priority": 1
       },
       {
-        "pattern": "/\\$\\$([^\\$]+?)\\$\\$/gs",
+        "pattern": "/\\$\\$([^$]+?)\\$\\$/gs",
         "name": "double-dollar",
         "priority": 2
       }
@@ -3244,7 +3244,7 @@
         "priority": 1
       },
       {
-        "pattern": "/(?<!\\$)\\$([^\\$\\n]+?)\\$(?!\\$)/g",
+        "pattern": "/(?<!\\$)\\$([^$\\n]+?)\\$(?!\\$)/g",
         "name": "single-dollar",
         "priority": 2
       }
