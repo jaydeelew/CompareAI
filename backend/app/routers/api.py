@@ -5,7 +5,7 @@ This module contains the main application endpoints like /models, /compare, etc.
 that are used by the frontend for the core AI comparison functionality.
 """
 
-from fastapi import APIRouter, Request, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Request, Depends, HTTPException, status, BackgroundTasks, Body
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, Union
@@ -113,23 +113,9 @@ class CompareResponse(BaseModel):
     results: dict[str, str]
     metadata: dict[str, Any]
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "results": {
-                    "openai/gpt-4": "Quantum computing is a type of computing that uses quantum mechanical phenomena...",
-                    "anthropic/claude-3-opus": "Quantum computing leverages quantum mechanics to process information...",
-                    "google/gemini-pro": "Quantum computing uses quantum bits (qubits) instead of classical bits...",
-                },
-                "metadata": {
-                    "processing_time_ms": 3500,
-                    "models_successful": 3,
-                    "models_failed": 0,
-                    "estimated_cost": 0.012,
-                },
-            }
-        }
-    )
+
+class ResetRateLimitRequest(BaseModel):
+    fingerprint: Optional[str] = None
 
 
 # Helper functions
@@ -291,7 +277,7 @@ async def get_model_stats():
 @router.post("/dev/reset-rate-limit")
 async def reset_rate_limit_dev(
     request: Request,
-    fingerprint: Optional[str] = None,
+    req_body: ResetRateLimitRequest,
     current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -335,6 +321,7 @@ async def reset_rate_limit_dev(
         del anonymous_rate_limit_storage[ip_extended_key]
 
     # Reset fingerprint-based rate limit if provided
+    fingerprint = req_body.fingerprint
     if fingerprint:
         fp_key = f"fp:{fingerprint}"
         if fp_key in anonymous_rate_limit_storage:

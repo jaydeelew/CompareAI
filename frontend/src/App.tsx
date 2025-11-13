@@ -826,6 +826,9 @@ function AppContent() {
           } else {
             setCurrentVisibleComparisonId(null);
           }
+
+          // Fetch updated rate limit status from backend to sync usage counts
+          await fetchRateLimitStatus();
         }
       } catch (error) {
         if (error instanceof ApiError) {
