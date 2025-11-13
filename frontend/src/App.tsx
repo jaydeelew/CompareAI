@@ -614,6 +614,9 @@ function AppContent() {
       return;
     }
 
+    // Show immediate feedback
+    showNotification('Copying screenshot...', 'success');
+
     // Store original styles that we'll modify
     const prevOverflow = content.style.overflow;
     const prevMaxHeight = content.style.maxHeight;
@@ -622,19 +625,25 @@ function AppContent() {
     content.style.overflow = 'visible';
     content.style.maxHeight = 'none';
 
-    // Force a repaint to ensure all styles are applied
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     try {
-      // Dynamically import html-to-image
-      const htmlToImage = await import("html-to-image");
+      // Start importing the library and waiting for repaint in parallel for faster processing
+      const [htmlToImage] = await Promise.all([
+        import("html-to-image"),
+        // Use requestAnimationFrame for better timing - ensures browser has painted
+        new Promise<void>(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => resolve());
+          });
+        })
+      ]);
+
       const toBlob = htmlToImage.toBlob;
 
       // Use html-to-image which typically preserves colors better
       const blob = await toBlob(content, {
         pixelRatio: 2, // High quality
         backgroundColor: '#ffffff',
-        cacheBust: true,
+        // Removed cacheBust for faster processing (not needed for DOM elements)
         style: {
           // Ensure the element is fully visible
           overflow: 'visible',

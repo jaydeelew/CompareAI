@@ -65,9 +65,22 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   container.appendChild(text);
   notif.appendChild(container);
 
+  // Calculate top position by counting existing notifications
+  // Use a data attribute to reliably identify notification elements
+  const existingNotifications = Array.from(document.querySelectorAll('[data-notification="true"]')) as HTMLElement[];
+  const baseTop = 24;
+  const notificationSpacing = 12; // Space between notifications
+  const notificationHeight = 80; // Approximate height of a notification (including padding)
+  
+  // Calculate top position: base position + (number of existing notifications * (height + spacing))
+  const topPosition = baseTop + (existingNotifications.length * (notificationHeight + notificationSpacing));
+
+  // Mark this element as a notification for future queries
+  notif.setAttribute('data-notification', 'true');
+
   // Main notification styling
   notif.style.position = 'fixed';
-  notif.style.top = '24px';
+  notif.style.top = `${topPosition}px`;
   notif.style.right = '24px';
   notif.style.zIndex = '9999';
   notif.style.padding = '16px 24px';
