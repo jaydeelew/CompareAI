@@ -85,7 +85,7 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   const baseTop = 24;
   const notificationSpacing = 12; // Space between notifications
   const notificationHeight = 80; // Approximate height of a notification (including padding)
-  
+
   // Calculate top position: base position + (number of existing notifications * (height + spacing))
   const topPosition = baseTop + (existingNotifications.length * (notificationHeight + notificationSpacing));
 
@@ -127,18 +127,18 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   // Function to update the notification text and type in place
   const updateNotification = (newMsg: string, newType: NotificationType = 'success') => {
     if (removed) return;
-    
+
     // Update icon
     icon.innerHTML = newType === 'success' ? '✓' : '✕';
-    
+
     // Update text
     text.textContent = newMsg;
-    
+
     // Update background color
     notif.style.background = newType === 'success'
       ? 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)'
       : 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
-    
+
     // Reset timeout - notification will stay for another 3 seconds
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -154,12 +154,12 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   const removeNotification = (instant: boolean = true) => {
     if (removed) return;
     removed = true;
-    
+
     if (timeoutId) {
       clearTimeout(timeoutId);
       timeoutId = null;
     }
-    
+
     if (instant) {
       // Remove instantly without animation when manually called
       notif.remove();
@@ -203,11 +203,11 @@ export function formatError(error: unknown, defaultMessage: string = 'An unexpec
   if (typeof error === 'string') {
     return error;
   }
-  
+
   if (error instanceof Error) {
     return error.message;
   }
-  
+
   if (error && typeof error === 'object') {
     const errorObj = error as Record<string, unknown>;
     if ('detail' in errorObj && typeof errorObj.detail === 'string') {
@@ -217,7 +217,7 @@ export function formatError(error: unknown, defaultMessage: string = 'An unexpec
       return errorObj.message;
     }
   }
-  
+
   return defaultMessage;
 }
 
@@ -246,21 +246,21 @@ export function isErrorMessage(content: string | null | undefined): boolean {
   if (!content || typeof content !== 'string') {
     return false;
   }
-  
+
   const trimmed = content.trim();
   if (trimmed.length === 0) {
     return false;
   }
-  
+
   // Check if content contains "Error:" anywhere (case-insensitive)
   // This handles cases where error is appended mid-stream (even without spaces)
   if (!/Error:/i.test(trimmed)) {
     return false;
   }
-  
+
   // Find the last occurrence of "Error:" (errors are typically appended at the end)
   const errorIndex = trimmed.toLowerCase().lastIndexOf('error:');
-  
+
   // Check if it matches known backend error patterns
   const errorText = trimmed.substring(errorIndex);
   const knownErrorPatterns = [
@@ -268,17 +268,17 @@ export function isErrorMessage(content: string | null | undefined): boolean {
     /^Error:\s*\d+/, // Error: 404, Error: 500, etc.
     /^Error:\s*[A-Z][^.!?]{0,100}$/, // Error: followed by short capitalized description
   ];
-  
+
   if (knownErrorPatterns.some(pattern => pattern.test(errorText))) {
     return true;
   }
-  
+
   // Heuristic: if "Error:" appears in the last 200 characters, it's likely an appended error
   const distanceFromEnd = trimmed.length - errorIndex;
   if (distanceFromEnd <= 200) {
     return true;
   }
-  
+
   // If "Error:" appears early and content is long/structured, it's likely an explanation
   if (errorIndex < 100 && trimmed.length > 200) {
     const hasMultipleSentences = (trimmed.match(/[.!?]\s+/g) || []).length >= 2;
@@ -286,7 +286,7 @@ export function isErrorMessage(content: string | null | undefined): boolean {
       return false; // Likely an explanation
     }
   }
-  
+
   // Default: treat as error if "Error:" is present
   return true;
 }
