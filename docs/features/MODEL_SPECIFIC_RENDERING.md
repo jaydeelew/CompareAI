@@ -94,13 +94,15 @@ Implement a model-specific rendering registry where each model has its own:
   - Outputs configurations in the registry format
 - Include manual review flags for edge cases
 
-#### Step 3.2: Manual Configuration Refinement
-- Review generated configurations:
-  - Test each configuration with actual model responses
-  - Identify false positives/negatives in pattern detection
-  - Refine preprocessing/post-processing rules
-  - Adjust delimiter patterns based on edge cases
-  - Document any manual overrides and reasoning
+#### Step 3.2: Configuration Generation and Initial Testing
+- Generate configurations using best practices:
+  - Use analysis data to create initial renderer configurations
+  - Apply industry best practices for math rendering, markdown processing, and preprocessing
+  - Test configurations with collected model responses
+  - Validate configurations against the schema
+  - Document configuration decisions and reasoning
+
+**Note:** Manual refinement happens post-deployment (see Phase 7) when you review the actual rendered output on the website and provide feedback for adjustments.
 
 #### Step 3.3: Create Configuration Validation
 - Build validation system to ensure:
@@ -203,7 +205,7 @@ Implement a model-specific rendering registry where each model has its own:
   - Regular review of rendering quality
   - User feedback collection and response
 
-### Phase 7: Deployment and Monitoring
+### Phase 7: Deployment and Post-Deployment Review
 
 #### Step 7.1: Gradual Rollout Strategy
 - Plan phased deployment:
@@ -219,7 +221,21 @@ Implement a model-specific rendering registry where each model has its own:
   - User-reported issues
   - Configuration usage statistics
 
-#### Step 7.3: Rollback Plan
+#### Step 7.3: Manual Review and Refinement
+- **Post-Deployment Manual Review:**
+  - You will manually examine rendered results from all models on the website
+  - Identify any rendering issues or quality problems
+  - Note models that need configuration adjustments
+  - Document specific issues found (e.g., math not rendering, markdown broken, etc.)
+  - Provide feedback for configuration refinements
+
+- **Configuration Refinement Process:**
+  - Based on your review, configurations will be adjusted
+  - Test refined configurations with problematic model responses
+  - Iterate until rendering quality meets standards
+  - Document changes and reasoning
+
+#### Step 7.4: Rollback Plan
 - Prepare rollback strategy:
   - Keep unified renderer as fallback
   - Feature flag to disable model-specific rendering
@@ -322,13 +338,28 @@ Implement a model-specific rendering registry where each model has its own:
 ### Risk: Incomplete Coverage
 - **Mitigation:** Comprehensive test suite, user feedback collection, iterative improvement
 
+## Implementation Workflow
+
+**Implementation Phase (Phases 1-6):**
+- The AI assistant will implement the model-specific rendering features using best practices
+- Configurations will be generated based on Phase 1 analysis data
+- All phases will be completed before deployment
+
+**Post-Deployment Review (Phase 7):**
+- Once the website is running with model-specific rendering, you will manually examine the rendered results
+- You will identify any models that need configuration adjustments
+- Based on your review, configurations will be refined and updated
+- This iterative process continues until rendering quality meets standards
+
 ## Next Steps
 
 1. Review and approve this implementation plan
 2. Set up response collection infrastructure
 3. Begin Phase 1: Response Collection and Analysis
-4. Schedule regular review meetings to track progress
-5. Establish testing and quality standards
+4. AI assistant implements Phases 2-6 using best practices
+5. Deploy model-specific rendering
+6. Manual review of rendered results on the website
+7. Refine configurations based on review feedback
 
 ---
 

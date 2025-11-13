@@ -5,6 +5,12 @@ import './index.css'
 import 'katex/dist/katex.min.css'
 import App from './App.tsx'
 import { initWebVitals } from './utils/performance'
+import { initializeRegistry } from './config/loadModelConfigs'
+
+// Initialize model renderer registry before rendering
+initializeRegistry().catch((error) => {
+  console.error('Failed to initialize model renderer registry:', error)
+})
 
 // Initialize performance monitoring
 // Track Web Vitals metrics for Core Web Vitals monitoring

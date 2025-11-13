@@ -143,9 +143,15 @@ python scripts/analyze_responses.py data/model_responses/model_responses_TIMESTA
 ### Step 3: Review Analysis
 
 1. Open the markdown report to see summary
-2. Review models that need manual review
+2. Review the identified issues and patterns (these inform the implementation)
 3. Check for common issues across models
-4. Identify patterns for renderer configuration
+4. Note the scope of work needed
+
+**Understanding "Needs Manual Review" Flags:**
+- These flags identify models with formatting issues or complex patterns
+- During implementation, the AI assistant will use best practices to create configurations for all models
+- The actual manual review happens **after deployment** when you examine the rendered results on the website
+- The analysis data provides the foundation for automated configuration generation
 
 ## Directory Structure
 
@@ -214,10 +220,19 @@ The collection script includes:
 
 ## Next Steps
 
-After completing Phase 1 (collection and analysis), proceed to:
-- **Phase 2**: Renderer Architecture Design
-- **Phase 3**: Configuration Generation
-- **Phase 4**: Renderer Implementation
+After completing Phase 1 (collection and analysis):
+
+**Implementation Phase:**
+- **Phase 2**: Renderer Architecture Design (AI assistant implements)
+- **Phase 3**: Configuration Generation (AI assistant implements using best practices)
+- **Phase 4**: Renderer Implementation (AI assistant implements)
+- **Phase 5**: Testing Framework (AI assistant implements)
+- **Phase 6**: Documentation (AI assistant implements)
+
+**Post-Deployment Review:**
+- **Phase 7**: After deployment, you will manually review rendered results on the website
+- Identify any models needing configuration adjustments
+- Provide feedback for refinement
 
 See `/docs/features/MODEL_SPECIFIC_RENDERING.md` for the complete implementation guide.
 

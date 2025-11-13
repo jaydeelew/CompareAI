@@ -23,7 +23,7 @@ Before collecting from all models, test with a small subset:
 cd backend
 
 # Test with one model and one prompt
-
+python scripts/collect_model_responses.py \
   --models anthropic/claude-sonnet-4.5 \
   --prompts complex_math_display \
   --delay 2.0
@@ -53,9 +53,7 @@ python scripts/collect_model_responses.py \
 **Tips:**
 - Use `--delay 1.5` or higher to avoid rate limits
 - Run during off-peak hours for better API performance
-- The script saves progress incrementally after each model completes, so you can stop and resume
-- If interrupted, simply run the script again with the same arguments - it will automatically resume from the most recent file
-- Use `--output-file FILENAME` to specify a specific file to resume from
+- The script saves progress incrementally, so you can stop and resume
 - Use `--quiet` to reduce output if running in background
 
 ## Analyze Results
@@ -124,20 +122,32 @@ python -c "import sys; print(sys.path)"
 - Check network connectivity
 - Verify API key permissions
 
-### Partial Results and Resuming
-- **Incremental Saving**: The script automatically saves results after each model completes, so partial results are preserved even if interrupted
-- **Automatic Resume**: If you run the script again, it will automatically detect the most recent results file and resume collection, skipping already-collected model/prompt combinations
-- **Manual Resume**: Use `--output-file FILENAME` to specify a specific file to resume from
-- **Analyze Partial Results**: You can analyze partial results at any time - the analysis script works with incomplete data
-- When resuming, the script will show how many combinations are already collected and how many remain
+### Partial Results
+- Script saves incrementally, so partial results are preserved
+- You can analyze partial results if needed
+- Re-run collection to fill in missing data
+
+## Understanding the Analysis Report
+
+The analysis report identifies models that have formatting issues or complex patterns. The "needs manual review" flag indicates that:
+
+- **During Implementation:** The AI assistant will use best practices and the analysis data to create appropriate renderer configurations for all models, including those flagged for review
+- **After Implementation:** Once the model-specific rendering is deployed and running, you will manually examine the rendered results on the website to verify quality and identify any adjustments needed
+
+The analysis data provides the foundation for automated configuration generation - it identifies patterns, but the actual review and refinement happens post-deployment when you can see the actual rendered output.
 
 ## Next Steps
 
 After completing Phase 1:
-1. Review the analysis report
-2. Identify models needing manual review
-3. Note common patterns and issues
-4. Proceed to Phase 2: Renderer Architecture Design
+1. Review the analysis report to understand the scope of work
+2. Note common patterns and issues (these will inform the implementation)
+3. Proceed to Phase 2: Renderer Architecture Design
+
+**Implementation Workflow:**
+- The AI assistant will implement the model-specific rendering features using best practices
+- Configurations will be generated based on the analysis data
+- After deployment, you will manually review the rendered results on the website
+- Any necessary adjustments will be made based on your review
 
 For detailed documentation, see:
 - `/docs/features/MODEL_SPECIFIC_RENDERING.md` - Full implementation guide

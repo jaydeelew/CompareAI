@@ -82,6 +82,20 @@ export type {
   NotificationType,
 } from './config';
 
+// Renderer config types
+export type {
+  MathDelimiterType,
+  MathDelimiterPattern,
+  PreprocessingFunction,
+  PostProcessingFunction,
+  PreprocessingOptions,
+  MarkdownProcessingRules,
+  KatexOptions,
+  CodeBlockPreservationSettings,
+  ModelRendererConfig,
+  DefaultRendererConfig,
+} from './rendererConfig';
+
 // Re-export constants from their respective modules
 export {
   STREAM_EVENT_TYPE,

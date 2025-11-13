@@ -1,0 +1,2229 @@
+{
+  "analysis_metadata": {
+    "timestamp": "2025-11-12T18:30:53.028149",
+    "source_file": "data/model_responses/model_responses_20251112_121017.json",
+    "collection_metadata": {
+      "last_updated": "2025-11-12T18:05:58.287048",
+      "total_models": 52,
+      "collection_stats": {
+        "total_requests": 156,
+        "successful": 156,
+        "failed": 0,
+        "skipped": 520,
+        "errors": []
+      },
+      "script_version": "1.0",
+      "timestamp": "2025-11-12T15:24:05.286929"
+    },
+    "total_models_analyzed": 52,
+    "script_version": "1.0"
+  },
+  "analyses": {
+    "anthropic/claude-sonnet-4.5": {
+      "model_id": "anthropic/claude-sonnet-4.5",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "anthropic/claude-haiku-4.5": {
+      "model_id": "anthropic/claude-haiku-4.5",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "anthropic/claude-opus-4.1": {
+      "model_id": "anthropic/claude-opus-4.1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "java",
+          "markdown",
+          "python",
+          "ruby",
+          "sql"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "anthropic/claude-sonnet-4": {
+      "model_id": "anthropic/claude-sonnet-4",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar",
+          "equation-env"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 11,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "go",
+          "java",
+          "javascript",
+          "latex",
+          "python",
+          "rust"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "anthropic/claude-3.7-sonnet": {
+      "model_id": "anthropic/claude-3.7-sonnet",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "align-env",
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "cohere/command-r-plus-08-2024": {
+      "model_id": "cohere/command-r-plus-08-2024",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar",
+          "equation-env"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "headers": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "cohere/command-r7b-12-2024": {
+      "model_id": "cohere/command-r7b-12-2024",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "headers": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "cohere/command-a": {
+      "model_id": "cohere/command-a",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "deepseek/deepseek-r1": {
+      "model_id": "deepseek/deepseek-r1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 11,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "deepseek/deepseek-v3.2-exp": {
+      "model_id": "deepseek/deepseek-v3.2-exp",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "inline_code": true,
+        "lists": true,
+        "code_blocks": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "deepseek/deepseek-chat-v3.1": {
+      "model_id": "deepseek/deepseek-chat-v3.1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "google/gemini-2.5-pro": {
+      "model_id": "google/gemini-2.5-pro",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "italic": true,
+        "inline_code": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "code_blocks": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "cpp",
+          "java",
+          "markdown",
+          "python",
+          "ruby"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "google/gemini-2.5-flash": {
+      "model_id": "google/gemini-2.5-flash",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "italic": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-4-maverick": {
+      "model_id": "meta-llama/llama-4-maverick",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-4-maverick:free": {
+      "model_id": "meta-llama/llama-4-maverick:free",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-4-scout": {
+      "model_id": "meta-llama/llama-4-scout",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar",
+          "equation-env"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-4-scout:free": {
+      "model_id": "meta-llama/llama-4-scout:free",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-3.3-70b-instruct": {
+      "model_id": "meta-llama/llama-3.3-70b-instruct",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "meta-llama/llama-3.3-70b-instruct:free": {
+      "model_id": "meta-llama/llama-3.3-70b-instruct:free",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": false
+    },
+    "microsoft/wizardlm-2-8x22b": {
+      "model_id": "microsoft/wizardlm-2-8x22b",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 16,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "plaintext",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "microsoft/phi-4-reasoning-plus": {
+      "model_id": "microsoft/phi-4-reasoning-plus",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "lists": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 11,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "java",
+          "javascript",
+          "python",
+          "ruby"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": false
+      },
+      "needs_manual_review": true
+    },
+    "microsoft/phi-4": {
+      "model_id": "microsoft/phi-4",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 13,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "javascript",
+          "latex",
+          "markdown",
+          "python",
+          "ruby",
+          "swift"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "microsoft/mai-ds-r1:free": {
+      "model_id": "microsoft/mai-ds-r1:free",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "headers": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 2,
+        "languages_found": [
+          "markdown"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/mistral-large": {
+      "model_id": "mistralai/mistral-large",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "tables": true,
+        "blockquotes": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 17,
+        "languages_found": [
+          "bash",
+          "c",
+          "cpp",
+          "go",
+          "java",
+          "javascript",
+          "latex",
+          "markdown",
+          "php",
+          "python",
+          "ruby",
+          "rust"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/mistral-medium-3.1": {
+      "model_id": "mistralai/mistral-medium-3.1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 16,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "go",
+          "java",
+          "javascript",
+          "latex",
+          "markdown",
+          "python",
+          "r",
+          "ruby"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/mistral-small-3.2-24b-instruct": {
+      "model_id": "mistralai/mistral-small-3.2-24b-instruct",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "headers": true,
+        "links": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/devstral-medium": {
+      "model_id": "mistralai/devstral-medium",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/devstral-small": {
+      "model_id": "mistralai/devstral-small",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "mistralai/codestral-2508": {
+      "model_id": "mistralai/codestral-2508",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 16,
+        "languages_found": [
+          "bash",
+          "c",
+          "cpp",
+          "csharp",
+          "go",
+          "java",
+          "kotlin",
+          "markdown",
+          "php",
+          "powershell",
+          "python",
+          "ruby",
+          "rust",
+          "swift"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5-pro": {
+      "model_id": "openai/gpt-5-pro",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5": {
+      "model_id": "openai/gpt-5",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5-mini": {
+      "model_id": "openai/gpt-5-mini",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 10,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5-nano": {
+      "model_id": "openai/gpt-5-nano",
+      "successful_responses": 12,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": false
+    },
+    "openai/gpt-5-codex": {
+      "model_id": "openai/gpt-5-codex",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5-chat": {
+      "model_id": "openai/gpt-5-chat",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "italic": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "tables": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 18,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "js",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-4o": {
+      "model_id": "openai/gpt-4o",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "lists": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/o3": {
+      "model_id": "openai/o3",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "tables": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "headers": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/o3-mini": {
+      "model_id": "openai/o3-mini",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "headers": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/o1-pro": {
+      "model_id": "openai/o1-pro",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "headers": true,
+        "lists": true,
+        "links": true,
+        "horizontal_rules": true,
+        "tables": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/o1": {
+      "model_id": "openai/o1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "headers": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-vl-235b-a22b-thinking": {
+      "model_id": "qwen/qwen3-vl-235b-a22b-thinking",
+      "successful_responses": 12,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "broken_markdown_links"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-next-80b-a3b-thinking": {
+      "model_id": "qwen/qwen3-next-80b-a3b-thinking",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 11,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "go",
+          "java",
+          "javascript",
+          "latex",
+          "python",
+          "rust"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-next-80b-a3b-instruct": {
+      "model_id": "qwen/qwen3-next-80b-a3b-instruct",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math",
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 24,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "javascript",
+          "latex",
+          "markdown",
+          "python",
+          "rust"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-max": {
+      "model_id": "qwen/qwen3-max",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-coder-plus": {
+      "model_id": "qwen/qwen3-coder-plus",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "cpp",
+          "go",
+          "java",
+          "python",
+          "ruby",
+          "rust",
+          "swift"
+        ],
+        "contains_math_like_content": false,
+        "contains_dollar_signs": false,
+        "contains_latex_commands": false
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-coder-flash": {
+      "model_id": "qwen/qwen3-coder-flash",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "horizontal_rules": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-coder": {
+      "model_id": "qwen/qwen3-coder",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "align-env",
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 12,
+        "languages_found": [
+          "bash",
+          "cpp",
+          "go",
+          "java",
+          "javascript",
+          "latex",
+          "markdown",
+          "python",
+          "ruby"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-30b-a3b-instruct-2507": {
+      "model_id": "qwen/qwen3-30b-a3b-instruct-2507",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "blockquotes": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 9,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-235b-a22b-thinking-2507": {
+      "model_id": "qwen/qwen3-235b-a22b-thinking-2507",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "lists": true,
+        "tables": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs",
+        "html_in_math",
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 13,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "qwen/qwen3-235b-a22b": {
+      "model_id": "qwen/qwen3-235b-a22b",
+      "successful_responses": 10,
+      "delimiters": {
+        "display": [
+          "double-dollar"
+        ],
+        "inline": [
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "tables": true,
+        "blockquotes": true,
+        "links": true
+      },
+      "issues": [],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": false
+    },
+    "x-ai/grok-4": {
+      "model_id": "x-ai/grok-4",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "x-ai/grok-4-fast": {
+      "model_id": "x-ai/grok-4-fast",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "broken_markdown_links",
+        "escaped_dollar_signs",
+        "html_in_math",
+        "unclosed_code_blocks"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    }
+  }
+}
