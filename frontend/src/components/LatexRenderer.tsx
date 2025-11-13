@@ -506,19 +506,39 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     /**
      * Stage 5: Process markdown lists
      */
-    const processMarkdownLists = (text: string): string => {
+    const processMarkdownLists = (text: string, inlineMathBlocks: string[]): string => {
         let processed = text;
 
         // Helper function to process list content (math and markdown formatting)
         const processListContent = (content: string): string => {
             let processedContent = convertImplicitMath(content);
 
-            // Process bold/italic inside list items BEFORE creating placeholders
+            // CRITICAL: Restore inline math placeholders BEFORE processing bold/italic
+            // This prevents __INLINE_MATH_X__ from being processed as bold markdown
+            const placeholderPrefix = '__INLINE_MATH_';
+            const placeholderSuffix = '__';
+            const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)${placeholderSuffix}`, 'g');
+            processedContent = processedContent.replace(placeholderRegex, (_match, index) => {
+                const blockIndex = parseInt(index, 10);
+                if (blockIndex >= 0 && blockIndex < inlineMathBlocks.length) {
+                    return inlineMathBlocks[blockIndex]; // Restore the original math block with delimiters
+                }
+                return _match; // Return original if index is invalid
+            });
+
+            // Process bold/italic inside list items AFTER restoring math placeholders
             // This ensures formatting is preserved when placeholders are protected
             // Bold: match ** but allow single * inside
             processedContent = processedContent.replace(/\*\*((?:(?!\*\*)[\s\S])+?)\*\*/g, '<strong>$1</strong>');
-            // Bold: match __ but allow single _ inside
-            processedContent = processedContent.replace(/__((?:(?!__)[\s\S])+?)__/g, '<strong>$1</strong>');
+            // Bold: match __ but allow single _ inside, BUT skip if it's part of a math delimiter
+            // We need to be careful not to match $...$ or \(...\) as bold
+            processedContent = processedContent.replace(/__((?:(?!__)[\s\S])+?)__/g, (match, content) => {
+                // Skip if this looks like it might be part of math (contains $ or \( or \))
+                if (content.includes('$') || content.includes('\\(') || content.includes('\\[')) {
+                    return match; // Don't process as bold
+                }
+                return `<strong>${content}</strong>`;
+            });
             // Italic: match single * but not when part of **
             processedContent = processedContent.replace(/(?<!\*)\*((?:(?!\*)[^\n])+?)\*(?!\*)/g, '<em>$1</em>');
             // Italic: match single _ but not when part of __
@@ -1478,8 +1498,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Stage 4: Convert implicit math notation
             processed = convertImplicitMath(processed);
 
-            // Stage 5: Process markdown lists
-            processed = processMarkdownLists(processed);
+            // Stage 5: Process markdown lists (pass inline math blocks to restore placeholders inside lists)
+            processed = processMarkdownLists(processed, inlineMathExtraction.mathBlocks);
 
             // Stage 5.5: Restore display math blocks before rendering
             // This ensures the original math content is available for rendering
@@ -1513,6 +1533,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             });
             inlineDelimiters.forEach(({ pattern }) => {
                 processed = processed.replace(pattern, (_match, math) => {
+                    // Check if already rendered
+                    if (_match.includes('<span class="katex">')) {
+                        return _match;
+                    }
                     return safeRenderKatex(math, false, config.katexOptions);
                 });
             });
@@ -1536,6 +1560,60 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     processed = postProcessor(processed);
                 }
             }
+
+            // Final cleanup - handle any remaining inline math placeholders
+            // This catches placeholders that might have been missed or had underscores removed by markdown processing
+            // First, try to restore standard format placeholders: __INLINE_MATH_X__
+            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
+
+            // Render any restored inline math that might have been restored above
+            // Reuse inlineDelimiters from Stage 8.5
+            inlineDelimiters.forEach(({ pattern }) => {
+                processed = processed.replace(pattern, (_match, math) => {
+                    // Check if already rendered
+                    if (_match.includes('<span class="katex">')) {
+                        return _match;
+                    }
+                    return safeRenderKatex(math, false, config.katexOptions);
+                });
+            });
+
+            // Then check for any remaining placeholders in various formats
+            // Check for both formats: __INLINE_MATH_X__ and INLINEMATHX (without underscores, possibly from bold processing)
+            const remainingInlineMathRegex = /(?:__)?INLINE[_\s]*MATH[_\s]*(\d+)(?:__)?/gi;
+            processed = processed.replace(remainingInlineMathRegex, (_match, index) => {
+                const blockIndex = parseInt(index, 10);
+                if (blockIndex >= 0 && blockIndex < inlineMathExtraction.mathBlocks.length) {
+                    // Restore the original math block and render it
+                    const mathBlock = inlineMathExtraction.mathBlocks[blockIndex];
+                    // The mathBlock contains the full match with delimiters (e.g., "$x^2$" or "\\(x^2\\)")
+                    // Try to extract math content by matching against known delimiter patterns
+                    for (const { pattern } of inlineDelimiters) {
+                        const match = mathBlock.match(pattern);
+                        if (match && match[1]) {
+                            // Extract the math content (group 1 contains the math without delimiters)
+                            return safeRenderKatex(match[1], false, config.katexOptions);
+                        }
+                    }
+
+                    // Fallback: try to extract math content by removing common delimiters
+                    // Remove dollar signs, backslashes with parens/brackets
+                    let cleaned = mathBlock.trim();
+                    // Remove dollar sign delimiters
+                    cleaned = cleaned.replace(/^\$\$?|\$\$?$/g, '');
+                    // Remove \( and \) delimiters
+                    cleaned = cleaned.replace(/^\\\(|\\\)$/g, '');
+                    // Remove \[ and \] delimiters  
+                    cleaned = cleaned.replace(/^\\\[|\\\]$/g, '');
+                    cleaned = cleaned.trim();
+
+                    if (cleaned) {
+                        return safeRenderKatex(cleaned, false, config.katexOptions);
+                    }
+                }
+                // If index is invalid, remove the placeholder
+                return '';
+            });
 
             // Final cleanup - only unescape markdown characters, not LaTeX commands
             // Don't remove backslashes that are part of LaTeX commands
