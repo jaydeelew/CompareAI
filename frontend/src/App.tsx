@@ -73,10 +73,10 @@ function AppContent() {
   const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Determine current view from route
   const currentView = location.pathname === '/admin' ? 'admin' : 'main';
-  
+
   // Route protection: redirect non-admin users away from /admin
   useEffect(() => {
     if (location.pathname === '/admin' && !authLoading) {
@@ -85,14 +85,14 @@ function AppContent() {
       }
     }
   }, [location.pathname, isAuthenticated, user?.is_admin, authLoading, navigate]);
-  
+
   // Custom hooks for state management
   const browserFingerprintHook = useBrowserFingerprint();
   const { browserFingerprint, setBrowserFingerprint } = browserFingerprintHook;
-  
+
   const rateLimitHook = useRateLimitStatus({ isAuthenticated, browserFingerprint });
-  const { usageCount, setUsageCount, extendedUsageCount, setExtendedUsageCount } = rateLimitHook;
-  
+  const { usageCount, setUsageCount, extendedUsageCount, setExtendedUsageCount, fetchRateLimitStatus } = rateLimitHook;
+
   const modelSelectionHook = useModelSelection({ isAuthenticated, user });
   const {
     selectedModels,
@@ -101,7 +101,7 @@ function AppContent() {
     setOriginalSelectedModels,
     maxModelsLimit,
   } = modelSelectionHook;
-  
+
   const comparisonHook = useModelComparison();
   const {
     input,
@@ -142,7 +142,7 @@ function AppContent() {
     getFirstUserMessage,
     // getConversationsWithMessages, // Available from hook if needed
   } = comparisonHook;
-  
+
   // State not covered by hooks (declare before callbacks that use them)
   const selectedModelsGridRef = useRef<HTMLDivElement>(null);
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
@@ -156,7 +156,7 @@ function AppContent() {
   const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
   const [isModelsHidden, setIsModelsHidden] = useState(false);
-  
+
   // Callback for when the active conversation is deleted
   const handleDeleteActiveConversation = useCallback(() => {
     setIsFollowUpMode(false);
@@ -171,8 +171,8 @@ function AppContent() {
     setOpenDropdowns(new Set());
   }, [setIsFollowUpMode, setInput, setConversations, setResponse, setClosedCards, setError, setSelectedModels, setOriginalSelectedModels]);
 
-  const conversationHistoryHook = useConversationHistory({ 
-    isAuthenticated, 
+  const conversationHistoryHook = useConversationHistory({
+    isAuthenticated,
     user,
     onDeleteActiveConversation: handleDeleteActiveConversation,
   });
@@ -1165,11 +1165,11 @@ function AppContent() {
           const currentConversation = conversationHistory.find(
             summary => String(summary.id) === currentVisibleComparisonId
           );
-          
+
           if (currentConversation) {
             const currentModelsMatch = JSON.stringify([...currentConversation.models_used].sort()) === JSON.stringify([...selectedModels].sort());
             const currentInputMatches = currentConversation.input_data === firstUserMessage.content;
-            
+
             // If the current ID still matches, keep it (don't search for a different match)
             if (currentModelsMatch && currentInputMatches) {
               return;
@@ -1306,6 +1306,25 @@ function AppContent() {
       setShowDoneSelectingCard(false);
     }
   }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
+
+  // Refresh usage count when models are selected to ensure renderUsagePreview shows accurate remaining count
+  useEffect(() => {
+    // Only refresh if we have models selected and we're not loading
+    if (selectedModels.length > 0 && !isLoading) {
+      // Debounce the refresh to avoid too many API calls when user is rapidly selecting models
+      const timeoutId = setTimeout(() => {
+        if (!isAuthenticated && browserFingerprint) {
+          // For anonymous users, refresh rate limit status (which updates usageCount)
+          fetchRateLimitStatus();
+        } else if (isAuthenticated) {
+          // For authenticated users, refresh user data (which updates user.daily_usage_count)
+          refreshUser();
+        }
+      }, 300); // Wait 300ms after last model selection change
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedModels.length, isLoading, browserFingerprint, isAuthenticated, fetchRateLimitStatus, refreshUser]);
 
   // Cleanup scroll listeners on unmount
   useEffect(() => {
@@ -2231,10 +2250,14 @@ function AppContent() {
         // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
         const latestCount = data.daily_usage || (data as any).fingerprint_usage || (data as any).ip_usage || 0;
         currentUsageCount = latestCount;
-        // Update state to keep it in sync - will update banner and localStorage below if needed
-        if (latestCount !== usageCount) {
-          setUsageCount(latestCount);
-        }
+        // Always update state to keep it in sync - this ensures purple banner and renderUsagePreview show correct values
+        setUsageCount(latestCount);
+        // Also update localStorage immediately so it's in sync
+        const today = new Date().toDateString();
+        localStorage.setItem('compareai_usage', JSON.stringify({
+          count: latestCount,
+          date: today
+        }));
       } catch (error) {
         // Silently handle cancellation errors (expected when component unmounts)
         if (error instanceof Error && error.name === 'CancellationError') {
@@ -2260,18 +2283,7 @@ function AppContent() {
     // Check if this comparison would exceed the limit
     if (currentUsageCount + modelsNeeded > regularLimit) {
       const remaining = regularLimit - currentUsageCount;
-      // If we updated the usage count, ensure state propagates before showing error
-      if (currentUsageCount !== usageCount) {
-        // Update localStorage synchronously so banner can read it
-        localStorage.setItem('compareai_usage', JSON.stringify({
-          count: currentUsageCount,
-          date: new Date().toDateString()
-        }));
-        // Wait for React to process the state update
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
-      }
-      // IMPORTANT: The state and localStorage are now updated with currentUsageCount
+      // State and localStorage are already updated above, so UI components will show correct values
       setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
       return;
     }
@@ -2295,7 +2307,7 @@ function AppContent() {
           const latestExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
           if (latestExtendedCount !== undefined) {
             currentExtendedUsage = latestExtendedCount;
-            // Update state to keep it in sync
+            // Always update state to keep it in sync - this ensures renderUsagePreview shows correct values
             setExtendedUsageCount(latestExtendedCount);
             const today = new Date().toDateString();
             localStorage.setItem('compareai_extended_usage', JSON.stringify({
@@ -2320,17 +2332,7 @@ function AppContent() {
       // Check if this would exceed the Extended limit
       if (currentExtendedUsage + extendedInteractionsNeeded > extendedLimit) {
         const remaining = extendedLimit - currentExtendedUsage;
-        // If we updated the extended usage count, ensure state propagates before showing error
-        if (!isAuthenticated && currentExtendedUsage !== extendedUsageCount) {
-          // Update localStorage synchronously
-          localStorage.setItem('compareai_extended_usage', JSON.stringify({
-            count: currentExtendedUsage,
-            date: new Date().toDateString()
-          }));
-          // Wait for React to process the state update
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          await new Promise(resolve => requestAnimationFrame(resolve)); // Double RAF to ensure render
-        }
+        // State and localStorage are already updated above, so UI components will show correct values
         setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison.`);
         return;
       }
@@ -2988,6 +2990,12 @@ function AppContent() {
 
         // Sync with backend to get the actual count (backend now counts after success)
         try {
+          // Clear cache to ensure we get fresh data after the comparison
+          const cacheKey = browserFingerprint
+            ? `GET:/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`
+            : 'GET:/rate-limit-status';
+          apiClient.deleteCache(cacheKey);
+
           const data = await getRateLimitStatus(browserFingerprint);
           // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
           const newCount = (data as any).fingerprint_usage || data.daily_usage || 0;
@@ -3247,297 +3255,297 @@ function AppContent() {
 
             <ErrorBoundary>
               <section className="models-section" ref={modelsSectionRef}>
-              <div
-                className="models-section-header"
-                data-has-models={selectedModels.length > 0 && isWideLayout ? 'true' : undefined}
-                onClick={() => setIsModelsHidden(!isModelsHidden)}
-                style={{
-                  // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
-                  // Keep padding consistent whether collapsed or not when models are selected
-                  // Force the padding-right value to ensure it overrides CSS media query
-                  ...(isWideLayout && selectedModels.length > 0 ? {
-                    paddingRight: 'calc(340px + 2rem + 2.5rem)',
-                  } : {}),
-                  ...(isWideLayout && selectedModels.length === 0 ? {
-                    paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0'
-                  } : {}),
-                  // Always center items vertically
-                  alignItems: 'center'
-                }}
-              >
-                <div className="models-header-title">
-                  <h2 style={{ margin: 0 }}>
-                    {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
-                  </h2>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                    {isFollowUpMode
-                      ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
-                      : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous Tier)' : user?.subscription_tier ? (() => {
-                        const parts = user.subscription_tier.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1));
-                        // Replace "Plus" with "+" when it appears after another word
-                        const formatted = parts.length > 1 && parts[1] === 'Plus'
-                          ? parts[0] + '+'
-                          : parts.join(' ');
-                        return ` (${formatted} Tier)`;
-                      })() : ''}`
-                    }
-                  </p>
-                </div>
                 <div
-                  className="models-header-controls"
+                  className="models-section-header"
+                  data-has-models={selectedModels.length > 0 && isWideLayout ? 'true' : undefined}
+                  onClick={() => setIsModelsHidden(!isModelsHidden)}
                   style={{
-                    justifyContent: isWideLayout ? 'flex-end' : undefined,
-                    alignSelf: isWideLayout ? 'center' : undefined,
-                    marginLeft: isWideLayout ? 'auto' : undefined,
-                    marginTop: 0,
-                    position: isWideLayout ? 'absolute' : undefined,
-                    top: isWideLayout ? '50%' : undefined,
-                    right: isWideLayout ? '1rem' : undefined,
-                    transform: isWideLayout ? 'translateY(-50%)' : undefined
+                    // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
+                    // Keep padding consistent whether collapsed or not when models are selected
+                    // Force the padding-right value to ensure it overrides CSS media query
+                    ...(isWideLayout && selectedModels.length > 0 ? {
+                      paddingRight: 'calc(340px + 2rem + 2.5rem)',
+                    } : {}),
+                    ...(isWideLayout && selectedModels.length === 0 ? {
+                      paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0'
+                    } : {}),
+                    // Always center items vertically
+                    alignItems: 'center'
                   }}
                 >
-                  <div className="models-header-buttons">
-                    <button
-                      className="collapse-all-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        collapseAllDropdowns();
-                      }}
-                      disabled={openDropdowns.size === 0}
-                      title={"Collapse all model providers"}
-                      aria-label={"Collapse all model providers"}
-                    >
-                      {/* Double chevrons up icon (collapse all) */}
-                      <svg
-                        viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                        preserveAspectRatio="xMidYMid meet"
-                      >
-                        <path
-                          d="M7 13l5-5 5 5M7 18l5-5 5 5"
-                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      className="clear-all-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedModels([]);
-                      }}
-                      disabled={selectedModels.length === 0 || isFollowUpMode}
-                      title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
-                      aria-label={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
-                    >
-                      {/* Square with X icon (deselect all) */}
-                      <svg
-                        viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                        preserveAspectRatio="xMidYMid meet"
-                      >
-                        <rect
-                          x="5" y="5" width="14" height="14"
-                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                        <path
-                          d="M9 9l6 6M15 9l-6 6"
-                          strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
+                  <div className="models-header-title">
+                    <h2 style={{ margin: 0 }}>
+                      {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
+                    </h2>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                      {isFollowUpMode
+                        ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
+                        : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous Tier)' : user?.subscription_tier ? (() => {
+                          const parts = user.subscription_tier.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1));
+                          // Replace "Plus" with "+" when it appears after another word
+                          const formatted = parts.length > 1 && parts[1] === 'Plus'
+                            ? parts[0] + '+'
+                            : parts.join(' ');
+                          return ` (${formatted} Tier)`;
+                        })() : ''}`
+                      }
+                    </p>
                   </div>
-                  <div className="models-header-right">
-                    <div
-                      className={`models-count-indicator ${selectedModels.length > 0 ? 'has-selected' : 'empty'}`}
-                      title="Total selections"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {selectedModels.length} of {maxModelsLimit} selected
+                  <div
+                    className="models-header-controls"
+                    style={{
+                      justifyContent: isWideLayout ? 'flex-end' : undefined,
+                      alignSelf: isWideLayout ? 'center' : undefined,
+                      marginLeft: isWideLayout ? 'auto' : undefined,
+                      marginTop: 0,
+                      position: isWideLayout ? 'absolute' : undefined,
+                      top: isWideLayout ? '50%' : undefined,
+                      right: isWideLayout ? '1rem' : undefined,
+                      transform: isWideLayout ? 'translateY(-50%)' : undefined
+                    }}
+                  >
+                    <div className="models-header-buttons">
+                      <button
+                        className="collapse-all-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          collapseAllDropdowns();
+                        }}
+                        disabled={openDropdowns.size === 0}
+                        title={"Collapse all model providers"}
+                        aria-label={"Collapse all model providers"}
+                      >
+                        {/* Double chevrons up icon (collapse all) */}
+                        <svg
+                          viewBox="0 0 24 24" fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
+                          preserveAspectRatio="xMidYMid meet"
+                        >
+                          <path
+                            d="M7 13l5-5 5 5M7 18l5-5 5 5"
+                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        className="clear-all-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedModels([]);
+                        }}
+                        disabled={selectedModels.length === 0 || isFollowUpMode}
+                        title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
+                        aria-label={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
+                      >
+                        {/* Square with X icon (deselect all) */}
+                        <svg
+                          viewBox="0 0 24 24" fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
+                          preserveAspectRatio="xMidYMid meet"
+                        >
+                          <rect
+                            x="5" y="5" width="14" height="14"
+                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                          />
+                          <path
+                            d="M9 9l6 6M15 9l-6 6"
+                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
                     </div>
-                    <button
-                      className="models-toggle-arrow"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsModelsHidden(!isModelsHidden);
-                      }}
-                      style={{
-                        padding: '0.5rem',
-                        fontSize: '1.25rem',
-                        border: 'none',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--primary-color)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '36px',
-                        height: '36px',
-                        fontWeight: 'bold'
-                      }}
-                      title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
-                    >
-                      {isModelsHidden ? '▼' : '▲'}
-                    </button>
+                    <div className="models-header-right">
+                      <div
+                        className={`models-count-indicator ${selectedModels.length > 0 ? 'has-selected' : 'empty'}`}
+                        title="Total selections"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {selectedModels.length} of {maxModelsLimit} selected
+                      </div>
+                      <button
+                        className="models-toggle-arrow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsModelsHidden(!isModelsHidden);
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          fontSize: '1.25rem',
+                          border: 'none',
+                          outline: 'none',
+                          boxShadow: 'none',
+                          background: 'var(--bg-primary)',
+                          color: 'var(--primary-color)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '36px',
+                          height: '36px',
+                          fontWeight: 'bold'
+                        }}
+                        title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
+                      >
+                        {isModelsHidden ? '▼' : '▲'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {!isModelsHidden && (
-                <>
-                  {isLoadingModels ? (
-                    <div className="loading-message">Loading available models...</div>
-                  ) : Object.keys(modelsByProvider).length === 0 ? (
-                    <div className="error-message">
-                      <p>No models available. Please check the server connection.</p>
-                    </div>
-                  ) : (
-                    <div className="models-selection-layout">
-                      <div className="provider-dropdowns">
-                        {Object.entries(modelsByProvider).map(([provider, models]) => {
-                          const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
-                          return (
-                            <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
-                              <button
-                                className="provider-header"
-                                onClick={() => toggleDropdown(provider)}
-                                aria-expanded={openDropdowns.has(provider)}
-                              >
-                                <div className="provider-left">
-                                  <span className="provider-name">{provider}</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  {(() => {
-                                    const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
-                                    return (
-                                      <span
-                                        className={`provider-count ${selectedCount > 0 ? 'has-selected' : 'empty'}`}
-                                      >
-                                        {selectedCount} of {models.length} selected
-                                      </span>
-                                    );
-                                  })()}
-                                  {(() => {
-                                    const providerModels = modelsByProvider[provider] || [];
-                                    // Filter out unavailable models (where available === false)
-                                    const availableProviderModels = providerModels.filter(model => model.available !== false);
-                                    const providerModelIds = availableProviderModels.map(model => model.id);
-                                    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
-                                    const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
-                                    const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
-                                    const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
-                                      (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
-
-                                    return (
-                                      <div
-                                        className={`provider-select-all ${isDisabled ? 'disabled' : ''} ${allProviderModelsSelected ? 'all-selected' : ''}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (!isDisabled) {
-                                            toggleAllForProvider(provider);
-                                          }
-                                        }}
-                                        title={isDisabled ?
-                                          (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
-                                          allProviderModelsSelected ? `Deselect All` : `Select All`}
-                                      >
-                                        ✱
-                                      </div>
-                                    );
-                                  })()}
-                                  <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
-                                    ▼
-                                  </span>
-                                </div>
-                              </button>
-
-                              {openDropdowns.has(provider) && (
-                                <div className="provider-models">
-                                  {models.map((model) => {
-                                    const isSelected = selectedModels.includes(model.id);
-                                    const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                                    const isUnavailable = model.available === false;
-                                    const isDisabled = isUnavailable ||
-                                      (selectedModels.length >= maxModelsLimit && !isSelected) ||
-                                      (isFollowUpMode && !isSelected && !wasOriginallySelected);
-                                    return (
-                                      <label
-                                        key={model.id}
-                                        className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isSelected}
-                                          disabled={isDisabled}
-                                          onChange={() => !isDisabled && handleModelToggle(model.id)}
-                                          className={`model-checkbox ${isFollowUpMode && !isSelected && wasOriginallySelected ? 'follow-up-deselected' : ''}`}
-                                        />
-                                        <div className="model-info">
-                                          <h4>
-                                            {model.name}
-                                            {isFollowUpMode && !isSelected && !wasOriginallySelected && (
-                                              <span className="model-badge not-in-conversation">
-                                                Not in conversation
-                                              </span>
-                                            )}
-                                            {isUnavailable && (
-                                              <span className="model-badge coming-soon">
-                                                Coming Soon
-                                              </span>
-                                            )}
-                                          </h4>
-                                          <p>{model.description}</p>
-                                        </div>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                {!isModelsHidden && (
+                  <>
+                    {isLoadingModels ? (
+                      <div className="loading-message">Loading available models...</div>
+                    ) : Object.keys(modelsByProvider).length === 0 ? (
+                      <div className="error-message">
+                        <p>No models available. Please check the server connection.</p>
                       </div>
-
-                      {/* Selected Models Cards */}
-                      {selectedModels.length > 0 && (
-                        <div className="selected-models-section">
-                          <div
-                            ref={selectedModelsGridRef}
-                            className="selected-models-grid"
-                          >
-                            {selectedModels.map((modelId) => {
-                              const model = allModels.find(m => m.id === modelId);
-                              if (!model) return null;
-
-                              return (
-                                <div key={modelId} className="selected-model-card">
-                                  <div className="selected-model-header">
-                                    <h4>{model.name}</h4>
-                                    <button
-                                      className="remove-model-btn"
-                                      onClick={() => handleModelToggle(modelId)}
-                                      aria-label={`Remove ${model.name}`}
-                                    >
-                                      ✕
-                                    </button>
+                    ) : (
+                      <div className="models-selection-layout">
+                        <div className="provider-dropdowns">
+                          {Object.entries(modelsByProvider).map(([provider, models]) => {
+                            const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
+                            return (
+                              <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
+                                <button
+                                  className="provider-header"
+                                  onClick={() => toggleDropdown(provider)}
+                                  aria-expanded={openDropdowns.has(provider)}
+                                >
+                                  <div className="provider-left">
+                                    <span className="provider-name">{provider}</span>
                                   </div>
-                                  <p className="selected-model-description">{model.description}</p>
-                                </div>
-                              );
-                            })}
-                            {/* Spacer to push cards to bottom when they don't fill the space */}
-                            <div className="selected-models-spacer"></div>
-                          </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    {(() => {
+                                      const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                      return (
+                                        <span
+                                          className={`provider-count ${selectedCount > 0 ? 'has-selected' : 'empty'}`}
+                                        >
+                                          {selectedCount} of {models.length} selected
+                                        </span>
+                                      );
+                                    })()}
+                                    {(() => {
+                                      const providerModels = modelsByProvider[provider] || [];
+                                      // Filter out unavailable models (where available === false)
+                                      const availableProviderModels = providerModels.filter(model => model.available !== false);
+                                      const providerModelIds = availableProviderModels.map(model => model.id);
+                                      const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
+                                      const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
+                                      const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
+                                      const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
+                                        (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
+
+                                      return (
+                                        <div
+                                          className={`provider-select-all ${isDisabled ? 'disabled' : ''} ${allProviderModelsSelected ? 'all-selected' : ''}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isDisabled) {
+                                              toggleAllForProvider(provider);
+                                            }
+                                          }}
+                                          title={isDisabled ?
+                                            (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
+                                            allProviderModelsSelected ? `Deselect All` : `Select All`}
+                                        >
+                                          ✱
+                                        </div>
+                                      );
+                                    })()}
+                                    <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                                      ▼
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {openDropdowns.has(provider) && (
+                                  <div className="provider-models">
+                                    {models.map((model) => {
+                                      const isSelected = selectedModels.includes(model.id);
+                                      const wasOriginallySelected = originalSelectedModels.includes(model.id);
+                                      const isUnavailable = model.available === false;
+                                      const isDisabled = isUnavailable ||
+                                        (selectedModels.length >= maxModelsLimit && !isSelected) ||
+                                        (isFollowUpMode && !isSelected && !wasOriginallySelected);
+                                      return (
+                                        <label
+                                          key={model.id}
+                                          className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            disabled={isDisabled}
+                                            onChange={() => !isDisabled && handleModelToggle(model.id)}
+                                            className={`model-checkbox ${isFollowUpMode && !isSelected && wasOriginallySelected ? 'follow-up-deselected' : ''}`}
+                                          />
+                                          <div className="model-info">
+                                            <h4>
+                                              {model.name}
+                                              {isFollowUpMode && !isSelected && !wasOriginallySelected && (
+                                                <span className="model-badge not-in-conversation">
+                                                  Not in conversation
+                                                </span>
+                                              )}
+                                              {isUnavailable && (
+                                                <span className="model-badge coming-soon">
+                                                  Coming Soon
+                                                </span>
+                                              )}
+                                            </h4>
+                                            <p>{model.description}</p>
+                                          </div>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
+
+                        {/* Selected Models Cards */}
+                        {selectedModels.length > 0 && (
+                          <div className="selected-models-section">
+                            <div
+                              ref={selectedModelsGridRef}
+                              className="selected-models-grid"
+                            >
+                              {selectedModels.map((modelId) => {
+                                const model = allModels.find(m => m.id === modelId);
+                                if (!model) return null;
+
+                                return (
+                                  <div key={modelId} className="selected-model-card">
+                                    <div className="selected-model-header">
+                                      <h4>{model.name}</h4>
+                                      <button
+                                        className="remove-model-btn"
+                                        onClick={() => handleModelToggle(modelId)}
+                                        aria-label={`Remove ${model.name}`}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                    <p className="selected-model-description">{model.description}</p>
+                                  </div>
+                                );
+                              })}
+                              {/* Spacer to push cards to bottom when they don't fill the space */}
+                              <div className="selected-models-spacer"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </section>
             </ErrorBoundary>
 
@@ -3615,272 +3623,272 @@ function AppContent() {
             {(response || conversations.length > 0) && (
               <ErrorBoundary>
                 <section className="results-section">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                  <h2 style={{ margin: 0 }}>Comparison Results</h2>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    {/* Scroll Lock Toggle */}
-                    <button
-                      onClick={() => {
-                        setIsScrollLocked(!isScrollLocked);
-                      }}
-                      style={{
-                        padding: '0.5rem 0.75rem',
-                        fontSize: '0.875rem',
-                        border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
-                        background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
-                        color: isScrollLocked ? 'white' : '#666',
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        outline: 'none'
-                      }}
-                      title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
-                      onMouseOver={(e) => {
-                        if (!isScrollLocked) {
-                          e.currentTarget.style.borderColor = '#999';
-                          e.currentTarget.style.color = '#333';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        if (!isScrollLocked) {
-                          e.currentTarget.style.borderColor = '#cccccc';
-                          e.currentTarget.style.color = '#666';
-                        }
-                      }}
-                    >
-                      <span>Scroll</span>
-                      {isScrollLocked ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                          <line x1="7" y1="11" x2="7" y2="7" />
-                        </svg>
-                      )}
-                    </button>
-                    {!isFollowUpMode && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <h2 style={{ margin: 0 }}>Comparison Results</h2>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      {/* Scroll Lock Toggle */}
                       <button
-                        onClick={handleFollowUp}
-                        className="follow-up-button"
-                        title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
-                        disabled={isFollowUpDisabled()}
-                      >
-                        Follow up
-                      </button>
-                    )}
-                    {closedCards.size > 0 && (
-                      <button
-                        onClick={showAllResults}
+                        onClick={() => {
+                          setIsScrollLocked(!isScrollLocked);
+                        }}
                         style={{
-                          padding: '0.5rem 1rem',
+                          padding: '0.5rem 0.75rem',
                           fontSize: '0.875rem',
-                          border: '1px solid var(--primary-color)',
-                          background: 'var(--primary-color)',
-                          color: 'white',
+                          border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
+                          background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
+                          color: isScrollLocked ? 'white' : '#666',
                           borderRadius: 'var(--radius-md)',
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
-                          fontWeight: '500'
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          outline: 'none'
                         }}
+                        title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
                         onMouseOver={(e) => {
-                          e.currentTarget.style.background = 'var(--primary-hover)';
-                          e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                          if (!isScrollLocked) {
+                            e.currentTarget.style.borderColor = '#999';
+                            e.currentTarget.style.color = '#333';
+                          }
                         }}
                         onMouseOut={(e) => {
-                          e.currentTarget.style.background = 'var(--primary-color)';
-                          e.currentTarget.style.borderColor = 'var(--primary-color)';
+                          if (!isScrollLocked) {
+                            e.currentTarget.style.borderColor = '#cccccc';
+                            e.currentTarget.style.color = '#666';
+                          }
                         }}
                       >
-                        Show All Results ({closedCards.size} hidden)
+                        <span>Scroll</span>
+                        {isScrollLocked ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                            <line x1="7" y1="11" x2="7" y2="7" />
+                          </svg>
+                        )}
                       </button>
-                    )}
+                      {!isFollowUpMode && (
+                        <button
+                          onClick={handleFollowUp}
+                          className="follow-up-button"
+                          title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
+                          disabled={isFollowUpDisabled()}
+                        >
+                          Follow up
+                        </button>
+                      )}
+                      {closedCards.size > 0 && (
+                        <button
+                          onClick={showAllResults}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.875rem',
+                            border: '1px solid var(--primary-color)',
+                            background: 'var(--primary-color)',
+                            color: 'white',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            fontWeight: '500'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = 'var(--primary-hover)';
+                            e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = 'var(--primary-color)';
+                            e.currentTarget.style.borderColor = 'var(--primary-color)';
+                          }}
+                        >
+                          Show All Results ({closedCards.size} hidden)
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Metadata */}
-                {response && (
-                  <div className="results-metadata">
-                    <div className="metadata-item">
-                      <span className="metadata-label">Input Length:</span>
-                      <span className="metadata-value">{response.metadata.input_length} characters</span>
-                    </div>
-                    <div className="metadata-item">
-                      <span className="metadata-label">Models Successful:</span>
-                      <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
-                        {response.metadata.models_successful}/{response.metadata.models_requested}
-                      </span>
-                    </div>
-                    {Object.keys(response.results).length > 0 && (
+                  {/* Metadata */}
+                  {response && (
+                    <div className="results-metadata">
                       <div className="metadata-item">
-                        <span className="metadata-label">Results Visible:</span>
-                        <span className="metadata-value">
-                          {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                        <span className="metadata-label">Input Length:</span>
+                        <span className="metadata-value">{response.metadata.input_length} characters</span>
+                      </div>
+                      <div className="metadata-item">
+                        <span className="metadata-label">Models Successful:</span>
+                        <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
+                          {response.metadata.models_successful}/{response.metadata.models_requested}
                         </span>
                       </div>
-                    )}
-                    {response.metadata.models_failed > 0 && (
-                      <div className="metadata-item">
-                        <span className="metadata-label">Models Failed:</span>
-                        <span className="metadata-value failed">{response.metadata.models_failed}</span>
-                      </div>
-                    )}
-                    {processingTime && (
-                      <div className="metadata-item">
-                        <span className="metadata-label">Processing Time:</span>
-                        <span className="metadata-value">
-                          {(() => {
-                            if (processingTime < 1000) {
-                              return `${processingTime}ms`;
-                            } else if (processingTime < 60000) {
-                              return `${(processingTime / 1000).toFixed(1)}s`;
-                            } else {
-                              const minutes = Math.floor(processingTime / 60000);
-                              const seconds = Math.floor((processingTime % 60000) / 1000);
-                              return `${minutes}m ${seconds}s`;
-                            }
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="results-grid">
-                  {conversations
-                    .filter((conv) => selectedModels.includes(conv.modelId) && !closedCards.has(conv.modelId))
-                    .map((conversation) => {
-                      const model = allModels.find(m => m.id === conversation.modelId);
-                      const latestMessage = conversation.messages[conversation.messages.length - 1];
-                      const isError = isErrorMessage(latestMessage?.content);
-                      const safeId = getSafeId(conversation.modelId);
-
-                      return (
-                        <div key={conversation.modelId} className="result-card conversation-card">
-                          <div className="result-header">
-                            <div className="result-header-top">
-                              <h3>{model?.name || conversation.modelId}</h3>
-                              <div className="header-buttons-container">
-                                <button
-                                  className="screenshot-card-btn"
-                                  onClick={() => handleScreenshot(conversation.modelId)}
-                                  title="Copy formatted chat history"
-                                  aria-label={`Copy formatted chat history for ${model?.name || conversation.modelId}`}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                                    <path d="M8 21h8" />
-                                    <path d="M12 17v4" />
-                                  </svg>
-                                </button>
-                                <button
-                                  className="copy-response-btn"
-                                  onClick={() => handleCopyResponse(conversation.modelId)}
-                                  title="Copy raw chat history"
-                                  aria-label={`Copy raw chat history from ${model?.name || conversation.modelId}`}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                  </svg>
-                                </button>
-                                <button
-                                  className="close-card-btn"
-                                  onClick={() => closeResultCard(conversation.modelId)}
-                                  title="Hide this result"
-                                  aria-label={`Hide result for ${model?.name || conversation.modelId}`}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 6L6 18" />
-                                    <path d="M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                            <div className="result-header-bottom">
-                              <span className="output-length">{latestMessage?.content.length || 0} chars</span>
-                              <div className="result-tabs">
-                                <button
-                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'active' : ''}`}
-                                  onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.FORMATTED)}
-                                >
-                                  Formatted
-                                </button>
-                                <button
-                                  className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.RAW ? 'active' : ''}`}
-                                  onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.RAW)}
-                                >
-                                  Raw
-                                </button>
-                              </div>
-                              <span className={`status ${isError ? 'error' : 'success'}`}>
-                                {isError ? 'Failed' : 'Success'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="conversation-content" id={`conversation-content-${safeId}`}>
-                            {conversation.messages.map((message) => (
-                              <div key={message.id} className={`conversation-message ${message.type}`}>
-                                <div className="message-header">
-                                  <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    {message.type === 'user' ? (
-                                      <>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <circle cx="12" cy="8" r="4" />
-                                          <path d="M20 21a8 8 0 1 0-16 0" />
-                                        </svg>
-                                        <span>You</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <rect x="4" y="4" width="16" height="16" rx="2" />
-                                          <rect x="9" y="9" width="6" height="6" />
-                                          <line x1="9" y1="2" x2="9" y2="4" />
-                                          <line x1="15" y1="2" x2="15" y2="4" />
-                                          <line x1="9" y1="20" x2="9" y2="22" />
-                                          <line x1="15" y1="20" x2="15" y2="22" />
-                                          <line x1="20" y1="9" x2="22" y2="9" />
-                                          <line x1="20" y1="15" x2="22" y2="15" />
-                                          <line x1="2" y1="9" x2="4" y2="9" />
-                                          <line x1="2" y1="15" x2="4" y2="15" />
-                                        </svg>
-                                        <span>AI</span>
-                                      </>
-                                    )}
-                                  </span>
-                                  <span className="message-time">
-                                    {formatTime(message.timestamp)}
-                                  </span>
-                                </div>
-                                <div className="message-content">
-                                  {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
-                                    /* Full LaTeX rendering for formatted view */
-                                    <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
-                                      <LatexRenderer className="result-output" modelId={conversation.modelId}>
-                                        {message.content}
-                                      </LatexRenderer>
-                                    </Suspense>
-                                  ) : (
-                                    /* Raw text for immediate streaming display */
-                                    <pre className="result-output raw-output">
-                                      {message.content}
-                                    </pre>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                      {Object.keys(response.results).length > 0 && (
+                        <div className="metadata-item">
+                          <span className="metadata-label">Results Visible:</span>
+                          <span className="metadata-value">
+                            {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                          </span>
                         </div>
-                      );
-                    })}
-                </div>
+                      )}
+                      {response.metadata.models_failed > 0 && (
+                        <div className="metadata-item">
+                          <span className="metadata-label">Models Failed:</span>
+                          <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                        </div>
+                      )}
+                      {processingTime && (
+                        <div className="metadata-item">
+                          <span className="metadata-label">Processing Time:</span>
+                          <span className="metadata-value">
+                            {(() => {
+                              if (processingTime < 1000) {
+                                return `${processingTime}ms`;
+                              } else if (processingTime < 60000) {
+                                return `${(processingTime / 1000).toFixed(1)}s`;
+                              } else {
+                                const minutes = Math.floor(processingTime / 60000);
+                                const seconds = Math.floor((processingTime % 60000) / 1000);
+                                return `${minutes}m ${seconds}s`;
+                              }
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="results-grid">
+                    {conversations
+                      .filter((conv) => selectedModels.includes(conv.modelId) && !closedCards.has(conv.modelId))
+                      .map((conversation) => {
+                        const model = allModels.find(m => m.id === conversation.modelId);
+                        const latestMessage = conversation.messages[conversation.messages.length - 1];
+                        const isError = isErrorMessage(latestMessage?.content);
+                        const safeId = getSafeId(conversation.modelId);
+
+                        return (
+                          <div key={conversation.modelId} className="result-card conversation-card">
+                            <div className="result-header">
+                              <div className="result-header-top">
+                                <h3>{model?.name || conversation.modelId}</h3>
+                                <div className="header-buttons-container">
+                                  <button
+                                    className="screenshot-card-btn"
+                                    onClick={() => handleScreenshot(conversation.modelId)}
+                                    title="Copy formatted chat history"
+                                    aria-label={`Copy formatted chat history for ${model?.name || conversation.modelId}`}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                                      <path d="M8 21h8" />
+                                      <path d="M12 17v4" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    className="copy-response-btn"
+                                    onClick={() => handleCopyResponse(conversation.modelId)}
+                                    title="Copy raw chat history"
+                                    aria-label={`Copy raw chat history from ${model?.name || conversation.modelId}`}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    className="close-card-btn"
+                                    onClick={() => closeResultCard(conversation.modelId)}
+                                    title="Hide this result"
+                                    aria-label={`Hide result for ${model?.name || conversation.modelId}`}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M18 6L6 18" />
+                                      <path d="M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="result-header-bottom">
+                                <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                                <div className="result-tabs">
+                                  <button
+                                    className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'active' : ''}`}
+                                    onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.FORMATTED)}
+                                  >
+                                    Formatted
+                                  </button>
+                                  <button
+                                    className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.RAW ? 'active' : ''}`}
+                                    onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.RAW)}
+                                  >
+                                    Raw
+                                  </button>
+                                </div>
+                                <span className={`status ${isError ? 'error' : 'success'}`}>
+                                  {isError ? 'Failed' : 'Success'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="conversation-content" id={`conversation-content-${safeId}`}>
+                              {conversation.messages.map((message) => (
+                                <div key={message.id} className={`conversation-message ${message.type}`}>
+                                  <div className="message-header">
+                                    <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      {message.type === 'user' ? (
+                                        <>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="8" r="4" />
+                                            <path d="M20 21a8 8 0 1 0-16 0" />
+                                          </svg>
+                                          <span>You</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                                            <rect x="9" y="9" width="6" height="6" />
+                                            <line x1="9" y1="2" x2="9" y2="4" />
+                                            <line x1="15" y1="2" x2="15" y2="4" />
+                                            <line x1="9" y1="20" x2="9" y2="22" />
+                                            <line x1="15" y1="20" x2="15" y2="22" />
+                                            <line x1="20" y1="9" x2="22" y2="9" />
+                                            <line x1="20" y1="15" x2="22" y2="15" />
+                                            <line x1="2" y1="9" x2="4" y2="9" />
+                                            <line x1="2" y1="15" x2="4" y2="15" />
+                                          </svg>
+                                          <span>AI</span>
+                                        </>
+                                      )}
+                                    </span>
+                                    <span className="message-time">
+                                      {formatTime(message.timestamp)}
+                                    </span>
+                                  </div>
+                                  <div className="message-content">
+                                    {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
+                                      /* Full LaTeX rendering for formatted view */
+                                      <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
+                                        <LatexRenderer className="result-output" modelId={conversation.modelId}>
+                                          {message.content}
+                                        </LatexRenderer>
+                                      </Suspense>
+                                    ) : (
+                                      /* Raw text for immediate streaming display */
+                                      <pre className="result-output raw-output">
+                                        {message.content}
+                                      </pre>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </section>
               </ErrorBoundary>
             )}

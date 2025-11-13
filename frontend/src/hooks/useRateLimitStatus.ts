@@ -41,6 +41,35 @@ export function useRateLimitStatus({
         isAuthenticated ? undefined : browserFingerprint
       );
       setRateLimitStatus(status);
+      
+      // Update usage counts from backend response to keep them in sync
+      // For anonymous users, backend returns 'fingerprint_usage' or 'ip_usage'
+      // For authenticated users, backend returns 'daily_usage'
+      if (!isAuthenticated) {
+        const latestCount = (status as any).fingerprint_usage || (status as any).ip_usage || status.daily_usage || 0;
+        setUsageCount(latestCount);
+        
+        // Update extended usage if available
+        const latestExtendedCount = status.extended_usage || (status as any).daily_extended_usage;
+        if (latestExtendedCount !== undefined) {
+          setExtendedUsageCount(latestExtendedCount);
+        }
+        
+        // Update localStorage to match backend
+        const today = new Date().toDateString();
+        localStorage.setItem('compareai_usage', JSON.stringify({
+          count: latestCount,
+          date: today
+        }));
+        
+        if (latestExtendedCount !== undefined) {
+          localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            count: latestExtendedCount,
+            date: today
+          }));
+        }
+      }
+      // For authenticated users, usage count comes from user object, not from rate limit status
     } catch (error) {
       // Silently handle cancellation errors (expected when component unmounts)
       if (error instanceof Error && error.name === 'CancellationError') {
