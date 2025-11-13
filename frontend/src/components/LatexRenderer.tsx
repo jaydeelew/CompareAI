@@ -520,8 +520,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return `__TASK_${isChecked ? 'checked' : 'unchecked'}__${processedText}__/TASK__`;
         });
 
-        // Unordered lists
+        // Unordered lists - support both '-' and '*' bullets
+        // Match '-' bullets (but not task lists)
         processed = processed.replace(/^(\s*)- (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
+            const level = indent.length;
+            const processedContent = processListContent(content);
+            return `__UL_${level}__${processedContent}__/UL__`;
+        });
+        // Match '*' bullets (common in Gemini and other models)
+        processed = processed.replace(/^(\s*)\* (?!\[[ x]\])(.+)$/gm, (_, indent, content) => {
             const level = indent.length;
             const processedContent = processListContent(content);
             return `__UL_${level}__${processedContent}__/UL__`;
@@ -882,6 +889,29 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         const markdownRules = config.markdownProcessing || {};
         let processed = text;
 
+        // CRITICAL: Protect placeholders from markdown processing by temporarily replacing them
+        // This prevents bold/italic regex from matching placeholder patterns
+        // Use HTML comments to avoid conflict with ALL markdown patterns (underscores, asterisks, brackets, etc.)
+        const placeholderMap = new Map<string, string>();
+        let placeholderCounter = 0;
+
+        // Protect full list placeholder patterns (including content between tags)
+        // Pattern: __UL_X__content__/UL__ or __OL_X__content__/OL__ or __TASK_X__content__/TASK__
+        processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
+            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            placeholderMap.set(placeholder, match);
+            placeholderCounter++;
+            return placeholder;
+        });
+
+        // Protect code block placeholders (__CODE_BLOCK_X__)
+        processed = processed.replace(/(__CODE_BLOCK_\d+__)/g, (match) => {
+            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            placeholderMap.set(placeholder, match);
+            placeholderCounter++;
+            return placeholder;
+        });
+
         // Tables - must come first (if enabled)
         if (markdownRules.processTables !== false) {
             processed = processed.replace(/^\|(.+)\|$/gm, (_match, content) => {
@@ -953,6 +983,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Bold: match ** but allow single * inside
             processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
             // Bold: match __ but allow single _ inside (underscore-based bold)
+            // Note: Placeholders are already protected above, so we can safely process bold here
             processed = processed.replace(/__(.+?)__/g, '<strong>$1</strong>');
             // Italic: match single * but not when part of **
             processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
@@ -1022,6 +1053,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             }
 
             return `<img src="${optimizedUrl}" alt="${alt.replace(/"/g, '&quot;')}"${titleAttr} ${loadingAttr} ${decodingAttr} ${styleAttr} />`;
+        });
+
+        // Restore protected placeholders after all markdown processing
+        // Use simple string replacement for reliability (placeholders are unique)
+        placeholderMap.forEach((original, placeholder) => {
+            // Use split/join for reliable replacement that handles all special characters
+            processed = processed.split(placeholder).join(original);
         });
 
         return processed;
