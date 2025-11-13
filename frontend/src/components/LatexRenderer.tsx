@@ -900,8 +900,36 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             { pattern: /\\Omega/g, latex: '\\Omega' },
         ];
 
+        // Process symbols with protection against double-rendering
         symbols.forEach(({ pattern, latex }) => {
-            rendered = rendered.replace(pattern, () => safeRenderKatex(latex, false, config.katexOptions));
+            // Use a more careful approach to avoid replacing symbols already inside rendered KaTeX HTML
+            let symbolRegex = new RegExp(pattern.source, pattern.flags);
+            let symbolMatch;
+            const symbolReplacements: Array<{ start: number, end: number, replacement: string }> = [];
+
+            while ((symbolMatch = symbolRegex.exec(rendered)) !== null) {
+                const start = symbolMatch.index;
+                const end = start + symbolMatch[0].length;
+
+                // Check if already inside KaTeX HTML
+                const beforeMatch = rendered.substring(0, start);
+                const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
+                const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
+
+                // Only process if not already inside KaTeX HTML
+                if (lastKatexStart <= lastKatexEnd) {
+                    symbolReplacements.push({
+                        start,
+                        end,
+                        replacement: safeRenderKatex(latex, false, config.katexOptions)
+                    });
+                }
+            }
+
+            // Apply replacements from right to left to maintain positions
+            symbolReplacements.reverse().forEach(({ start, end, replacement }) => {
+                rendered = rendered.substring(0, start) + replacement + rendered.substring(end);
+            });
         });
 
         // Convert derivative placeholders from Stage 3 to actual fractions
