@@ -73,9 +73,16 @@ const safeRenderKatex = (latex: string, displayMode: boolean, katexOptions?: Mod
         if (!cleanLatex) return '';
 
         // Merge model-specific options with defaults
+        // Normalize trust property: convert string[] to function if needed
+        const trustValue = katexOptions?.trust ?? DEFAULT_KATEX_OPTIONS.trust;
+        const normalizedTrust = Array.isArray(trustValue)
+            ? (context: { command?: string }) => trustValue.includes(context.command || '')
+            : trustValue;
+
         const options = {
             ...DEFAULT_KATEX_OPTIONS,
             ...katexOptions,
+            trust: normalizedTrust,
             displayMode,
         };
 
@@ -581,7 +588,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const priorityB = b.priority ?? 999;
             return priorityA - priorityB;
         });
-        
+
         displayDelimiters.forEach(({ pattern }) => {
             rendered = rendered.replace(pattern, (_match, math) => {
                 return safeRenderKatex(math, true, config.katexOptions);
@@ -595,7 +602,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const priorityB = b.priority ?? 999;
             return priorityA - priorityB;
         });
-        
+
         inlineDelimiters.forEach(({ pattern }) => {
             rendered = rendered.replace(pattern, (_match, math) => {
                 return safeRenderKatex(math, false, config.katexOptions);
@@ -739,36 +746,36 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Process table rows and convert to HTML
             processed = processed.replace(/(__TABLE_ROW__[\s\S]*__\/TABLE_ROW__)+/g, (match) => {
-            const rows = match.split('__/TABLE_ROW__').filter(row => row.trim());
-            let tableHTML = '<table class="markdown-table">';
-            let isHeader = true;
+                const rows = match.split('__/TABLE_ROW__').filter(row => row.trim());
+                let tableHTML = '<table class="markdown-table">';
+                let isHeader = true;
 
-            rows.forEach((row, index) => {
-                const cleanRow = row.replace('__TABLE_ROW__', '').trim();
-                // Skip separator rows (like |----|----|)
-                if (cleanRow.match(/^[-|\s:]+$/)) {
-                    isHeader = false;
-                    return;
-                }
+                rows.forEach((row, index) => {
+                    const cleanRow = row.replace('__TABLE_ROW__', '').trim();
+                    // Skip separator rows (like |----|----|)
+                    if (cleanRow.match(/^[-|\s:]+$/)) {
+                        isHeader = false;
+                        return;
+                    }
 
-                const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
-                if (cells.length > 0) {
-                    const tag = isHeader ? 'th' : 'td';
-                    // Process markdown formatting in each cell before creating HTML
-                    const processedCells = cells.map(cell => {
-                        let processed = cell;
-                        // Process bold and italic (bold first, then italic)
-                        processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                        processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
-                        // Process inline code
-                        processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
-                        return processed;
-                    });
-                    const rowHTML = '<tr>' + processedCells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
-                    tableHTML += rowHTML;
-                    if (index === 0) isHeader = false;
-                }
-            });
+                    const cells = cleanRow.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    if (cells.length > 0) {
+                        const tag = isHeader ? 'th' : 'td';
+                        // Process markdown formatting in each cell before creating HTML
+                        const processedCells = cells.map(cell => {
+                            let processed = cell;
+                            // Process bold and italic (bold first, then italic)
+                            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                            processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+                            // Process inline code
+                            processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+                            return processed;
+                        });
+                        const rowHTML = '<tr>' + processedCells.map(cell => `<${tag}>${cell}</${tag}>`).join('') + '</tr>';
+                        tableHTML += rowHTML;
+                        if (index === 0) isHeader = false;
+                    }
+                });
 
                 tableHTML += '</table>';
                 return tableHTML;
@@ -857,14 +864,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const loadingAttr = isExternal ? 'loading="lazy"' : 'loading="lazy"';
             const decodingAttr = 'decoding="async"';
             const styleAttr = 'style="max-width: 100%; height: auto; transition: opacity 0.3s ease-in-out;"';
-            
+
             // For internal images, add optimization query params if not already present
             let optimizedUrl = url;
             if (!isExternal && !url.includes('?')) {
                 // Add width hint for optimization (vite-imagetools will process this)
                 optimizedUrl = `${url}?w=1024&q=80`;
             }
-            
+
             return `<img src="${optimizedUrl}" alt="${alt.replace(/"/g, '&quot;')}"${titleAttr} ${loadingAttr} ${decodingAttr} ${styleAttr} />`;
         });
 
@@ -1085,7 +1092,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Stage 10: Restore code blocks from placeholders
             // restoreCodeBlocks returns markdown format, so we need to render them
             processed = restoreCodeBlocks(processed, codeBlockExtraction);
-            
+
             // Render restored code blocks to HTML
             // Match code blocks in markdown format: ```language\ncontent\n```
             processed = processed.replace(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/g, (match, language, code) => {
