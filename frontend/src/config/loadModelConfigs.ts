@@ -44,7 +44,7 @@ interface AnalysisData {
  */
 function createDelimiterPatterns(
   delimiterTypes: string[],
-  isDisplay: boolean
+  _isDisplay: boolean
 ): MathDelimiterPattern[] {
   const patterns: MathDelimiterPattern[] = [];
   let priority = 1;
@@ -190,12 +190,135 @@ export function loadConfigsFromAnalysis(analysisData: AnalysisData): void {
 }
 
 /**
+ * Raw configuration from JSON (patterns are strings)
+ */
+interface RawConfig {
+  modelId: string;
+  version?: string;
+  displayMathDelimiters: Array<{
+    pattern: string; // Regex pattern as string
+    name: string;
+    priority?: number;
+  }>;
+  inlineMathDelimiters: Array<{
+    pattern: string; // Regex pattern as string
+    name: string;
+    priority?: number;
+  }>;
+  preprocessing?: {
+    fixEscapedDollars?: boolean;
+    removeHtmlFromMath?: boolean;
+    removeMathML?: boolean;
+    removeSVG?: boolean;
+  };
+  markdownProcessing?: {
+    processLinks?: boolean;
+    fixBrokenLinks?: boolean;
+    processTables?: boolean;
+    processBlockquotes?: boolean;
+    processHorizontalRules?: boolean;
+    processHeaders?: boolean;
+    processBoldItalic?: boolean;
+    processLists?: boolean;
+    processInlineCode?: boolean;
+  };
+  katexOptions?: {
+    throwOnError?: boolean;
+    strict?: boolean | 'warn' | 'ignore';
+    trust?: string[]; // Array of command strings
+    macros?: Record<string, string>;
+    maxSize?: number;
+    maxExpand?: number;
+    errorColor?: string;
+  };
+  codeBlockPreservation: {
+    enabled: boolean;
+    extractBeforeProcessing: boolean;
+    restoreAfterProcessing: boolean;
+  };
+  metadata?: {
+    createdAt?: string;
+    updatedAt?: string;
+    notes?: string;
+    needsManualReview?: boolean;
+  };
+}
+
+/**
+ * Convert string regex pattern to RegExp object
+ * Handles patterns like "/pattern/flags" or just "pattern"
+ */
+function parseRegexPattern(patternStr: string): RegExp {
+  // Pattern format: "/pattern/flags" or just "pattern"
+  const match = patternStr.match(/^\/(.+)\/([gimsuvy]*)$/);
+  if (match) {
+    const [, pattern, flags] = match;
+    try {
+      return new RegExp(pattern, flags);
+    } catch (e) {
+      console.warn(`Invalid regex pattern: ${patternStr}`, e);
+      // Fallback: try without flags
+      return new RegExp(pattern);
+    }
+  }
+  
+  // If no match, assume it's just the pattern
+  return new RegExp(patternStr);
+}
+
+/**
+ * Convert raw config from JSON to ModelRendererConfig
+ * Converts string patterns to RegExp objects
+ */
+function convertRawConfig(raw: RawConfig): ModelRendererConfig {
+  const config: ModelRendererConfig = {
+    modelId: raw.modelId,
+    version: raw.version,
+    
+    displayMathDelimiters: raw.displayMathDelimiters.map(d => ({
+      pattern: parseRegexPattern(d.pattern),
+      name: d.name as MathDelimiterPattern['name'],
+      priority: d.priority,
+    })),
+    
+    inlineMathDelimiters: raw.inlineMathDelimiters.map(d => ({
+      pattern: parseRegexPattern(d.pattern),
+      name: d.name as MathDelimiterPattern['name'],
+      priority: d.priority,
+    })),
+    
+    preprocessing: raw.preprocessing,
+    
+    markdownProcessing: raw.markdownProcessing,
+    
+    katexOptions: raw.katexOptions ? {
+      ...raw.katexOptions,
+      // Convert trust array to function if present
+      trust: raw.katexOptions.trust 
+        ? (context: { command?: string }) => 
+            raw.katexOptions!.trust!.includes(context.command || '')
+        : undefined,
+    } : undefined,
+    
+    codeBlockPreservation: {
+      enabled: raw.codeBlockPreservation.enabled as true,
+      extractBeforeProcessing: raw.codeBlockPreservation.extractBeforeProcessing as true,
+      restoreAfterProcessing: raw.codeBlockPreservation.restoreAfterProcessing as true,
+    },
+    
+    metadata: raw.metadata,
+  };
+  
+  return config;
+}
+
+/**
  * Load configurations from static JSON file
  * This will be used in Phase 3 when configurations are generated
  * 
- * @param configs - Array of configurations to load
+ * @param rawConfigs - Array of raw configurations from JSON
  */
-export function loadConfigsFromStatic(configs: ModelRendererConfig[]): void {
+export function loadConfigsFromStatic(rawConfigs: RawConfig[]): void {
   if (isRegistryInitialized()) {
     console.warn('Registry already initialized, skipping load');
     return;
@@ -203,12 +326,13 @@ export function loadConfigsFromStatic(configs: ModelRendererConfig[]): void {
   
   let loadedCount = 0;
   
-  for (const config of configs) {
+  for (const rawConfig of rawConfigs) {
     try {
+      const config = convertRawConfig(rawConfig);
       registerModelConfig(config);
       loadedCount++;
     } catch (error) {
-      console.error(`Failed to load config for ${config.modelId}:`, error);
+      console.error(`Failed to load config for ${rawConfig.modelId}:`, error);
     }
   }
   
@@ -220,18 +344,31 @@ export function loadConfigsFromStatic(configs: ModelRendererConfig[]): void {
  * Initialize the registry
  * This function will be called at app startup
  * 
- * For now, it's a placeholder that will be populated in Phase 3
+ * Loads configurations from the generated JSON file
  */
 export async function initializeRegistry(): Promise<void> {
   if (isRegistryInitialized()) {
     return;
   }
   
-  // Phase 3: Load configurations from generated config files
-  // For now, registry starts empty and will use default config for all models
-  // In Phase 3, we'll load configurations here
-  
-  console.log('Model renderer registry initialized (using default config for all models)');
-  markRegistryInitialized();
+  try {
+    // Import the generated configurations
+    // Vite handles JSON imports directly - the import returns the JSON object
+    const configsModule = await import('./model_renderer_configs.json');
+    // Vite JSON imports return the object directly (not wrapped in default)
+    const rawConfigs = (configsModule.default || configsModule) as RawConfig[];
+    
+    if (Array.isArray(rawConfigs) && rawConfigs.length > 0) {
+      loadConfigsFromStatic(rawConfigs);
+      console.log(`Model renderer registry initialized with ${rawConfigs.length} configurations`);
+    } else {
+      console.warn('No configurations found in config file, using default config for all models');
+      markRegistryInitialized();
+    }
+  } catch (error) {
+    console.error('Failed to load model configurations:', error);
+    console.warn('Falling back to default configuration for all models');
+    markRegistryInitialized();
+  }
 }
 
