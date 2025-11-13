@@ -412,7 +412,12 @@ def main():
         prompt_names = get_all_prompt_names()
 
     # Create output directory
-    output_dir = Path(args.output_dir)
+    # Resolve relative paths from project root (two levels up from script location)
+    if not Path(args.output_dir).is_absolute():
+        project_root = Path(__file__).parent.parent.parent
+        output_dir = project_root / args.output_dir
+    else:
+        output_dir = Path(args.output_dir)
 
     # Determine output file
     output_file = None
