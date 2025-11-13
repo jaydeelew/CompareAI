@@ -3370,6 +3370,13 @@ function AppContent() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedModels([]);
+                          // Clear comparison results if they exist
+                          if (response || conversations.length > 0) {
+                            setConversations([]);
+                            setResponse(null);
+                          }
+                          // Expand the models section
+                          setIsModelsHidden(false);
                         }}
                         disabled={selectedModels.length === 0 || isFollowUpMode}
                         title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
