@@ -952,8 +952,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         if (markdownRules.processBoldItalic !== false) {
             // Bold: match ** but allow single * inside
             processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Bold: match __ but allow single _ inside (underscore-based bold)
+            processed = processed.replace(/__(.+?)__/g, '<strong>$1</strong>');
             // Italic: match single * but not when part of **
             processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+            // Italic: match single _ but not when part of __ (underscore-based italic)
+            // Use negative lookbehind/lookahead to avoid matching __text__ as _text_
+            processed = processed.replace(/(?<!_)_([^_\n]+?)_(?!_)/g, '<em>$1</em>');
         }
 
         // Strikethrough
