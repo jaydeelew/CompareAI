@@ -104,6 +104,26 @@ export function extractCodeBlocks(text: string): CodeBlockExtraction {
       return match; // Probably markdown, not code
     }
     
+    // CRITICAL: Skip if this contains LaTeX delimiters - it should be processed as math, not code
+    // Check for inline math delimiters: $, \(, \[
+    // Check for display math delimiters: $$, \[, \]
+    // This prevents LaTeX formulas from being extracted as code blocks
+    const latexDelimiters = [
+      /\$[^$]*\$/,           // Inline math: $...$
+      /\$\$[\s\S]*?\$\$/,    // Display math: $$...$$
+      /\\\([\s\S]*?\\\)/,    // Inline math: \(...\)
+      /\\\[[\s\S]*?\\\]/,    // Display math: \[...\]
+      /\\frac\{/,            // LaTeX fractions
+      /\\sqrt\{/,            // LaTeX square roots
+      /\\pm|\pm/,            // Plus-minus symbol
+      /\\cdot|\\times/,      // LaTeX operators
+    ];
+    
+    const containsLatex = latexDelimiters.some(pattern => pattern.test(match));
+    if (containsLatex) {
+      return match; // This is LaTeX/math, not code - let it be processed as math
+    }
+    
     // Skip if it looks like prose (contains common prose words/phrases)
     const prosePatterns = [
       /\b(the|a|an|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|should|could|may|might|can|must)\b/i,
