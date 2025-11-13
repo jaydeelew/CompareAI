@@ -538,13 +538,74 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     };
 
     /**
+     * Extract display math blocks to protect them from preprocessing
+     * Similar to code block extraction, but for math delimiters
+     */
+    const extractDisplayMath = (text: string): { text: string; mathBlocks: string[] } => {
+        const mathBlocks: string[] = [];
+        const placeholderPrefix = '__DISPLAY_MATH_';
+        const placeholderSuffix = '__';
+
+        let processed = text;
+        const displayDelimiters = [...config.displayMathDelimiters].sort((a, b) => {
+            const priorityA = a.priority ?? 999;
+            const priorityB = b.priority ?? 999;
+            return priorityA - priorityB;
+        });
+
+        // Extract all display math blocks using model-specific delimiters
+        displayDelimiters.forEach(({ pattern }) => {
+            processed = processed.replace(pattern, (fullMatch) => {
+                const index = mathBlocks.length;
+                mathBlocks.push(fullMatch); // Store the full match including delimiters
+                return `${placeholderPrefix}${index}${placeholderSuffix}`;
+            });
+        });
+
+        return { text: processed, mathBlocks };
+    };
+
+    /**
+     * Restore display math blocks after preprocessing
+     */
+    const restoreDisplayMath = (text: string, mathBlocks: string[]): string => {
+        const placeholderPrefix = '__DISPLAY_MATH_';
+        const placeholderSuffix = '__';
+        const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)${placeholderSuffix}`, 'g');
+
+        return text.replace(placeholderRegex, (_match, index) => {
+            const blockIndex = parseInt(index, 10);
+            if (blockIndex >= 0 && blockIndex < mathBlocks.length) {
+                return mathBlocks[blockIndex];
+            }
+            return _match; // Return original if index is invalid
+        });
+    };
+
+    /**
      * Stage 6: Normalize and render math delimiters
      */
     const renderMathContent = (text: string): string => {
         let rendered = text;
 
-        // FIRST: Handle mathematical expressions BEFORE individual symbols get processed
+        // FIRST: Handle explicit display math using model-specific delimiters
+        // This must come BEFORE implicit math detection to avoid interference
+        // Sort by priority (lower numbers first) if priority is specified
+        const displayDelimiters = [...config.displayMathDelimiters].sort((a, b) => {
+            const priorityA = a.priority ?? 999;
+            const priorityB = b.priority ?? 999;
+            return priorityA - priorityB;
+        });
+
+        displayDelimiters.forEach(({ pattern }) => {
+            rendered = rendered.replace(pattern, (_match, math) => {
+                return safeRenderKatex(math, true, config.katexOptions);
+            });
+        });
+
+        // THEN: Handle mathematical expressions BEFORE individual symbols get processed
         // This catches expressions like "x = ..." that contain LaTeX commands
+        // But skip if already rendered (inside display math delimiters)
         rendered = rendered.replace(/^x\s*=\s*(.+)$/gm, (_match, rightSide) => {
             const fullExpression = `x = ${rightSide}`;
 
@@ -579,20 +640,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 return safeRenderKatex(mathExpression, false, config.katexOptions);
             }
             return _match;
-        });
-
-        // Then handle explicit display math using model-specific delimiters
-        // Sort by priority (lower numbers first) if priority is specified
-        const displayDelimiters = [...config.displayMathDelimiters].sort((a, b) => {
-            const priorityA = a.priority ?? 999;
-            const priorityB = b.priority ?? 999;
-            return priorityA - priorityB;
-        });
-
-        displayDelimiters.forEach(({ pattern }) => {
-            rendered = rendered.replace(pattern, (_match, math) => {
-                return safeRenderKatex(math, true, config.katexOptions);
-            });
         });
 
         // Then, handle explicit inline math using model-specific delimiters
@@ -1060,10 +1107,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         try {
             let processed = text;
 
-            // Stage 1: Extract code blocks BEFORE any processing
-            // This ensures code blocks are preserved exactly as received
+            // Stage 0: Extract code blocks FIRST (before math extraction)
+            // This ensures code blocks are preserved and prevents math extraction from matching $$ inside code
             const codeBlockExtraction = extractCodeBlocks(processed);
             processed = codeBlockExtraction.text;
+
+            // Stage 0.5: Extract display math blocks BEFORE any processing
+            // This protects math content from being modified by preprocessing stages
+            const mathExtraction = extractDisplayMath(processed);
+            processed = mathExtraction.text;
 
             // Stage 2: Clean malformed content (using model-specific preprocessing)
             processed = cleanMalformedContent(processed);
@@ -1076,6 +1128,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 5: Process markdown lists
             processed = processMarkdownLists(processed);
+
+            // Stage 5.5: Restore display math blocks before rendering
+            // This ensures the original math content is available for rendering
+            processed = restoreDisplayMath(processed, mathExtraction.mathBlocks);
 
             // Stage 6: Render math content (using model-specific delimiters and KaTeX options)
             processed = renderMathContent(processed);
