@@ -69,14 +69,21 @@ def log_admin_action(
     request: Optional[Request] = None,
 ) -> None:
     """Log admin action for audit trail."""
+    ip_address = None
+    user_agent = None
+    if request:
+        if request.client:
+            ip_address = request.client.host
+        user_agent = request.headers.get("user-agent")
+    
     log_entry = AdminActionLog(
         admin_user_id=admin_user.id,
         target_user_id=target_user_id,
         action_type=action_type,
         action_description=action_description,
         details=json.dumps(details) if details else None,
-        ip_address=request.client.host if request else None,
-        user_agent=request.headers.get("user-agent") if request else None,
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
     db.add(log_entry)
     db.commit()
@@ -860,12 +867,11 @@ async def toggle_anonymous_mock_mode(
             detail="Anonymous mock mode is only available in development environment"
         )
     
-    from ..cache import get_cached_app_settings, invalidate_app_settings_cache
+    from ..cache import invalidate_app_settings_cache
     
-    def get_settings():
-        return db.query(AppSettings).first()
-    
-    settings = get_cached_app_settings(get_settings)
+    # Always query database directly for updates (don't use cached object)
+    # Cached objects are detached from the current session and can't be modified
+    settings = db.query(AppSettings).first()
     
     # If no settings exist yet, create default ones
     if not settings:
