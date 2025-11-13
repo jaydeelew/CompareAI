@@ -21,6 +21,8 @@ export interface MessageBubbleProps {
   activeTab?: ResultTab;
   /** Custom className */
   className?: string;
+  /** Model ID for model-specific rendering */
+  modelId?: string;
 }
 
 /**
@@ -44,6 +46,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   timestamp,
   activeTab = RESULT_TAB.FORMATTED,
   className = '',
+  modelId,
 }) => {
   return (
     <div key={id} className={`conversation-message ${type} ${className}`.trim()}>
@@ -101,7 +104,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {activeTab === RESULT_TAB.FORMATTED ? (
           /* Full LaTeX rendering for formatted view */
           <Suspense fallback={<pre className="result-output raw-output">{content}</pre>}>
-            <LatexRenderer className="result-output">{content}</LatexRenderer>
+            <LatexRenderer className="result-output" modelId={modelId}>{content}</LatexRenderer>
           </Suspense>
         ) : (
           /* Raw text for immediate streaming display */

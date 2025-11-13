@@ -3863,7 +3863,7 @@ function AppContent() {
                                   {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
                                     /* Full LaTeX rendering for formatted view */
                                     <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
-                                      <LatexRenderer className="result-output">
+                                      <LatexRenderer className="result-output" modelId={conversation.modelId}>
                                         {message.content}
                                       </LatexRenderer>
                                     </Suspense>

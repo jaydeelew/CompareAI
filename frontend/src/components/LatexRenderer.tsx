@@ -26,8 +26,11 @@
  * 10. Restore code blocks and final cleanup
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import katex from 'katex';
+import { getModelConfig } from '../config/modelRendererRegistry';
+import { extractCodeBlocks, restoreCodeBlocks } from '../utils/codeBlockPreservation';
+import type { ModelRendererConfig } from '../types/rendererConfig';
 
 // Prism is loaded globally via CDN in index.html
 declare const Prism: any;
@@ -35,14 +38,15 @@ declare const Prism: any;
 interface LatexRendererProps {
     children: string;
     className?: string;
+    modelId?: string;
 }
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-// KaTeX configuration with permissive options for handling various AI model outputs
-const KATEX_OPTIONS = {
+// Default KaTeX options (fallback if model config doesn't specify)
+const DEFAULT_KATEX_OPTIONS = {
     throwOnError: false,
     strict: false,
     trust: (context: { command?: string }) => ['\\url', '\\href', '\\includegraphics'].includes(context.command || ''),
@@ -53,20 +57,6 @@ const KATEX_OPTIONS = {
     maxExpand: 1000,
 };
 
-// Unified delimiter patterns for math expressions
-const MATH_DELIMITERS = {
-    display: [
-        // eslint-disable-next-line no-useless-escape
-        { pattern: /\$\$([^\$]+?)\$\$/gs, name: 'double-dollar' },
-        { pattern: /\\\[\s*([\s\S]*?)\s*\\\]/g, name: 'bracket' },
-    ],
-    inline: [
-        // eslint-disable-next-line no-useless-escape
-        { pattern: /(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, name: 'single-dollar' },
-        { pattern: /\\\(\s*([^\\]*?)\s*\\\)/g, name: 'paren' },
-    ],
-};
-
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -74,7 +64,7 @@ const MATH_DELIMITERS = {
 /**
  * Safely render LaTeX with KaTeX with error handling
  */
-const safeRenderKatex = (latex: string, displayMode: boolean): string => {
+const safeRenderKatex = (latex: string, displayMode: boolean, katexOptions?: ModelRendererConfig['katexOptions']): string => {
     try {
         const cleanLatex = latex.trim()
             .replace(/<[^>]*>/g, '') // Remove HTML tags
@@ -82,10 +72,14 @@ const safeRenderKatex = (latex: string, displayMode: boolean): string => {
 
         if (!cleanLatex) return '';
 
-        return katex.renderToString(cleanLatex, {
-            ...KATEX_OPTIONS,
+        // Merge model-specific options with defaults
+        const options = {
+            ...DEFAULT_KATEX_OPTIONS,
+            ...katexOptions,
             displayMode,
-        });
+        };
+
+        return katex.renderToString(cleanLatex, options);
     } catch (error) {
         console.warn('KaTeX rendering error:', error, 'Input:', latex.substring(0, 100));
         // Return formatted fallback
@@ -148,12 +142,19 @@ const looksProse = (content: string): boolean => {
     return false;
 };
 
-const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' }) => {
+const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '', modelId }) => {
     // Safety check
     if (typeof children !== 'string') {
         console.error('LatexRenderer: children must be a string, got:', typeof children);
         return <div>Invalid content</div>;
     }
+
+    // Get model-specific configuration (falls back to default if modelId not provided or not found)
+    const config = useMemo(() => {
+        // getModelConfig returns default config if modelId is not found
+        // If modelId is not provided, we'll use a placeholder that will return default config
+        return getModelConfig(modelId || '__default__');
+    }, [modelId]);
 
     // ============================================================================
     // PREPROCESSING PIPELINE
@@ -161,8 +162,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
     /**
      * Stage 1: Clean malformed content (MathML, SVG, KaTeX artifacts)
+     * Uses model-specific preprocessing options
      */
     const cleanMalformedContent = (text: string): string => {
+        const preprocessOpts = config.preprocessing || {};
         let cleaned = text;
 
         // Remove malformed KaTeX/MathML markup
@@ -171,33 +174,55 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         cleaned = cleaned.replace(/mathxmlns/gi, '');
         cleaned = cleaned.replace(/annotationencoding/gi, '');
 
-        // Remove MathML blocks
-        cleaned = cleaned.replace(/<math[^>]*xmlns[^>]*>[\s\S]*?<\/math>/gi, '');
-        cleaned = cleaned.replace(/xmlns:?[^=]*="[^"]*w3\.org\/1998\/Math\/MathML[^"]*"/gi, '');
-        cleaned = cleaned.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
-        cleaned = cleaned.replace(/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
+        // Remove MathML blocks (if enabled in config)
+        if (preprocessOpts.removeMathML !== false) {
+            cleaned = cleaned.replace(/<math[^>]*xmlns[^>]*>[\s\S]*?<\/math>/gi, '');
+            cleaned = cleaned.replace(/xmlns:?[^=]*="[^"]*w3\.org\/1998\/Math\/MathML[^"]*"/gi, '');
+            cleaned = cleaned.replace(/https?:\/\/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
+            cleaned = cleaned.replace(/www\.w3\.org\/1998\/Math\/MathML[^\s<>]*/gi, '');
 
-        // Remove MathML tags while preserving content
-        const mathmlTags = ['math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac', 'mtext', 'mspace'];
-        mathmlTags.forEach(tag => {
-            // eslint-disable-next-line no-useless-escape
-            cleaned = cleaned.replace(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`, 'gi'), '$1');
-            // eslint-disable-next-line no-useless-escape
-            cleaned = cleaned.replace(new RegExp(`<\/?${tag}[^>]*>`, 'gi'), '');
-        });
+            // Remove MathML tags while preserving content
+            const mathmlTags = ['math', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub', 'mfrac', 'mtext', 'mspace'];
+            mathmlTags.forEach(tag => {
+                // eslint-disable-next-line no-useless-escape
+                cleaned = cleaned.replace(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`, 'gi'), '$1');
+                // eslint-disable-next-line no-useless-escape
+                cleaned = cleaned.replace(new RegExp(`<\/?${tag}[^>]*>`, 'gi'), '');
+            });
+        }
 
-        // Remove SVG content
-        cleaned = cleaned.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '');
-        cleaned = cleaned.replace(/<path[^>]*\/>/gi, '');
+        // Remove SVG content (if enabled in config)
+        if (preprocessOpts.removeSVG !== false) {
+            cleaned = cleaned.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, '');
+            cleaned = cleaned.replace(/<path[^>]*\/>/gi, '');
 
-        // Remove long sequences that look like SVG path data
-        cleaned = cleaned.replace(/[a-zA-Z0-9\s,.-]{50,}/g, (match) => {
-            const hasMany = (pattern: RegExp, threshold: number) => (match.match(pattern) || []).length > threshold;
-            if (hasMany(/\d/g, 10) && hasMany(/,/g, 5) && hasMany(/[a-zA-Z]/g, 5)) {
-                return ''; // Remove SVG path data
+            // Remove long sequences that look like SVG path data
+            cleaned = cleaned.replace(/[a-zA-Z0-9\s,.-]{50,}/g, (match) => {
+                const hasMany = (pattern: RegExp, threshold: number) => (match.match(pattern) || []).length > threshold;
+                if (hasMany(/\d/g, 10) && hasMany(/,/g, 5) && hasMany(/[a-zA-Z]/g, 5)) {
+                    return ''; // Remove SVG path data
+                }
+                return match;
+            });
+        }
+
+        // Remove HTML from math expressions (if enabled in config)
+        if (preprocessOpts.removeHtmlFromMath) {
+            // This will be applied during math rendering, but we can also do basic cleanup here
+            cleaned = cleaned.replace(/(\$\$?[^$]*?)<[^>]+>([^$]*?\$\$?)/g, '$1$2');
+        }
+
+        // Fix escaped dollar signs (if enabled in config)
+        if (preprocessOpts.fixEscapedDollars) {
+            cleaned = cleaned.replace(/\\\$/g, '$');
+        }
+
+        // Apply custom preprocessing functions if provided
+        if (preprocessOpts.customPreprocessors) {
+            for (const preprocessor of preprocessOpts.customPreprocessors) {
+                cleaned = preprocessor(cleaned);
             }
-            return match;
-        });
+        }
 
         return cleaned;
     };
@@ -375,107 +400,99 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     };
 
     /**
-     * Stage 4: Preserve code blocks
+     * Render a code block to HTML
+     * This is called after code blocks are restored from placeholders
      */
-    const preserveCodeBlocks = (text: string): { text: string; blocks: string[] } => {
-        const blocks: string[] = [];
+    const renderCodeBlock = (language: string, code: string): string => {
+        const lang = language || 'plaintext';
+        const cleanCode = code.replace(/^\n+|\n+$/g, '');
 
-        const processed = text.replace(/```([a-zA-Z0-9+#-]*)\n([\s\S]*?)```/g, (_, language, code) => {
-            const lang = language || 'plaintext';
-            const cleanCode = code.replace(/\n$/, '');
+        // Map common aliases to Prism language names
+        const languageMap: { [key: string]: string } = {
+            'js': 'javascript',
+            'ts': 'typescript',
+            'py': 'python',
+            'rb': 'ruby',
+            'sh': 'bash',
+            'yml': 'yaml',
+            'html': 'markup',
+            'xml': 'markup',
+            'c++': 'clike',
+            'cpp': 'clike',
+            'c#': 'csharp',
+            'cs': 'csharp',
+        };
 
-            // Map common aliases to Prism language names
-            const languageMap: { [key: string]: string } = {
-                'js': 'javascript',
-                'ts': 'typescript',
-                'py': 'python',
-                'rb': 'ruby',
-                'sh': 'bash',
-                'yml': 'yaml',
-                'html': 'markup',
-                'xml': 'markup',
-                'c++': 'clike', // Use clike instead of cpp to avoid the error
-                'cpp': 'clike', // Use clike instead of cpp to avoid the error
-                'c#': 'csharp',
-                'cs': 'csharp',
-            };
+        const prismLang = languageMap[lang.toLowerCase()] || lang.toLowerCase();
 
-            const prismLang = languageMap[lang.toLowerCase()] || lang.toLowerCase();
+        // Escape the code for safe HTML insertion
+        const escapedCode = cleanCode
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
 
-            // Escape the code for safe HTML insertion
-            const escapedCode = cleanCode
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+        // Base64 encode the original code for reliable storage in data attribute
+        const base64Code = typeof btoa !== 'undefined' ? btoa(unescape(encodeURIComponent(cleanCode))) : '';
 
-            // Base64 encode the original code for reliable storage in data attribute
-            const base64Code = typeof btoa !== 'undefined' ? btoa(unescape(encodeURIComponent(cleanCode))) : '';
-
-            const codeBlockHTML = `
-                <div class="code-block-direct" data-language="${lang}" data-code-base64="${base64Code}" style="
-                    background: #0d1117;
-                    border: 1px solid #30363d;
-                    border-radius: 8px;
-                    padding: 20px;
-                    margin: 20px 0;
-                    overflow-x: auto;
-                    font-size: 14px;
-                    line-height: 1.5;
-                    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-                    position: relative;
+        return `
+            <div class="code-block-direct" data-language="${lang}" data-code-base64="${base64Code}" style="
+                background: #0d1117;
+                border: 1px solid #30363d;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 20px 0;
+                overflow-x: auto;
+                font-size: 14px;
+                line-height: 1.5;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                position: relative;
+            ">
+                <div class="code-block-header" style="
+                    position: absolute;
+                    top: 8px;
+                    left: 12px;
+                    right: 12px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    pointer-events: none;
+                    z-index: 1;
                 ">
-                    <div class="code-block-header" style="
-                        position: absolute;
-                        top: 8px;
-                        left: 12px;
-                        right: 12px;
+                    <span class="code-language-label" style="
+                        font-size: 11px;
+                        color: #7d8590;
+                        text-transform: uppercase;
+                        font-weight: 600;
+                        background: rgba(125, 133, 144, 0.15);
+                        padding: 0.25rem 0.5rem;
+                        border-radius: 3px;
+                        letter-spacing: 0.5px;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    ">${lang}</span>
+                    <button class="code-copy-btn" onclick="(function(btn){try{const base64=btn.parentElement.parentElement.getAttribute('data-code-base64');const code=decodeURIComponent(escape(atob(base64)));navigator.clipboard.writeText(code).then(()=>{const origHTML=btn.innerHTML;btn.innerHTML='<svg width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>';btn.style.color='#3fb950';setTimeout(()=>{btn.innerHTML=origHTML;btn.style.color='#7d8590';},2000);}).catch(e=>console.error(e));}catch(e){console.error('Copy error:',e);}})(this)" style="
+                        pointer-events: auto;
+                        background: none;
+                        border: none;
+                        color: #7d8590;
+                        cursor: pointer;
+                        padding: 0.25rem;
+                        border-radius: 4px;
+                        transition: all 0.2s ease;
                         display: flex;
-                        justify-content: space-between;
                         align-items: center;
-                        pointer-events: none;
-                        z-index: 1;
-                    ">
-                        <span class="code-language-label" style="
-                            font-size: 11px;
-                            color: #7d8590;
-                            text-transform: uppercase;
-                            font-weight: 600;
-                            background: rgba(125, 133, 144, 0.15);
-                            padding: 0.25rem 0.5rem;
-                            border-radius: 3px;
-                            letter-spacing: 0.5px;
-                            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                        ">${lang}</span>
-                        <button class="code-copy-btn" onclick="(function(btn){try{const base64=btn.parentElement.parentElement.getAttribute('data-code-base64');const code=decodeURIComponent(escape(atob(base64)));navigator.clipboard.writeText(code).then(()=>{const origHTML=btn.innerHTML;btn.innerHTML='<svg width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>';btn.style.color='#3fb950';setTimeout(()=>{btn.innerHTML=origHTML;btn.style.color='#7d8590';},2000);}).catch(e=>console.error(e));}catch(e){console.error('Copy error:',e);}})(this)" style="
-                            pointer-events: auto;
-                            background: none;
-                            border: none;
-                            color: #7d8590;
-                            cursor: pointer;
-                            padding: 0.25rem;
-                            border-radius: 4px;
-                            transition: all 0.2s ease;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            width: 24px;
-                            height: 24px;
-                        " onmouseover="this.style.background='rgba(125, 133, 144, 0.15)'; this.style.color='#e6edf3';" onmouseout="if(!this.style.color.includes('3fb950')){this.style.background='none';this.style.color='#7d8590';}" title="Copy code">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                        </button>
-                    </div>
-                    <pre class="language-${prismLang}" style="margin: 0; margin-top: 28px; white-space: pre; word-wrap: normal; overflow-wrap: normal;"><code class="language-${prismLang}">${escapedCode}</code></pre>
+                        justify-content: center;
+                        width: 24px;
+                        height: 24px;
+                    " onmouseover="this.style.background='rgba(125, 133, 144, 0.15)'; this.style.color='#e6edf3';" onmouseout="if(!this.style.color.includes('3fb950')){this.style.background='none';this.style.color='#7d8590';}" title="Copy code">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                    </button>
                 </div>
-            `;
-
-            blocks.push(codeBlockHTML);
-            return `__CODE_BLOCK_${blocks.length - 1}__`;
-        });
-
-        return { text: processed, blocks };
+                <pre class="language-${prismLang}" style="margin: 0; margin-top: 28px; white-space: pre; word-wrap: normal; overflow-wrap: normal;"><code class="language-${prismLang}">${escapedCode}</code></pre>
+            </div>
+        `;
     };
 
     /**
@@ -529,7 +546,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             const alreadyRendered = fullExpression.includes('<span class="katex">') || fullExpression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
-                return safeRenderKatex(fullExpression, false);
+                return safeRenderKatex(fullExpression, false, config.katexOptions);
             }
             return _match;
         });
@@ -541,7 +558,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
-                return safeRenderKatex(expression, false);
+                return safeRenderKatex(expression, false, config.katexOptions);
             }
             return _match;
         });
@@ -552,28 +569,42 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             const alreadyRendered = mathExpression.includes('<span class="katex">') || mathExpression.includes('katex');
 
             if (!alreadyRendered && looksMathematical(mathExpression)) {
-                return safeRenderKatex(mathExpression, false);
+                return safeRenderKatex(mathExpression, false, config.katexOptions);
             }
             return _match;
         });
 
-        // Then handle explicit display math ($$...$$)
-        MATH_DELIMITERS.display.forEach(({ pattern }) => {
+        // Then handle explicit display math using model-specific delimiters
+        // Sort by priority (lower numbers first) if priority is specified
+        const displayDelimiters = [...config.displayMathDelimiters].sort((a, b) => {
+            const priorityA = a.priority ?? 999;
+            const priorityB = b.priority ?? 999;
+            return priorityA - priorityB;
+        });
+        
+        displayDelimiters.forEach(({ pattern }) => {
             rendered = rendered.replace(pattern, (_match, math) => {
-                return safeRenderKatex(math, true);
+                return safeRenderKatex(math, true, config.katexOptions);
             });
         });
 
-        // Then, handle explicit inline math ($...$)
-        MATH_DELIMITERS.inline.forEach(({ pattern }) => {
+        // Then, handle explicit inline math using model-specific delimiters
+        // Sort by priority (lower numbers first) if priority is specified
+        const inlineDelimiters = [...config.inlineMathDelimiters].sort((a, b) => {
+            const priorityA = a.priority ?? 999;
+            const priorityB = b.priority ?? 999;
+            return priorityA - priorityB;
+        });
+        
+        inlineDelimiters.forEach(({ pattern }) => {
             rendered = rendered.replace(pattern, (_match, math) => {
-                return safeRenderKatex(math, false);
+                return safeRenderKatex(math, false, config.katexOptions);
             });
         });
 
         // Handle standalone LaTeX commands
         rendered = rendered.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (_match, num, den) => {
-            return safeRenderKatex(`\\frac{${num}}{${den}}`, false);
+            return safeRenderKatex(`\\frac{${num}}{${den}}`, false, config.katexOptions);
         });
 
         rendered = rendered.replace(/\\boxed\{([^}]+)\}/g, (_match, content) => {
@@ -581,7 +612,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 .replace(/<[^>]*>/g, '')
                 .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1')
                 .trim();
-            return safeRenderKatex(`\\boxed{${cleanContent}}`, false);
+            return safeRenderKatex(`\\boxed{${cleanContent}}`, false, config.katexOptions);
         });
 
         // Math symbols and Greek letters
@@ -657,17 +688,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
         ];
 
         symbols.forEach(({ pattern, latex }) => {
-            rendered = rendered.replace(pattern, () => safeRenderKatex(latex, false));
+            rendered = rendered.replace(pattern, () => safeRenderKatex(latex, false, config.katexOptions));
         });
 
         // Convert derivative placeholders from Stage 3 to actual fractions
         rendered = rendered.replace(/__DERIVATIVE_([a-zA-Z])__/g, (_match, variable) => {
-            return safeRenderKatex(`\\frac{d}{d${variable}}`, false);
+            return safeRenderKatex(`\\frac{d}{d${variable}}`, false, config.katexOptions);
         });
 
         // Handle standalone d/dx (for any remaining cases not caught by Stage 3)
         rendered = rendered.replace(/\bd\/d([a-zA-Z])\b/g, (_match, variable) => {
-            return safeRenderKatex(`\\frac{d}{d${variable}}`, false);
+            return safeRenderKatex(`\\frac{d}{d${variable}}`, false, config.katexOptions);
         });
 
         // Handle Unicode superscripts
@@ -676,16 +707,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6',
                 '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '¹': '1'
             };
-            return safeRenderKatex(`${base}^{${supMap[sup]}}`, false);
+            return safeRenderKatex(`${base}^{${supMap[sup]}}`, false, config.katexOptions);
         });
 
         // Handle caret notation
         rendered = rendered.replace(/([a-zA-Z0-9]+)\^\{([^}]+)\}/g, (_match, base, exp) => {
-            return safeRenderKatex(`${base}^{${exp}}`, false);
+            return safeRenderKatex(`${base}^{${exp}}`, false, config.katexOptions);
         });
 
         rendered = rendered.replace(/([a-zA-Z])\^(\d+|[a-zA-Z])/g, (_match, base, exp) => {
-            return safeRenderKatex(`${base}^{${exp}}`, false);
+            return safeRenderKatex(`${base}^{${exp}}`, false, config.katexOptions);
         });
 
 
@@ -694,17 +725,20 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
     /**
      * Stage 7: Process markdown formatting
+     * Uses model-specific markdown processing rules
      */
     const processMarkdown = (text: string): string => {
+        const markdownRules = config.markdownProcessing || {};
         let processed = text;
 
-        // Tables - must come first
-        processed = processed.replace(/^\|(.+)\|$/gm, (_match, content) => {
-            return '__TABLE_ROW__' + content + '__/TABLE_ROW__';
-        });
+        // Tables - must come first (if enabled)
+        if (markdownRules.processTables !== false) {
+            processed = processed.replace(/^\|(.+)\|$/gm, (_match, content) => {
+                return '__TABLE_ROW__' + content + '__/TABLE_ROW__';
+            });
 
-        // Process table rows and convert to HTML
-        processed = processed.replace(/(__TABLE_ROW__[\s\S]*__\/TABLE_ROW__)+/g, (match) => {
+            // Process table rows and convert to HTML
+            processed = processed.replace(/(__TABLE_ROW__[\s\S]*__\/TABLE_ROW__)+/g, (match) => {
             const rows = match.split('__/TABLE_ROW__').filter(row => row.trim());
             let tableHTML = '<table class="markdown-table">';
             let isHeader = true;
@@ -736,31 +770,40 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
                 }
             });
 
-            tableHTML += '</table>';
-            return tableHTML;
-        });
+                tableHTML += '</table>';
+                return tableHTML;
+            });
+        }
 
-        // Inline code
-        processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+        // Inline code (if enabled)
+        if (markdownRules.processInlineCode !== false) {
+            processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+        }
 
-        // Horizontal rules
-        processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
-        processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
-        processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
+        // Horizontal rules (if enabled)
+        if (markdownRules.processHorizontalRules !== false) {
+            processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
+            processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
+            processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
+        }
 
-        // Headings (longest first to avoid partial matches)
-        processed = processed.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-        processed = processed.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
-        processed = processed.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-        processed = processed.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-        processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-        processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        // Headings (if enabled, longest first to avoid partial matches)
+        if (markdownRules.processHeaders !== false) {
+            processed = processed.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+            processed = processed.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+            processed = processed.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+            processed = processed.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        }
 
-        // Bold and italic (preserve all spaces)
-        // Bold: match ** but allow single * inside
-        processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        // Italic: match single * but not when part of **
-        processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+        // Bold and italic (if enabled, preserve all spaces)
+        if (markdownRules.processBoldItalic !== false) {
+            // Bold: match ** but allow single * inside
+            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Italic: match single * but not when part of **
+            processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+        }
 
         // Strikethrough
         processed = processed.replace(/~~([^~]+?)~~/g, '<del class="markdown-strikethrough">$1</del>');
@@ -772,21 +815,37 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             return '';
         });
 
-        // Links (both inline and reference-style)
-        processed = processed.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
-            const titleAttr = title ? ` title="${title}"` : '';
-            return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
-        });
+        // Links (both inline and reference-style, if enabled)
+        if (markdownRules.processLinks !== false) {
+            processed = processed.replace(/\[([^\]]+)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, text, url, title) => {
+                const titleAttr = title ? ` title="${title}"` : '';
+                return `<a href="${url}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+            });
 
-        // Reference-style links
-        processed = processed.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
-            const reference = ref || text.toLowerCase();
-            const url = referenceMap[reference];
-            if (url) {
-                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+            // Reference-style links
+            processed = processed.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (match, text, ref) => {
+                const reference = ref || text.toLowerCase();
+                const url = referenceMap[reference];
+                if (url) {
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                }
+                return match;
+            });
+
+            // Fix broken links (if enabled)
+            if (markdownRules.fixBrokenLinks) {
+                // Try to fix common broken link patterns
+                processed = processed.replace(/\[([^\]]+)\]\(([^)]*)\)/g, (match, text, url) => {
+                    if (!url || url.trim() === '') {
+                        // If URL is empty, try to create a link from the text
+                        if (text.match(/^https?:\/\//)) {
+                            return `<a href="${text}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                        }
+                    }
+                    return match;
+                });
             }
-            return match;
-        });
+        }
 
         // Images - with lazy loading and optimization
         processed = processed.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) => {
@@ -988,31 +1047,33 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
 
     /**
      * Main rendering pipeline
+     * Uses model-specific configurations and code block preservation utilities
      */
     const renderLatex = (text: string): string => {
         try {
             let processed = text;
 
-            // Stage 1: Clean malformed content
+            // Stage 1: Extract code blocks BEFORE any processing
+            // This ensures code blocks are preserved exactly as received
+            const codeBlockExtraction = extractCodeBlocks(processed);
+            processed = codeBlockExtraction.text;
+
+            // Stage 2: Clean malformed content (using model-specific preprocessing)
             processed = cleanMalformedContent(processed);
 
-            // Stage 2: Fix LaTeX issues
+            // Stage 3: Fix LaTeX issues
             processed = fixLatexIssues(processed);
 
-            // Stage 3: Convert implicit math notation
+            // Stage 4: Convert implicit math notation
             processed = convertImplicitMath(processed);
-
-            // Stage 4: Preserve code blocks
-            const { text: withoutCode, blocks: codeBlocks } = preserveCodeBlocks(processed);
-            processed = withoutCode;
 
             // Stage 5: Process markdown lists
             processed = processMarkdownLists(processed);
 
-            // Stage 6: Render math content
+            // Stage 6: Render math content (using model-specific delimiters and KaTeX options)
             processed = renderMathContent(processed);
 
-            // Stage 7: Process markdown formatting
+            // Stage 7: Process markdown formatting (using model-specific rules)
             processed = processMarkdown(processed);
 
             // Stage 8: Convert lists to HTML
@@ -1021,10 +1082,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
             // Stage 9: Apply paragraph breaks
             processed = applyParagraphBreaks(processed);
 
-            // Stage 10: Restore code blocks
-            codeBlocks.forEach((block, i) => {
-                processed = processed.replace(`__CODE_BLOCK_${i}__`, block);
+            // Stage 10: Restore code blocks from placeholders
+            // restoreCodeBlocks returns markdown format, so we need to render them
+            processed = restoreCodeBlocks(processed, codeBlockExtraction);
+            
+            // Render restored code blocks to HTML
+            // Match code blocks in markdown format: ```language\ncontent\n```
+            processed = processed.replace(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/g, (match, language, code) => {
+                return renderCodeBlock(language || 'plaintext', code);
             });
+
+            // Apply post-processing if configured
+            if (config.postProcessing) {
+                for (const postProcessor of config.postProcessing) {
+                    processed = postProcessor(processed);
+                }
+            }
 
             // Final cleanup - only unescape markdown characters, not LaTeX commands
             // Don't remove backslashes that are part of LaTeX commands
@@ -1100,4 +1173,5 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '' 
     );
 };
 
+export default LatexRenderer;
 export default LatexRenderer;
