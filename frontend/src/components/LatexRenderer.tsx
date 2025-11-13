@@ -20,6 +20,7 @@
  * 4. Preserve code blocks (bypass LaTeX processing)
  * 5. Process markdown lists with math content
  * 6. Normalize and render all math delimiters
+ * 6.5. Preserve line breaks between consecutive math expressions
  * 7. Process markdown formatting (bold, italic, links, etc.)
  * 8. Convert list placeholders to HTML
  * 9. Apply paragraph breaks
@@ -673,7 +674,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // THEN: Handle mathematical expressions BEFORE individual symbols get processed
         // This catches expressions like "x = ..." that contain LaTeX commands
         // But skip if already rendered (inside display math delimiters)
-        rendered = rendered.replace(/^x\s*=\s*(.+)$/gm, (_match, rightSide) => {
+        // Match the line including the newline to preserve line breaks
+        rendered = rendered.replace(/^x\s*=\s*(.+?)(\n|$)/gm, (_match, rightSide, newline) => {
             const fullExpression = `x = ${rightSide}`;
 
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
@@ -681,19 +683,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const alreadyRendered = fullExpression.includes('<span class="katex">') || fullExpression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
-                return safeRenderKatex(fullExpression, false, config.katexOptions);
+                // Preserve the newline after the line
+                return safeRenderKatex(fullExpression, false, config.katexOptions) + (newline || '');
             }
             return _match;
         });
 
         // Handle other mathematical expressions that don't have explicit delimiters
-        rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+)$/gm, (_match, expression) => {
+        // Match entire lines that look like equations, preserving newlines
+        rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+?)(\n|$)/gm, (_match, expression, newline) => {
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(expression);
             const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
 
             if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
-                return safeRenderKatex(expression, false, config.katexOptions);
+                // Preserve the newline after the line
+                return safeRenderKatex(expression, false, config.katexOptions) + (newline || '');
             }
             return _match;
         });
@@ -929,6 +934,36 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
 
         return rendered;
+    };
+
+    /**
+     * Stage 6.5: Preserve line breaks between consecutive math expressions
+     * Converts single newlines between rendered math expressions to <br> tags
+     */
+    const preserveMathLineBreaks = (text: string): string => {
+        let processed = text;
+
+        // Pattern: KaTeX HTML closing tag followed by newline(s) followed by opening KaTeX tag
+        // This handles cases where multiple equations are on separate lines
+        // The key pattern: </span> followed by whitespace/newlines followed by <span class="katex
+
+        // Match: closing span tag, optional whitespace, one or more newlines, optional whitespace, opening katex span
+        // Convert single newlines between math expressions to <br> tags
+        processed = processed.replace(/(<\/span>)\s*(\n+)\s*(<span class="katex)/g, (_match, closingSpan, newlines, openingSpan) => {
+            // Count the number of consecutive newlines
+            const newlineCount = newlines.length;
+
+            // If there's exactly one newline, convert it to <br>
+            if (newlineCount === 1) {
+                return `${closingSpan}<br>${openingSpan}`;
+            }
+
+            // If there are multiple newlines, convert the first to <br> and keep one newline
+            // (the remaining newlines will be handled by paragraph break processing)
+            return `${closingSpan}<br>\n${openingSpan}`;
+        });
+
+        return processed;
     };
 
     /**
@@ -1428,6 +1463,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 6: Render math content (using model-specific delimiters and KaTeX options)
             processed = renderMathContent(processed);
+
+            // Stage 6.5: Preserve line breaks between consecutive math expressions
+            processed = preserveMathLineBreaks(processed);
 
             // Stage 7: Process markdown formatting (using model-specific rules)
             processed = processMarkdown(processed);
