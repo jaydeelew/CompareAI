@@ -706,13 +706,65 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return safeRenderKatex(`\\frac{${num}}{${den}}`, false, config.katexOptions);
         });
 
-        rendered = rendered.replace(/\\boxed\{([^}]+)\}/g, (_match, content) => {
-            const cleanContent = content
-                .replace(/<[^>]*>/g, '')
-                .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1')
-                .trim();
-            return safeRenderKatex(`\\boxed{${cleanContent}}`, false, config.katexOptions);
-        });
+        // Handle \boxed with proper nested brace matching
+        // This function finds the matching closing brace for \boxed{...}
+        const processBoxed = (text: string): string => {
+            let result = '';
+            let i = 0;
+
+            while (i < text.length) {
+                // Check if we're at the start of \boxed{
+                if (text.substring(i).startsWith('\\boxed{')) {
+                    // Check if this is already inside rendered KaTeX HTML
+                    const beforeMatch = text.substring(0, i);
+                    const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
+                    const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
+
+                    // If we're inside KaTeX HTML (opened but not closed), skip
+                    if (lastKatexStart > lastKatexEnd) {
+                        result += text[i];
+                        i++;
+                        continue;
+                    }
+
+                    // Find the matching closing brace
+                    let braceCount = 1;
+                    let contentStart = i + 7; // Length of '\boxed{'
+                    let contentEnd = contentStart;
+
+                    while (braceCount > 0 && contentEnd < text.length) {
+                        if (text[contentEnd] === '{') {
+                            braceCount++;
+                        } else if (text[contentEnd] === '}') {
+                            braceCount--;
+                        }
+                        contentEnd++;
+                    }
+
+                    if (braceCount === 0) {
+                        // Found matching brace
+                        const content = text.substring(contentStart, contentEnd - 1);
+                        const cleanContent = content
+                            .replace(/<[^>]*>/g, '')
+                            .replace(/\\\(\s*([^\\]+?)\s*\\\)/g, '$1')
+                            .trim();
+                        result += safeRenderKatex(`\\boxed{${cleanContent}}`, false, config.katexOptions);
+                        i = contentEnd; // Move past the closing brace
+                    } else {
+                        // No matching brace found, just add the character
+                        result += text[i];
+                        i++;
+                    }
+                } else {
+                    result += text[i];
+                    i++;
+                }
+            }
+
+            return result;
+        };
+
+        rendered = processBoxed(rendered);
 
         // Math symbols and Greek letters
         const symbols = [
