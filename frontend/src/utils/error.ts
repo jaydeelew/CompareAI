@@ -173,8 +173,8 @@ export function isErrorMessage(content: string | null | undefined): boolean {
   }
   
   // Check if content contains "Error:" anywhere (case-insensitive)
-  // This handles cases where error is appended mid-stream
-  if (!/\bError:/i.test(trimmed)) {
+  // This handles cases where error is appended mid-stream (even without spaces)
+  if (!/Error:/i.test(trimmed)) {
     return false;
   }
   
