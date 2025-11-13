@@ -583,6 +583,51 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     };
 
     /**
+     * Extract inline math blocks to protect them from preprocessing
+     * Similar to display math extraction, but for inline math delimiters
+     */
+    const extractInlineMath = (text: string): { text: string; mathBlocks: string[] } => {
+        const mathBlocks: string[] = [];
+        const placeholderPrefix = '__INLINE_MATH_';
+        const placeholderSuffix = '__';
+
+        let processed = text;
+        const inlineDelimiters = [...config.inlineMathDelimiters].sort((a, b) => {
+            const priorityA = a.priority ?? 999;
+            const priorityB = b.priority ?? 999;
+            return priorityA - priorityB;
+        });
+
+        // Extract all inline math blocks using model-specific delimiters
+        inlineDelimiters.forEach(({ pattern }) => {
+            processed = processed.replace(pattern, (fullMatch) => {
+                const index = mathBlocks.length;
+                mathBlocks.push(fullMatch); // Store the full match including delimiters
+                return `${placeholderPrefix}${index}${placeholderSuffix}`;
+            });
+        });
+
+        return { text: processed, mathBlocks };
+    };
+
+    /**
+     * Restore inline math blocks after preprocessing
+     */
+    const restoreInlineMath = (text: string, mathBlocks: string[]): string => {
+        const placeholderPrefix = '__INLINE_MATH_';
+        const placeholderSuffix = '__';
+        const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)${placeholderSuffix}`, 'g');
+
+        return text.replace(placeholderRegex, (_match, index) => {
+            const blockIndex = parseInt(index, 10);
+            if (blockIndex >= 0 && blockIndex < mathBlocks.length) {
+                return mathBlocks[blockIndex];
+            }
+            return _match; // Return original if index is invalid
+        });
+    };
+
+    /**
      * Stage 6: Normalize and render math delimiters
      */
     const renderMathContent = (text: string): string => {
@@ -1114,8 +1159,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 0.5: Extract display math blocks BEFORE any processing
             // This protects math content from being modified by preprocessing stages
-            const mathExtraction = extractDisplayMath(processed);
-            processed = mathExtraction.text;
+            const displayMathExtraction = extractDisplayMath(processed);
+            processed = displayMathExtraction.text;
+
+            // Stage 0.6: Extract inline math blocks BEFORE any processing
+            // This protects inline math content from being modified by preprocessing stages
+            const inlineMathExtraction = extractInlineMath(processed);
+            processed = inlineMathExtraction.text;
 
             // Stage 2: Clean malformed content (using model-specific preprocessing)
             processed = cleanMalformedContent(processed);
@@ -1131,7 +1181,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 5.5: Restore display math blocks before rendering
             // This ensures the original math content is available for rendering
-            processed = restoreDisplayMath(processed, mathExtraction.mathBlocks);
+            processed = restoreDisplayMath(processed, displayMathExtraction.mathBlocks);
+
+            // Stage 5.6: Restore inline math blocks before rendering
+            // This ensures the original inline math content is available for rendering
+            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
 
             // Stage 6: Render math content (using model-specific delimiters and KaTeX options)
             processed = renderMathContent(processed);
