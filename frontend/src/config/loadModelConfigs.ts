@@ -48,11 +48,11 @@ function createDelimiterPatterns(
 ): MathDelimiterPattern[] {
   const patterns: MathDelimiterPattern[] = [];
   let priority = 1;
-  
+
   for (const type of delimiterTypes) {
     let pattern: RegExp;
     let name: MathDelimiterPattern['name'];
-    
+
     switch (type) {
       case 'double-dollar':
         pattern = /\$\$([^\$]+?)\$\$/gs;
@@ -67,7 +67,7 @@ function createDelimiterPatterns(
         name = 'bracket';
         break;
       case 'paren':
-        pattern = /\\\(\s*([^\\]*?)\s*\\\)/g;
+        pattern = /\\\(\s*([\s\S]*?)\s*\\\)/g;
         name = 'paren';
         break;
       case 'align-env':
@@ -82,11 +82,11 @@ function createDelimiterPatterns(
         console.warn(`Unknown delimiter type: ${type}`);
         continue;
     }
-    
+
     patterns.push({ pattern, name, priority });
     priority++;
   }
-  
+
   return patterns;
 }
 
@@ -103,25 +103,25 @@ function generateConfigFromAnalysis(
 ): ModelRendererConfig {
   const displayDelimiters = analysis.delimiters?.display || ['double-dollar'];
   const inlineDelimiters = analysis.delimiters?.inline || ['single-dollar'];
-  
+
   const hasEscapedDollars = analysis.issues?.includes('escaped_dollar_signs') || false;
   const hasHtmlInMath = analysis.issues?.includes('html_in_math') || false;
   const hasBrokenLinks = analysis.issues?.includes('broken_markdown_links') || false;
-  
+
   const config: ModelRendererConfig = {
     modelId,
     version: '1.0.0',
-    
+
     displayMathDelimiters: createDelimiterPatterns(displayDelimiters, true),
     inlineMathDelimiters: createDelimiterPatterns(inlineDelimiters, false),
-    
+
     preprocessing: {
       removeHtmlFromMath: hasHtmlInMath,
       fixEscapedDollars: hasEscapedDollars,
       removeMathML: true, // Always remove MathML artifacts
       removeSVG: true, // Always remove SVG artifacts
     },
-    
+
     markdownProcessing: {
       processLinks: analysis.markdown_elements?.links !== false,
       fixBrokenLinks: hasBrokenLinks,
@@ -133,7 +133,7 @@ function generateConfigFromAnalysis(
       processLists: analysis.markdown_elements?.lists !== false,
       processInlineCode: analysis.markdown_elements?.inline_code !== false,
     },
-    
+
     katexOptions: {
       throwOnError: false,
       strict: false,
@@ -145,19 +145,19 @@ function generateConfigFromAnalysis(
       maxSize: 500,
       maxExpand: 1000,
     },
-    
+
     codeBlockPreservation: {
       enabled: true,
       extractBeforeProcessing: true,
       restoreAfterProcessing: true,
     },
-    
+
     metadata: {
       createdAt: new Date().toISOString(),
       needsManualReview: analysis.needs_manual_review || false,
     },
   };
-  
+
   return config;
 }
 
@@ -171,10 +171,10 @@ export function loadConfigsFromAnalysis(analysisData: AnalysisData): void {
     console.warn('Registry already initialized, skipping load');
     return;
   }
-  
+
   const analyses = analysisData.analyses || {};
   let loadedCount = 0;
-  
+
   for (const [modelId, analysis] of Object.entries(analyses)) {
     try {
       const config = generateConfigFromAnalysis(modelId, analysis);
@@ -184,7 +184,7 @@ export function loadConfigsFromAnalysis(analysisData: AnalysisData): void {
       console.error(`Failed to load config for ${modelId}:`, error);
     }
   }
-  
+
   console.log(`Loaded ${loadedCount} model configurations from analysis data`);
   markRegistryInitialized();
 }
@@ -261,7 +261,7 @@ function parseRegexPattern(patternStr: string): RegExp {
       return new RegExp(pattern);
     }
   }
-  
+
   // If no match, assume it's just the pattern
   return new RegExp(patternStr);
 }
@@ -274,41 +274,41 @@ function convertRawConfig(raw: RawConfig): ModelRendererConfig {
   const config: ModelRendererConfig = {
     modelId: raw.modelId,
     version: raw.version,
-    
+
     displayMathDelimiters: raw.displayMathDelimiters.map(d => ({
       pattern: parseRegexPattern(d.pattern),
       name: d.name as MathDelimiterPattern['name'],
       priority: d.priority,
     })),
-    
+
     inlineMathDelimiters: raw.inlineMathDelimiters.map(d => ({
       pattern: parseRegexPattern(d.pattern),
       name: d.name as MathDelimiterPattern['name'],
       priority: d.priority,
     })),
-    
+
     preprocessing: raw.preprocessing,
-    
+
     markdownProcessing: raw.markdownProcessing,
-    
+
     katexOptions: raw.katexOptions ? {
       ...raw.katexOptions,
       // Convert trust array to function if present
-      trust: raw.katexOptions.trust 
-        ? (context: { command?: string }) => 
-            raw.katexOptions!.trust!.includes(context.command || '')
+      trust: raw.katexOptions.trust
+        ? (context: { command?: string }) =>
+          raw.katexOptions!.trust!.includes(context.command || '')
         : undefined,
     } : undefined,
-    
+
     codeBlockPreservation: {
       enabled: raw.codeBlockPreservation.enabled as true,
       extractBeforeProcessing: raw.codeBlockPreservation.extractBeforeProcessing as true,
       restoreAfterProcessing: raw.codeBlockPreservation.restoreAfterProcessing as true,
     },
-    
+
     metadata: raw.metadata,
   };
-  
+
   return config;
 }
 
@@ -323,9 +323,9 @@ export function loadConfigsFromStatic(rawConfigs: RawConfig[]): void {
     console.warn('Registry already initialized, skipping load');
     return;
   }
-  
+
   let loadedCount = 0;
-  
+
   for (const rawConfig of rawConfigs) {
     try {
       const config = convertRawConfig(rawConfig);
@@ -335,7 +335,7 @@ export function loadConfigsFromStatic(rawConfigs: RawConfig[]): void {
       console.error(`Failed to load config for ${rawConfig.modelId}:`, error);
     }
   }
-  
+
   console.log(`Loaded ${loadedCount} model configurations from static configs`);
   markRegistryInitialized();
 }
@@ -350,14 +350,14 @@ export async function initializeRegistry(): Promise<void> {
   if (isRegistryInitialized()) {
     return;
   }
-  
+
   try {
     // Import the generated configurations
     // Vite handles JSON imports directly - the import returns the JSON object
     const configsModule = await import('./model_renderer_configs.json');
     // Vite JSON imports return the object directly (not wrapped in default)
     const rawConfigs = (configsModule.default || configsModule) as RawConfig[];
-    
+
     if (Array.isArray(rawConfigs) && rawConfigs.length > 0) {
       loadConfigsFromStatic(rawConfigs);
       console.log(`Model renderer registry initialized with ${rawConfigs.length} configurations`);
