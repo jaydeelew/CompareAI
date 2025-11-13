@@ -48,7 +48,7 @@ import {
   formatNumber,
   formatConversationMessage,
 } from './utils';
-import { isErrorMessage } from './utils/error';
+import { isErrorMessage, type NotificationController } from './utils/error';
 import {
   getAnonymousMockModeStatus,
   getRateLimitStatus,
@@ -614,8 +614,8 @@ function AppContent() {
       return;
     }
 
-    // Show immediate feedback
-    showNotification('Copying screenshot...', 'success');
+    // Show immediate feedback and store notification controller to update it when done
+    const copyingNotification = showNotification('Copying screenshot...', 'success');
 
     // Store original styles that we'll modify
     const prevOverflow = content.style.overflow;
@@ -656,9 +656,10 @@ function AppContent() {
           await navigator.clipboard.write([
             new window.ClipboardItem({ 'image/png': blob })
           ]);
-          showNotification('Screenshot copied to clipboard!', 'success');
+          // Update notification in place for seamless transition
+          copyingNotification.update('Screenshot copied to clipboard!', 'success');
         } catch {
-          showNotification('Clipboard copy failed. Image downloaded instead.', 'error');
+          copyingNotification.update('Clipboard copy failed. Image downloaded instead.', 'error');
           const link = document.createElement('a');
           link.download = `model_${safeId}_messages.png`;
           link.href = URL.createObjectURL(blob);
@@ -666,17 +667,17 @@ function AppContent() {
           URL.revokeObjectURL(link.href);
         }
       } else if (blob) {
-        showNotification('Clipboard not supported. Image downloaded.', 'error');
+        copyingNotification.update('Clipboard not supported. Image downloaded.', 'error');
         const link = document.createElement('a');
         link.download = `model_${safeId}_messages.png`;
         link.href = URL.createObjectURL(blob);
         link.click();
         URL.revokeObjectURL(link.href);
       } else {
-        showNotification('Could not create image blob.', 'error');
+        copyingNotification.update('Could not create image blob.', 'error');
       }
     } catch (err) {
-      showNotification('Screenshot failed: ' + (err as Error).message, 'error');
+      copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error');
     } finally {
       // Restore original styles
       content.style.overflow = prevOverflow;

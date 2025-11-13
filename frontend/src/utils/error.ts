@@ -11,6 +11,15 @@
 export type NotificationType = 'success' | 'error';
 
 /**
+ * Notification controller returned by showNotification.
+ * Provides methods to update or remove the notification.
+ */
+export interface NotificationController {
+  (): void; // Can be called directly to remove the notification
+  update: (msg: string, type?: NotificationType) => void; // Update notification in place
+}
+
+/**
  * Show a temporary notification to the user.
  * 
  * Creates a styled notification element that appears in the top-right corner
@@ -24,14 +33,19 @@ export type NotificationType = 'success' | 'error';
  * 
  * @param msg - Message to display
  * @param type - Notification type ('success' or 'error', default: 'success')
+ * @returns A notification controller with update and remove methods
  * 
  * @example
  * ```typescript
  * showNotification('Comparison completed successfully!', 'success');
- * showNotification('Failed to load models', 'error');
+ * const notification = showNotification('Processing...', 'success');
+ * // ... later ...
+ * notification.update('Done!', 'success'); // Update in place
+ * // or
+ * notification(); // Remove notification
  * ```
  */
-export function showNotification(msg: string, type: NotificationType = 'success'): void {
+export function showNotification(msg: string, type: NotificationType = 'success'): NotificationController {
   const notif = document.createElement('div');
 
   // Create container with icon and text
@@ -107,12 +121,65 @@ export function showNotification(msg: string, type: NotificationType = 'success'
     notif.style.opacity = '1';
   });
 
-  // Animate out
-  setTimeout(() => {
-    notif.style.transform = 'translateX(100%) scale(0.9)';
-    notif.style.opacity = '0';
-    setTimeout(() => notif.remove(), 400);
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let removed = false;
+
+  // Function to update the notification text and type in place
+  const updateNotification = (newMsg: string, newType: NotificationType = 'success') => {
+    if (removed) return;
+    
+    // Update icon
+    icon.innerHTML = newType === 'success' ? '✓' : '✕';
+    
+    // Update text
+    text.textContent = newMsg;
+    
+    // Update background color
+    notif.style.background = newType === 'success'
+      ? 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)'
+      : 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+    
+    // Reset timeout - notification will stay for another 3 seconds
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      removeNotification(false); // Use animation for automatic removal
+    }, 3000);
+  };
+
+  // Cleanup function to manually remove the notification
+  // When called manually (e.g., to replace with another notification), removes instantly
+  // When called automatically after timeout, uses animation
+  const removeNotification = (instant: boolean = true) => {
+    if (removed) return;
+    removed = true;
+    
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    
+    if (instant) {
+      // Remove instantly without animation when manually called
+      notif.remove();
+    } else {
+      // Use animation when automatically removed after timeout
+      notif.style.transform = 'translateX(100%) scale(0.9)';
+      notif.style.opacity = '0';
+      setTimeout(() => notif.remove(), 400);
+    }
+  };
+
+  // Animate out automatically after 3 seconds
+  timeoutId = setTimeout(() => {
+    removeNotification(false); // Use animation for automatic removal
   }, 3000);
+
+  // Return both update and remove functions as a NotificationController
+  const result = removeNotification as NotificationController;
+  result.update = updateNotification;
+  return result;
 }
 
 /**
