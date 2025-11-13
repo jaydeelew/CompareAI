@@ -29,7 +29,7 @@ from ..auth import get_password_hash
 from ..rate_limiting import anonymous_rate_limit_storage
 from datetime import date
 
-# from ..email_service import send_verification_email
+from ..email_service import send_verification_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -39,19 +39,19 @@ def ensure_usage_reset(user: User, db: Session) -> None:
     Ensure user's daily usage and extended usage are reset if it's a new day.
     This function should be called before displaying user data in admin panel
     to ensure accurate usage counts.
-    
+
     Args:
         user: User object to check and reset
         db: Database session
     """
     today = date.today()
-    
+
     # Reset daily usage if it's a new day
     if user.usage_reset_date != today:
         user.daily_usage_count = 0
         user.usage_reset_date = today
         db.commit()
-    
+
     # Reset extended usage if it's a new day
     if user.extended_usage_reset_date != today:
         user.daily_extended_usage = 0
@@ -69,28 +69,23 @@ def log_admin_action(
     request: Optional[Request] = None,
 ) -> None:
     """Log admin action for audit trail."""
-    ip_address = None
-    user_agent = None
-    if request:
-        if request.client:
-            ip_address = request.client.host
-        user_agent = request.headers.get("user-agent")
-    
     log_entry = AdminActionLog(
         admin_user_id=admin_user.id,
         target_user_id=target_user_id,
         action_type=action_type,
         action_description=action_description,
         details=json.dumps(details) if details else None,
-        ip_address=ip_address,
-        user_agent=user_agent,
+        ip_address=request.client.host if request else None,
+        user_agent=request.headers.get("user-agent") if request else None,
     )
     db.add(log_entry)
     db.commit()
 
 
 @router.get("/stats", response_model=AdminStatsResponse)
-async def get_admin_stats(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def get_admin_stats(
+    current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+):
     """Get admin dashboard statistics."""
 
     # Basic user counts
@@ -116,10 +111,15 @@ async def get_admin_stats(current_user: User = Depends(get_current_admin_user), 
 
     # Usage stats for today
     today = datetime.utcnow().date()
-    total_usage_today = db.query(func.sum(User.daily_usage_count)).filter(User.usage_reset_date == today).scalar() or 0
+    total_usage_today = (
+        db.query(func.sum(User.daily_usage_count)).filter(User.usage_reset_date == today).scalar()
+        or 0
+    )
 
     # Admin actions today
-    admin_actions_today = db.query(AdminActionLog).filter(func.date(AdminActionLog.created_at) == today).count()
+    admin_actions_today = (
+        db.query(AdminActionLog).filter(func.date(AdminActionLog.created_at) == today).count()
+    )
 
     return AdminStatsResponse(
         total_users=total_users,
@@ -139,79 +139,103 @@ async def get_visitor_analytics(
     db: Session = Depends(get_db),
 ):
     """Get visitor analytics statistics."""
-    
+
     now = datetime.utcnow()
     today_start = datetime.combine(now.date(), datetime.min.time())
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
-    
+
     # Overall stats - all time
     total_unique_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).scalar() or 0
-    total_unique_devices = db.query(func.count(func.distinct(UsageLog.browser_fingerprint))).filter(
-        UsageLog.browser_fingerprint.isnot(None)
-    ).scalar() or 0
+    total_unique_devices = (
+        db.query(func.count(func.distinct(UsageLog.browser_fingerprint)))
+        .filter(UsageLog.browser_fingerprint.isnot(None))
+        .scalar()
+        or 0
+    )
     total_comparisons = db.query(func.count(UsageLog.id)).scalar() or 0
-    
+
     # Time-based unique visitors
-    unique_visitors_today = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-        UsageLog.created_at >= today_start
-    ).scalar() or 0
-    
-    unique_visitors_this_week = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-        UsageLog.created_at >= week_ago
-    ).scalar() or 0
-    
-    unique_visitors_this_month = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-        UsageLog.created_at >= month_ago
-    ).scalar() or 0
-    
+    unique_visitors_today = (
+        db.query(func.count(func.distinct(UsageLog.ip_address)))
+        .filter(UsageLog.created_at >= today_start)
+        .scalar()
+        or 0
+    )
+
+    unique_visitors_this_week = (
+        db.query(func.count(func.distinct(UsageLog.ip_address)))
+        .filter(UsageLog.created_at >= week_ago)
+        .scalar()
+        or 0
+    )
+
+    unique_visitors_this_month = (
+        db.query(func.count(func.distinct(UsageLog.ip_address)))
+        .filter(UsageLog.created_at >= month_ago)
+        .scalar()
+        or 0
+    )
+
     # Authenticated vs anonymous breakdown
-    authenticated_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-        UsageLog.user_id.isnot(None)
-    ).scalar() or 0
-    
-    anonymous_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-        UsageLog.user_id.is_(None)
-    ).scalar() or 0
-    
+    authenticated_visitors = (
+        db.query(func.count(func.distinct(UsageLog.ip_address)))
+        .filter(UsageLog.user_id.isnot(None))
+        .scalar()
+        or 0
+    )
+
+    anonymous_visitors = (
+        db.query(func.count(func.distinct(UsageLog.ip_address)))
+        .filter(UsageLog.user_id.is_(None))
+        .scalar()
+        or 0
+    )
+
     # Recent activity - comparisons count
-    comparisons_today = db.query(func.count(UsageLog.id)).filter(
-        UsageLog.created_at >= today_start
-    ).scalar() or 0
-    
-    comparisons_this_week = db.query(func.count(UsageLog.id)).filter(
-        UsageLog.created_at >= week_ago
-    ).scalar() or 0
-    
-    comparisons_this_month = db.query(func.count(UsageLog.id)).filter(
-        UsageLog.created_at >= month_ago
-    ).scalar() or 0
-    
+    comparisons_today = (
+        db.query(func.count(UsageLog.id)).filter(UsageLog.created_at >= today_start).scalar() or 0
+    )
+
+    comparisons_this_week = (
+        db.query(func.count(UsageLog.id)).filter(UsageLog.created_at >= week_ago).scalar() or 0
+    )
+
+    comparisons_this_month = (
+        db.query(func.count(UsageLog.id)).filter(UsageLog.created_at >= month_ago).scalar() or 0
+    )
+
     # Daily breakdown for last 30 days
     daily_breakdown = []
     for i in range(30):
         day_start = datetime.combine((now - timedelta(days=i)).date(), datetime.min.time())
         day_end = day_start + timedelta(days=1)
-        
-        day_unique_visitors = db.query(func.count(func.distinct(UsageLog.ip_address))).filter(
-            UsageLog.created_at >= day_start,
-            UsageLog.created_at < day_end
-        ).scalar() or 0
-        
-        day_comparisons = db.query(func.count(UsageLog.id)).filter(
-            UsageLog.created_at >= day_start,
-            UsageLog.created_at < day_end
-        ).scalar() or 0
-        
-        daily_breakdown.append({
-            "date": day_start.date().isoformat(),
-            "unique_visitors": day_unique_visitors,
-            "total_comparisons": day_comparisons,
-        })
-    
+
+        day_unique_visitors = (
+            db.query(func.count(func.distinct(UsageLog.ip_address)))
+            .filter(UsageLog.created_at >= day_start, UsageLog.created_at < day_end)
+            .scalar()
+            or 0
+        )
+
+        day_comparisons = (
+            db.query(func.count(UsageLog.id))
+            .filter(UsageLog.created_at >= day_start, UsageLog.created_at < day_end)
+            .scalar()
+            or 0
+        )
+
+        daily_breakdown.append(
+            {
+                "date": day_start.date().isoformat(),
+                "unique_visitors": day_unique_visitors,
+                "total_comparisons": day_comparisons,
+            }
+        )
+
     # Reverse to show oldest first, newest last
     daily_breakdown.reverse()
-    
+
     return VisitorAnalyticsResponse(
         total_unique_visitors=total_unique_visitors,
         total_unique_devices=total_unique_devices,
@@ -280,7 +304,11 @@ async def list_users(
 
 
 @router.get("/users/{user_id}", response_model=AdminUserResponse)
-async def get_user(user_id: int, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
     """Get specific user details."""
 
     user = db.query(User).filter(User.id == user_id).first()
@@ -409,7 +437,10 @@ async def update_user(
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: int, request: Request, current_user: User = Depends(require_admin_role("super_admin")), db: Session = Depends(get_db)
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(require_admin_role("super_admin")),
+    db: Session = Depends(get_db),
 ):
     """Delete a user (super admin only)."""
 
@@ -448,7 +479,11 @@ async def delete_user(
             user_agent = None
             if request:
                 try:
-                    ip_address = request.client.host if hasattr(request, "client") and request.client else None
+                    ip_address = (
+                        request.client.host
+                        if hasattr(request, "client") and request.client
+                        else None
+                    )
                 except:
                     ip_address = None
                 try:
@@ -526,7 +561,10 @@ async def reset_user_password(
 
 @router.post("/users/{user_id}/send-verification", status_code=status.HTTP_200_OK)
 async def send_user_verification(
-    user_id: int, request: Request, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
 ):
     """Send verification email to user."""
 
@@ -577,8 +615,7 @@ async def get_action_logs(
     from sqlalchemy.orm import joinedload
 
     query = db.query(AdminActionLog).options(
-        joinedload(AdminActionLog.admin_user),
-        joinedload(AdminActionLog.target_user)
+        joinedload(AdminActionLog.admin_user), joinedload(AdminActionLog.target_user)
     )
 
     # Apply filters
@@ -618,7 +655,10 @@ async def get_action_logs(
 
 @router.post("/users/{user_id}/toggle-active", response_model=AdminUserResponse)
 async def toggle_user_active(
-    user_id: int, request: Request, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
 ):
     """Toggle user active status."""
 
@@ -654,7 +694,10 @@ async def toggle_user_active(
 
 @router.post("/users/{user_id}/reset-usage", response_model=AdminUserResponse)
 async def reset_user_usage(
-    user_id: int, request: Request, current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
 ):
     """Reset user's daily usage count and extended usage to zero and remove all model comparison history."""
 
@@ -694,7 +737,7 @@ async def reset_user_usage(
             "new_usage": 0,
             "previous_extended_usage": previous_extended_usage,
             "new_extended_usage": 0,
-            "conversations_deleted": conversations_count
+            "conversations_deleted": conversations_count,
         },
         request=request,
     )
@@ -704,7 +747,10 @@ async def reset_user_usage(
 
 @router.post("/users/{user_id}/toggle-mock-mode", response_model=AdminUserResponse)
 async def toggle_mock_mode(
-    user_id: int, request: Request, current_user: User = Depends(require_admin_role("admin")), db: Session = Depends(get_db)
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db),
 ):
     """
     Toggle mock mode for a user.
@@ -725,7 +771,10 @@ async def toggle_mock_mode(
     is_development = os.environ.get("ENVIRONMENT") == "development"
 
     if not is_development and user.role not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=400, detail="Mock mode can only be enabled for admin and super-admin users in production")
+        raise HTTPException(
+            status_code=400,
+            detail="Mock mode can only be enabled for admin and super-admin users in production",
+        )
 
     # Toggle mock mode
     previous_state = user.mock_mode_enabled
@@ -743,7 +792,11 @@ async def toggle_mock_mode(
         action_type="toggle_mock_mode",
         action_description=f"{'Enabled' if user.mock_mode_enabled else 'Disabled'} mock mode for user {user.email} (dev_mode: {is_development})",
         target_user_id=user.id,
-        details={"previous_state": previous_state, "new_state": user.mock_mode_enabled, "development_mode": is_development},
+        details={
+            "previous_state": previous_state,
+            "new_state": user.mock_mode_enabled,
+            "development_mode": is_development,
+        },
         request=request,
     )
 
@@ -768,7 +821,9 @@ async def change_user_tier(
     new_tier = tier_data.get("subscription_tier")
     valid_tiers = ["free", "starter", "starter_plus", "pro", "pro_plus"]
     if new_tier not in valid_tiers:
-        raise HTTPException(status_code=400, detail=f"Invalid tier. Must be one of: {', '.join(valid_tiers)}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid tier. Must be one of: {', '.join(valid_tiers)}"
+        )
 
     # Store previous tier for logging
     previous_tier = user.subscription_tier
@@ -805,38 +860,40 @@ async def change_user_tier(
 
 
 @router.get("/settings")
-async def get_app_settings(current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)):
+async def get_app_settings(
+    current_user: User = Depends(get_current_admin_user), db: Session = Depends(get_db)
+):
     """
     Get global application settings.
-    
+
     Returns current settings like anonymous mock mode status.
     In development mode only.
     """
     import os
-    
+
     is_development = os.environ.get("ENVIRONMENT") == "development"
-    
+
     # Use cache to avoid repeated database queries
     from ..cache import get_cached_app_settings, invalidate_app_settings_cache
-    
+
     def get_settings():
         return db.query(AppSettings).first()
-    
+
     settings = get_cached_app_settings(get_settings)
-    
+
     # If no settings exist yet, create default ones
     if not settings:
-        settings = AppSettings(
-            anonymous_mock_mode_enabled=False
-        )
+        settings = AppSettings(anonymous_mock_mode_enabled=False)
         db.add(settings)
         db.commit()
         db.refresh(settings)
         invalidate_app_settings_cache()
-    
+
     return {
-        "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled if is_development else False,
-        "is_development": is_development
+        "anonymous_mock_mode_enabled": (
+            settings.anonymous_mock_mode_enabled if is_development else False
+        ),
+        "is_development": is_development,
     }
 
 
@@ -844,53 +901,52 @@ async def get_app_settings(current_user: User = Depends(get_current_admin_user),
 async def toggle_anonymous_mock_mode(
     request: Request,
     current_user: User = Depends(require_admin_role("admin")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Toggle mock mode for anonymous users.
-    
+
     This is a global setting that affects all anonymous (unregistered) users.
     When enabled, all anonymous requests will return mock responses instead of
     calling the OpenRouter API.
-    
+
     Only available in development environment.
     """
     import os
-    
+
     # Check if in development mode
     is_development = os.environ.get("ENVIRONMENT") == "development"
-    
+
     # Prevent toggling in production
     if not is_development:
         raise HTTPException(
-            status_code=403, 
-            detail="Anonymous mock mode is only available in development environment"
+            status_code=403,
+            detail="Anonymous mock mode is only available in development environment",
         )
-    
-    from ..cache import invalidate_app_settings_cache
-    
-    # Always query database directly for updates (don't use cached object)
-    # Cached objects are detached from the current session and can't be modified
-    settings = db.query(AppSettings).first()
-    
+
+    from ..cache import get_cached_app_settings, invalidate_app_settings_cache
+
+    def get_settings():
+        return db.query(AppSettings).first()
+
+    settings = get_cached_app_settings(get_settings)
+
     # If no settings exist yet, create default ones
     if not settings:
-        settings = AppSettings(
-            anonymous_mock_mode_enabled=False
-        )
+        settings = AppSettings(anonymous_mock_mode_enabled=False)
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    
+
     # Toggle the setting
     previous_state = settings.anonymous_mock_mode_enabled
     settings.anonymous_mock_mode_enabled = not settings.anonymous_mock_mode_enabled
     db.commit()
     db.refresh(settings)
-    
+
     # Invalidate cache after updating settings
     invalidate_app_settings_cache()
-    
+
     # Log admin action
     log_admin_action(
         db=db,
@@ -901,14 +957,14 @@ async def toggle_anonymous_mock_mode(
         details={
             "previous_state": previous_state,
             "new_state": settings.anonymous_mock_mode_enabled,
-            "development_mode": is_development
+            "development_mode": is_development,
         },
         request=request,
     )
-    
+
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
-        "message": f"Anonymous mock mode is now {'enabled' if settings.anonymous_mock_mode_enabled else 'disabled'}"
+        "message": f"Anonymous mock mode is now {'enabled' if settings.anonymous_mock_mode_enabled else 'disabled'}",
     }
 
 
@@ -916,30 +972,30 @@ async def toggle_anonymous_mock_mode(
 async def zero_anonymous_usage(
     request: Request,
     current_user: User = Depends(require_admin_role("admin")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Zero out all anonymous user usage data and clear comparison history.
-    
+
     This clears:
     - Daily interaction usage for all anonymous users
     - Extended interaction usage for all anonymous users
     - Comparison history stored locally (client-side)
-    
+
     Only available in development environment.
     """
     import os
-    
+
     # Check if in development mode
     is_development = os.environ.get("ENVIRONMENT") == "development"
-    
+
     # Prevent usage in production
     if not is_development:
         raise HTTPException(
-            status_code=403, 
-            detail="Zero anonymous usage is only available in development environment"
+            status_code=403,
+            detail="Zero anonymous usage is only available in development environment",
         )
-    
+
     # Count entries before clearing for logging
     keys_to_remove = []
     for key in list(anonymous_rate_limit_storage.keys()):
@@ -947,11 +1003,11 @@ async def zero_anonymous_usage(
         # Keys are formatted as "ip:xxx", "fp:xxx", "ip:xxx_extended", "fp:xxx_extended"
         if key.startswith("ip:") or key.startswith("fp:"):
             keys_to_remove.append(key)
-    
+
     # Clear all anonymous usage entries
     for key in keys_to_remove:
         del anonymous_rate_limit_storage[key]
-    
+
     # Log admin action
     log_admin_action(
         db=db,
@@ -962,12 +1018,12 @@ async def zero_anonymous_usage(
         details={
             "entries_cleared": len(keys_to_remove),
             "keys_removed": keys_to_remove,
-            "development_mode": is_development
+            "development_mode": is_development,
         },
         request=request,
     )
-    
+
     return {
         "message": f"Anonymous usage data cleared ({len(keys_to_remove)} entries removed). Client-side history should be cleared separately.",
-        "entries_cleared": len(keys_to_remove)
+        "entries_cleared": len(keys_to_remove),
     }
