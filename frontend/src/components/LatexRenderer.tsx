@@ -1095,7 +1095,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Render restored code blocks to HTML
             // Match code blocks in markdown format: ```language\ncontent\n```
-            processed = processed.replace(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/g, (match, language, code) => {
+            processed = processed.replace(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/g, (_match, language, code) => {
                 return renderCodeBlock(language || 'plaintext', code);
             });
 
