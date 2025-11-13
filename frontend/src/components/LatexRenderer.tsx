@@ -508,9 +508,24 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     const processMarkdownLists = (text: string): string => {
         let processed = text;
 
-        // Helper function to process parentheses in list content
+        // Helper function to process list content (math and markdown formatting)
         const processListContent = (content: string): string => {
-            return convertImplicitMath(content);
+            let processedContent = convertImplicitMath(content);
+
+            // Process bold/italic inside list items BEFORE creating placeholders
+            // This ensures formatting is preserved when placeholders are protected
+            // Bold: match ** but allow single * inside
+            processedContent = processedContent.replace(/\*\*((?:(?!\*\*)[\s\S])+?)\*\*/g, '<strong>$1</strong>');
+            // Bold: match __ but allow single _ inside
+            processedContent = processedContent.replace(/__((?:(?!__)[\s\S])+?)__/g, '<strong>$1</strong>');
+            // Italic: match single * but not when part of **
+            processedContent = processedContent.replace(/(?<!\*)\*((?:(?!\*)[^\n])+?)\*(?!\*)/g, '<em>$1</em>');
+            // Italic: match single _ but not when part of __
+            processedContent = processedContent.replace(/(?<!_)_((?:(?!_)[^\n])+?)_(?!_)/g, '<em>$1</em>');
+            // Inline code
+            processedContent = processedContent.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+
+            return processedContent;
         };
 
         // Task lists
@@ -709,7 +724,42 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         });
 
         // Handle standalone LaTeX commands
+        // Handle \sqrt{...} commands
+        let sqrtRegex = /\\sqrt\{([^}]+)\}/g;
+        let sqrtMatch;
+        const sqrtReplacements: Array<{ start: number, end: number, replacement: string }> = [];
+
+        while ((sqrtMatch = sqrtRegex.exec(rendered)) !== null) {
+            const start = sqrtMatch.index;
+            const end = start + sqrtMatch[0].length;
+            const content = sqrtMatch[1];
+
+            // Check if already inside KaTeX HTML
+            const beforeMatch = rendered.substring(0, start);
+            const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
+            const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
+
+            // Only process if not already inside KaTeX HTML
+            if (lastKatexStart <= lastKatexEnd) {
+                sqrtReplacements.push({
+                    start,
+                    end,
+                    replacement: safeRenderKatex(`\\sqrt{${content}}`, false, config.katexOptions)
+                });
+            }
+        }
+
+        // Apply replacements from right to left to maintain positions
+        sqrtReplacements.reverse().forEach(({ start, end, replacement }) => {
+            rendered = rendered.substring(0, start) + replacement + rendered.substring(end);
+        });
+
+        // Handle \frac{...}{...} commands
         rendered = rendered.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, (_match, num, den) => {
+            // Simple check: if match contains HTML tags, it's already rendered
+            if (_match.includes('<span') || _match.includes('katex')) {
+                return _match;
+            }
             return safeRenderKatex(`\\frac{${num}}{${den}}`, false, config.katexOptions);
         });
 
@@ -895,6 +945,23 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         const placeholderMap = new Map<string, string>();
         let placeholderCounter = 0;
 
+        // Protect inline math placeholders FIRST (before list placeholders)
+        // These use __INLINE_MATH_X__ format which would be matched by bold regex
+        processed = processed.replace(/(__INLINE_MATH_\d+__)/g, (match) => {
+            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            placeholderMap.set(placeholder, match);
+            placeholderCounter++;
+            return placeholder;
+        });
+
+        // Protect display math placeholders
+        processed = processed.replace(/(__DISPLAY_MATH_\d+__)/g, (match) => {
+            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            placeholderMap.set(placeholder, match);
+            placeholderCounter++;
+            return placeholder;
+        });
+
         // Protect full list placeholder patterns (including content between tags)
         // Pattern: __UL_X__content__/UL__ or __OL_X__content__/OL__ or __TASK_X__content__/TASK__
         processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
@@ -956,9 +1023,99 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             });
         }
 
+        // Bold and italic (if enabled, preserve all spaces)
+        // Process BEFORE headings and inline code so formatting works correctly
+        // IMPORTANT: Process bold/italic BEFORE inline code to handle cases like **bold `code` text**
+        if (markdownRules.processBoldItalic !== false) {
+            // Bold: match ** but allow single * inside
+            // Use a more robust pattern that handles content with HTML tags or other markdown
+            processed = processed.replace(/\*\*((?:(?!\*\*)[\s\S])+?)\*\*/g, '<strong>$1</strong>');
+            // Bold: match __ but allow single _ inside (underscore-based bold)
+            // Note: Placeholders are already protected above, so we can safely process bold here
+            processed = processed.replace(/__((?:(?!__)[\s\S])+?)__/g, '<strong>$1</strong>');
+            // Italic: match single * but not when part of **
+            // Improved regex to handle LaTeX content inside italic (e.g., *text with $math$*)
+            // Use a more robust pattern that doesn't break on newlines or special characters
+            processed = processed.replace(/(?<!\*)\*((?:(?!\*)[^\n])+?)\*(?!\*)/g, '<em>$1</em>');
+            // Italic: match single _ but not when part of __ (underscore-based italic)
+            // Use negative lookbehind/lookahead to avoid matching __text__ as _text_
+            processed = processed.replace(/(?<!_)_((?:(?!_)[^\n])+?)_(?!_)/g, '<em>$1</em>');
+        }
+
         // Inline code (if enabled)
+        // Process AFTER bold/italic so inline code inside bold works correctly
         if (markdownRules.processInlineCode !== false) {
-            processed = processed.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+            processed = processed.replace(/`([^`\n]+?)`/g, (_match, content) => {
+                // Check if the content is actually LaTeX/math that should be rendered as math, not code
+                // Look for LaTeX commands (like \sqrt, \frac, etc.) - this is the primary indicator
+                const hasLatexCommands = /\\[a-zA-Z]+\{/.test(content) || /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial|boxed)/.test(content);
+
+                // Check for math symbols that indicate this is math, not code
+                const hasMathSymbols = /[√±×÷≤≥≈∞∑∏∫²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content);
+
+                // Check if it looks like a mathematical expression (has operators, parentheses, etc.)
+                const hasMathOperators = /[=+\-*/()\[\]]/.test(content);
+                const hasArithmetic = /\d+\s*[+\-*/]\s*\d+/.test(content);
+
+                // Simple single letters/numbers without math symbols should stay as code
+                const isSimpleVariable = /^[a-zA-Z0-9\s,]+$/.test(content.trim()) && !hasMathSymbols && !hasLatexCommands;
+
+                // Only render as math if:
+                // 1. It has LaTeX commands (definitely math), OR
+                // 2. It has math symbols AND looks like a math expression (has operators or arithmetic)
+                const shouldRenderAsMath = hasLatexCommands || (hasMathSymbols && (hasMathOperators || hasArithmetic) && !isSimpleVariable);
+
+                if (shouldRenderAsMath) {
+                    // Content inside backticks may not have been processed by fixLatexIssues
+                    // So we need to convert Unicode to LaTeX, but be careful to avoid double conversion
+                    let mathContent = content.replace(/\$/g, '').trim();
+
+                    // Only convert Unicode if content doesn't already have LaTeX commands
+                    // This prevents double conversion if fixLatexIssues already processed it
+                    if (!/\\[a-zA-Z]+/.test(mathContent)) {
+                        // Convert Unicode square root: √(expr) -> \sqrt{expr} or √123 -> \sqrt{123}
+                        mathContent = mathContent.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+                        mathContent = mathContent.replace(/√(\d+)/g, '\\sqrt{$1}');
+                        mathContent = mathContent.replace(/√([a-zA-Z]+)/g, '\\sqrt{$1}');
+
+                        // Convert Unicode symbols - use single replace to avoid duplication
+                        mathContent = mathContent.replace(/±+/g, '\\pm'); // Handle multiple ± as single \pm
+                        mathContent = mathContent.replace(/×/g, '\\times');
+                        mathContent = mathContent.replace(/÷/g, '\\div');
+                        mathContent = mathContent.replace(/≤/g, '\\leq');
+                        mathContent = mathContent.replace(/≥/g, '\\geq');
+                        mathContent = mathContent.replace(/≈/g, '\\approx');
+                        mathContent = mathContent.replace(/∞/g, '\\infty');
+                        mathContent = mathContent.replace(/∑/g, '\\sum');
+                        mathContent = mathContent.replace(/∏/g, '\\prod');
+                        mathContent = mathContent.replace(/∫/g, '\\int');
+
+                        // Convert superscripts - handle potential duplicates
+                        mathContent = mathContent.replace(/²+/g, '^2');
+                        mathContent = mathContent.replace(/³+/g, '^3');
+                        mathContent = mathContent.replace(/⁴+/g, '^4');
+                        mathContent = mathContent.replace(/⁵+/g, '^5');
+                        mathContent = mathContent.replace(/⁶+/g, '^6');
+                        mathContent = mathContent.replace(/⁷+/g, '^7');
+                        mathContent = mathContent.replace(/⁸+/g, '^8');
+                        mathContent = mathContent.replace(/⁹+/g, '^9');
+                        mathContent = mathContent.replace(/⁰+/g, '^0');
+                        mathContent = mathContent.replace(/¹+/g, '^1');
+                    }
+
+                    if (mathContent) {
+                        try {
+                            return safeRenderKatex(mathContent, false, config.katexOptions);
+                        } catch (e) {
+                            // If math rendering fails, fall back to code
+                            return `<code class="inline-code">${content}</code>`;
+                        }
+                    }
+                }
+
+                // Otherwise, render as regular inline code
+                return `<code class="inline-code">${content}</code>`;
+            });
         }
 
         // Horizontal rules (if enabled)
@@ -969,6 +1126,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         }
 
         // Headings (if enabled, longest first to avoid partial matches)
+        // Process AFTER bold/italic so formatting inside headings is preserved
         if (markdownRules.processHeaders !== false) {
             processed = processed.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
             processed = processed.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
@@ -976,20 +1134,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/^### (.+)$/gm, '<h3>$1</h3>');
             processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
             processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-        }
-
-        // Bold and italic (if enabled, preserve all spaces)
-        if (markdownRules.processBoldItalic !== false) {
-            // Bold: match ** but allow single * inside
-            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            // Bold: match __ but allow single _ inside (underscore-based bold)
-            // Note: Placeholders are already protected above, so we can safely process bold here
-            processed = processed.replace(/__(.+?)__/g, '<strong>$1</strong>');
-            // Italic: match single * but not when part of **
-            processed = processed.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
-            // Italic: match single _ but not when part of __ (underscore-based italic)
-            // Use negative lookbehind/lookahead to avoid matching __text__ as _text_
-            processed = processed.replace(/(?<!_)_([^_\n]+?)_(?!_)/g, '<em>$1</em>');
         }
 
         // Strikethrough
@@ -1290,6 +1434,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 8: Convert lists to HTML
             processed = convertListsToHTML(processed);
+
+            // Stage 8.5: Restore and render any inline math placeholders that were nested inside list placeholders
+            // This handles cases where inline math placeholders were inside list items
+            // and weren't restored in Stage 5.6 because they were hidden inside list placeholders
+            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
+            // Render the restored inline math (using model-specific delimiters)
+            const inlineDelimiters = [...config.inlineMathDelimiters].sort((a, b) => {
+                const priorityA = a.priority ?? 999;
+                const priorityB = b.priority ?? 999;
+                return priorityA - priorityB;
+            });
+            inlineDelimiters.forEach(({ pattern }) => {
+                processed = processed.replace(pattern, (_match, math) => {
+                    return safeRenderKatex(math, false, config.katexOptions);
+                });
+            });
 
             // Stage 9: Apply paragraph breaks
             processed = applyParagraphBreaks(processed);
