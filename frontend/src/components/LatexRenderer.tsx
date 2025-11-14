@@ -20,7 +20,7 @@
  * 4. Preserve code blocks (bypass LaTeX processing)
  * 5. Process markdown lists with math content
  * 6. Normalize and render all math delimiters
- * 6.5. Preserve line breaks between consecutive math expressions
+ * 6.5. Preserve line breaks between consecutive INLINE math expressions (skip display math)
  * 7. Process markdown formatting (bold, italic, links, etc.)
  * 8. Convert list placeholders to HTML
  * 9. Apply paragraph breaks
@@ -1138,30 +1138,48 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
     /**
      * Stage 6.5: Preserve line breaks between consecutive math expressions
-     * Converts single newlines between rendered math expressions to <br> tags
+     * Converts single newlines between rendered INLINE math expressions to <br> tags
+     * Display math blocks (katex-display) already have block-level spacing, so we skip those
      */
     const preserveMathLineBreaks = (text: string): string => {
         let processed = text;
 
-        // Pattern: KaTeX HTML closing tag followed by newline(s) followed by opening KaTeX tag
-        // This handles cases where multiple equations are on separate lines
-        // The key pattern: </span> followed by whitespace/newlines followed by <span class="katex
+        // We need to avoid adding <br> tags involving display math blocks
+        // Display blocks have structure: <span class="katex-display"><span class="katex">...</span></span>
+        // Inline blocks have structure: <span class="katex">...</span>
 
-        // Match: closing span tag, optional whitespace, one or more newlines, optional whitespace, opening katex span
-        // Convert single newlines between math expressions to <br> tags
-        processed = processed.replace(/(<\/span>)\s*(\n+)\s*(<span class="katex)/g, (_match, closingSpan, newlines, openingSpan) => {
-            // Count the number of consecutive newlines
-            const newlineCount = newlines.length;
+        // Simple approach: Match transitions between math blocks, but skip if either side is display math
+        // We match: (end of math) + newlines + (start of math)
+        // Then check the surrounding context to determine if it's display or inline
 
-            // If there's exactly one newline, convert it to <br>
-            if (newlineCount === 1) {
-                return `${closingSpan}<br>${openingSpan}`;
+        // Pattern matches: closing </span> tag(s), newlines, and opening <span class="katex...
+        // The pattern captures enough to distinguish between inline and display blocks
+        processed = processed.replace(
+            /(<\/span>(?:<\/span>)?)\s*(\n+)\s*(<span class="katex(?:-display)?\")/g,
+            (fullMatch, closing, newlines, opening) => {
+                // Determine if we're dealing with display blocks
+                // Display block closing: </span></span> (has two closing spans)
+                // Display block opening: <span class="katex-display" (contains -display)
+                const closingIsDisplay = closing === '</span></span>';
+                const openingIsDisplay = opening.includes('katex-display');
+
+                // Only add <br> if BOTH are inline (neither is display)
+                if (closingIsDisplay || openingIsDisplay) {
+                    return fullMatch; // Keep original - involves display math
+                }
+
+                // Both are inline math, add line break
+                const newlineCount = newlines.length;
+
+                // If there's exactly one newline, convert it to <br>
+                if (newlineCount === 1) {
+                    return `${closing}<br>${opening}`;
+                }
+
+                // If there are multiple newlines, convert the first to <br> and keep one newline
+                return `${closing}<br>\n${opening}`;
             }
-
-            // If there are multiple newlines, convert the first to <br> and keep one newline
-            // (the remaining newlines will be handled by paragraph break processing)
-            return `${closingSpan}<br>\n${openingSpan}`;
-        });
+        );
 
         return processed;
     };
