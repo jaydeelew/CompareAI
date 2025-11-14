@@ -146,8 +146,35 @@ const looksProse = (content: string): boolean => {
         return true;
     }
 
+    // Check for common mathematical description phrases (even if they contain some math notation)
+    // These are prose descriptions, not pure math expressions
+    const prosePhrases = [
+        /coefficient\s+of/i,
+        /constant\s+term/i,
+        /leading\s+coefficient/i,
+        /degree\s+of/i,
+        /solution\s+to/i,
+        /roots?\s+of/i,
+        /value\s+of/i,
+        /equation\s+of/i,
+        /graph\s+of/i,
+        /derivative\s+of/i,
+        /integral\s+of/i,
+    ];
+    if (prosePhrases.some(pattern => pattern.test(content))) {
+        return true;
+    }
+
     // Multiple words (even short phrases are likely prose, not math)
+    // Check word count even if content has some math notation (like "coefficient of x^2")
     const wordCount = content.trim().split(/\s+/).length;
+    if (wordCount > 2) {
+        // If it has multiple words AND contains prose indicators, it's prose
+        // This handles cases like "coefficient of x^2" which has math but is still prose
+        if (wordCount > 3 || /^(the|a|an)\s+/i.test(content) || /\s+(of|to|for|in|on|at|with|from|by)\s+/i.test(content)) {
+            return true;
+        }
+    }
     if (wordCount > 2 && !looksMathematical(content)) return true;
 
     // Many words without math
@@ -771,6 +798,66 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 }
 
                 return result.join('') + (newline || '');
+            }
+
+            // Check if expression contains prose in parentheses (e.g., "a = 1 (coefficient of x^2)")
+            // If so, split and only render the mathematical parts as math
+            const proseInParensMatch = expression.match(/\(([^)]+)\)/);
+            if (!alreadyRendered && proseInParensMatch) {
+                const parenContent = proseInParensMatch[1];
+                // If the parentheses content is prose, split the expression
+                if (looksProse(parenContent)) {
+                    // Split into parts: the math part before parentheses and the prose in parentheses
+                    // Preserve original spacing by reconstructing the string carefully
+                    const parts: string[] = [];
+                    let lastIndex = 0;
+                    let match;
+                    const parenRegex = /\(([^)]+)\)/g;
+
+                    while ((match = parenRegex.exec(expression)) !== null) {
+                        // Add the part before this parentheses (preserve spacing)
+                        const beforeParen = expression.substring(lastIndex, match.index);
+                        if (beforeParen.trim()) {
+                            // Check if this part is mathematical
+                            const trimmedBefore = beforeParen.trim();
+                            if (looksMathematical(trimmedBefore) || hasLatexCommands) {
+                                // Preserve leading/trailing whitespace
+                                const leadingSpace = beforeParen.match(/^(\s*)/)?.[1] || '';
+                                const trailingSpace = beforeParen.match(/(\s*)$/)?.[1] || '';
+                                parts.push(leadingSpace + safeRenderKatex(trimmedBefore, false, config.katexOptions) + trailingSpace);
+                            } else {
+                                parts.push(beforeParen);
+                            }
+                        } else if (beforeParen) {
+                            // Just whitespace, preserve it
+                            parts.push(beforeParen);
+                        }
+
+                        // Add the parentheses content as plain text (it's prose)
+                        parts.push(`(${match[1]})`);
+                        lastIndex = match.index + match[0].length;
+                    }
+
+                    // Add any remaining part after the last parentheses
+                    const afterLastParen = expression.substring(lastIndex);
+                    if (afterLastParen.trim()) {
+                        const trimmedAfter = afterLastParen.trim();
+                        if (looksMathematical(trimmedAfter) || hasLatexCommands) {
+                            const leadingSpace = afterLastParen.match(/^(\s*)/)?.[1] || '';
+                            const trailingSpace = afterLastParen.match(/(\s*)$/)?.[1] || '';
+                            parts.push(leadingSpace + safeRenderKatex(trimmedAfter, false, config.katexOptions) + trailingSpace);
+                        } else {
+                            parts.push(afterLastParen);
+                        }
+                    } else if (afterLastParen) {
+                        parts.push(afterLastParen);
+                    }
+
+                    // Convert newline to <br> to ensure line breaks are preserved
+                    // when mixing math HTML with plain text prose
+                    const newlineHtml = newline ? '<br>' : '';
+                    return parts.join('') + newlineHtml;
+                }
             }
 
             // Normal rendering for expressions without connectors
