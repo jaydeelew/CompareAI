@@ -2469,6 +2469,14 @@ function AppContent() {
     const maxTimeout = selectedModels.length > 40 ? 480000 : 300000; // 8 minutes for 40+ models, 5 minutes otherwise
     const dynamicTimeout = Math.min(baseTimeout + additionalTime, maxTimeout);
 
+    // Declare streaming variables outside try block so they're accessible in catch block for timeout handling
+    const streamingResults: { [key: string]: string } = {};
+    const completedModels = new Set<string>(); // Track which models have finished
+    const localModelErrors: { [key: string]: boolean } = {}; // Track which models have errors (local during streaming)
+    const modelStartTimes: { [key: string]: string } = {}; // Track when each model starts
+    const modelCompletionTimes: { [key: string]: string } = {}; // Track when each model completes
+    let streamingMetadata: CompareResponse['metadata'] | null = null;
+
     try {
       const controller = new AbortController();
       setCurrentAbortController(controller);
@@ -2525,13 +2533,7 @@ function AppContent() {
       const reader = stream.getReader();
       const decoder = new TextDecoder();
 
-      // Initialize results object for streaming updates
-      const streamingResults: { [key: string]: string } = {};
-      const completedModels = new Set<string>(); // Track which models have finished
-      const localModelErrors: { [key: string]: boolean } = {}; // Track which models have errors (local during streaming)
-      const modelStartTimes: { [key: string]: string } = {}; // Track when each model starts
-      const modelCompletionTimes: { [key: string]: string } = {}; // Track when each model completes
-      let streamingMetadata: CompareResponse['metadata'] | null = null;
+      // Streaming variables are declared outside try block for timeout handling
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
       
@@ -2632,7 +2634,19 @@ function AppContent() {
                   // Clean up pause state for this model (but keep scroll listeners for scroll lock feature)
                   autoScrollPausedRef.current.delete(event.model);
 
-                  // Check if ALL models are done - if so, switch to formatted view
+                  // Switch completed successful models to formatted view immediately
+                  // Don't wait for all models - successful models should be formatted even if others timeout
+                  const modelContent = streamingResults[event.model] || '';
+                  const isModelError = hasError || isErrorMessage(modelContent);
+                  if (!isModelError) {
+                    // Switch this successful model to formatted view
+                    setActiveResultTabs(prev => ({
+                      ...prev,
+                      [event.model]: RESULT_TAB.FORMATTED
+                    }));
+                  }
+
+                  // Also check if ALL models are done - if so, switch all to formatted view
                   if (completedModels.size === selectedModels.length) {
                     const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
                     selectedModels.forEach(modelId => {
@@ -2790,16 +2804,42 @@ function AppContent() {
           }
 
           // Final update to ensure all content is displayed
+          // Mark incomplete models as failed if they have empty content
+          const finalModelErrors: { [key: string]: boolean } = { ...localModelErrors };
+          selectedModels.forEach(modelId => {
+            const createdModelId = createModelId(modelId);
+            // If model hasn't completed and has empty content, mark as failed
+            if (!completedModels.has(createdModelId)) {
+              const content = streamingResults[createdModelId] || '';
+              if (content.trim().length === 0) {
+                finalModelErrors[createdModelId] = true;
+              }
+            }
+          });
+          setModelErrors(finalModelErrors);
+
+          // Switch successful models to formatted view (even if some timed out)
+          const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+          selectedModels.forEach(modelId => {
+            const createdModelId = createModelId(modelId);
+            const content = streamingResults[createdModelId] || '';
+            const hasError = finalModelErrors[createdModelId] === true || isErrorMessage(content);
+            if (!hasError && content.trim().length > 0) {
+              formattedTabs[createdModelId] = RESULT_TAB.FORMATTED;
+            }
+          });
+          setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }));
+
           setResponse({
             results: { ...streamingResults },
             metadata: {
               input_length: input.length,
               models_requested: selectedModels.length,
               models_successful: Object.keys(streamingResults).filter(
-                modelId => !isErrorMessage(streamingResults[modelId])
+                modelId => !isErrorMessage(streamingResults[modelId]) && (streamingResults[modelId] || '').trim().length > 0
               ).length,
               models_failed: Object.keys(streamingResults).filter(
-                modelId => isErrorMessage(streamingResults[modelId])
+                modelId => isErrorMessage(streamingResults[modelId]) || (streamingResults[modelId] || '').trim().length === 0
               ).length,
               timestamp: new Date().toISOString(),
               processing_time_ms: Date.now() - startTime
@@ -3133,6 +3173,60 @@ function AppContent() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
+        // Handle timeout: mark incomplete models as failed and format successful ones
+        const timeoutModelErrors: { [key: string]: boolean } = { ...localModelErrors };
+        selectedModels.forEach(modelId => {
+          const createdModelId = createModelId(modelId);
+          // If model hasn't completed, check if it should be marked as failed
+          if (!completedModels.has(createdModelId)) {
+            const content = streamingResults[createdModelId] || '';
+            // Mark as failed if empty content or error message
+            if (content.trim().length === 0 || isErrorMessage(content)) {
+              timeoutModelErrors[createdModelId] = true;
+            }
+          }
+        });
+        setModelErrors(timeoutModelErrors);
+
+        // Switch successful models to formatted view even on timeout
+        const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+        selectedModels.forEach(modelId => {
+          const createdModelId = createModelId(modelId);
+          const content = streamingResults[createdModelId] || '';
+          const hasError = timeoutModelErrors[createdModelId] === true || isErrorMessage(content);
+          if (!hasError && content.trim().length > 0) {
+            formattedTabs[createdModelId] = RESULT_TAB.FORMATTED;
+          }
+        });
+        setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }));
+
+        // Final state update for conversations with timeout handling
+        if (!isFollowUpMode) {
+          setConversations(prevConversations => {
+            return prevConversations.map(conv => {
+              const content = streamingResults[conv.modelId] || '';
+              const startTime = modelStartTimes[conv.modelId];
+              const completionTime = modelCompletionTimes[conv.modelId];
+
+              return {
+                ...conv,
+                messages: conv.messages.map((msg, idx) => {
+                  if (idx === 0 && msg.type === 'user') {
+                    return { ...msg, timestamp: startTime || msg.timestamp };
+                  } else if (idx === 1 && msg.type === 'assistant') {
+                    return {
+                      ...msg,
+                      content,
+                      timestamp: completionTime || msg.timestamp
+                    };
+                  }
+                  return msg;
+                })
+              };
+            });
+          });
+        }
+
         if (userCancelledRef.current) {
           const elapsedTime = Date.now() - startTime;
           const elapsedSeconds = (elapsedTime / 1000).toFixed(1);
@@ -3826,10 +3920,12 @@ function AppContent() {
                         // Check for error: backend error flag OR error message in content OR empty content after completion (timeout)
                         const hasBackendError = modelErrors[conversation.modelId] === true;
                         const hasErrorMessage = isErrorMessage(content);
-                        // Only consider empty content an error if model has completed (has entry in modelErrors)
-                        // If modelErrors[conversation.modelId] is undefined, model is still streaming
+                        // Consider empty content an error if:
+                        // 1. Model has completed (has entry in modelErrors) - normal completion case
+                        // 2. Model hasn't completed but loading is done (timeout case) - mark as failed
                         const modelHasCompleted = conversation.modelId in modelErrors;
-                        const isEmptyContent = content.trim().length === 0 && latestMessage?.type === 'assistant' && modelHasCompleted;
+                        const isLoadingDone = !isLoading; // If not loading, stream has ended (either completed or timed out)
+                        const isEmptyContent = content.trim().length === 0 && latestMessage?.type === 'assistant' && (modelHasCompleted || isLoadingDone);
                         const isError = hasBackendError || hasErrorMessage || isEmptyContent;
                         const safeId = getSafeId(conversation.modelId);
 
