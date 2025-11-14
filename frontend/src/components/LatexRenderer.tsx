@@ -258,6 +258,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             cleaned = cleaned.replace(/\\\$/g, '$');
         }
 
+        // Remove model-generated placeholders early to prevent interference with list processing
+        // Be very aggressive - catch all variations and concatenated placeholders
+        // Handle double parentheses format: ((MDPH3)) - remove all occurrences, even concatenated
+        while (cleaned.includes('((MDPH')) {
+            cleaned = cleaned.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        // Handle curly braces format: {{MDPH3}} - remove all occurrences, even concatenated
+        while (cleaned.includes('{{MDPH')) {
+            cleaned = cleaned.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        // Handle single parentheses/braces as fallback
+        cleaned = cleaned.replace(/\(MDPH\d+\)/g, '');
+        cleaned = cleaned.replace(/\{MDPH\d+\}/g, '');
+        // Remove any trailing --- that might follow placeholders
+        cleaned = cleaned.replace(/\s*---+\s*/g, ' ');
+
         // Apply custom preprocessing functions if provided
         if (preprocessOpts.customPreprocessors) {
             for (const preprocessor of preprocessOpts.customPreprocessors) {
@@ -541,10 +557,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      */
     const processMarkdownLists = (text: string): string => {
         // First, remove any model-generated placeholders that might interfere with list detection
-        // Pattern: ((MDPH followed by digits and closing parentheses, optionally followed by ---
-        let processed = text.replace(/\(\(MDPH\d+\)\)(\(\(MDPH\d+\)\))?---?/g, '');
-        // Also handle standalone placeholders without the ---
-        processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        // Be very aggressive - catch all variations and concatenated placeholders
+        let processed = text;
+        // Handle double parentheses format: ((MDPH3)) - remove all occurrences, even concatenated
+        while (processed.includes('((MDPH')) {
+            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        // Handle curly braces format: {{MDPH3}} - remove all occurrences, even concatenated
+        while (processed.includes('{{MDPH')) {
+            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        // Handle single parentheses/braces as fallback
+        processed = processed.replace(/\(MDPH\d+\)/g, '');
+        processed = processed.replace(/\{MDPH\d+\}/g, '');
+        // Remove any trailing --- that might follow placeholders
+        processed = processed.replace(/\s*---+\s*/g, ' ');
 
         // Debug: Check for ordered list patterns in input
         const olPattern = /^\d+\.\s+/gm;
@@ -1328,6 +1355,18 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return placeholder;
         });
 
+        // CRITICAL: Remove model-generated MDPH placeholders BEFORE markdown formatting
+        // This prevents them from being wrapped in HTML tags like <strong>((MDPH3))</strong>
+        while (processed.includes('((MDPH')) {
+            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        while (processed.includes('{{MDPH')) {
+            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        processed = processed.replace(/\(MDPH\d+\)/g, '');
+        processed = processed.replace(/\{MDPH\d+\}/g, '');
+        processed = processed.replace(/\bMDPH\d+\b/g, '');
+
         // Tables - must come first (if enabled)
         if (markdownRules.processTables !== false) {
             processed = processed.replace(/^\|(.+)\|$/gm, (_match, content) => {
@@ -1596,6 +1635,19 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
         }
 
+        // CRITICAL: Remove model-generated MDPH placeholders even if they're inside HTML tags
+        // This catches placeholders that got wrapped in markdown formatting like **((MDPH3))**
+        // Remove all variations aggressively, even inside HTML tags
+        while (processed.includes('((MDPH')) {
+            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        while (processed.includes('{{MDPH')) {
+            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        processed = processed.replace(/\(MDPH\d+\)/g, '');
+        processed = processed.replace(/\{MDPH\d+\}/g, '');
+        processed = processed.replace(/\bMDPH\d+\b/g, '');
+
         return processed;
     };
 
@@ -1695,13 +1747,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Merge consecutive <ol> tags (cleanup pass)
         converted = converted.replace(/<\/ol>\s*<ol>/g, '');
 
-        // Handle model-generated placeholders in format ((MDPH...)) or ((MDPH...))---
+        // Handle model-generated placeholders in format ((MDPH...)) or {{MDPH...}}
         // These placeholders appear when models output placeholders for list items
-        // We need to detect and remove them, or replace them if we can find corresponding list items
-        // Pattern: ((MDPH followed by digits and closing parentheses, optionally followed by ---
-        converted = converted.replace(/\(\(MDPH\d+\)\)(\(\(MDPH\d+\)\))?---?/g, '');
-        // Also handle standalone placeholders without the ---
-        converted = converted.replace(/\(\(MDPH\d+\)\)/g, '');
+        // Be very aggressive - catch all variations and concatenated placeholders
+        // Handle double parentheses format: ((MDPH3)) - remove all occurrences, even concatenated
+        while (converted.includes('((MDPH')) {
+            converted = converted.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        // Handle curly braces format: {{MDPH3}} - remove all occurrences, even concatenated
+        while (converted.includes('{{MDPH')) {
+            converted = converted.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        // Handle single parentheses/braces as fallback
+        converted = converted.replace(/\(MDPH\d+\)/g, '');
+        converted = converted.replace(/\{MDPH\d+\}/g, '');
+        // Remove any trailing --- that might follow placeholders
+        converted = converted.replace(/\s*---+\s*/g, ' ');
 
         return converted;
     };
@@ -1779,6 +1840,18 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 7: Process markdown formatting (using model-specific rules)
             processed = processMarkdown(processed);
+
+            // Stage 7.5: Remove any MDPH placeholders that survived markdown processing
+            // This is critical because placeholders might be inside HTML tags from markdown formatting
+            while (processed.includes('((MDPH')) {
+                processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+            }
+            while (processed.includes('{{MDPH')) {
+                processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+            }
+            processed = processed.replace(/\(MDPH\d+\)/g, '');
+            processed = processed.replace(/\{MDPH\d+\}/g, '');
+            processed = processed.replace(/\bMDPH\d+\b/g, '');
 
             // Stage 8: Convert lists to HTML
             processed = convertListsToHTML(processed);
@@ -1905,6 +1978,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/\\([`*_#+\-.!|])/g, '$1');
             processed = processed.replace(/\\\(/g, '');
             processed = processed.replace(/\\\)/g, '');
+
+            // Final aggressive cleanup: Remove ANY remaining MDPH placeholders in any format
+            // This catches placeholders that might have escaped earlier stages
+            // Handle all variations: ((MDPHx)), {{MDPHx}}, (MDPHx), {MDPHx}, MDPHx, etc.
+            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+            processed = processed.replace(/\(MDPH\d+\)/g, '');
+            processed = processed.replace(/\{MDPH\d+\}/g, '');
+            // Also catch any standalone MDPH followed by digits (as a last resort)
+            processed = processed.replace(/\bMDPH\d+\b/g, '');
 
             return processed;
 
