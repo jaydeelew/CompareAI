@@ -1639,6 +1639,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         const remainingPlaceholders = processed.match(/⟨⟨MDPH_\d+⟩⟩/g);
         if (remainingPlaceholders && remainingPlaceholders.length > 0) {
             console.warn(`[processMarkdown] WARNING: Found ${remainingPlaceholders.length} unrecovered placeholders:`, remainingPlaceholders);
+            // Log the context around each placeholder for debugging
+            remainingPlaceholders.forEach(ph => {
+                const index = processed.indexOf(ph);
+                if (index !== -1) {
+                    const context = processed.substring(Math.max(0, index - 50), Math.min(processed.length, index + ph.length + 50));
+                    console.warn(`[processMarkdown] Context: ...${context}...`);
+                }
+            });
             // Remove unrecovered placeholders to prevent them from appearing in output
             processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
         }
@@ -1984,18 +1992,32 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Final cleanup - only unescape markdown characters, not LaTeX commands
             // Don't remove backslashes that are part of LaTeX commands
             processed = processed.replace(/\\([`*_#+\-.!|])/g, '$1');
-            processed = processed.replace(/\\\(/g, '');
-            processed = processed.replace(/\\\)/g, '');
+            // Note: DO NOT remove \( and \) here as they should have been processed as math delimiters
+            // If they're still present, it means they weren't recognized as math and should remain as-is
+            // or be handled by the implicit math detection in earlier stages
 
-            // Final aggressive cleanup: Remove ANY remaining MDPH placeholders in any format
+            // Final aggressive cleanup: Remove ANY remaining MDPH or internal placeholders
             // This catches placeholders that might have escaped earlier stages
-            // Handle all variations: ((MDPHx)), {{MDPHx}}, (MDPHx), {MDPHx}, MDPHx, etc.
+
+            // Remove model-generated MDPH placeholders in various formats
+            // Handle all variations: ((MDPHx)), {{MDPHx}}, (MDPHx), {MDPHx}, MDPHx
             processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
             processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
             processed = processed.replace(/\(MDPH\d+\)/g, '');
             processed = processed.replace(/\{MDPH\d+\}/g, '');
-            // Also catch any standalone MDPH followed by digits (as a last resort)
             processed = processed.replace(/\bMDPH\d+\b/g, '');
+
+            // Remove internal Unicode placeholder format (⟨⟨MDPH_X⟩⟩) if any leaked
+            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+
+            // Remove any remaining internal placeholder formats that might have leaked
+            // These should never appear but this is a safety net
+            processed = processed.replace(/__INLINE_MATH_\d+__/g, '');
+            processed = processed.replace(/__DISPLAY_MATH_\d+__/g, '');
+            processed = processed.replace(/__CODE_BLOCK_\d+__/g, '');
+
+            // Remove any malformed placeholder variations (case insensitive)
+            processed = processed.replace(/\b(?:INLINE|DISPLAY)[_\s]*MATH[_\s]*\d+\b/gi, '');
 
             return processed;
 

@@ -40,7 +40,7 @@ const DEFAULT_CONFIG: DefaultRendererConfig = {
   
   inlineMathDelimiters: [
     { pattern: /(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, name: 'single-dollar', priority: 1 },
-    { pattern: /\\\(\s*([^\\]*?)\s*\\\)/g, name: 'paren', priority: 2 },
+    { pattern: /\\\(\s*([\s\S]*?)\s*\\\)/g, name: 'paren', priority: 2 },
   ],
   
   preprocessing: {
