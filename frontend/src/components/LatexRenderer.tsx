@@ -1745,6 +1745,28 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Stage 8: Convert lists to HTML
             processed = convertListsToHTML(processed);
 
+            // Stage 8.3: Restore display math placeholders that might be inside converted list HTML
+            // This handles cases where display math placeholders were inside list items
+            // and weren't restored in Stage 5.5 because they were hidden inside list placeholders
+            processed = restoreDisplayMath(processed, displayMathExtraction.mathBlocks);
+
+            // Stage 8.4: Render display math that was restored in Stage 8.3
+            // Display math blocks restored here need to be rendered since they weren't rendered in Stage 6
+            const displayDelimiters = [...config.displayMathDelimiters].sort((a, b) => {
+                const priorityA = a.priority ?? 999;
+                const priorityB = b.priority ?? 999;
+                return priorityA - priorityB;
+            });
+            displayDelimiters.forEach(({ pattern }) => {
+                processed = processed.replace(pattern, (_match, math) => {
+                    // Check if already rendered
+                    if (_match.includes('<span class="katex">')) {
+                        return _match;
+                    }
+                    return safeRenderKatex(math, true, config.katexOptions);
+                });
+            });
+
             // Stage 8.5: Restore and render any inline math placeholders that were nested inside list placeholders
             // This handles cases where inline math placeholders were inside list items
             // and weren't restored in Stage 5.6 because they were hidden inside list placeholders
