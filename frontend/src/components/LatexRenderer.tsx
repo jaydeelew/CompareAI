@@ -140,6 +140,12 @@ const looksProse = (content: string): boolean => {
         return true;
     }
 
+    // Check for prose connectors like "or" and "and" that indicate multiple solutions
+    // These are natural language connectors, not mathematical operators
+    if (/\s+(or|and)\s+/i.test(content)) {
+        return true;
+    }
+
     // Multiple words (even short phrases are likely prose, not math)
     const wordCount = content.trim().split(/\s+/).length;
     if (wordCount > 2 && !looksMathematical(content)) return true;
@@ -702,6 +708,32 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(fullExpression);
             const alreadyRendered = fullExpression.includes('<span class="katex">') || fullExpression.includes('katex');
 
+            // Check if the expression contains "or" or "and" connectors (multiple solutions)
+            const hasConnectors = /\s+(or|and)\s+/i.test(fullExpression);
+
+            // If it contains connectors, handle separately (bypass looksProse check for connectors)
+            if (!alreadyRendered && hasConnectors) {
+                const parts = fullExpression.split(/\s+(or|and)\s+/i);
+                const result: string[] = [];
+
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i].trim();
+                    // Check if this part is a connector word
+                    if (/^(or|and)$/i.test(part)) {
+                        result.push(` ${part} `);
+                    } else if (part && (looksMathematical(part) || hasLatexCommands)) {
+                        // Render this part as math
+                        result.push(safeRenderKatex(part, false, config.katexOptions));
+                    } else {
+                        // Keep as plain text
+                        result.push(part);
+                    }
+                }
+
+                return result.join('') + (newline || '');
+            }
+
+            // Normal rendering for expressions without connectors
             if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
                 // Preserve the newline after the line
                 return safeRenderKatex(fullExpression, false, config.katexOptions) + (newline || '');
@@ -716,6 +748,32 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(expression);
             const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
 
+            // Check if the expression contains "or" or "and" connectors (multiple solutions)
+            const hasConnectors = /\s+(or|and)\s+/i.test(expression);
+
+            // If it contains connectors, handle separately (bypass looksProse check for connectors)
+            if (!alreadyRendered && hasConnectors) {
+                const parts = expression.split(/\s+(or|and)\s+/i);
+                const result: string[] = [];
+
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i].trim();
+                    // Check if this part is a connector word
+                    if (/^(or|and)$/i.test(part)) {
+                        result.push(` ${part} `);
+                    } else if (part && (looksMathematical(part) || hasLatexCommands)) {
+                        // Render this part as math
+                        result.push(safeRenderKatex(part, false, config.katexOptions));
+                    } else {
+                        // Keep as plain text
+                        result.push(part);
+                    }
+                }
+
+                return result.join('') + (newline || '');
+            }
+
+            // Normal rendering for expressions without connectors
             if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
                 // Preserve the newline after the line
                 return safeRenderKatex(expression, false, config.katexOptions) + (newline || '');
