@@ -307,13 +307,6 @@ MODELS_BY_PROVIDER = {
             "provider": "OpenAI",
         },
         {
-            "id": "openai/o1-pro",
-            "name": "o1-pro",
-            "description": "OpenAI's advanced reasoning model designed for complex mathematical problems and logical reasoning tasks",
-            "category": "Reasoning",
-            "provider": "OpenAI",
-        },
-        {
             "id": "openai/o1",
             "name": "o1",
             "description": "OpenAI's reasoning model optimized for mathematical problem-solving and complex reasoning tasks",
