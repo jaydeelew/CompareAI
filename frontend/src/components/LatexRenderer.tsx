@@ -539,34 +539,45 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     /**
      * Stage 5: Process markdown lists
      */
-    const processMarkdownLists = (text: string, inlineMathBlocks: string[]): string => {
+    const processMarkdownLists = (text: string): string => {
+        // Debug: Check for ordered list patterns in input
+        const olPattern = /^\d+\.\s+/gm;
+        const olMatches = text.match(olPattern);
+        console.log(`[processMarkdownLists] Input has ${olMatches ? olMatches.length : 0} potential OL items`);
+        if (olMatches && olMatches.length > 0) {
+            console.log('[processMarkdownLists] Sample matches:', olMatches.slice(0, 5));
+            // Show context around first match
+            const firstMatchIndex = text.search(olPattern);
+            if (firstMatchIndex >= 0) {
+                console.log('[processMarkdownLists] Context around first match:', text.substring(Math.max(0, firstMatchIndex - 50), firstMatchIndex + 150));
+            }
+        }
         let processed = text;
 
         // Helper function to process list content (math and markdown formatting)
         const processListContent = (content: string): string => {
             let processedContent = convertImplicitMath(content);
 
-            // CRITICAL: Restore inline math placeholders BEFORE processing bold/italic
-            // This prevents __INLINE_MATH_X__ from being processed as bold markdown
-            const placeholderPrefix = '__INLINE_MATH_';
-            const placeholderSuffix = '__';
-            const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)${placeholderSuffix}`, 'g');
-            processedContent = processedContent.replace(placeholderRegex, (_match, index) => {
-                const blockIndex = parseInt(index, 10);
-                if (blockIndex >= 0 && blockIndex < inlineMathBlocks.length) {
-                    return inlineMathBlocks[blockIndex]; // Restore the original math block with delimiters
-                }
-                return _match; // Return original if index is invalid
+            // CRITICAL: Do NOT restore inline math placeholders here
+            // Keep them as __INLINE_MATH_X__ to preserve the list placeholder structure
+            // They will be restored and rendered later in the pipeline (Stage 8.5)
+
+            // Process bold/italic inside list items, BUT protect inline math placeholders
+            // IMPORTANT: First, temporarily protect inline math placeholders from markdown processing
+            const mathPlaceholders = new Map<string, string>();
+            let placeholderCounter = 0;
+            processedContent = processedContent.replace(/__INLINE_MATH_\d+__/g, (match) => {
+                const tempPlaceholder = `%%MATHPH${placeholderCounter}%%`;
+                mathPlaceholders.set(tempPlaceholder, match);
+                placeholderCounter++;
+                return tempPlaceholder;
             });
 
-            // Process bold/italic inside list items AFTER restoring math placeholders
-            // This ensures formatting is preserved when placeholders are protected
             // Bold: match ** but allow single * inside
             processedContent = processedContent.replace(/\*\*((?:(?!\*\*)[\s\S])+?)\*\*/g, '<strong>$1</strong>');
-            // Bold: match __ but allow single _ inside, BUT skip if it's part of a math delimiter
-            // We need to be careful not to match $...$ or \(...\) as bold
+            // Bold: match __ but allow single _ inside
             processedContent = processedContent.replace(/__((?:(?!__)[\s\S])+?)__/g, (match, content) => {
-                // Skip if this looks like it might be part of math (contains $ or \( or \))
+                // Skip if this looks like it might be part of math
                 if (content.includes('$') || content.includes('\\(') || content.includes('\\[')) {
                     return match; // Don't process as bold
                 }
@@ -576,6 +587,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processedContent = processedContent.replace(/(?<!\*)\*((?:(?!\*)[^\n])+?)\*(?!\*)/g, '<em>$1</em>');
             // Italic: match single _ but not when part of __
             processedContent = processedContent.replace(/(?<!_)_((?:(?!_)[^\n])+?)_(?!_)/g, '<em>$1</em>');
+
+            // Restore inline math placeholders (use replaceAll to handle multiple occurrences)
+            mathPlaceholders.forEach((original, placeholder) => {
+                processedContent = processedContent.replaceAll(placeholder, original);
+            });
             // Inline code
             processedContent = processedContent.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
 
@@ -610,11 +626,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         processed = processed.replace(/^(\s*)(\d+)\.\s+(.+?)$/gm, (_match, indent, num, content) => {
             matchCount++;
             const level = indent.length;
+            console.log(`[OL Match] Found item ${num}: "${content}"`);
             const processedContent = processListContent(content);
-            console.log(`[processMarkdownLists] Match #${matchCount}: num=${num}, level=${level}, content="${content.substring(0, 50)}...", processed="${processedContent.substring(0, 50)}..."`);
             return `__OL_${level}_${num}__${processedContent}__/OL__`;
         });
-        console.log(`[processMarkdownLists] Total ordered list items matched: ${matchCount}`);
+        console.log(`[processMarkdownLists] Total OL items found: ${matchCount}`);
 
         // Then, find indented lines that follow list items and incorporate them
         // Match pattern: list placeholder followed by blank lines and truly indented content (3+ spaces)
@@ -718,11 +734,49 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     /**
      * Restore inline math blocks after preprocessing
      */
-    const restoreInlineMath = (text: string, mathBlocks: string[]): string => {
+    const restoreInlineMath = (text: string, mathBlocks: string[], skipInsideListPlaceholders: boolean = false): string => {
         const placeholderPrefix = '__INLINE_MATH_';
         const placeholderSuffix = '__';
         const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)${placeholderSuffix}`, 'g');
 
+        // If we should skip inline math inside list placeholders, process the text in chunks
+        if (skipInsideListPlaceholders) {
+            // Split text by list placeholder boundaries
+            const listPlaceholderRegex = /(__(?:OL|UL)_[\d_]+__[\s\S]*?__\/(?:OL|UL)__|__TASK_(?:checked|unchecked)__[\s\S]*?__\/TASK__)/g;
+            let result = '';
+            let lastIndex = 0;
+            let match;
+
+            while ((match = listPlaceholderRegex.exec(text)) !== null) {
+                // Process text before this list placeholder
+                const beforeList = text.substring(lastIndex, match.index);
+                result += beforeList.replace(placeholderRegex, (_match, index) => {
+                    const blockIndex = parseInt(index, 10);
+                    if (blockIndex >= 0 && blockIndex < mathBlocks.length) {
+                        return mathBlocks[blockIndex];
+                    }
+                    return _match;
+                });
+
+                // Add the list placeholder unchanged (don't restore inline math inside it)
+                result += match[0];
+                lastIndex = match.index + match[0].length;
+            }
+
+            // Process remaining text after last list placeholder
+            const afterLists = text.substring(lastIndex);
+            result += afterLists.replace(placeholderRegex, (_match, index) => {
+                const blockIndex = parseInt(index, 10);
+                if (blockIndex >= 0 && blockIndex < mathBlocks.length) {
+                    return mathBlocks[blockIndex];
+                }
+                return _match;
+            });
+
+            return result;
+        }
+
+        // Default behavior: restore all inline math placeholders
         return text.replace(placeholderRegex, (_match, index) => {
             const blockIndex = parseInt(index, 10);
             if (blockIndex >= 0 && blockIndex < mathBlocks.length) {
@@ -1223,14 +1277,31 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // CRITICAL: Protect placeholders from markdown processing by temporarily replacing them
         // This prevents bold/italic regex from matching placeholder patterns
-        // Use HTML comments to avoid conflict with ALL markdown patterns (underscores, asterisks, brackets, etc.)
+        // Use a unique string format that won't be interpreted as HTML or markdown
+        // Format: ⟨⟨MDPH_N⟩⟩ using Unicode angle brackets to avoid conflicts
         const placeholderMap = new Map<string, string>();
         let placeholderCounter = 0;
 
-        // Protect inline math placeholders FIRST (before list placeholders)
+        // IMPORTANT: Protect full list placeholder patterns FIRST (before inline math)
+        // This ensures that inline math placeholders INSIDE lists are preserved as part of the list block
+        // Pattern: __UL_X__content__/UL__ or __OL_X_Y__content__/OL__ or __TASK_X__content__/TASK__
+        let listPlaceholderCount = 0;
+        processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
+            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
+            placeholderMap.set(placeholder, match);
+            if (match.startsWith('__OL_')) {
+                listPlaceholderCount++;
+                console.log(`[processMarkdown] Protecting OL placeholder: ${match.substring(0, 80)}...`);
+            }
+            placeholderCounter++;
+            return placeholder;
+        });
+        console.log(`[processMarkdown] Protected ${listPlaceholderCount} OL placeholders`);
+
+        // Protect inline math placeholders (outside of lists)
         // These use __INLINE_MATH_X__ format which would be matched by bold regex
         processed = processed.replace(/(__INLINE_MATH_\d+__)/g, (match) => {
-            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
@@ -1238,16 +1309,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Protect display math placeholders
         processed = processed.replace(/(__DISPLAY_MATH_\d+__)/g, (match) => {
-            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
-            placeholderMap.set(placeholder, match);
-            placeholderCounter++;
-            return placeholder;
-        });
-
-        // Protect full list placeholder patterns (including content between tags)
-        // Pattern: __UL_X__content__/UL__ or __OL_X_Y__content__/OL__ or __TASK_X__content__/TASK__
-        processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
-            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
@@ -1255,7 +1317,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Protect code block placeholders (__CODE_BLOCK_X__)
         processed = processed.replace(/(__CODE_BLOCK_\d+__)/g, (match) => {
-            const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
+            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
@@ -1483,15 +1545,30 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Restore protected placeholders after all markdown processing
         // Use simple string replacement for reliability (placeholders are unique)
-        console.log(`[processMarkdown] Restoring ${placeholderMap.size} protected placeholders...`);
+        let restoredOLCount = 0;
         placeholderMap.forEach((original, placeholder) => {
             // Use split/join for reliable replacement that handles all special characters
-            processed = processed.split(placeholder).join(original);
-        });
+            const beforeLength = processed.length;
+            const countBefore = (processed.match(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
 
-        // Debug: Check if OL placeholders exist after markdown processing
-        const olMatches = processed.match(/__OL_\d+_\d+__/g);
-        console.log(`[processMarkdown] OL placeholders after restore: ${olMatches ? olMatches.length : 0}`);
+            if (original.startsWith('__OL_')) {
+                restoredOLCount++;
+                console.log(`[processMarkdown] Restoring OL - Placeholder: "${placeholder}" found ${countBefore} times`);
+                if (countBefore === 0) {
+                    console.log(`[processMarkdown] ERROR: Placeholder not found in processed text!`);
+                    console.log(`[processMarkdown] Sample of processed text:`, processed.substring(0, 200));
+                }
+            }
+
+            processed = processed.split(placeholder).join(original);
+
+            const afterLength = processed.length;
+            if (original.startsWith('__OL_') && afterLength === beforeLength) {
+                console.log(`[processMarkdown] WARNING: No change in length after restoration - placeholder not found!`);
+            }
+        });
+        console.log(`[processMarkdown] Restored ${restoredOLCount} OL placeholders`);
+        console.log(`[processMarkdown] Output contains __OL_: ${processed.includes('__OL_')}`);
 
         return processed;
     };
@@ -1500,10 +1577,6 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      * Stage 8: Convert markdown list placeholders to HTML
      */
     const convertListsToHTML = (text: string): string => {
-        // Debug: Check if OL placeholders exist at the start of this function
-        const olMatchesBefore = text.match(/__OL_\d+_\d+__/g);
-        console.log(`[convertListsToHTML] OL placeholders at start: ${olMatchesBefore ? olMatchesBefore.length : 0}`);
-
         let converted = text;
 
         // Task lists
@@ -1578,26 +1651,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Ordered lists - match and convert each placeholder individually first
         // Then group consecutive ones if needed
-        let olCount = 0;
         converted = converted.replace(/__OL_(\d+)_(\d+)__([\s\S]*?)__\/OL__/g, (_fullMatch, _level, num, content) => {
-            olCount++;
-            console.log(`[convertListsToHTML] Converting OL #${olCount}: num=${num}, content="${content.substring(0, 50)}..."`);
             // Convert each item individually with its number
             return `<ol><li value="${num}">${content.trim()}</li></ol>`;
         });
-        console.log(`[convertListsToHTML] Total OL items converted: ${olCount}`);
 
         // Merge consecutive <ol> tags (cleanup pass)
         converted = converted.replace(/<\/ol>\s*<ol>/g, '');
-
-        // Debug: Log a sample of the converted output containing OL tags
-        if (converted.includes('<ol>')) {
-            const olIndex = converted.indexOf('<ol>');
-            const sample = converted.substring(Math.max(0, olIndex - 50), Math.min(converted.length, olIndex + 200));
-            console.log(`[convertListsToHTML] Sample output with <ol>:`, sample);
-        } else {
-            console.log(`[convertListsToHTML] No <ol> tags found in final output!`);
-        }
 
         return converted;
     };
@@ -1654,8 +1714,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Stage 4: Convert implicit math notation
             processed = convertImplicitMath(processed);
 
-            // Stage 5: Process markdown lists (pass inline math blocks to restore placeholders inside lists)
-            processed = processMarkdownLists(processed, inlineMathExtraction.mathBlocks);
+            // Stage 5: Process markdown lists
+            // Note: Inline math placeholders are kept intact inside list placeholders
+            processed = processMarkdownLists(processed);
 
             // Stage 5.5: Restore display math blocks before rendering
             // This ensures the original math content is available for rendering
@@ -1663,7 +1724,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Stage 5.6: Restore inline math blocks before rendering
             // This ensures the original inline math content is available for rendering
-            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
+            // IMPORTANT: Skip restoring inline math inside list placeholders to preserve placeholder structure
+            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks, true);
 
             // Stage 6: Render math content (using model-specific delimiters and KaTeX options)
             processed = renderMathContent(processed);
@@ -1681,6 +1743,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // This handles cases where inline math placeholders were inside list items
             // and weren't restored in Stage 5.6 because they were hidden inside list placeholders
             processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
+
             // Render the restored inline math (using model-specific delimiters)
             const inlineDelimiters = [...config.inlineMathDelimiters].sort((a, b) => {
                 const priorityA = a.priority ?? 999;
@@ -1793,7 +1856,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     // ============================================================================
 
     const contentRef = useRef<HTMLDivElement>(null);
-    const processedContent = renderLatex(children);
+    const processedContent = useMemo(() => renderLatex(children), [children, modelId]);
 
     // Apply Prism highlighting after content is rendered
     useEffect(() => {
