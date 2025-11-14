@@ -306,13 +306,6 @@ MODELS_BY_PROVIDER = {
             "category": "Reasoning",
             "provider": "OpenAI",
         },
-        {
-            "id": "openai/o1",
-            "name": "o1",
-            "description": "OpenAI's reasoning model optimized for mathematical problem-solving and complex reasoning tasks",
-            "category": "Reasoning",
-            "provider": "OpenAI",
-        },
     ],
     "Qwen": [
         {
