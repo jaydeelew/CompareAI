@@ -1577,6 +1577,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      * Stage 8: Convert markdown list placeholders to HTML
      */
     const convertListsToHTML = (text: string): string => {
+        console.log('[convertListsToHTML] Input has __OL_:', text.includes('__OL_'));
+        console.log('[convertListsToHTML] Input has ⟨⟨MDPH:', text.includes('⟨⟨MDPH'));
+        if (text.includes('⟨⟨MDPH')) {
+            const mdphIndex = text.indexOf('⟨⟨MDPH');
+            console.log('[convertListsToHTML] Sample with MDPH:', text.substring(mdphIndex - 50, mdphIndex + 100));
+        }
         let converted = text;
 
         // Task lists
