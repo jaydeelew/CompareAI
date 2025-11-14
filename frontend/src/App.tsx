@@ -156,6 +156,7 @@ function AppContent() {
   const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
   const [isModelsHidden, setIsModelsHidden] = useState(false);
+  const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({});
 
   // Callback for when the active conversation is deleted
   const handleDeleteActiveConversation = useCallback(() => {
@@ -169,6 +170,7 @@ function AppContent() {
     setOriginalSelectedModels([]);
     setIsModelsHidden(false);
     setOpenDropdowns(new Set());
+    setModelErrors({});
   }, [setIsFollowUpMode, setInput, setConversations, setResponse, setClosedCards, setError, setSelectedModels, setOriginalSelectedModels]);
 
   const conversationHistoryHook = useConversationHistory({
@@ -2141,6 +2143,7 @@ function AppContent() {
     setIsModelsHidden(false); // Show models section again for new comparison
     // Clear currently visible comparison ID
     setCurrentVisibleComparisonId(null);
+    setModelErrors({});
   };
 
   // Function to scroll all conversation content areas to the last user message
@@ -2525,11 +2528,15 @@ function AppContent() {
       // Initialize results object for streaming updates
       const streamingResults: { [key: string]: string } = {};
       const completedModels = new Set<string>(); // Track which models have finished
+      const localModelErrors: { [key: string]: boolean } = {}; // Track which models have errors (local during streaming)
       const modelStartTimes: { [key: string]: string } = {}; // Track when each model starts
       const modelCompletionTimes: { [key: string]: string } = {}; // Track when each model completes
       let streamingMetadata: CompareResponse['metadata'] | null = null;
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
+      
+      // Clear previous model errors at start of new comparison
+      setModelErrors({});
 
       // Set all selected models to 'raw' tab to show streaming content immediately
       const rawTabs: ActiveResultTabs = {} as ActiveResultTabs;
@@ -2615,6 +2622,11 @@ function AppContent() {
                   // Model completed - track it and record completion time
                   completedModels.add(event.model);
                   modelCompletionTimes[event.model] = new Date().toISOString();
+                  // Store error flag from backend (both locally and in state)
+                  // Set to false if not explicitly true, so we can distinguish "completed" from "still streaming"
+                  const hasError = event.error === true;
+                  localModelErrors[event.model] = hasError;
+                  setModelErrors(prev => ({ ...prev, [event.model]: hasError }));
                   shouldUpdate = true;
 
                   // Clean up pause state for this model (but keep scroll listeners for scroll lock feature)
@@ -3810,7 +3822,15 @@ function AppContent() {
                       .map((conversation) => {
                         const model = allModels.find(m => m.id === conversation.modelId);
                         const latestMessage = conversation.messages[conversation.messages.length - 1];
-                        const isError = isErrorMessage(latestMessage?.content);
+                        const content = latestMessage?.content || '';
+                        // Check for error: backend error flag OR error message in content OR empty content after completion (timeout)
+                        const hasBackendError = modelErrors[conversation.modelId] === true;
+                        const hasErrorMessage = isErrorMessage(content);
+                        // Only consider empty content an error if model has completed (has entry in modelErrors)
+                        // If modelErrors[conversation.modelId] is undefined, model is still streaming
+                        const modelHasCompleted = conversation.modelId in modelErrors;
+                        const isEmptyContent = content.trim().length === 0 && latestMessage?.type === 'assistant' && modelHasCompleted;
+                        const isError = hasBackendError || hasErrorMessage || isEmptyContent;
                         const safeId = getSafeId(conversation.modelId);
 
                         return (
