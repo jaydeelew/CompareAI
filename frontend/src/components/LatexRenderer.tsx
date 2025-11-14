@@ -728,7 +728,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // This catches expressions like "x = ..." that contain LaTeX commands
         // But skip if already rendered (inside display math delimiters)
         // Match the line including the newline to preserve line breaks
-        rendered = rendered.replace(/^x\s*=\s*(.+?)(\n|$)/gm, (_match, rightSide, newline) => {
+        rendered = rendered.replace(/^x\s*=\s*(.+?)(\n+|$)/gm, (_match, rightSide, newlines) => {
             const fullExpression = `x = ${rightSide}`;
 
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
@@ -757,20 +757,23 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     }
                 }
 
-                return result.join('') + (newline || '');
+                // Convert newlines to <br> tags for consistency
+                const newlineHtml = newlines ? '<br>'.repeat(newlines.length) : '';
+                return result.join('') + newlineHtml;
             }
 
             // Normal rendering for expressions without connectors
             if (!alreadyRendered && (looksMathematical(fullExpression) || hasLatexCommands) && !looksProse(fullExpression)) {
-                // Preserve the newline after the line
-                return safeRenderKatex(fullExpression, false, config.katexOptions) + (newline || '');
+                // Preserve the newlines after the line
+                const newlineHtml = newlines ? '<br>'.repeat(newlines.length) : '';
+                return safeRenderKatex(fullExpression, false, config.katexOptions) + newlineHtml;
             }
             return _match;
         });
 
         // Handle other mathematical expressions that don't have explicit delimiters
         // Match entire lines that look like equations, preserving newlines
-        rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+?)(\n|$)/gm, (_match, expression, newline) => {
+        rendered = rendered.replace(/^([a-zA-Z]+[₀-₉₁-₉]*\s*=\s*[^=\n<]+?)(\n+|$)/gm, (_match, expression, newlines) => {
             // Process if it looks mathematical OR contains LaTeX commands, but doesn't already have KaTeX HTML
             const hasLatexCommands = /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial)/.test(expression);
             const alreadyRendered = expression.includes('<span class="katex">') || expression.includes('katex');
@@ -797,7 +800,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     }
                 }
 
-                return result.join('') + (newline || '');
+                // Convert newlines to <br> tags for consistency
+                const newlineHtml = newlines ? '<br>'.repeat(newlines.length) : '';
+                return result.join('') + newlineHtml;
             }
 
             // Check if expression contains prose in parentheses (e.g., "a = 1 (coefficient of x^2)")
@@ -853,17 +858,19 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                         parts.push(afterLastParen);
                     }
 
-                    // Convert newline to <br> to ensure line breaks are preserved
+                    // Convert newlines to <br> tags to ensure line breaks are preserved
                     // when mixing math HTML with plain text prose
-                    const newlineHtml = newline ? '<br>' : '';
+                    // Multiple newlines (blank lines) should become multiple <br> tags
+                    const newlineHtml = newlines ? '<br>'.repeat(newlines.length) : '';
                     return parts.join('') + newlineHtml;
                 }
             }
 
             // Normal rendering for expressions without connectors
             if (!alreadyRendered && (looksMathematical(expression) || hasLatexCommands) && !looksProse(expression)) {
-                // Preserve the newline after the line
-                return safeRenderKatex(expression, false, config.katexOptions) + (newline || '');
+                // Preserve the newlines after the line
+                const newlineHtml = newlines ? '<br>'.repeat(newlines.length) : '';
+                return safeRenderKatex(expression, false, config.katexOptions) + newlineHtml;
             }
             return _match;
         });
