@@ -570,8 +570,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Handle single parentheses/braces as fallback
         processed = processed.replace(/\(MDPH\d+\)/g, '');
         processed = processed.replace(/\{MDPH\d+\}/g, '');
-        // Remove any trailing --- that might follow placeholders
-        processed = processed.replace(/\s*---+\s*/g, ' ');
+        // NOTE: Horizontal rules (---) are intentionally NOT removed here
+        // They will be processed in Stage 7 (processMarkdown) and converted to <hr> tags
+        // The previous code removed all --- which caused headers after --- to be concatenated
+        // onto the same line, breaking header detection
 
         // Debug: Check for ordered list patterns in input
         const olPattern = /^\d+\.\s+/gm;
@@ -1306,6 +1308,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     const processMarkdown = (text: string): string => {
         const markdownRules = config.markdownProcessing || {};
         let processed = text;
+
+        // CRITICAL FIX: Some models generate headers without proper line breaks
+        // Fix headers that appear mid-line by adding line breaks before them
+        // Match: (non-whitespace) followed by (space) followed by (### or #### etc.)
+        // Replace with: (text) + (newline) + (newline) + (header)
+        processed = processed.replace(/(\S)\s+(#{1,6}\s+)/g, '$1\n\n$2');
 
         // CRITICAL: Protect placeholders from markdown processing by temporarily replacing them
         // This prevents bold/italic regex from matching placeholder patterns
