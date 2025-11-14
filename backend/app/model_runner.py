@@ -251,13 +251,6 @@ MODELS_BY_PROVIDER = {
     ],
     "OpenAI": [
         {
-            "id": "openai/gpt-5-pro",
-            "name": "GPT-5 Pro",
-            "description": "OpenAI's professional-tier GPT-5 model with enhanced coding and problem-solving abilities and improved capabilities over GPT-4",
-            "category": "Language",
-            "provider": "OpenAI",
-        },
-        {
             "id": "openai/gpt-5",
             "name": "GPT-5",
             "description": "OpenAI's most advanced model with enhanced coding and problem-solving abilities, representing a significant leap from GPT-4",
@@ -520,7 +513,9 @@ def count_conversation_tokens(messages: List[Any]) -> int:
     return total_tokens
 
 
-def truncate_conversation_history(conversation_history: List[Any], max_messages: int = 20) -> Tuple[List[Any], bool, int]:
+def truncate_conversation_history(
+    conversation_history: List[Any], max_messages: int = 20
+) -> Tuple[List[Any], bool, int]:
     """
     Truncate conversation history to recent messages to manage context window.
     Returns (truncated_history, was_truncated, original_message_count).
@@ -550,7 +545,11 @@ def truncate_conversation_history(conversation_history: List[Any], max_messages:
 
 
 def call_openrouter_streaming(
-    prompt: str, model_id: str, tier: str = "standard", conversation_history: Optional[List[Any]] = None, use_mock: bool = False
+    prompt: str,
+    model_id: str,
+    tier: str = "standard",
+    conversation_history: Optional[List[Any]] = None,
+    use_mock: bool = False,
 ) -> Generator[str, None, None]:
     """
     Stream OpenRouter responses token-by-token for faster perceived response time.
@@ -583,7 +582,10 @@ def call_openrouter_streaming(
         # Add a minimal system message only to encourage complete thoughts
         if not conversation_history:
             messages.append(
-                {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
+                {
+                    "role": "system",
+                    "content": "Provide complete responses. Finish your thoughts and explanations fully.",
+                }
             )
 
         # Apply context window management (industry best practice 2025)
@@ -592,7 +594,9 @@ def call_openrouter_streaming(
         was_truncated = False
 
         if conversation_history:
-            truncated_history, was_truncated, original_count = truncate_conversation_history(conversation_history, max_messages=20)
+            truncated_history, was_truncated, original_count = truncate_conversation_history(
+                conversation_history, max_messages=20
+            )
 
             # Add truncated conversation history
             for msg in truncated_history:
@@ -650,7 +654,9 @@ def call_openrouter_streaming(
                 "standard": "\n\n⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "\n\n⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
-            warning = tier_messages.get(tier, "\n\n⚠️ Response truncated - model reached maximum output length.")
+            warning = tier_messages.get(
+                tier, "\n\n⚠️ Response truncated - model reached maximum output length."
+            )
             yield warning
         elif finish_reason == "content_filter":
             yield "\n\n⚠️ **Note:** Response stopped by content filter."
@@ -671,7 +677,11 @@ def call_openrouter_streaming(
 
 
 def call_openrouter(
-    prompt: str, model_id: str, tier: str = "standard", conversation_history: Optional[List[Any]] = None, use_mock: bool = False
+    prompt: str,
+    model_id: str,
+    tier: str = "standard",
+    conversation_history: Optional[List[Any]] = None,
+    use_mock: bool = False,
 ) -> str:
     """
     Non-streaming version of OpenRouter call (kept for backward compatibility).
@@ -697,7 +707,10 @@ def call_openrouter(
         # This doesn't force verbosity, just ensures completion
         if not conversation_history:
             messages.append(
-                {"role": "system", "content": "Provide complete responses. Finish your thoughts and explanations fully."}
+                {
+                    "role": "system",
+                    "content": "Provide complete responses. Finish your thoughts and explanations fully.",
+                }
             )
 
         # Apply context window management (industry best practice 2025)
@@ -705,7 +718,9 @@ def call_openrouter(
         was_truncated = False
 
         if conversation_history:
-            truncated_history, was_truncated, original_count = truncate_conversation_history(conversation_history, max_messages=20)
+            truncated_history, was_truncated, original_count = truncate_conversation_history(
+                conversation_history, max_messages=20
+            )
 
             # Add truncated conversation history
             for msg in truncated_history:
@@ -731,7 +746,10 @@ def call_openrouter(
         max_tokens = min(tier_max_tokens, model_max_tokens)
 
         response = client.chat.completions.create(
-            model=model_id, messages=messages, timeout=settings.individual_model_timeout, max_tokens=max_tokens  # Use tier-based limit
+            model=model_id,
+            messages=messages,
+            timeout=settings.individual_model_timeout,
+            max_tokens=max_tokens,  # Use tier-based limit
         )
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
@@ -770,12 +788,17 @@ def call_openrouter(
                 "standard": "⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
-            content = (content or "") + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
+            content = (
+                (content or "")
+                + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
+            )
         elif finish_reason == "content_filter":
             content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
 
         # Clean up MathML and other unwanted markup before returning
-        cleaned_content = clean_model_response(content) if content is not None else "No response generated"
+        cleaned_content = (
+            clean_model_response(content) if content is not None else "No response generated"
+        )
         return cleaned_content
     except Exception as e:
         error_str = str(e).lower()
@@ -792,10 +815,15 @@ def call_openrouter(
             return f"Error: {str(e)[:100]}"  # Truncate long error messages
 
 
-def run_models(prompt: str, model_list: List[str], tier: str = "standard", conversation_history: Optional[List[Any]] = None) -> Dict[str, str]:
+def run_models(
+    prompt: str,
+    model_list: List[str],
+    tier: str = "standard",
+    conversation_history: Optional[List[Any]] = None,
+) -> Dict[str, str]:
     """
     Run models concurrently without batching.
-    
+
     Note: This function is kept for backward compatibility with the non-streaming endpoint.
     The application primarily uses the streaming endpoint (/compare-stream) which processes
     all models concurrently via asyncio tasks.
@@ -856,7 +884,18 @@ def test_connection_quality() -> ConnectionQualityDict:
             quality = "slow"
             multiplier = 2.0
 
-        return {"response_time": response_time, "quality": quality, "time_multiplier": multiplier, "success": True}
+        return {
+            "response_time": response_time,
+            "quality": quality,
+            "time_multiplier": multiplier,
+            "success": True,
+        }
 
     except Exception as e:
-        return {"response_time": 0, "quality": "poor", "time_multiplier": 3.0, "success": False, "error": str(e)}
+        return {
+            "response_time": 0,
+            "quality": "poor",
+            "time_multiplier": 3.0,
+            "success": False,
+            "error": str(e),
+        }
