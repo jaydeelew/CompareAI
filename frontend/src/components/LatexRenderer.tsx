@@ -603,12 +603,41 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return `__UL_${level}__${processedContent}__/UL__`;
         });
 
-        // Ordered lists - capture indent level for nesting
-        processed = processed.replace(/^(\s*)(\d+)\. (.+)$/gm, (_, indent, _num, content) => {
+        // Ordered lists - simpler approach
+        // First, match just the list item line with its content
+        // Allow one or more spaces after the period, match any non-empty content
+        let matchCount = 0;
+        processed = processed.replace(/^(\s*)(\d+)\.\s+(.+?)$/gm, (_match, indent, num, content) => {
+            matchCount++;
             const level = indent.length;
             const processedContent = processListContent(content);
-            return `__OL_${level}__${processedContent}__/OL__`;
+            console.log(`[processMarkdownLists] Match #${matchCount}: num=${num}, level=${level}, content="${content.substring(0, 50)}...", processed="${processedContent.substring(0, 50)}..."`);
+            return `__OL_${level}_${num}__${processedContent}__/OL__`;
         });
+        console.log(`[processMarkdownLists] Total ordered list items matched: ${matchCount}`);
+
+        // Then, find indented lines that follow list items and incorporate them
+        // Match pattern: list placeholder followed by blank lines and truly indented content (3+ spaces)
+        // This ensures we only capture continuation lines, not the next paragraph or list
+        processed = processed.replace(
+            /__OL_(\d+)_(\d+)__([\s\S]*?)__\/OL__(?:\n((?:[ \t]{3,}[^\n]+(?:\n|$)|[ \t]*\n)*))?/g,
+            (_fullMatch, level, num, content, continuationBlock) => {
+                let result = `__OL_${level}_${num}__${content}`;
+
+                if (continuationBlock && continuationBlock.trim()) {
+                    // Process the continuation lines
+                    const lines = continuationBlock.split('\n');
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed) {
+                            result += `<div style="margin-left: 2em; margin-top: 0.5em;">${trimmed}</div>`;
+                        }
+                    }
+                }
+
+                return result + '__/OL__';
+            }
+        );
 
         return processed;
     };
@@ -1216,8 +1245,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         });
 
         // Protect full list placeholder patterns (including content between tags)
-        // Pattern: __UL_X__content__/UL__ or __OL_X__content__/OL__ or __TASK_X__content__/TASK__
-        processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
+        // Pattern: __UL_X__content__/UL__ or __OL_X_Y__content__/OL__ or __TASK_X__content__/TASK__
+        processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
             const placeholder = `<!--PLACEHOLDER_${placeholderCounter}-->`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
@@ -1454,10 +1483,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Restore protected placeholders after all markdown processing
         // Use simple string replacement for reliability (placeholders are unique)
+        console.log(`[processMarkdown] Restoring ${placeholderMap.size} protected placeholders...`);
         placeholderMap.forEach((original, placeholder) => {
             // Use split/join for reliable replacement that handles all special characters
             processed = processed.split(placeholder).join(original);
         });
+
+        // Debug: Check if OL placeholders exist after markdown processing
+        const olMatches = processed.match(/__OL_\d+_\d+__/g);
+        console.log(`[processMarkdown] OL placeholders after restore: ${olMatches ? olMatches.length : 0}`);
 
         return processed;
     };
@@ -1466,6 +1500,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      * Stage 8: Convert markdown list placeholders to HTML
      */
     const convertListsToHTML = (text: string): string => {
+        // Debug: Check if OL placeholders exist at the start of this function
+        const olMatchesBefore = text.match(/__OL_\d+_\d+__/g);
+        console.log(`[convertListsToHTML] OL placeholders at start: ${olMatchesBefore ? olMatchesBefore.length : 0}`);
+
         let converted = text;
 
         // Task lists
@@ -1538,80 +1576,28 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return html;
         });
 
-        // Ordered lists - handle nesting like unordered lists
-        // Match consecutive OL items including whitespace between them
-        converted = converted.replace(/(?:__OL_\d+__[\s\S]*?__\/OL__\s*)+/g, (match) => {
-            const items: { level: number; content: string }[] = [];
-            const regex = /__OL_(\d+)__([\s\S]*?)__\/OL__/g;
-            let m;
-
-            while ((m = regex.exec(match)) !== null) {
-                items.push({ level: parseInt(m[1]), content: m[2].trim() });
-            }
-
-            if (items.length === 0) return match;
-
-            // Normalize levels
-            const minLevel = Math.min(...items.map(i => i.level));
-            items.forEach(i => i.level -= minLevel);
-
-            // Fallback: If all items are at the same level, try to infer nesting from bold markers
-            const allSameLevel = items.every(i => i.level === 0);
-            if (allSameLevel && items.length > 4) {
-                items.forEach(item => {
-                    // Items with bold text (**text** or <strong>) are main items (level 0)
-                    // Items without bold are sub-items (level 1)
-                    const hasBold = /\*\*|\<strong\>/.test(item.content);
-                    if (!hasBold) {
-                        item.level = 1;
-                    }
-                });
-            }
-
-            let html = '<ol>';
-            let currentLevel = 0;
-            const openListItems: boolean[] = []; // Track open <li> tags
-
-            items.forEach((item, index) => {
-                const nextLevel = index < items.length - 1 ? items[index + 1].level : 0;
-
-                // Close deeper levels
-                while (currentLevel > item.level) {
-                    html += '</ol>';
-                    if (openListItems.length > 0) {
-                        html += '</li>';  // Close the parent <li> that contained the nested <ol>
-                        openListItems.pop();
-                    }
-                    currentLevel--;
-                }
-
-                // Open new item at current level
-                html += `<li>${item.content}`;
-
-                // If next item is nested deeper, start a nested list
-                if (nextLevel > item.level) {
-                    html += '<ol>';
-                    currentLevel++;
-                    openListItems.push(true);
-                } else {
-                    // Close the current list item
-                    html += '</li>';
-                }
-            });
-
-            // Close any remaining open tags
-            while (currentLevel > 0) {
-                html += '</ol>';
-                if (openListItems.length > 0) {
-                    html += '</li>';
-                    openListItems.pop();
-                }
-                currentLevel--;
-            }
-            html += '</ol>';
-
-            return html;
+        // Ordered lists - match and convert each placeholder individually first
+        // Then group consecutive ones if needed
+        let olCount = 0;
+        converted = converted.replace(/__OL_(\d+)_(\d+)__([\s\S]*?)__\/OL__/g, (_fullMatch, _level, num, content) => {
+            olCount++;
+            console.log(`[convertListsToHTML] Converting OL #${olCount}: num=${num}, content="${content.substring(0, 50)}..."`);
+            // Convert each item individually with its number
+            return `<ol><li value="${num}">${content.trim()}</li></ol>`;
         });
+        console.log(`[convertListsToHTML] Total OL items converted: ${olCount}`);
+
+        // Merge consecutive <ol> tags (cleanup pass)
+        converted = converted.replace(/<\/ol>\s*<ol>/g, '');
+
+        // Debug: Log a sample of the converted output containing OL tags
+        if (converted.includes('<ol>')) {
+            const olIndex = converted.indexOf('<ol>');
+            const sample = converted.substring(Math.max(0, olIndex - 50), Math.min(converted.length, olIndex + 200));
+            console.log(`[convertListsToHTML] Sample output with <ol>:`, sample);
+        } else {
+            console.log(`[convertListsToHTML] No <ol> tags found in final output!`);
+        }
 
         return converted;
     };
