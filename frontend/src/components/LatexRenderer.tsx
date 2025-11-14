@@ -540,19 +540,24 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      * Stage 5: Process markdown lists
      */
     const processMarkdownLists = (text: string): string => {
+        // First, remove any model-generated placeholders that might interfere with list detection
+        // Pattern: ((MDPH followed by digits and closing parentheses, optionally followed by ---
+        let processed = text.replace(/\(\(MDPH\d+\)\)(\(\(MDPH\d+\)\))?---?/g, '');
+        // Also handle standalone placeholders without the ---
+        processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+
         // Debug: Check for ordered list patterns in input
         const olPattern = /^\d+\.\s+/gm;
-        const olMatches = text.match(olPattern);
+        const olMatches = processed.match(olPattern);
         console.log(`[processMarkdownLists] Input has ${olMatches ? olMatches.length : 0} potential OL items`);
         if (olMatches && olMatches.length > 0) {
             console.log('[processMarkdownLists] Sample matches:', olMatches.slice(0, 5));
             // Show context around first match
-            const firstMatchIndex = text.search(olPattern);
+            const firstMatchIndex = processed.search(olPattern);
             if (firstMatchIndex >= 0) {
-                console.log('[processMarkdownLists] Context around first match:', text.substring(Math.max(0, firstMatchIndex - 50), firstMatchIndex + 150));
+                console.log('[processMarkdownLists] Context around first match:', processed.substring(Math.max(0, firstMatchIndex - 50), firstMatchIndex + 150));
             }
         }
-        let processed = text;
 
         // Helper function to process list content (math and markdown formatting)
         const processListContent = (content: string): string => {
@@ -1546,7 +1551,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Restore protected placeholders after all markdown processing
         // Use simple string replacement for reliability (placeholders are unique)
         let restoredOLCount = 0;
-        placeholderMap.forEach((original, placeholder) => {
+        // Sort placeholders by index (descending) to avoid conflicts when restoring
+        const sortedPlaceholders = Array.from(placeholderMap.entries()).sort((a, b) => {
+            // Extract numeric index from placeholder (e.g., "⟨⟨MDPH_5⟩⟩" -> 5)
+            const getIndex = (ph: string) => {
+                const match = ph.match(/MDPH_(\d+)/);
+                return match ? parseInt(match[1], 10) : 0;
+            };
+            return getIndex(b[0]) - getIndex(a[0]); // Descending order
+        });
+
+        sortedPlaceholders.forEach(([placeholder, original]) => {
             // Use split/join for reliable replacement that handles all special characters
             const beforeLength = processed.length;
             const countBefore = (processed.match(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
@@ -1560,15 +1575,26 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 }
             }
 
-            processed = processed.split(placeholder).join(original);
+            // Escape the placeholder for regex replacement
+            const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            processed = processed.replace(new RegExp(escapedPlaceholder, 'g'), original);
 
             const afterLength = processed.length;
-            if (original.startsWith('__OL_') && afterLength === beforeLength) {
-                console.log(`[processMarkdown] WARNING: No change in length after restoration - placeholder not found!`);
+            if (original.startsWith('__OL_') && afterLength === beforeLength && countBefore > 0) {
+                console.log(`[processMarkdown] WARNING: No change in length after restoration - placeholder not replaced!`);
             }
         });
         console.log(`[processMarkdown] Restored ${restoredOLCount} OL placeholders`);
         console.log(`[processMarkdown] Output contains __OL_: ${processed.includes('__OL_')}`);
+
+        // Final safety check: remove any remaining placeholders that weren't restored
+        // This handles edge cases where placeholders might have been missed
+        const remainingPlaceholders = processed.match(/⟨⟨MDPH_\d+⟩⟩/g);
+        if (remainingPlaceholders && remainingPlaceholders.length > 0) {
+            console.warn(`[processMarkdown] WARNING: Found ${remainingPlaceholders.length} unrecovered placeholders:`, remainingPlaceholders);
+            // Remove unrecovered placeholders to prevent them from appearing in output
+            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+        }
 
         return processed;
     };
@@ -1582,6 +1608,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         if (text.includes('⟨⟨MDPH')) {
             const mdphIndex = text.indexOf('⟨⟨MDPH');
             console.log('[convertListsToHTML] Sample with MDPH:', text.substring(mdphIndex - 50, mdphIndex + 100));
+            console.warn('[convertListsToHTML] ERROR: Found unrecovered placeholders! These should have been restored in processMarkdown.');
+            // Remove any remaining placeholders to prevent them from appearing in output
+            // This is a safety fallback - ideally these should never reach this stage
+            text = text.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
         }
         let converted = text;
 
@@ -1664,6 +1694,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Merge consecutive <ol> tags (cleanup pass)
         converted = converted.replace(/<\/ol>\s*<ol>/g, '');
+
+        // Handle model-generated placeholders in format ((MDPH...)) or ((MDPH...))---
+        // These placeholders appear when models output placeholders for list items
+        // We need to detect and remove them, or replace them if we can find corresponding list items
+        // Pattern: ((MDPH followed by digits and closing parentheses, optionally followed by ---
+        converted = converted.replace(/\(\(MDPH\d+\)\)(\(\(MDPH\d+\)\))?---?/g, '');
+        // Also handle standalone placeholders without the ---
+        converted = converted.replace(/\(\(MDPH\d+\)\)/g, '');
 
         return converted;
     };
