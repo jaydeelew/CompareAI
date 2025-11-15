@@ -537,14 +537,18 @@ async def compare(
     # --- END EXTENDED TIER LIMITING ---
 
     # Check if mock mode is enabled for this user
+    # IMPORTANT: Authenticated users should NEVER use anonymous mock mode
     is_development = os.environ.get("ENVIRONMENT") == "development"
     use_mock = False
 
     if current_user:
         # Check if mock mode is enabled for this authenticated user
-        if current_user.mock_mode_enabled and is_development:
-            use_mock = True
+        # Allow mock mode for admins/super_admins even in production (for testing)
+        if current_user.mock_mode_enabled:
+            if is_development or current_user.role in ["admin", "super_admin"]:
+                use_mock = True
     else:
+        # Only check anonymous mock mode if there is NO authenticated user
         # Check if global anonymous mock mode is enabled (development only)
         if is_development:
             from ..cache import get_cached_app_settings
@@ -844,7 +848,9 @@ async def compare_stream(
     start_time = datetime.now()
 
     # Store user ID for use inside generator (avoid session detachment issues)
+    # IMPORTANT: Also store whether user exists to prevent anonymous mock mode for authenticated users
     user_id = current_user.id if current_user else None
+    has_authenticated_user = current_user is not None
 
     async def generate_stream():
         """
@@ -862,12 +868,15 @@ async def compare_stream(
         results_dict = {}
 
         # Check if mock mode is enabled for this user
-        # IMPORTANT: Query user fresh from database to avoid stale mock_mode_enabled value
+        # IMPORTANT: Authenticated users should NEVER use anonymous mock mode
+        # Query user fresh from database to avoid stale mock_mode_enabled value
         # The current_user object captured in closure may have stale data
         is_development = os.environ.get("ENVIRONMENT") == "development"
         use_mock = False
 
-        if user_id:
+        # Only check mock mode if we have an authenticated user
+        # If has_authenticated_user is True, we should NEVER check anonymous mock mode
+        if has_authenticated_user and user_id:
             # Query user fresh from database to get latest mock_mode_enabled value
             from ..database import SessionLocal
             fresh_db = SessionLocal()
@@ -875,12 +884,14 @@ async def compare_stream(
                 fresh_user = fresh_db.query(User).filter(User.id == user_id).first()
                 if fresh_user:
                     # Check if mock mode is enabled for this authenticated user
+                    # Allow mock mode for admins/super_admins even in production (for testing)
                     if fresh_user.mock_mode_enabled:
                         if is_development or fresh_user.role in ["admin", "super_admin"]:
                             use_mock = True
             finally:
                 fresh_db.close()
-        else:
+        elif not has_authenticated_user:
+            # Only check anonymous mock mode if there is NO authenticated user
             # Check if global anonymous mock mode is enabled (development only)
             if is_development:
                 from ..cache import get_cached_app_settings

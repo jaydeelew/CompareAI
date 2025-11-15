@@ -146,6 +146,7 @@ function AppContent() {
   // State not covered by hooks (declare before callbacks that use them)
   const selectedModelsGridRef = useRef<HTMLDivElement>(null);
   const scrolledToTopRef = useRef<Set<string>>(new Set()); // Track which model cards have been scrolled to top
+  const shouldScrollToTopAfterFormattingRef = useRef<boolean>(false); // Track if we should scroll to top after all models format (initial comparison only)
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -1554,6 +1555,44 @@ function AppContent() {
     }
   }, [response, isFollowUpMode]);
 
+  // Scroll all conversation cards to top after formatting is applied (initial comparison only)
+  useEffect(() => {
+    // Only for initial comparison, not follow-ups
+    if (isFollowUpMode || !shouldScrollToTopAfterFormattingRef.current) return;
+    
+    // Check if all selected models are formatted
+    const allModelsFormatted = selectedModels.every(modelId => {
+      const modelIdFormatted = createModelId(modelId);
+      const tab = activeResultTabs[modelIdFormatted];
+      return tab === RESULT_TAB.FORMATTED;
+    });
+    
+    // Also check that conversations exist for all models
+    const allConversationsExist = selectedModels.every(modelId => {
+      const modelIdFormatted = createModelId(modelId);
+      return conversations.some(conv => conv.modelId === modelIdFormatted);
+    });
+    
+    if (allModelsFormatted && allConversationsExist) {
+      // Reset the flag to prevent duplicate scrolling
+      shouldScrollToTopAfterFormattingRef.current = false;
+      
+      // Wait for LatexRenderer to finish rendering, then scroll all conversation cards to top
+      setTimeout(() => {
+        selectedModels.forEach(modelId => {
+          const safeId = createModelId(modelId).replace(/[^a-zA-Z0-9_-]/g, '-');
+          const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+          if (conversationContent) {
+            conversationContent.scrollTo({
+              top: 0,
+              behavior: 'smooth'
+            });
+          }
+        });
+      }, 300); // Delay to allow LatexRenderer to finish rendering
+    }
+  }, [activeResultTabs, isFollowUpMode, conversations, selectedModels]);
+
   // Note: Scroll handling moved to handleFollowUp function for better control
 
   // Scroll to results section when conversations are updated (follow-up mode)
@@ -2023,6 +2062,7 @@ function AppContent() {
       }
       // Clear scroll refs
       hasScrolledToResultsRef.current = false;
+      shouldScrollToTopAfterFormattingRef.current = false;
     }
 
     // Reset page state when user logs out
@@ -2708,6 +2748,7 @@ function AppContent() {
     userCancelledRef.current = false;
     hasScrolledToResultsRef.current = false; // Reset scroll tracking for new comparison
     scrolledToTopRef.current.clear(); // Reset per-card scroll tracking for new comparison
+    shouldScrollToTopAfterFormattingRef.current = false; // Reset scroll-to-top-after-formatting flag for new comparison
     autoScrollPausedRef.current.clear(); // Clear auto-scroll pause ref
     userInteractingRef.current.clear(); // Clear user interaction tracking
     lastScrollTopRef.current.clear(); // Clear scroll position tracking
@@ -2912,6 +2953,11 @@ function AppContent() {
                       formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED;
                     });
                     setActiveResultTabs(formattedTabs);
+                    
+                    // For initial comparison only, set flag to scroll to top after formatting is applied
+                    if (!isFollowUpMode) {
+                      shouldScrollToTopAfterFormattingRef.current = true;
+                    }
                   }
                 } else if (event.type === 'complete') {
                   // All models complete - save metadata
