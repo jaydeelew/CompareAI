@@ -389,7 +389,12 @@ function AppContent() {
   useEffect(() => {
     const fetchAnonymousMockModeSetting = async () => {
       // Only fetch for anonymous users in development mode
-      if (isAuthenticated || !import.meta.env.DEV) {
+      // Also wait for auth to finish loading to prevent race conditions
+      if (isAuthenticated || !import.meta.env.DEV || authLoading) {
+        // Reset anonymous mock mode when authenticated or while loading
+        if (isAuthenticated || authLoading) {
+          setAnonymousMockModeEnabled(false);
+        }
         return;
       }
 
@@ -406,7 +411,7 @@ function AppContent() {
     };
 
     fetchAnonymousMockModeSetting();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   // Screenshot handler for message area only
 
@@ -3609,7 +3614,8 @@ function AppContent() {
       )}
 
       {/* Anonymous Mock Mode Banner - Show when anonymous mock mode is enabled (development only) */}
-      {!user && anonymousMockModeEnabled && currentView === 'main' && (
+      {/* Only show when auth has finished loading (!authLoading) to prevent flash on refresh */}
+      {!authLoading && !user && anonymousMockModeEnabled && currentView === 'main' && (
         <MockModeBanner isAnonymous={true} isDev={true} />
       )}
 

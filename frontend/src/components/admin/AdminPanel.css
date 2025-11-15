@@ -706,7 +706,7 @@ button:hover {
 }
 
 .toggle-btn.deactivate {
-  background: var(--warning-color);
+  background: linear-gradient(135deg, var(--warning-color), #d97706);
   color: white;
 }
 
