@@ -137,7 +137,6 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   const updateNotification = (newMsg: string, newType: NotificationType = 'success') => {
     if (removed) {
       // If notification was removed, create a new one
-      const newNotification = showNotification(newMsg, newType);
       return;
     }
 
@@ -152,13 +151,13 @@ export function showNotification(msg: string, type: NotificationType = 'success'
       ? 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)'
       : 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
 
-    // Reset timeout - notification will stay for another 3 seconds
+    // Reset timeout - notification will stay for another 1.5 seconds (shorter for completion messages)
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(() => {
       removeNotification(false); // Use animation for automatic removal
-    }, 3000);
+    }, 1500);
   };
 
   // Cleanup function to manually remove the notification
