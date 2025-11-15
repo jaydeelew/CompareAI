@@ -124,6 +124,27 @@ export function extractCodeBlocks(text: string): CodeBlockExtraction {
       return match; // This is LaTeX/math, not code - let it be processed as math
     }
     
+    // CRITICAL: Skip if this contains mathematical notation without explicit LaTeX delimiters
+    // This catches plain math expressions like "b² = (-4)² = 16" that should be rendered as math, not code
+    // Check for mathematical patterns:
+    // 1. Mathematical operators and symbols (including Unicode superscripts)
+    // 2. Variables with exponents (like b², x³)
+    // 3. Mathematical expressions with equals signs and operators
+    const mathPatterns = [
+      /[×·÷±≠≤≥≈∞∑∏∫√²³⁴⁵⁶⁷⁸⁹⁰¹]/,  // Mathematical operators and superscripts
+      /[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/,           // Variables with Unicode superscripts (b², x³)
+      /[a-z]\^[0-9{]/,                // Variables with caret notation (x^2)
+      /\([^)]*\)[²³⁴⁵⁶⁷⁸⁹⁰¹]/,      // Parentheses with superscripts ((-4)²)
+      /\d+\s*[×·÷]\s*\d+/,           // Number multiplication/division (4 × 2)
+      /\d+\s*[+\-]\s*\([^)]+\)/,     // Number plus/minus parentheses (16 - (-48))
+      /\b[a-z]+\s*=\s*[^=\n]+=\s*\d+/, // Multiple equals in sequence (b² = (-4)² = 16)
+    ];
+    
+    const containsMath = mathPatterns.some(pattern => pattern.test(match));
+    if (containsMath) {
+      return match; // This is mathematical notation, not code - let it be processed as math
+    }
+    
     // Skip if it looks like prose (contains common prose words/phrases)
     const prosePatterns = [
       /\b(the|a|an|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|should|could|may|might|can|must)\b/i,
