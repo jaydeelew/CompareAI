@@ -1437,6 +1437,51 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     };
 
     /**
+     * Stage 0.8: Preserve line breaks for consecutive equation lines
+     * Detects consecutive lines that look like equations and ensures they're separated
+     * by blank lines so they render as separate lines instead of collapsing into one paragraph
+     */
+    const preserveEquationLineBreaks = (text: string): string => {
+        let processed = text;
+        
+        // Pattern to match consecutive equation lines (lines starting with variable = ...)
+        // We want to ensure there's a blank line between consecutive equation lines
+        // so they render as separate lines instead of collapsing into one paragraph
+        
+        // Match lines that look like equations: start with letter(s) optionally followed by 
+        // subscript/superscript, then =, then math content (can include brackets, parentheses, operators, etc.)
+        // We want to match consecutive such lines separated by only a single newline (not blank lines)
+        
+        // Pattern explanation:
+        // ^ - start of line
+        // ([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+) - equation line: variable, optional superscripts/subscripts, =, math content
+        // \n - single newline (not \n\n which would be a blank line)
+        // ([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+) - another equation line
+        // $ - end of line
+        // gm flags: global and multiline
+        
+        // Apply replacement multiple times to handle sequences of 3+ consecutive lines
+        // Each pass will add blank lines between pairs, and subsequent passes will handle remaining pairs
+        let previousLength = 0;
+        let iterations = 0;
+        const maxIterations = 10; // Safety limit
+        
+        while (previousLength !== processed.length && iterations < maxIterations) {
+            previousLength = processed.length;
+            iterations++;
+            
+            // Match two consecutive equation lines separated by a single newline
+            // This ensures we don't match if there's already a blank line between them
+            processed = processed.replace(
+                /^([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+)\n([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+)$/gm,
+                '$1\n\n$2'
+            );
+        }
+        
+        return processed;
+    };
+
+    /**
      * Stage 6.5: Preserve line breaks between consecutive math expressions
      * Converts single newlines between rendered INLINE math expressions to <br> tags
      * Display math blocks (katex-display) already have block-level spacing, so we skip those
@@ -2324,6 +2369,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     processed = processed.replace(`__HR_PLACEHOLDER_${index}__`, `\n${hrTag}\n`);
                 });
             }
+
+            // Stage 0.8: Preserve line breaks for consecutive equation lines
+            // This must happen early, before any processing that might collapse lines
+            processed = preserveEquationLineBreaks(processed);
 
             // Stage 3: Fix LaTeX issues
             processed = fixLatexIssues(processed);

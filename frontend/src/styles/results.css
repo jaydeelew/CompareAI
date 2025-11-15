@@ -1,13 +1,20 @@
 /* Results Section Improvements */
 .results-metadata {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1.5rem;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
+}
+
+/* On wide screens, display metadata items in a row */
+@media (min-width: 768px) {
+  .results-metadata {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
 }
 
 .metadata-item {
