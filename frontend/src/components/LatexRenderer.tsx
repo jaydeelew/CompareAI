@@ -1314,6 +1314,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Match: (non-whitespace) followed by (space) followed by (### or #### etc.)
         // Replace with: (text) + (newline) + (newline) + (header)
         processed = processed.replace(/(\S)\s+(#{1,6}\s+)/g, '$1\n\n$2');
+        
+        // Additional fix: Ensure headers start at the beginning of a line
+        // This handles cases where headers might have leading whitespace or other issues
+        processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
 
         // CRITICAL: Protect placeholders from markdown processing by temporarily replacing them
         // This prevents bold/italic regex from matching placeholder patterns
@@ -1524,12 +1528,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Headings (if enabled, longest first to avoid partial matches)
         // Process AFTER bold/italic so formatting inside headings is preserved
         if (markdownRules.processHeaders !== false) {
-            processed = processed.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-            processed = processed.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
-            processed = processed.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            processed = processed.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            processed = processed.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            processed = processed.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            // More robust header matching: allow trailing whitespace and handle HTML content inside headers
+            // Match headers even if they contain HTML tags from previous processing (e.g., <strong> tags)
+            // Use . with /s flag equivalent ([^] or [\s\S]) but ensure single-line matching with $
+            // The $ anchor ensures we only match headers that end at the line boundary
+            processed = processed.replace(/^###### ([^\n]+?)\s*$/gm, '<h6>$1</h6>');
+            processed = processed.replace(/^##### ([^\n]+?)\s*$/gm, '<h5>$1</h5>');
+            processed = processed.replace(/^#### ([^\n]+?)\s*$/gm, '<h4>$1</h4>');
+            processed = processed.replace(/^### ([^\n]+?)\s*$/gm, '<h3>$1</h3>');
+            processed = processed.replace(/^## ([^\n]+?)\s*$/gm, '<h2>$1</h2>');
+            processed = processed.replace(/^# ([^\n]+?)\s*$/gm, '<h1>$1</h1>');
         }
 
         // Strikethrough
@@ -1654,11 +1662,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // CRITICAL: Remove model-generated MDPH placeholders even if they're inside HTML tags
         // This catches placeholders that got wrapped in markdown formatting like **((MDPH3))**
         // Remove all variations aggressively, even inside HTML tags
+        // Also handle corrupted formats like <<MDPH (from Unicode angle brackets ⟨⟨)
         while (processed.includes('((MDPH')) {
             processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
         }
         while (processed.includes('{{MDPH')) {
             processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        // Handle corrupted Unicode angle bracket format: <<MDPH (should be ⟨⟨MDPH)
+        while (processed.includes('<<MDPH')) {
+            processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
+            processed = processed.replace(/<<MDPH\d+\)\)/g, '');
         }
         processed = processed.replace(/\(MDPH\d+\)/g, '');
         processed = processed.replace(/\{MDPH\d+\}/g, '');
@@ -2001,8 +2015,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Remove model-generated MDPH placeholders in various formats
             // Handle all variations: ((MDPHx)), {{MDPHx}}, (MDPHx), {MDPHx}, MDPHx
+            // Also handle corrupted formats like <<MDPH (from Unicode angle brackets ⟨⟨)
             processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
             processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+            // Handle corrupted Unicode angle bracket format: <<MDPH (should be ⟨⟨MDPH)
+            while (processed.includes('<<MDPH')) {
+                processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
+                processed = processed.replace(/<<MDPH\d+\)\)/g, '');
+                processed = processed.replace(/<<MDPH\d+\(\(/g, '');
+            }
             processed = processed.replace(/\(MDPH\d+\)/g, '');
             processed = processed.replace(/\{MDPH\d+\}/g, '');
             processed = processed.replace(/\bMDPH\d+\b/g, '');
