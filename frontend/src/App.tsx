@@ -801,6 +801,161 @@ function AppContent() {
     }
   };
 
+  const handleCopyMessage = async (modelId: string, messageId: string, messageContent: string) => {
+    const safeId = getSafeId(modelId);
+    const messageSafeId = getSafeId(messageId);
+    const messageContentId = `message-content-${safeId}-${messageSafeId}`;
+    const currentTab = (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED;
+    
+    try {
+      if (currentTab === RESULT_TAB.FORMATTED) {
+        // Take a screenshot of the formatted message
+        const messageElement = document.querySelector(`#${messageContentId}`) as HTMLElement | null;
+        if (!messageElement) {
+          showNotification('Message element not found.', 'error');
+          return;
+        }
+
+        // Wait for DOM to be ready (in case LatexRenderer is still rendering)
+        await new Promise<void>(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              // Additional delay to ensure LatexRenderer has rendered
+              setTimeout(resolve, 100);
+            });
+          });
+        });
+
+        // Show immediate feedback
+        const copyingNotification = showNotification('Copying screenshot...', 'success');
+        copyingNotification.clearAutoRemove();
+        copyingNotification.setIcon('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
+
+        // Store original styles that we'll modify
+        const prevOverflow = messageElement.style.overflow;
+        const prevMaxHeight = messageElement.style.maxHeight;
+        const prevPadding = messageElement.style.padding;
+        const prevMargin = messageElement.style.margin;
+
+        // Expand to show all content
+        messageElement.style.overflow = 'visible';
+        messageElement.style.maxHeight = 'none';
+        messageElement.style.padding = messageElement.style.padding || getComputedStyle(messageElement).padding;
+        messageElement.style.margin = messageElement.style.margin || getComputedStyle(messageElement).margin;
+
+        try {
+          // Start importing the library and waiting for repaint in parallel
+          const [htmlToImage] = await Promise.all([
+            import("html-to-image"),
+            new Promise<void>(resolve => {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => resolve());
+              });
+            })
+          ]);
+
+          const toBlob = htmlToImage.toBlob;
+
+          // Create screenshot of the message element
+          const blob = await toBlob(messageElement, {
+            pixelRatio: 2, // High quality
+            backgroundColor: '#ffffff',
+            style: {
+              overflow: 'visible',
+              maxHeight: 'none',
+            }
+          });
+
+          if (blob && navigator.clipboard && window.ClipboardItem) {
+            try {
+              // Try to write to clipboard with retry logic
+              let copySuccess = false;
+              let lastError: Error | null = null;
+              
+              for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                  await navigator.clipboard.write([
+                    new window.ClipboardItem({ 'image/png': blob })
+                  ]);
+                  copySuccess = true;
+                  break;
+                } catch (err) {
+                  lastError = err instanceof Error ? err : new Error(String(err));
+                  
+                  if (lastError.name === 'NotAllowedError' || 
+                      lastError.name === 'SecurityError' ||
+                      lastError.message.includes('permission') ||
+                      lastError.message.includes('denied')) {
+                    break;
+                  }
+                  
+                  if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                  }
+                }
+              }
+              
+              if (copySuccess) {
+                copyingNotification.update('Screenshot copied to clipboard!', 'success');
+              } else {
+                const errorMsg = lastError 
+                  ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
+                  : 'Clipboard copy failed. Image downloaded instead.';
+                copyingNotification.update(errorMsg, 'error');
+                
+                // Fallback: download the image
+                const link = document.createElement('a');
+                link.download = `message_${safeId}_${messageSafeId}.png`;
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+              }
+            } catch (err) {
+              const error = err instanceof Error ? err : new Error(String(err));
+              copyingNotification.update(`Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`, 'error');
+              
+              // Fallback: download the image
+              const link = document.createElement('a');
+              link.download = `message_${safeId}_${messageSafeId}.png`;
+              link.href = URL.createObjectURL(blob);
+              link.click();
+              URL.revokeObjectURL(link.href);
+            }
+          } else if (blob) {
+            const reason = !navigator.clipboard 
+              ? 'Clipboard API not available' 
+              : !window.ClipboardItem 
+                ? 'ClipboardItem not supported' 
+                : 'Unknown reason';
+            copyingNotification.update(`${reason}. Image downloaded.`, 'error');
+            const link = document.createElement('a');
+            link.download = `message_${safeId}_${messageSafeId}.png`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
+          } else {
+            copyingNotification.update('Could not create image blob.', 'error');
+          }
+        } catch (err) {
+          copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error');
+        } finally {
+          // Restore original styles
+          messageElement.style.overflow = prevOverflow;
+          messageElement.style.maxHeight = prevMaxHeight;
+          messageElement.style.padding = prevPadding;
+          messageElement.style.margin = prevMargin;
+        }
+      } else {
+        // Raw mode: copy the raw content as text
+        await navigator.clipboard.writeText(messageContent);
+        showNotification('Message copied to clipboard!', 'success');
+      }
+    } catch (err) {
+      showNotification('Failed to copy message.', 'error');
+      console.error('Copy failed:', err);
+    }
+  };
+
   // Keep ref in sync with state
   useEffect(() => {
     isScrollLockedRef.current = isScrollLocked;
@@ -4108,57 +4263,86 @@ function AppContent() {
                               </div>
                             </div>
                             <div className="conversation-content" id={`conversation-content-${safeId}`}>
-                              {conversation.messages.map((message) => (
-                                <div key={message.id} className={`conversation-message ${message.type}`}>
-                                  <div className="message-header">
-                                    <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      {message.type === 'user' ? (
-                                        <>
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <circle cx="12" cy="8" r="4" />
-                                            <path d="M20 21a8 8 0 1 0-16 0" />
+                              {conversation.messages.map((message) => {
+                                const messageSafeId = getSafeId(message.id);
+                                const messageContentId = `message-content-${safeId}-${messageSafeId}`;
+                                return (
+                                  <div key={message.id} className={`conversation-message ${message.type}`}>
+                                    <div className="message-header">
+                                      <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {message.type === 'user' ? (
+                                          <>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                              <circle cx="12" cy="8" r="4" />
+                                              <path d="M20 21a8 8 0 1 0-16 0" />
+                                            </svg>
+                                            <span>You</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                              <rect x="4" y="4" width="16" height="16" rx="2" />
+                                              <rect x="9" y="9" width="6" height="6" />
+                                              <line x1="9" y1="2" x2="9" y2="4" />
+                                              <line x1="15" y1="2" x2="15" y2="4" />
+                                              <line x1="9" y1="20" x2="9" y2="22" />
+                                              <line x1="15" y1="20" x2="15" y2="22" />
+                                              <line x1="20" y1="9" x2="22" y2="9" />
+                                              <line x1="20" y1="15" x2="22" y2="15" />
+                                              <line x1="2" y1="9" x2="4" y2="9" />
+                                              <line x1="2" y1="15" x2="4" y2="15" />
+                                            </svg>
+                                            <span>AI</span>
+                                          </>
+                                        )}
+                                      </span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="message-time">
+                                          {formatTime(message.timestamp)}
+                                        </span>
+                                        <button
+                                          className="copy-message-btn"
+                                          onClick={(e) => {
+                                            handleCopyMessage(conversation.modelId, message.id, message.content);
+                                            e.currentTarget.blur();
+                                          }}
+                                          title={(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? "Copy formatted message" : "Copy raw message"}
+                                          aria-label={`Copy ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'formatted' : 'raw'} message`}
+                                        >
+                                          <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          >
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                           </svg>
-                                          <span>You</span>
-                                        </>
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="message-content" id={messageContentId}>
+                                      {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
+                                        /* Full LaTeX rendering for formatted view */
+                                        <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
+                                          <LatexRenderer className="result-output" modelId={conversation.modelId}>
+                                            {message.content}
+                                          </LatexRenderer>
+                                        </Suspense>
                                       ) : (
-                                        <>
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <rect x="4" y="4" width="16" height="16" rx="2" />
-                                            <rect x="9" y="9" width="6" height="6" />
-                                            <line x1="9" y1="2" x2="9" y2="4" />
-                                            <line x1="15" y1="2" x2="15" y2="4" />
-                                            <line x1="9" y1="20" x2="9" y2="22" />
-                                            <line x1="15" y1="20" x2="15" y2="22" />
-                                            <line x1="20" y1="9" x2="22" y2="9" />
-                                            <line x1="20" y1="15" x2="22" y2="15" />
-                                            <line x1="2" y1="9" x2="4" y2="9" />
-                                            <line x1="2" y1="15" x2="4" y2="15" />
-                                          </svg>
-                                          <span>AI</span>
-                                        </>
-                                      )}
-                                    </span>
-                                    <span className="message-time">
-                                      {formatTime(message.timestamp)}
-                                    </span>
-                                  </div>
-                                  <div className="message-content">
-                                    {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
-                                      /* Full LaTeX rendering for formatted view */
-                                      <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
-                                        <LatexRenderer className="result-output" modelId={conversation.modelId}>
+                                        /* Raw text for immediate streaming display */
+                                        <pre className="result-output raw-output">
                                           {message.content}
-                                        </LatexRenderer>
-                                      </Suspense>
-                                    ) : (
-                                      /* Raw text for immediate streaming display */
-                                      <pre className="result-output raw-output">
-                                        {message.content}
-                                      </pre>
-                                    )}
+                                        </pre>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         );

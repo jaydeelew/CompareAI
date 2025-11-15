@@ -84,6 +84,55 @@
   object-fit: contain;
 }
 
+/* Copy message button in message headers */
+.copy-message-btn {
+  outline: none !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.1);
+  width: 24px;
+  height: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.copy-message-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  transform: scale(1.1);
+}
+
+.copy-message-btn:active {
+  transform: scale(0.95);
+}
+
+.copy-message-btn:focus {
+  outline: none !important;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1);
+}
+
+.copy-message-btn:focus:not(:hover) {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.copy-message-btn svg {
+  pointer-events: none;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
 /* Compare Button */
 .compare-button {
   background: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 50%, var(--primary-hover) 100%);
