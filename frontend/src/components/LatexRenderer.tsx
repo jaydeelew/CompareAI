@@ -1520,9 +1520,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Horizontal rules (if enabled)
         if (markdownRules.processHorizontalRules !== false) {
-            processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">');
-            processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">');
-            processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">');
+            processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">\n');
+            processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">\n');
+            processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">\n');
         }
 
         // Headings (if enabled, longest first to avoid partial matches)
@@ -1532,12 +1532,25 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Match headers even if they contain HTML tags from previous processing (e.g., <strong> tags)
             // Use . with /s flag equivalent ([^] or [\s\S]) but ensure single-line matching with $
             // The $ anchor ensures we only match headers that end at the line boundary
-            processed = processed.replace(/^###### ([^\n]+?)\s*$/gm, '<h6>$1</h6>');
-            processed = processed.replace(/^##### ([^\n]+?)\s*$/gm, '<h5>$1</h5>');
-            processed = processed.replace(/^#### ([^\n]+?)\s*$/gm, '<h4>$1</h4>');
-            processed = processed.replace(/^### ([^\n]+?)\s*$/gm, '<h3>$1</h3>');
-            processed = processed.replace(/^## ([^\n]+?)\s*$/gm, '<h2>$1</h2>');
-            processed = processed.replace(/^# ([^\n]+?)\s*$/gm, '<h1>$1</h1>');
+            // Process from longest to shortest to avoid partial matches (e.g., ### matching before ##)
+            // Use a more permissive pattern that handles various edge cases
+            processed = processed.replace(/^######\s+([^\n]+?)\s*$/gm, '<h6>$1</h6>');
+            processed = processed.replace(/^#####\s+([^\n]+?)\s*$/gm, '<h5>$1</h5>');
+            processed = processed.replace(/^####\s+([^\n]+?)\s*$/gm, '<h4>$1</h4>');
+            processed = processed.replace(/^###\s+([^\n]+?)\s*$/gm, '<h3>$1</h3>');
+            processed = processed.replace(/^##\s+([^\n]+?)\s*$/gm, '<h2>$1</h2>');
+            processed = processed.replace(/^#\s+([^\n]+?)\s*$/gm, '<h1>$1</h1>');
+            
+            // Fallback: Remove any remaining header markers that weren't matched by the above patterns
+            // This catches edge cases where headers might not have matched due to formatting issues
+            // Only remove if they're at the start of a line and followed by a space (to avoid false positives)
+            // This ensures that even if header conversion failed, at least the raw markdown won't show
+            processed = processed.replace(/^######\s+/gm, '');
+            processed = processed.replace(/^#####\s+/gm, '');
+            processed = processed.replace(/^####\s+/gm, '');
+            processed = processed.replace(/^###\s+/gm, '');
+            processed = processed.replace(/^##\s+/gm, '');
+            processed = processed.replace(/^#\s+/gm, '');
         }
 
         // Strikethrough
@@ -1809,8 +1822,39 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Paragraph breaks
         processed = processed.replace(/\n\n/g, '</p><p>');
 
-        // Wrap in paragraphs if needed
-        if (processed.includes('</p><p>') && !processed.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|div)/)) {
+        // CRITICAL: Remove paragraph tags that wrap block-level elements
+        // Block-level elements (hr, headings, lists, etc.) should never be inside <p> tags
+        // Apply patterns multiple times to catch nested cases and ensure all block-level elements are free
+        
+        // Repeat the cleanup until no more changes occur (handles nested/overlapping cases)
+        let previousLength = 0;
+        while (previousLength !== processed.length) {
+            previousLength = processed.length;
+            
+            // Pattern 1: Remove <p> that opens before a block-level element
+            // Matches: <p>...<hr> or <p>...<h3> etc. (with optional whitespace)
+            processed = processed.replace(/<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
+            
+            // Pattern 2: Remove </p><p> that wraps block-level elements
+            // Matches: </p><p><h3> or </p><p><hr> etc. (with optional whitespace)
+            processed = processed.replace(/(<\/p><p>)(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$2');
+            
+            // Pattern 3: Remove </p> that closes after a block-level element
+            // Matches: <hr></p> or <h3>...</h3></p> etc. (with optional whitespace)
+            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>/gi, '$1');
+            
+            // Pattern 4: Remove paragraph tags between block-level elements
+            // Matches: <hr></p><p><h3> or <h3>...</h3></p><p><h4> etc.
+            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p><p>\s*(<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*(\/)?>)/gi, '$1$4');
+            
+            // Pattern 5: Remove orphaned </p> or <p> tags that are adjacent to block-level elements
+            // Matches: </p><hr> or <hr><p> etc.
+            processed = processed.replace(/<\/p>\s*(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
+            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<p>/gi, '$1');
+        }
+
+        // Wrap in paragraphs if needed (only if content doesn't start with a block-level element)
+        if (processed.includes('</p><p>') && !processed.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)/)) {
             processed = `<p>${processed}</p>`;
         }
 
@@ -2031,14 +2075,92 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Remove internal Unicode placeholder format (⟨⟨MDPH_X⟩⟩) if any leaked
             processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
 
-            // Remove any remaining internal placeholder formats that might have leaked
-            // These should never appear but this is a safety net
-            processed = processed.replace(/__INLINE_MATH_\d+__/g, '');
-            processed = processed.replace(/__DISPLAY_MATH_\d+__/g, '');
+            // Final attempt to restore any remaining placeholders before removing them
+            // This handles cases where placeholders might have been missed in earlier stages
+            processed = restoreDisplayMath(processed, displayMathExtraction.mathBlocks);
+            processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
+            
+            // Render any restored math placeholders
+            displayDelimiters.forEach(({ pattern }) => {
+                processed = processed.replace(pattern, (_match, math) => {
+                    if (_match.includes('<span class="katex">')) {
+                        return _match;
+                    }
+                    return safeRenderKatex(math, true, config.katexOptions);
+                });
+            });
+            inlineDelimiters.forEach(({ pattern }) => {
+                processed = processed.replace(pattern, (_match, math) => {
+                    if (_match.includes('<span class="katex">')) {
+                        return _match;
+                    }
+                    return safeRenderKatex(math, false, config.katexOptions);
+                });
+            });
+            
+            // Only remove placeholders that couldn't be restored (orphaned placeholders)
+            // Check if placeholder indices are valid before removing
+            processed = processed.replace(/__INLINE_MATH_(\d+)__/g, (_match, index) => {
+                const blockIndex = parseInt(index, 10);
+                if (blockIndex >= 0 && blockIndex < inlineMathExtraction.mathBlocks.length) {
+                    // This placeholder should have been restored - try one more time
+                    const mathBlock = inlineMathExtraction.mathBlocks[blockIndex];
+                    for (const { pattern } of inlineDelimiters) {
+                        const match = mathBlock.match(pattern);
+                        if (match && match[1]) {
+                            return safeRenderKatex(match[1], false, config.katexOptions);
+                        }
+                    }
+                    // Fallback: extract math content manually
+                    let cleaned = mathBlock.trim();
+                    cleaned = cleaned.replace(/^\$\$?|\$\$?$/g, '');
+                    cleaned = cleaned.replace(/^\\\(|\\\)$/g, '');
+                    cleaned = cleaned.replace(/^\\\[|\\\]$/g, '');
+                    if (cleaned) {
+                        return safeRenderKatex(cleaned.trim(), false, config.katexOptions);
+                    }
+                }
+                // Invalid index - remove the placeholder
+                return '';
+            });
+            
+            processed = processed.replace(/__DISPLAY_MATH_(\d+)__/g, (_match, index) => {
+                const blockIndex = parseInt(index, 10);
+                if (blockIndex >= 0 && blockIndex < displayMathExtraction.mathBlocks.length) {
+                    // This placeholder should have been restored - try one more time
+                    const mathBlock = displayMathExtraction.mathBlocks[blockIndex];
+                    for (const { pattern } of displayDelimiters) {
+                        const match = mathBlock.match(pattern);
+                        if (match && match[1]) {
+                            return safeRenderKatex(match[1], true, config.katexOptions);
+                        }
+                    }
+                    // Fallback: extract math content manually
+                    let cleaned = mathBlock.trim();
+                    cleaned = cleaned.replace(/^\$\$|\$\$$/g, '');
+                    cleaned = cleaned.replace(/^\\\[|\\\]$/g, '');
+                    if (cleaned) {
+                        return safeRenderKatex(cleaned.trim(), true, config.katexOptions);
+                    }
+                }
+                // Invalid index - remove the placeholder
+                return '';
+            });
+            
             processed = processed.replace(/__CODE_BLOCK_\d+__/g, '');
 
             // Remove any malformed placeholder variations (case insensitive)
             processed = processed.replace(/\b(?:INLINE|DISPLAY)[_\s]*MATH[_\s]*\d+\b/gi, '');
+
+            // Final cleanup: Remove any remaining markdown header markers that weren't converted
+            // This is a safety net to ensure headers don't show up as raw markdown in the output
+            // Only match at the start of a line to avoid false positives
+            processed = processed.replace(/^######\s+/gm, '');
+            processed = processed.replace(/^#####\s+/gm, '');
+            processed = processed.replace(/^####\s+/gm, '');
+            processed = processed.replace(/^###\s+/gm, '');
+            processed = processed.replace(/^##\s+/gm, '');
+            processed = processed.replace(/^#\s+/gm, '');
 
             return processed;
 
