@@ -80,7 +80,10 @@ export const ResultCard: React.FC<ResultCardProps> = ({
             {onScreenshot && (
               <button
                 className="screenshot-card-btn"
-                onClick={() => onScreenshot(modelId)}
+                onClick={(e) => {
+                  onScreenshot(modelId);
+                  e.currentTarget.blur();
+                }}
                 title="Copy formatted chat history"
                 aria-label={`Copy formatted chat history for ${model?.name || modelId}`}
               >

@@ -3999,7 +3999,10 @@ function AppContent() {
                                 <div className="header-buttons-container">
                                   <button
                                     className="screenshot-card-btn"
-                                    onClick={() => handleScreenshot(conversation.modelId)}
+                                    onClick={(e) => {
+                                      handleScreenshot(conversation.modelId);
+                                      e.currentTarget.blur();
+                                    }}
                                     title="Copy formatted chat history"
                                     aria-label={`Copy formatted chat history for ${model?.name || conversation.modelId}`}
                                   >

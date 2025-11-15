@@ -47,6 +47,21 @@
   transform: scale(0.95);
 }
 
+.screenshot-card-btn:focus,
+.copy-response-btn:focus,
+.close-card-btn:focus {
+  outline: none !important;
+  background: none;
+  transform: scale(1);
+}
+
+.screenshot-card-btn:focus:not(:hover),
+.copy-response-btn:focus:not(:hover),
+.close-card-btn:focus:not(:hover) {
+  background: none;
+  color: var(--text-muted);
+}
+
 .screenshot-card-btn img,
 .screenshot-card-btn svg,
 .copy-response-btn img,
