@@ -1828,35 +1828,56 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         
         // Repeat the cleanup until no more changes occur (handles nested/overlapping cases)
         let previousLength = 0;
-        while (previousLength !== processed.length) {
+        let iterations = 0;
+        const maxIterations = 10; // Safety limit to prevent infinite loops
+        while (previousLength !== processed.length && iterations < maxIterations) {
             previousLength = processed.length;
+            iterations++;
             
-            // Pattern 1: Remove <p> that opens before a block-level element
-            // Matches: <p>...<hr> or <p>...<h3> etc. (with optional whitespace)
+            // Pattern 1: Remove <p> that opens before a block-level element (with any whitespace)
+            // Matches: <p>...<hr> or <p>...<h3> etc.
             processed = processed.replace(/<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
             
-            // Pattern 2: Remove </p><p> that wraps block-level elements
-            // Matches: </p><p><h3> or </p><p><hr> etc. (with optional whitespace)
-            processed = processed.replace(/(<\/p><p>)(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$2');
+            // Pattern 2: Remove </p><p> that wraps block-level elements (with optional whitespace)
+            // Matches: </p><p><h3> or </p><p><hr> etc., including cases with whitespace/newlines
+            processed = processed.replace(/(<\/p>\s*<p>)(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$2');
+            
+            // Pattern 2b: Also handle </p> followed by whitespace/newlines then <p> then block element
+            // Matches: </p>\n<p><h3> or </p> <p><h3> etc.
+            processed = processed.replace(/<\/p>\s+<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$1');
             
             // Pattern 3: Remove </p> that closes after a block-level element
             // Matches: <hr></p> or <h3>...</h3></p> etc. (with optional whitespace)
             processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>/gi, '$1');
             
             // Pattern 4: Remove paragraph tags between block-level elements
-            // Matches: <hr></p><p><h3> or <h3>...</h3></p><p><h4> etc.
-            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p><p>\s*(<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*(\/)?>)/gi, '$1$4');
+            // Matches: <hr></p><p><h3> or <h3>...</h3></p><p><h4> etc. (with optional whitespace)
+            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>\s*<p>\s*(<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*(\/)?>)/gi, '$1$3');
             
             // Pattern 5: Remove orphaned </p> or <p> tags that are adjacent to block-level elements
-            // Matches: </p><hr> or <hr><p> etc.
+            // Matches: </p><hr> or <hr><p> etc. (with optional whitespace)
             processed = processed.replace(/<\/p>\s*(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
             processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<p>/gi, '$1');
+            
+            // Pattern 6: Remove any remaining <p> tags that directly contain only block-level elements
+            // Matches: <p><h3>content</h3></p> -> <h3>content</h3>
+            processed = processed.replace(/<p>(\s*<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*>[\s\S]*?<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>/gi, '$1');
+            processed = processed.replace(/<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)\s*<\/p>/gi, '$1');
         }
 
         // Wrap in paragraphs if needed (only if content doesn't start with a block-level element)
         if (processed.includes('</p><p>') && !processed.match(/^<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)/)) {
             processed = `<p>${processed}</p>`;
         }
+
+        // CRITICAL: Remove any MDPH placeholders that might have been exposed during paragraph processing
+        // This ensures placeholders don't leak into the final output
+        processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+        processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        processed = processed.replace(/\(MDPH\d+\)/g, '');
+        processed = processed.replace(/\{MDPH\d+\}/g, '');
+        processed = processed.replace(/\bMDPH\d+\b/g, '');
 
         return processed;
     };
@@ -2056,23 +2077,37 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Final aggressive cleanup: Remove ANY remaining MDPH or internal placeholders
             // This catches placeholders that might have escaped earlier stages
+            // Apply multiple passes to ensure all variations are caught
 
-            // Remove model-generated MDPH placeholders in various formats
-            // Handle all variations: ((MDPHx)), {{MDPHx}}, (MDPHx), {MDPHx}, MDPHx
-            // Also handle corrupted formats like <<MDPH (from Unicode angle brackets ⟨⟨)
-            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
-            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
-            // Handle corrupted Unicode angle bracket format: <<MDPH (should be ⟨⟨MDPH)
+            // First pass: Remove Unicode angle bracket format (most common internal format)
+            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+            
+            // Second pass: Remove double parentheses format
+            while (processed.includes('((MDPH')) {
+                processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+            }
+            
+            // Third pass: Remove curly braces format
+            while (processed.includes('{{MDPH')) {
+                processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+            }
+            
+            // Fourth pass: Handle corrupted Unicode angle bracket format: <<MDPH (should be ⟨⟨MDPH)
             while (processed.includes('<<MDPH')) {
                 processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
                 processed = processed.replace(/<<MDPH\d+\)\)/g, '');
                 processed = processed.replace(/<<MDPH\d+\(\(/g, '');
             }
+            
+            // Fifth pass: Remove single parentheses/braces and plain MDPH patterns
             processed = processed.replace(/\(MDPH\d+\)/g, '');
             processed = processed.replace(/\{MDPH\d+\}/g, '');
+            
+            // Sixth pass: Remove plain MDPH followed by digits (catches any remaining variations)
+            // This is the most aggressive pattern and should catch everything
             processed = processed.replace(/\bMDPH\d+\b/g, '');
-
-            // Remove internal Unicode placeholder format (⟨⟨MDPH_X⟩⟩) if any leaked
+            
+            // Final pass: Remove any remaining Unicode angle bracket format (safety check)
             processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
 
             // Final attempt to restore any remaining placeholders before removing them
@@ -2161,6 +2196,25 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/^###\s+/gm, '');
             processed = processed.replace(/^##\s+/gm, '');
             processed = processed.replace(/^#\s+/gm, '');
+
+            // ABSOLUTE FINAL cleanup: Remove ANY remaining MDPH placeholders in ALL formats
+            // This is the last chance to catch placeholders before output
+            // Apply in multiple passes to catch all variations
+            let cleanupIterations = 0;
+            let previousCleanupLength = 0;
+            while (previousCleanupLength !== processed.length && cleanupIterations < 5) {
+                previousCleanupLength = processed.length;
+                cleanupIterations++;
+                
+                // Remove all known MDPH placeholder formats
+                processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+                processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+                processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+                processed = processed.replace(/\(MDPH\d+\)/g, '');
+                processed = processed.replace(/\{MDPH\d+\}/g, '');
+                processed = processed.replace(/\bMDPH\d+\b/g, '');
+                processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
+            }
 
             return processed;
 
