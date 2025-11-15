@@ -3,6 +3,7 @@
 /* Card action buttons */
 .screenshot-card-btn,
 .copy-response-btn,
+.hide-others-btn,
 .close-card-btn {
   outline: none !important;
   border: none !important;
@@ -35,6 +36,12 @@
   transform: scale(1.1);
 }
 
+.hide-others-btn:hover {
+  background: var(--warning-color, #f59e0b);
+  color: white;
+  transform: scale(1.1);
+}
+
 .close-card-btn:hover {
   background: var(--error-color);
   color: white;
@@ -43,12 +50,14 @@
 
 .screenshot-card-btn:active,
 .copy-response-btn:active,
+.hide-others-btn:active,
 .close-card-btn:active {
   transform: scale(0.95);
 }
 
 .screenshot-card-btn:focus,
 .copy-response-btn:focus,
+.hide-others-btn:focus,
 .close-card-btn:focus {
   outline: none !important;
   background: none;
@@ -57,6 +66,7 @@
 
 .screenshot-card-btn:focus:not(:hover),
 .copy-response-btn:focus:not(:hover),
+.hide-others-btn:focus:not(:hover),
 .close-card-btn:focus:not(:hover) {
   background: none;
   color: var(--text-muted);
@@ -65,7 +75,9 @@
 .screenshot-card-btn img,
 .screenshot-card-btn svg,
 .copy-response-btn img,
-.copy-response-btn svg {
+.copy-response-btn svg,
+.hide-others-btn img,
+.hide-others-btn svg {
   pointer-events: none;
   width: 16px;
   height: 16px;
