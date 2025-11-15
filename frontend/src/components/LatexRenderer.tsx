@@ -332,6 +332,50 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             cleaned = cleaned.replace(/\\\$/g, '$');
         }
 
+        // Convert <frac> tags to LaTeX \frac{}{} format
+        // Pattern: <frac>numerator</frac> followed by divider div and denominator div
+        // Handle variations in style attribute format (quotes, spacing, etc.)
+        cleaned = cleaned.replace(/<frac>([\s\S]*?)<\/frac>\s*<div[^>]*style\s*=\s*["'][^"']*border-top[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<div[^>]*style\s*=\s*["'][^"']*margin-left[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi, (_match, numerator, denominator) => {
+            // Convert HTML entities and tags in numerator
+            let num = numerator
+                // First handle superscripts before removing HTML tags
+                .replace(/<sup>(\d+)<\/sup>/g, '^{$1}') // Superscript
+                .replace(/<sup>([^<]+)<\/sup>/g, '^{$1}') // Superscript with content
+                // Convert square root: &#x221A;(content) or √(content) -> \sqrt{content}
+                .replace(/(&#x221A;|√)\(([^)]+)\)/g, '\\sqrt{$2}') // sqrt( to sqrt{
+                .replace(/&#x221A;|√/g, '\\sqrt') // Standalone sqrt symbol
+                .replace(/±/g, '\\pm') // Plus-minus
+                .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
+                .trim();
+            
+            // Convert HTML entities and tags in denominator
+            let den = denominator
+                .replace(/<[^>]*>/g, '') // Remove HTML tags
+                .trim();
+            
+            // Wrap in LaTeX fraction and inline math delimiters
+            return `\\(\\frac{${num}}{${den}}\\)`;
+        });
+
+        // Also handle simpler <frac> tags that might be standalone (convert to inline fraction)
+        cleaned = cleaned.replace(/<frac>([\s\S]*?)<\/frac>/gi, (_match, content) => {
+            // Convert HTML entities and tags
+            let converted = content
+                // First handle superscripts before removing HTML tags
+                .replace(/<sup>(\d+)<\/sup>/g, '^{$1}') // Superscript
+                .replace(/<sup>([^<]+)<\/sup>/g, '^{$1}') // Superscript with content
+                // Convert square root: &#x221A;(content) or √(content) -> \sqrt{content}
+                .replace(/(&#x221A;|√)\(([^)]+)\)/g, '\\sqrt{$2}') // sqrt( to sqrt{
+                .replace(/&#x221A;|√/g, '\\sqrt') // Standalone sqrt symbol
+                .replace(/±/g, '\\pm') // Plus-minus
+                .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
+                .trim();
+            
+            // If it looks like a fraction structure, try to split it
+            // Otherwise, just return the content wrapped in LaTeX
+            return `(${converted})`;
+        });
+
         // Remove model-generated placeholders early to prevent interference with list processing
         // Be very aggressive - catch all variations and concatenated placeholders
         // Handle double parentheses format: ((MDPH3)) - remove all occurrences, even concatenated
