@@ -862,17 +862,26 @@ async def compare_stream(
         results_dict = {}
 
         # Check if mock mode is enabled for this user
+        # IMPORTANT: Query user fresh from database to avoid stale mock_mode_enabled value
+        # The current_user object captured in closure may have stale data
         is_development = os.environ.get("ENVIRONMENT") == "development"
         use_mock = False
 
-        if current_user:
-            # Check if mock mode is enabled for this authenticated user
-            if current_user.mock_mode_enabled:
-                if is_development or current_user.role in ["admin", "super_admin"]:
-                    use_mock = True
+        if user_id:
+            # Query user fresh from database to get latest mock_mode_enabled value
+            from ..database import SessionLocal
+            fresh_db = SessionLocal()
+            try:
+                fresh_user = fresh_db.query(User).filter(User.id == user_id).first()
+                if fresh_user:
+                    # Check if mock mode is enabled for this authenticated user
+                    if fresh_user.mock_mode_enabled:
+                        if is_development or fresh_user.role in ["admin", "super_admin"]:
+                            use_mock = True
+            finally:
+                fresh_db.close()
         else:
             # Check if global anonymous mock mode is enabled (development only)
-            is_development = os.environ.get("ENVIRONMENT") == "development"
             if is_development:
                 from ..cache import get_cached_app_settings
 
