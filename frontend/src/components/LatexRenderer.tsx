@@ -290,6 +290,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
     const fixLatexIssues = (text: string): string => {
         let fixed = text;
 
+        // Restore LaTeX commands that lost their leading backslash due to JSON escape sequences
+        // e.g. "\frac" becomes form-feed + "rac" when parsed as "\f"
+        fixed = fixed
+            .replace(/\u0008/g, '\\b') // backspace -> \b
+            .replace(/\f/g, '\\f') // form feed -> \f (e.g. \frac)
+            .replace(/\t/g, '\\t') // tab -> \t (e.g. \text)
+            .replace(/\v/g, '\\v'); // vertical tab -> \v (rare)
+        fixed = fixed.replace(/\r(?!\n)/g, '\\r'); // standalone carriage returns (e.g. \right)
+
         // Remove standalone delimiter lines (common in AI outputs)
         fixed = fixed.replace(/^\\\[\s*$/gm, '');
         fixed = fixed.replace(/^\\\]\s*$/gm, '');
@@ -1319,10 +1328,22 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // This handles cases where headers might have leading whitespace or other issues
         processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
 
+        // CRITICAL: Remove model-generated MDPH placeholders BEFORE we introduce our own
+        // This prevents them from being wrapped in HTML tags like <strong>((MDPH3))</strong>
+        while (processed.includes('((MDPH')) {
+            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
+        }
+        while (processed.includes('{{MDPH')) {
+            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
+        }
+        processed = processed.replace(/\(MDPH\d+\)/g, '');
+        processed = processed.replace(/\{MDPH\d+\}/g, '');
+        processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
+
         // CRITICAL: Protect placeholders from markdown processing by temporarily replacing them
         // This prevents bold/italic regex from matching placeholder patterns
         // Use a unique string format that won't be interpreted as HTML or markdown
-        // Format: ⟨⟨MDPH_N⟩⟩ using Unicode angle brackets to avoid conflicts
+        // Format: ⟨⟨MDPHN⟩⟩ using Unicode angle brackets to avoid conflicts
         const placeholderMap = new Map<string, string>();
         let placeholderCounter = 0;
 
@@ -1331,7 +1352,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Pattern: __UL_X__content__/UL__ or __OL_X_Y__content__/OL__ or __TASK_X__content__/TASK__
         let listPlaceholderCount = 0;
         processed = processed.replace(/(__UL_\d+__[\s\S]*?__\/UL__|__OL_\d+_\d+__[\s\S]*?__\/OL__|__TASK_(checked|unchecked)__[\s\S]*?__\/TASK__)/g, (match) => {
-            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
+            const placeholder = `⟨⟨MDPH${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             if (match.startsWith('__OL_')) {
                 listPlaceholderCount++;
@@ -1345,7 +1366,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Protect inline math placeholders (outside of lists)
         // These use __INLINE_MATH_X__ format which would be matched by bold regex
         processed = processed.replace(/(__INLINE_MATH_\d+__)/g, (match) => {
-            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
+            const placeholder = `⟨⟨MDPH${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
@@ -1353,7 +1374,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Protect display math placeholders
         processed = processed.replace(/(__DISPLAY_MATH_\d+__)/g, (match) => {
-            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
+            const placeholder = `⟨⟨MDPH${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
@@ -1361,23 +1382,11 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Protect code block placeholders (__CODE_BLOCK_X__)
         processed = processed.replace(/(__CODE_BLOCK_\d+__)/g, (match) => {
-            const placeholder = `⟨⟨MDPH_${placeholderCounter}⟩⟩`;
+            const placeholder = `⟨⟨MDPH${placeholderCounter}⟩⟩`;
             placeholderMap.set(placeholder, match);
             placeholderCounter++;
             return placeholder;
         });
-
-        // CRITICAL: Remove model-generated MDPH placeholders BEFORE markdown formatting
-        // This prevents them from being wrapped in HTML tags like <strong>((MDPH3))</strong>
-        while (processed.includes('((MDPH')) {
-            processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
-        }
-        while (processed.includes('{{MDPH')) {
-            processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
-        }
-        processed = processed.replace(/\(MDPH\d+\)/g, '');
-        processed = processed.replace(/\{MDPH\d+\}/g, '');
-        processed = processed.replace(/\bMDPH\d+\b/g, '');
 
         // Tables - must come first (if enabled)
         if (markdownRules.processTables !== false) {
@@ -1621,9 +1630,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         let restoredOLCount = 0;
         // Sort placeholders by index (descending) to avoid conflicts when restoring
         const sortedPlaceholders = Array.from(placeholderMap.entries()).sort((a, b) => {
-            // Extract numeric index from placeholder (e.g., "⟨⟨MDPH_5⟩⟩" -> 5)
+            // Extract numeric index from placeholder (e.g., "⟨⟨MDPH5⟩⟩" -> 5)
             const getIndex = (ph: string) => {
-                const match = ph.match(/MDPH_(\d+)/);
+                const match = ph.match(/MDPH(\d+)/);
                 return match ? parseInt(match[1], 10) : 0;
             };
             return getIndex(b[0]) - getIndex(a[0]); // Descending order
@@ -1657,7 +1666,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Final safety check: remove any remaining placeholders that weren't restored
         // This handles edge cases where placeholders might have been missed
-        const remainingPlaceholders = processed.match(/⟨⟨MDPH_\d+⟩⟩/g);
+        const remainingPlaceholders = processed.match(/⟨⟨MDPH\d+⟩⟩/g);
         if (remainingPlaceholders && remainingPlaceholders.length > 0) {
             console.warn(`[processMarkdown] WARNING: Found ${remainingPlaceholders.length} unrecovered placeholders:`, remainingPlaceholders);
             // Log the context around each placeholder for debugging
@@ -1669,7 +1678,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 }
             });
             // Remove unrecovered placeholders to prevent them from appearing in output
-            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+            processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
         }
 
         // CRITICAL: Remove model-generated MDPH placeholders even if they're inside HTML tags
@@ -1689,7 +1698,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         }
         processed = processed.replace(/\(MDPH\d+\)/g, '');
         processed = processed.replace(/\{MDPH\d+\}/g, '');
-        processed = processed.replace(/\bMDPH\d+\b/g, '');
+        processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
 
         return processed;
     };
@@ -1706,7 +1715,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             console.warn('[convertListsToHTML] ERROR: Found unrecovered placeholders! These should have been restored in processMarkdown.');
             // Remove any remaining placeholders to prevent them from appearing in output
             // This is a safety fallback - ideally these should never reach this stage
-            text = text.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+            text = text.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
         }
         let converted = text;
 
@@ -1872,12 +1881,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // CRITICAL: Remove any MDPH placeholders that might have been exposed during paragraph processing
         // This ensures placeholders don't leak into the final output
-        processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+        processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
         processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
         processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
         processed = processed.replace(/\(MDPH\d+\)/g, '');
         processed = processed.replace(/\{MDPH\d+\}/g, '');
-        processed = processed.replace(/\bMDPH\d+\b/g, '');
+        processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
 
         return processed;
     };
@@ -1946,7 +1955,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             }
             processed = processed.replace(/\(MDPH\d+\)/g, '');
             processed = processed.replace(/\{MDPH\d+\}/g, '');
-            processed = processed.replace(/\bMDPH\d+\b/g, '');
+            processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
 
             // Stage 8: Convert lists to HTML
             processed = convertListsToHTML(processed);
@@ -2080,7 +2089,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Apply multiple passes to ensure all variations are caught
 
             // First pass: Remove Unicode angle bracket format (most common internal format)
-            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+            processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
             
             // Second pass: Remove double parentheses format
             while (processed.includes('((MDPH')) {
@@ -2105,10 +2114,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             
             // Sixth pass: Remove plain MDPH followed by digits (catches any remaining variations)
             // This is the most aggressive pattern and should catch everything
-            processed = processed.replace(/\bMDPH\d+\b/g, '');
+            processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
             
             // Final pass: Remove any remaining Unicode angle bracket format (safety check)
-            processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+            processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
 
             // Final attempt to restore any remaining placeholders before removing them
             // This handles cases where placeholders might have been missed in earlier stages
@@ -2207,14 +2216,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 cleanupIterations++;
                 
                 // Remove all known MDPH placeholder formats
-                processed = processed.replace(/⟨⟨MDPH_\d+⟩⟩/g, '');
+                processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
                 processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
                 processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
                 processed = processed.replace(/\(MDPH\d+\)/g, '');
                 processed = processed.replace(/\{MDPH\d+\}/g, '');
-                processed = processed.replace(/\bMDPH\d+\b/g, '');
+                processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
                 processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
             }
+
+            // Remove any empty placeholder shells that might remain
+            processed = processed.replace(/⟨⟨\s*⟩⟩/g, '');
 
             return processed;
 
