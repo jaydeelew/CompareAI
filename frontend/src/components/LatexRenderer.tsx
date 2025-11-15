@@ -271,8 +271,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Handle single parentheses/braces as fallback
         cleaned = cleaned.replace(/\(MDPH\d+\)/g, '');
         cleaned = cleaned.replace(/\{MDPH\d+\}/g, '');
-        // Remove any trailing --- that might follow placeholders
-        cleaned = cleaned.replace(/\s*---+\s*/g, ' ');
+        // Remove any trailing --- that might follow placeholders (but NOT standalone horizontal rules)
+        // Only match --- that's on the same line as content, not standalone --- on their own lines
+        // Pattern: content followed by whitespace and --- (not a standalone line)
+        cleaned = cleaned.replace(/([^\n])\s*---+\s*(?=\S)/g, '$1 ');
+        // Also remove --- that's immediately after placeholders on the same line
+        cleaned = cleaned.replace(/(MDPH\d+)\s*---+\s*(?=\S)/g, '$1 ');
 
         // Apply custom preprocessing functions if provided
         if (preprocessOpts.customPreprocessors) {
@@ -1528,10 +1532,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         }
 
         // Horizontal rules (if enabled)
+        // NOTE: Horizontal rules are now processed earlier (Stage 2.5) before other markdown processing
+        // This ensures they're converted before line structure is modified by other processing stages
+        // This code block is kept for backward compatibility but horizontal rules should already be converted
         if (markdownRules.processHorizontalRules !== false) {
-            processed = processed.replace(/^---+\s*$/gm, '<hr class="markdown-hr">\n');
-            processed = processed.replace(/^\*\*\*+\s*$/gm, '<hr class="markdown-hr">\n');
-            processed = processed.replace(/^___+\s*$/gm, '<hr class="markdown-hr">\n');
+            // Double-check: process any remaining horizontal rules that weren't caught earlier
+            // This is a safety net in case horizontal rules appear after Stage 2.5
+            processed = processed.replace(/^---+(\s*)$/gm, '\n<hr class="markdown-hr">\n');
+            processed = processed.replace(/^\*\*\*+(\s*)$/gm, '\n<hr class="markdown-hr">\n');
+            processed = processed.replace(/^___+(\s*)$/gm, '\n<hr class="markdown-hr">\n');
         }
 
         // Headings (if enabled, longest first to avoid partial matches)
@@ -1540,11 +1549,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // CRITICAL FIX: Ensure headers are at the start of lines before processing
             // Headers might not be at the start of lines due to HTML inserted by preserveMathLineBreaks
             // or other preprocessing steps. Normalize them by ensuring they start on new lines.
+            // First, ensure headers after horizontal rules (--- converted to <hr>) are properly separated
+            // Match: <hr> tag (with optional newline) followed by header marker
+            processed = processed.replace(/(<hr[^>]*>\s*\n?\s*)(#{1,6}\s+)/gi, '$1\n\n$2');
+            // Ensure headers after closing list tags are properly separated
+            // Match: </ul> or </ol> tag (with optional newline) followed by header marker
+            processed = processed.replace(/(<\/(ul|ol)[^>]*>\s*\n?\s*)(#{1,6}\s+)/gi, '$1\n\n$3');
             // Replace any header markers that are preceded by non-whitespace (except at start of string)
             // or HTML tags with a newline before them
-            processed = processed.replace(/([^\n])(\s*)(#{1,6}\s+)/g, '$1\n$3');
+            processed = processed.replace(/([^\n])(\s*)(#{1,6}\s+)/g, '$1\n\n$3');
             // Also handle headers that might be preceded by HTML closing tags or <br> tags
-            processed = processed.replace(/(<\/span>|<br\s*\/?>)(\s*)(#{1,6}\s+)/g, '$1\n$3');
+            processed = processed.replace(/(<\/span>|<br\s*\/?>)(\s*)(#{1,6}\s+)/g, '$1\n\n$3');
             // Remove any leading whitespace from headers to ensure they start cleanly
             processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
             
@@ -1824,8 +1839,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Handle single parentheses/braces as fallback
         converted = converted.replace(/\(MDPH\d+\)/g, '');
         converted = converted.replace(/\{MDPH\d+\}/g, '');
-        // Remove any trailing --- that might follow placeholders
-        converted = converted.replace(/\s*---+\s*/g, ' ');
+        // Remove any trailing --- that might follow placeholders (but NOT standalone horizontal rules)
+        // Only match --- that's on the same line as content, not standalone --- on their own lines
+        // Pattern: content followed by whitespace and --- (not a standalone line)
+        converted = converted.replace(/([^\n])\s*---+\s*(?=\S)/g, '$1 ');
+        // Also remove --- that's immediately after placeholders on the same line
+        converted = converted.replace(/(MDPH\d+)\s*---+\s*(?=\S)/g, '$1 ');
 
         return converted;
     };
@@ -1835,6 +1854,28 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      */
     const applyParagraphBreaks = (text: string): string => {
         let processed = text;
+
+        // CRITICAL FIX: Ensure proper separation after block-level elements before paragraph processing
+        // This ensures content (including bold text like "Step 2:") after <hr> or closing list tags
+        // gets proper line breaks and appears on its own line
+        // First, ensure content after <hr> tags is properly separated (add double line breaks)
+        // Match: <hr> tag followed by optional whitespace/newlines, then any content that starts
+        // We use a negative lookahead to skip if a block element follows, otherwise match the start of content
+        processed = processed.replace(/(<hr[^>]*>)\s*\n?\s*(?!\s*<(h[1-6]|hr|ul|ol|blockquote|pre|table|div|p)[^>]*>)(?=\S)/gi, '$1\n\n');
+        // Ensure content after closing list tags is properly separated
+        // Match: </ul> or </ol> followed by optional whitespace/newlines, then any content that starts
+        processed = processed.replace(/(<\/(ul|ol)[^>]*>)\s*\n?\s*(?!\s*<(h[1-6]|hr|ul|ol|blockquote|pre|table|div|p)[^>]*>)(?=\S)/gi, '$1\n\n');
+
+        // CRITICAL FIX: Ensure headers are properly separated before paragraph processing
+        // Headers should always be on their own line, with proper line breaks before and after
+        // This prevents headers from being incorrectly wrapped in paragraph tags
+        // First, ensure headers after block-level elements (like <hr>) are properly separated
+        // Match: closing tag of block element (hr, div, etc.) or self-closing block element, followed by header
+        processed = processed.replace(/(<\/(hr|h[1-6]|ul|ol|blockquote|pre|table|div|p)[^>]*>|<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)\s*\n?\s*(<(h[1-6])[^>]*>)/gi, '$1\n\n$5');
+        // Add line breaks before opening header tags if they're not already preceded by a newline
+        processed = processed.replace(/([^\n])(<(h[1-6])[^>]*>)/gi, '$1\n\n$2');
+        // Add line breaks after closing header tags if they're not already followed by a newline
+        processed = processed.replace(/(<\/(h[1-6])[^>]*>)([^\n<])/gi, '$1\n\n$3');
 
         // Line breaks
         processed = processed.replace(/ {2}\n/g, '<br>');
@@ -1876,8 +1917,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             
             // Pattern 5: Remove orphaned </p> or <p> tags that are adjacent to block-level elements
             // Matches: </p><hr> or <hr><p> etc. (with optional whitespace)
+            // IMPORTANT: Don't remove <p> after closing header tags if it's starting content (not wrapping another block element)
             processed = processed.replace(/<\/p>\s*(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
-            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<p>/gi, '$1');
+            // Only remove <p> before block elements, not after closing tags (content after headers should be in paragraphs)
+            processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)\s*<p>/gi, '$1');
             
             // Pattern 6: Remove any remaining <p> tags that directly contain only block-level elements
             // Matches: <p><h3>content</h3></p> -> <h3>content</h3>
@@ -1925,8 +1968,39 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             const inlineMathExtraction = extractInlineMath(processed);
             processed = inlineMathExtraction.text;
 
+            // Stage 0.7: Process horizontal rules VERY EARLY (before any preprocessing)
+            // This ensures horizontal rules are converted before any text modification
+            // Extract and protect horizontal rules by converting them to placeholders first
+            const hrPlaceholders: string[] = [];
+            const markdownRules = config.markdownProcessing || {};
+            if (markdownRules.processHorizontalRules !== false) {
+                // Convert horizontal rules to protected placeholders
+                processed = processed.replace(/^---+(\s*)$/gm, () => {
+                    const placeholder = `__HR_PLACEHOLDER_${hrPlaceholders.length}__`;
+                    hrPlaceholders.push('<hr class="markdown-hr">');
+                    return placeholder;
+                });
+                processed = processed.replace(/^\*\*\*+(\s*)$/gm, () => {
+                    const placeholder = `__HR_PLACEHOLDER_${hrPlaceholders.length}__`;
+                    hrPlaceholders.push('<hr class="markdown-hr">');
+                    return placeholder;
+                });
+                processed = processed.replace(/^___+(\s*)$/gm, () => {
+                    const placeholder = `__HR_PLACEHOLDER_${hrPlaceholders.length}__`;
+                    hrPlaceholders.push('<hr class="markdown-hr">');
+                    return placeholder;
+                });
+            }
+
             // Stage 2: Clean malformed content (using model-specific preprocessing)
             processed = cleanMalformedContent(processed);
+
+            // Stage 2.5: Restore horizontal rules after preprocessing
+            if (markdownRules.processHorizontalRules !== false && hrPlaceholders.length > 0) {
+                hrPlaceholders.forEach((hrTag, index) => {
+                    processed = processed.replace(`__HR_PLACEHOLDER_${index}__`, `\n${hrTag}\n`);
+                });
+            }
 
             // Stage 3: Fix LaTeX issues
             processed = fixLatexIssues(processed);
