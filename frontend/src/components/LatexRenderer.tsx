@@ -1537,6 +1537,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Headings (if enabled, longest first to avoid partial matches)
         // Process AFTER bold/italic so formatting inside headings is preserved
         if (markdownRules.processHeaders !== false) {
+            // CRITICAL FIX: Ensure headers are at the start of lines before processing
+            // Headers might not be at the start of lines due to HTML inserted by preserveMathLineBreaks
+            // or other preprocessing steps. Normalize them by ensuring they start on new lines.
+            // Replace any header markers that are preceded by non-whitespace (except at start of string)
+            // or HTML tags with a newline before them
+            processed = processed.replace(/([^\n])(\s*)(#{1,6}\s+)/g, '$1\n$3');
+            // Also handle headers that might be preceded by HTML closing tags or <br> tags
+            processed = processed.replace(/(<\/span>|<br\s*\/?>)(\s*)(#{1,6}\s+)/g, '$1\n$3');
+            // Remove any leading whitespace from headers to ensure they start cleanly
+            processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
+            
             // More robust header matching: allow trailing whitespace and handle HTML content inside headers
             // Match headers even if they contain HTML tags from previous processing (e.g., <strong> tags)
             // Use . with /s flag equivalent ([^] or [\s\S]) but ensure single-line matching with $
