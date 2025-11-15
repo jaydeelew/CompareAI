@@ -3239,13 +3239,10 @@ function AppContent() {
         const timeoutModelErrors: { [key: string]: boolean } = { ...localModelErrors };
         selectedModels.forEach(modelId => {
           const createdModelId = createModelId(modelId);
-          // If model hasn't completed, check if it should be marked as failed
+          // If model hasn't completed, it should be marked as failed (timeout = failure)
+          // This handles cases where response was cut short with partial content
           if (!completedModels.has(createdModelId)) {
-            const content = streamingResults[createdModelId] || '';
-            // Mark as failed if empty content or error message
-            if (content.trim().length === 0 || isErrorMessage(content)) {
-              timeoutModelErrors[createdModelId] = true;
-            }
+            timeoutModelErrors[createdModelId] = true;
           }
         });
         setModelErrors(timeoutModelErrors);
