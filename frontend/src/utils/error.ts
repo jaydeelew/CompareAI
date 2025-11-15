@@ -18,6 +18,7 @@ export interface NotificationController {
   (): void; // Can be called directly to remove the notification
   update: (msg: string, type?: NotificationType) => void; // Update notification in place
   clearAutoRemove: () => void; // Clear the auto-remove timeout
+  setIcon: (iconHtml: string) => void; // Set a custom icon
 }
 
 /**
@@ -133,6 +134,12 @@ export function showNotification(msg: string, type: NotificationType = 'success'
     }
   };
 
+  // Function to set a custom icon
+  const setIcon = (iconHtml: string) => {
+    if (removed) return;
+    icon.innerHTML = iconHtml;
+  };
+
   // Function to update the notification text and type in place
   const updateNotification = (newMsg: string, newType: NotificationType = 'success') => {
     if (removed) {
@@ -192,6 +199,7 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   const result = removeNotification as NotificationController;
   result.update = updateNotification;
   result.clearAutoRemove = clearAutoRemove;
+  result.setIcon = setIcon;
   return result;
 }
 

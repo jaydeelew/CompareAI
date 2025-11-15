@@ -639,6 +639,8 @@ function AppContent() {
     const copyingNotification = showNotification('Copying screenshot...', 'success');
     // Clear auto-remove timeout so notification stays until we update it
     copyingNotification.clearAutoRemove();
+    // Set timer icon for the copying notification
+    copyingNotification.setIcon('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
 
     // Store original styles that we'll modify
     const prevOverflow = content.style.overflow;
