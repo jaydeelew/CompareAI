@@ -637,6 +637,8 @@ function AppContent() {
 
     // Show immediate feedback and store notification controller to update it when done
     const copyingNotification = showNotification('Copying screenshot...', 'success');
+    // Clear auto-remove timeout so notification stays until we update it
+    copyingNotification.clearAutoRemove();
 
     // Store original styles that we'll modify
     const prevOverflow = content.style.overflow;

@@ -17,6 +17,7 @@ export type NotificationType = 'success' | 'error';
 export interface NotificationController {
   (): void; // Can be called directly to remove the notification
   update: (msg: string, type?: NotificationType) => void; // Update notification in place
+  clearAutoRemove: () => void; // Clear the auto-remove timeout
 }
 
 /**
@@ -124,9 +125,21 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let removed = false;
 
+  // Function to clear the auto-remove timeout
+  const clearAutoRemove = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
   // Function to update the notification text and type in place
   const updateNotification = (newMsg: string, newType: NotificationType = 'success') => {
-    if (removed) return;
+    if (removed) {
+      // If notification was removed, create a new one
+      const newNotification = showNotification(newMsg, newType);
+      return;
+    }
 
     // Update icon
     icon.innerHTML = newType === 'success' ? '✓' : '✕';
@@ -179,6 +192,7 @@ export function showNotification(msg: string, type: NotificationType = 'success'
   // Return both update and remove functions as a NotificationController
   const result = removeNotification as NotificationController;
   result.update = updateNotification;
+  result.clearAutoRemove = clearAutoRemove;
   return result;
 }
 
