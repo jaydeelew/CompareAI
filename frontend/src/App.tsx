@@ -674,13 +674,63 @@ function AppContent() {
 
       if (blob && navigator.clipboard && window.ClipboardItem) {
         try {
-          await navigator.clipboard.write([
-            new window.ClipboardItem({ 'image/png': blob })
-          ]);
-          // Update notification in place for seamless transition
-          copyingNotification.update('Screenshot copied to clipboard!', 'success');
-        } catch {
-          copyingNotification.update('Clipboard copy failed. Image downloaded instead.', 'error');
+          // Try to write to clipboard with retry logic
+          let copySuccess = false;
+          let lastError: Error | null = null;
+          
+          // Attempt clipboard write with up to 2 retries
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              await navigator.clipboard.write([
+                new window.ClipboardItem({ 'image/png': blob })
+              ]);
+              copySuccess = true;
+              break;
+            } catch (err) {
+              lastError = err instanceof Error ? err : new Error(String(err));
+              console.error(`Clipboard copy attempt ${attempt + 1} failed:`, lastError);
+              
+              // If it's a permission error or security error, don't retry
+              if (lastError.name === 'NotAllowedError' || 
+                  lastError.name === 'SecurityError' ||
+                  lastError.message.includes('permission') ||
+                  lastError.message.includes('denied')) {
+                break;
+              }
+              
+              // Wait a bit before retrying (only if not the last attempt)
+              if (attempt < 2) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+              }
+            }
+          }
+          
+          if (copySuccess) {
+            // Update notification in place for seamless transition
+            copyingNotification.update('Screenshot copied to clipboard!', 'success');
+          } else {
+            // Show specific error message
+            const errorMsg = lastError 
+              ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
+              : 'Clipboard copy failed. Image downloaded instead.';
+            copyingNotification.update(errorMsg, 'error');
+            console.error('Clipboard copy failed after retries:', lastError);
+            
+            // Fallback: download the image
+            const link = document.createElement('a');
+            link.download = `model_${safeId}_messages.png`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
+          }
+        } catch (err) {
+          // Catch any unexpected errors during the retry logic
+          const error = err instanceof Error ? err : new Error(String(err));
+          const errorMsg = `Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`;
+          copyingNotification.update(errorMsg, 'error');
+          console.error('Unexpected error during clipboard copy:', error);
+          
+          // Fallback: download the image
           const link = document.createElement('a');
           link.download = `model_${safeId}_messages.png`;
           link.href = URL.createObjectURL(blob);
@@ -688,7 +738,14 @@ function AppContent() {
           URL.revokeObjectURL(link.href);
         }
       } else if (blob) {
-        copyingNotification.update('Clipboard not supported. Image downloaded.', 'error');
+        // Clipboard API not available
+        const reason = !navigator.clipboard 
+          ? 'Clipboard API not available' 
+          : !window.ClipboardItem 
+            ? 'ClipboardItem not supported' 
+            : 'Unknown reason';
+        copyingNotification.update(`${reason}. Image downloaded.`, 'error');
+        console.warn('Clipboard not supported:', { clipboard: !!navigator.clipboard, ClipboardItem: !!window.ClipboardItem });
         const link = document.createElement('a');
         link.download = `model_${safeId}_messages.png`;
         link.href = URL.createObjectURL(blob);
@@ -696,6 +753,7 @@ function AppContent() {
         URL.revokeObjectURL(link.href);
       } else {
         copyingNotification.update('Could not create image blob.', 'error');
+        console.error('Failed to create image blob from content element');
       }
     } catch (err) {
       copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error');
