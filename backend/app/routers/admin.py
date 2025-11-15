@@ -69,14 +69,31 @@ def log_admin_action(
     request: Optional[Request] = None,
 ) -> None:
     """Log admin action for audit trail."""
+    # Safely extract IP address and user agent
+    ip_address = None
+    user_agent = None
+    if request:
+        try:
+            ip_address = (
+                request.client.host
+                if hasattr(request, "client") and request.client
+                else None
+            )
+        except:
+            ip_address = None
+        try:
+            user_agent = request.headers.get("user-agent")
+        except:
+            user_agent = None
+    
     log_entry = AdminActionLog(
         admin_user_id=admin_user.id,
         target_user_id=target_user_id,
         action_type=action_type,
         action_description=action_description,
         details=json.dumps(details) if details else None,
-        ip_address=request.client.host if request else None,
-        user_agent=request.headers.get("user-agent") if request else None,
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
     db.add(log_entry)
     db.commit()
@@ -948,19 +965,23 @@ async def toggle_anonymous_mock_mode(
     invalidate_app_settings_cache()
 
     # Log admin action
-    log_admin_action(
-        db=db,
-        admin_user=current_user,
-        action_type="toggle_anonymous_mock_mode",
-        action_description=f"{'Enabled' if settings.anonymous_mock_mode_enabled else 'Disabled'} anonymous mock mode (dev_mode: {is_development})",
-        target_user_id=None,
-        details={
-            "previous_state": previous_state,
-            "new_state": settings.anonymous_mock_mode_enabled,
-            "development_mode": is_development,
-        },
-        request=request,
-    )
+    try:
+        log_admin_action(
+            db=db,
+            admin_user=current_user,
+            action_type="toggle_anonymous_mock_mode",
+            action_description=f"{'Enabled' if settings.anonymous_mock_mode_enabled else 'Disabled'} anonymous mock mode (dev_mode: {is_development})",
+            target_user_id=None,
+            details={
+                "previous_state": previous_state,
+                "new_state": settings.anonymous_mock_mode_enabled,
+                "development_mode": is_development,
+            },
+            request=request,
+        )
+    except Exception as e:
+        # Logging failure shouldn't prevent the toggle from succeeding
+        print(f"Warning: Could not log admin action: {e}")
 
     return {
         "anonymous_mock_mode_enabled": settings.anonymous_mock_mode_enabled,
