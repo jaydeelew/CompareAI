@@ -365,13 +365,6 @@ MODELS_BY_PROVIDER = {
             "provider": "Qwen",
         },
         {
-            "id": "qwen/qwen3-235b-a22b-thinking-2507",
-            "name": "Qwen3 235B A22B Thinking 2507",
-            "description": "Qwen's 235B thinking model from July 2025 with advanced reasoning capabilities",
-            "category": "Language/Reasoning",
-            "provider": "Qwen",
-        },
-        {
             "id": "qwen/qwen3-235b-a22b",
             "name": "Qwen3 235B A22B",
             "description": "Qwen's flagship large language model with exceptional capabilities, trained on 36 trillion tokens",
@@ -499,9 +492,7 @@ def count_conversation_tokens(messages: List[Any]) -> int:
     return total_tokens
 
 
-def truncate_conversation_history(
-    conversation_history: List[Any], max_messages: int = 20
-) -> Tuple[List[Any], bool, int]:
+def truncate_conversation_history(conversation_history: List[Any], max_messages: int = 20) -> Tuple[List[Any], bool, int]:
     """
     Truncate conversation history to recent messages to manage context window.
     Returns (truncated_history, was_truncated, original_message_count).
@@ -580,9 +571,7 @@ def call_openrouter_streaming(
         was_truncated = False
 
         if conversation_history:
-            truncated_history, was_truncated, original_count = truncate_conversation_history(
-                conversation_history, max_messages=20
-            )
+            truncated_history, was_truncated, original_count = truncate_conversation_history(conversation_history, max_messages=20)
 
             # Add truncated conversation history
             for msg in truncated_history:
@@ -640,9 +629,7 @@ def call_openrouter_streaming(
                 "standard": "\n\n⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "\n\n⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
-            warning = tier_messages.get(
-                tier, "\n\n⚠️ Response truncated - model reached maximum output length."
-            )
+            warning = tier_messages.get(tier, "\n\n⚠️ Response truncated - model reached maximum output length.")
             yield warning
         elif finish_reason == "content_filter":
             yield "\n\n⚠️ **Note:** Response stopped by content filter."
@@ -704,9 +691,7 @@ def call_openrouter(
         was_truncated = False
 
         if conversation_history:
-            truncated_history, was_truncated, original_count = truncate_conversation_history(
-                conversation_history, max_messages=20
-            )
+            truncated_history, was_truncated, original_count = truncate_conversation_history(conversation_history, max_messages=20)
 
             # Add truncated conversation history
             for msg in truncated_history:
@@ -774,17 +759,12 @@ def call_openrouter(
                 "standard": "⚠️ **Standard tier limit reached.** Response truncated at 4,000 tokens. Upgrade to Extended (8,000) for comprehensive responses.",
                 "extended": "⚠️ **Extended tier limit reached.** Response truncated at 8,000 tokens. This is the maximum response length available.",
             }
-            content = (
-                (content or "")
-                + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
-            )
+            content = (content or "") + f"\n\n{tier_messages.get(tier, 'Response truncated - model reached maximum output length.')}"
         elif finish_reason == "content_filter":
             content = (content or "") + "\n\n⚠️ **Note:** Response stopped by content filter."
 
         # Clean up MathML and other unwanted markup before returning
-        cleaned_content = (
-            clean_model_response(content) if content is not None else "No response generated"
-        )
+        cleaned_content = clean_model_response(content) if content is not None else "No response generated"
         return cleaned_content
     except Exception as e:
         error_str = str(e).lower()
