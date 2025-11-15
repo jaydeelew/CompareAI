@@ -356,7 +356,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         fixed = fixed.replace(/√(\d+)/g, '\\sqrt{$1}');
 
         // Fix plus-minus symbol: ± -> \pm
-        fixed = fixed.replace(/±/g, '\\pm');
+        // CRITICAL: Convert multiple consecutive ± to single \pm to prevent duplication
+        fixed = fixed.replace(/±+/g, '\\pm');
 
         // Fix multiplication symbol: × -> \times
         fixed = fixed.replace(/×/g, '\\times');
@@ -1218,6 +1219,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
                 const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
 
+                // CRITICAL: Check if we're inside inline code blocks (single backticks)
+                // This prevents processing Unicode symbols that will be handled by processInlineCode in Stage 7
+                const backticksBefore = (beforeMatch.match(/`/g) || []).length;
+                // If odd number of backticks before, we're inside an inline code block
+                if (backticksBefore % 2 === 1) {
+                    continue; // Skip - will be processed by processInlineCode
+                }
+
                 // Only process if not already inside KaTeX HTML
                 if (lastKatexStart <= lastKatexEnd) {
                     symbolReplacements.push({
@@ -1245,12 +1254,55 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         });
 
         // Handle Unicode superscripts
-        rendered = rendered.replace(/([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g, (_match, base, sup) => {
+        // CRITICAL: Only process if not already inside KaTeX HTML or inline code blocks to prevent duplication
+        let superscriptRegex = /([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g;
+        let superscriptMatch;
+        const superscriptReplacements: Array<{ start: number, end: number, replacement: string }> = [];
+        
+        while ((superscriptMatch = superscriptRegex.exec(rendered)) !== null) {
+            const start = superscriptMatch.index;
+            const end = start + superscriptMatch[0].length;
+            const base = superscriptMatch[1];
+            const sup = superscriptMatch[2];
+            
+            // Check if this match is already inside KaTeX HTML
+            const beforeMatch = rendered.substring(0, start);
+            const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
+            const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
+            
+            // If we're inside KaTeX HTML, skip processing
+            if (lastKatexStart > lastKatexEnd) {
+                continue; // Already rendered, don't process again
+            }
+            
+            // CRITICAL: Check if we're inside inline code blocks (single backticks)
+            // This prevents processing Unicode superscripts that will be handled by processInlineCode in Stage 7
+            const backticksBefore = (beforeMatch.match(/`/g) || []).length;
+            // If odd number of backticks before, we're inside an inline code block
+            if (backticksBefore % 2 === 1) {
+                continue; // Skip - will be processed by processInlineCode
+            }
+            
+            // Also check if this is already in the form base^{number}
+            const afterMatch = rendered.substring(end);
+            if (afterMatch.startsWith('^{')) {
+                continue; // Already converted, skip
+            }
+            
             const supMap: { [key: string]: string } = {
                 '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6',
                 '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '¹': '1'
             };
-            return safeRenderKatex(`${base}^{${supMap[sup]}}`, false, config.katexOptions);
+            superscriptReplacements.push({
+                start,
+                end,
+                replacement: safeRenderKatex(`${base}^{${supMap[sup]}}`, false, config.katexOptions)
+            });
+        }
+        
+        // Apply replacements from right to left to maintain positions
+        superscriptReplacements.reverse().forEach(({ start, end, replacement }) => {
+            rendered = rendered.substring(0, start) + replacement + rendered.substring(end);
         });
 
         // Handle caret notation
@@ -1483,16 +1535,37 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     // So we need to convert Unicode to LaTeX, but be careful to avoid double conversion
                     let mathContent = content.replace(/\$/g, '').trim();
 
-                    // Only convert Unicode if content doesn't already have LaTeX commands
+                    // CRITICAL: Check if content already has LaTeX commands (from fixLatexIssues)
+                    // If it does, we should still check for remaining Unicode symbols that need conversion
+                    const hasLaTeXCommands = /\\[a-zA-Z]+/.test(mathContent);
+                    
+                    // CRITICAL: Convert superscripts FIRST before square root conversion
+                    // This prevents issues when superscripts appear inside square root expressions
+                    // Always convert superscripts even if LaTeX commands exist (they might be in different parts)
+                    mathContent = mathContent.replace(/²+/g, '^2');
+                    mathContent = mathContent.replace(/³+/g, '^3');
+                    mathContent = mathContent.replace(/⁴+/g, '^4');
+                    mathContent = mathContent.replace(/⁵+/g, '^5');
+                    mathContent = mathContent.replace(/⁶+/g, '^6');
+                    mathContent = mathContent.replace(/⁷+/g, '^7');
+                    mathContent = mathContent.replace(/⁸+/g, '^8');
+                    mathContent = mathContent.replace(/⁹+/g, '^9');
+                    mathContent = mathContent.replace(/⁰+/g, '^0');
+                    mathContent = mathContent.replace(/¹+/g, '^1');
+
+                    // Only do full Unicode conversion if content doesn't already have LaTeX commands
                     // This prevents double conversion if fixLatexIssues already processed it
-                    if (!/\\[a-zA-Z]+/.test(mathContent)) {
+                    if (!hasLaTeXCommands) {
                         // Convert Unicode square root: √(expr) -> \sqrt{expr} or √123 -> \sqrt{123}
-                        mathContent = mathContent.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+                        // Use a more robust regex that handles nested parentheses and Unicode characters
+                        // Match √( followed by content that may include parentheses, then closing )
+                        mathContent = mathContent.replace(/√\(((?:[^()]|\([^()]*\))+)\)/g, '\\sqrt{$1}');
                         mathContent = mathContent.replace(/√(\d+)/g, '\\sqrt{$1}');
                         mathContent = mathContent.replace(/√([a-zA-Z]+)/g, '\\sqrt{$1}');
 
-                        // Convert Unicode symbols - use single replace to avoid duplication
-                        mathContent = mathContent.replace(/±+/g, '\\pm'); // Handle multiple ± as single \pm
+                        // Convert Unicode symbols - CRITICAL: use single replace and handle duplicates
+                        // Convert multiple consecutive ± to single \pm to prevent rendering duplication
+                        mathContent = mathContent.replace(/±+/g, '\\pm');
                         mathContent = mathContent.replace(/×/g, '\\times');
                         mathContent = mathContent.replace(/÷/g, '\\div');
                         mathContent = mathContent.replace(/≤/g, '\\leq');
@@ -1502,18 +1575,20 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                         mathContent = mathContent.replace(/∑/g, '\\sum');
                         mathContent = mathContent.replace(/∏/g, '\\prod');
                         mathContent = mathContent.replace(/∫/g, '\\int');
-
-                        // Convert superscripts - handle potential duplicates
-                        mathContent = mathContent.replace(/²+/g, '^2');
-                        mathContent = mathContent.replace(/³+/g, '^3');
-                        mathContent = mathContent.replace(/⁴+/g, '^4');
-                        mathContent = mathContent.replace(/⁵+/g, '^5');
-                        mathContent = mathContent.replace(/⁶+/g, '^6');
-                        mathContent = mathContent.replace(/⁷+/g, '^7');
-                        mathContent = mathContent.replace(/⁸+/g, '^8');
-                        mathContent = mathContent.replace(/⁹+/g, '^9');
-                        mathContent = mathContent.replace(/⁰+/g, '^0');
-                        mathContent = mathContent.replace(/¹+/g, '^1');
+                    } else {
+                        // Content has LaTeX commands, but may still have Unicode symbols that weren't converted
+                        // Only convert Unicode symbols that aren't already LaTeX commands
+                        // This handles mixed content where some symbols were converted and others weren't
+                        mathContent = mathContent.replace(/(?<!\\)±+/g, '\\pm'); // Only convert ± that isn't already \pm
+                        mathContent = mathContent.replace(/(?<!\\)×/g, '\\times');
+                        mathContent = mathContent.replace(/(?<!\\)÷/g, '\\div');
+                        mathContent = mathContent.replace(/(?<!\\)≤/g, '\\leq');
+                        mathContent = mathContent.replace(/(?<!\\)≥/g, '\\geq');
+                        mathContent = mathContent.replace(/(?<!\\)≈/g, '\\approx');
+                        mathContent = mathContent.replace(/(?<!\\)∞/g, '\\infty');
+                        mathContent = mathContent.replace(/(?<!\\)∑/g, '\\sum');
+                        mathContent = mathContent.replace(/(?<!\\)∏/g, '\\prod');
+                        mathContent = mathContent.replace(/(?<!\\)∫/g, '\\int');
                     }
 
                     if (mathContent) {
