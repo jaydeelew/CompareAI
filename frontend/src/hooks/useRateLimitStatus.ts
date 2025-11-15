@@ -81,8 +81,14 @@ export function useRateLimitStatus({
   }, [isAuthenticated, browserFingerprint]);
 
   // Load usage counts from localStorage for anonymous users
+  // Reset usage counts to 0 when user becomes authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isAuthenticated) {
+      // Clear usage counts for authenticated users - they use user.daily_usage_count instead
+      setUsageCount(0);
+      setExtendedUsageCount(0);
+    } else {
+      // Only load from localStorage for anonymous users
       const savedUsage = localStorage.getItem('compareai_usage');
       const savedExtendedUsage = localStorage.getItem('compareai_extended_usage');
 

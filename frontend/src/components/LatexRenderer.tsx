@@ -126,6 +126,80 @@ const looksMathematical = (content: string): boolean => {
 };
 
 /**
+ * Convert Unicode square root symbols to LaTeX \sqrt with proper nested parentheses handling
+ * Handles cases like √(expr), √((9)² - 4(2)(-5)), etc.
+ */
+const convertSquareRoots = (content: string): string => {
+    let result = content;
+    
+    // Function to find matching closing parenthesis for nested parentheses
+    const findMatchingParen = (str: string, startPos: number): number => {
+        let depth = 1;
+        let pos = startPos + 1;
+        while (pos < str.length && depth > 0) {
+            if (str[pos] === '(') depth++;
+            else if (str[pos] === ')') depth--;
+            pos++;
+        }
+        return depth === 0 ? pos - 1 : -1;
+    };
+    
+    // Convert √(expr) patterns with nested parentheses
+    let searchPos = 0;
+    while (searchPos < result.length) {
+        const sqrtIndex = result.indexOf('√', searchPos);
+        if (sqrtIndex === -1) break;
+        
+        // Check if followed by opening parenthesis
+        if (sqrtIndex + 1 < result.length && result[sqrtIndex + 1] === '(') {
+            const openParenPos = sqrtIndex + 1;
+            const closeParenPos = findMatchingParen(result, openParenPos);
+            
+            if (closeParenPos !== -1) {
+                // Extract the content inside parentheses
+                const innerContent = result.substring(openParenPos + 1, closeParenPos);
+                // Replace √(innerContent) with \sqrt{innerContent}
+                result = result.substring(0, sqrtIndex) + 
+                        `\\sqrt{${innerContent}}` + 
+                        result.substring(closeParenPos + 1);
+                searchPos = sqrtIndex + `\\sqrt{${innerContent}}`.length;
+                continue;
+            }
+        }
+        
+        // Handle √ followed by digits: √123 -> \sqrt{123}
+        if (sqrtIndex + 1 < result.length && /^\d+/.test(result.substring(sqrtIndex + 1))) {
+            const match = result.substring(sqrtIndex + 1).match(/^\d+/);
+            if (match) {
+                const num = match[0];
+                result = result.substring(0, sqrtIndex) + 
+                        `\\sqrt{${num}}` + 
+                        result.substring(sqrtIndex + 1 + num.length);
+                searchPos = sqrtIndex + `\\sqrt{${num}}`.length;
+                continue;
+            }
+        }
+        
+        // Handle √ followed by letters: √abc -> \sqrt{abc}
+        if (sqrtIndex + 1 < result.length && /^[a-zA-Z]+/.test(result.substring(sqrtIndex + 1))) {
+            const match = result.substring(sqrtIndex + 1).match(/^[a-zA-Z]+/);
+            if (match) {
+                const letters = match[0];
+                result = result.substring(0, sqrtIndex) + 
+                        `\\sqrt{${letters}}` + 
+                        result.substring(sqrtIndex + 1 + letters.length);
+                searchPos = sqrtIndex + `\\sqrt{${letters}}`.length;
+                continue;
+            }
+        }
+        
+        searchPos = sqrtIndex + 1;
+    }
+    
+    return result;
+};
+
+/**
  * Check if content looks like prose (not math)
  */
 const looksProse = (content: string): boolean => {
@@ -1507,104 +1581,234 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/(?<!_)_((?:(?!_)[^\n])+?)_(?!_)/g, '<em>$1</em>');
         }
 
-        // Inline code (if enabled)
+        // Inline code - ALWAYS process backticks to remove them from output
         // Process AFTER bold/italic so inline code inside bold works correctly
-        if (markdownRules.processInlineCode !== false) {
-            processed = processed.replace(/`([^`\n]+?)`/g, (_match, content) => {
-                // Check if the content is actually LaTeX/math that should be rendered as math, not code
-                // Look for LaTeX commands (like \sqrt, \frac, etc.) - this is the primary indicator
-                const hasLatexCommands = /\\[a-zA-Z]+\{/.test(content) || /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial|boxed)/.test(content);
+        // The config only controls whether to render as code vs math, not whether to process backticks
+        // Use a more robust regex that handles edge cases
+        // Match backticks, allowing for whitespace and various characters
+        processed = processed.replace(/`([^`\n]+?)`/g, (_match, content) => {
+            // Trim whitespace from content for detection
+            const trimmedContent = content.trim();
+            
+            // If inline code processing is explicitly disabled, render as code without math detection
+            if (markdownRules.processInlineCode === false) {
+                return `<code class="inline-code">${content}</code>`;
+            }
+            
+            // Check if the content is actually LaTeX/math that should be rendered as math, not code
+            // Look for LaTeX commands (like \sqrt, \frac, etc.) - this is the primary indicator
+            const hasLatexCommands = /\\[a-zA-Z]+\{/.test(trimmedContent) || /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial|boxed)/.test(trimmedContent);
 
-                // Check for math symbols that indicate this is math, not code
-                const hasMathSymbols = /[√±×÷≤≥≈∞∑∏∫²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content);
+            // Check for math symbols that indicate this is math, not code
+            const hasMathSymbols = /[√±×÷≤≥≈∞∑∏∫²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent);
 
-                // Check if it looks like a mathematical expression (has operators, parentheses, etc.)
-                const hasMathOperators = /[=+\-*/()\[\]]/.test(content);
-                const hasArithmetic = /\d+\s*[+\-*/]\s*\d+/.test(content);
+            // Check if it looks like a mathematical expression (has operators, parentheses, etc.)
+            // Note: - needs to be escaped or at end of character class to be literal
+            const hasMathOperators = /[=+\-*/()\[\]]/.test(trimmedContent);
+            const hasArithmetic = /\d+\s*[+\-*/]\s*\d+/.test(trimmedContent);
+            
+            // Check for mathematical expressions with variables and operators (e.g., ax² + bx + c = 0)
+            // This catches equations that have variables with superscripts and operators
+            // More permissive: match any letter followed by optional superscript and then operator
+            const hasVariableExpression = /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*\s*[+\-*/=]/.test(trimmedContent) || 
+                                          /[+\-*/=]\s*[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
+                                          // Also match patterns like "2x²" (number + variable + superscript)
+                                          /\d+[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
+                                          // Match any expression with multiple variables and operators
+                                          (/[a-zA-Z].*[+\-*/=]/.test(trimmedContent) && hasMathOperators);
+            
+            // Check for equation-like patterns (has = with content on both sides that looks like math)
+            // More permissive: if it has = and any math-like content, it's probably math
+            const looksLikeEquation = /=/.test(trimmedContent) && 
+                                     (hasMathOperators || hasMathSymbols || 
+                                      /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent) ||
+                                      /\d+[a-zA-Z]/.test(trimmedContent) ||
+                                      /[a-zA-Z]\d+/.test(trimmedContent));
 
-                // Simple single letters/numbers without math symbols should stay as code
-                const isSimpleVariable = /^[a-zA-Z0-9\s,]+$/.test(content.trim()) && !hasMathSymbols && !hasLatexCommands;
+            // Check for mathematical coefficient notation: number followed by letter (e.g., 2a, 3x, 5y)
+            // This is a common pattern in math that should be rendered as math, not code
+            const hasCoefficientNotation = /\d+[a-zA-Z]/.test(trimmedContent) || /[a-zA-Z]\d+/.test(trimmedContent);
 
-                // Only render as math if:
-                // 1. It has LaTeX commands (definitely math), OR
-                // 2. It has math symbols AND looks like a math expression (has operators or arithmetic)
-                const shouldRenderAsMath = hasLatexCommands || (hasMathSymbols && (hasMathOperators || hasArithmetic) && !isSimpleVariable);
+            // Check for negative numbers or expressions starting with minus (e.g., -5, -b, -(5))
+            const hasNegativeSign = /^-\s*[\d()a-zA-Z]/.test(trimmedContent);
 
-                if (shouldRenderAsMath) {
-                    // Content inside backticks may not have been processed by fixLatexIssues
-                    // So we need to convert Unicode to LaTeX, but be careful to avoid double conversion
-                    let mathContent = content.replace(/\$/g, '').trim();
+            // Check for expressions with parentheses that look like math (e.g., (5), 2(2), (5)²)
+            const hasMathParentheses = /\([^)]*\)/.test(trimmedContent) && (hasMathOperators || /\d/.test(trimmedContent));
 
-                    // CRITICAL: Check if content already has LaTeX commands (from fixLatexIssues)
-                    // If it does, we should still check for remaining Unicode symbols that need conversion
-                    const hasLaTeXCommands = /\\[a-zA-Z]+/.test(mathContent);
-                    
-                    // CRITICAL: Convert superscripts FIRST before square root conversion
-                    // This prevents issues when superscripts appear inside square root expressions
-                    // Always convert superscripts even if LaTeX commands exist (they might be in different parts)
-                    mathContent = mathContent.replace(/²+/g, '^2');
-                    mathContent = mathContent.replace(/³+/g, '^3');
-                    mathContent = mathContent.replace(/⁴+/g, '^4');
-                    mathContent = mathContent.replace(/⁵+/g, '^5');
-                    mathContent = mathContent.replace(/⁶+/g, '^6');
-                    mathContent = mathContent.replace(/⁷+/g, '^7');
-                    mathContent = mathContent.replace(/⁸+/g, '^8');
-                    mathContent = mathContent.replace(/⁹+/g, '^9');
-                    mathContent = mathContent.replace(/⁰+/g, '^0');
-                    mathContent = mathContent.replace(/¹+/g, '^1');
+            // Check for mathematical patterns: multiple terms that look like math (e.g., 2a, ab, x2)
+            // But exclude simple single letters/numbers and prose-like patterns
+            const isMathematicalTerm = hasCoefficientNotation || 
+                (trimmedContent.length > 1 && /^[a-zA-Z0-9]+$/.test(trimmedContent) && 
+                 (/\d/.test(trimmedContent) && /[a-zA-Z]/.test(trimmedContent))); // Has both digits and letters
 
-                    // Only do full Unicode conversion if content doesn't already have LaTeX commands
-                    // This prevents double conversion if fixLatexIssues already processed it
-                    if (!hasLaTeXCommands) {
-                        // Convert Unicode square root: √(expr) -> \sqrt{expr} or √123 -> \sqrt{123}
-                        // Use a more robust regex that handles nested parentheses and Unicode characters
-                        // Match √( followed by content that may include parentheses, then closing )
-                        mathContent = mathContent.replace(/√\(((?:[^()]|\([^()]*\))+)\)/g, '\\sqrt{$1}');
-                        mathContent = mathContent.replace(/√(\d+)/g, '\\sqrt{$1}');
-                        mathContent = mathContent.replace(/√([a-zA-Z]+)/g, '\\sqrt{$1}');
+            // Check if it's a simple single number or letter (should stay as code unless it has math context)
+            const isSimpleNumber = /^-?\d+$/.test(trimmedContent);
+            const isSimpleLetter = /^[a-zA-Z]$/.test(trimmedContent);
+            const isSimpleValue = isSimpleNumber || isSimpleLetter;
 
-                        // Convert Unicode symbols - CRITICAL: use single replace and handle duplicates
-                        // Convert multiple consecutive ± to single \pm to prevent rendering duplication
-                        mathContent = mathContent.replace(/±+/g, '\\pm');
-                        mathContent = mathContent.replace(/×/g, '\\times');
-                        mathContent = mathContent.replace(/÷/g, '\\div');
-                        mathContent = mathContent.replace(/≤/g, '\\leq');
-                        mathContent = mathContent.replace(/≥/g, '\\geq');
-                        mathContent = mathContent.replace(/≈/g, '\\approx');
-                        mathContent = mathContent.replace(/∞/g, '\\infty');
-                        mathContent = mathContent.replace(/∑/g, '\\sum');
-                        mathContent = mathContent.replace(/∏/g, '\\prod');
-                        mathContent = mathContent.replace(/∫/g, '\\int');
-                    } else {
-                        // Content has LaTeX commands, but may still have Unicode symbols that weren't converted
-                        // Only convert Unicode symbols that aren't already LaTeX commands
-                        // This handles mixed content where some symbols were converted and others weren't
-                        mathContent = mathContent.replace(/(?<!\\)±+/g, '\\pm'); // Only convert ± that isn't already \pm
-                        mathContent = mathContent.replace(/(?<!\\)×/g, '\\times');
-                        mathContent = mathContent.replace(/(?<!\\)÷/g, '\\div');
-                        mathContent = mathContent.replace(/(?<!\\)≤/g, '\\leq');
-                        mathContent = mathContent.replace(/(?<!\\)≥/g, '\\geq');
-                        mathContent = mathContent.replace(/(?<!\\)≈/g, '\\approx');
-                        mathContent = mathContent.replace(/(?<!\\)∞/g, '\\infty');
-                        mathContent = mathContent.replace(/(?<!\\)∑/g, '\\sum');
-                        mathContent = mathContent.replace(/(?<!\\)∏/g, '\\prod');
-                        mathContent = mathContent.replace(/(?<!\\)∫/g, '\\int');
-                    }
+            // Simple single letters/numbers without math symbols should stay as code
+            // BUT: if it has a negative sign or is part of a math expression, render as math
+            const isSimpleVariable = !hasNegativeSign && !hasMathParentheses && 
+                /^[a-zA-Z0-9\s,]+$/.test(trimmedContent) && 
+                !hasMathSymbols && !hasLatexCommands && !isMathematicalTerm && isSimpleValue;
 
-                    if (mathContent) {
-                        try {
-                            return safeRenderKatex(mathContent, false, config.katexOptions);
-                        } catch (e) {
-                            // If math rendering fails, fall back to code
-                            return `<code class="inline-code">${content}</code>`;
-                        }
-                    }
+            // Only render as math if:
+            // 1. It has LaTeX commands (definitely math), OR
+            // 2. It has math symbols (like ²) AND operators - this is the most common case, OR
+            // 3. It has math operators/arithmetic (even without Unicode symbols), OR
+            // 4. It looks like a mathematical term (coefficient notation, etc.), OR
+            // 5. It has a negative sign or math parentheses (mathematical context), OR
+            // 6. It has variable expressions with superscripts and operators (e.g., ax² + bx + c = 0), OR
+            // 7. It looks like an equation (has = with math-like content on both sides)
+            
+            // CRITICAL: If content has superscripts (²³⁴⁵⁶⁷⁸⁹⁰¹) AND operators, it's definitely math
+            // This catches expressions like "ax² + bx + c = 0" which should always be math
+            const hasSuperscripts = /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent);
+            const definitelyMathWithSuperscripts = hasSuperscripts && hasMathOperators;
+            
+            // If it has math symbols AND operators, it's definitely math (unless it's a simple variable)
+            const definitelyMath = hasMathSymbols && hasMathOperators && !isSimpleVariable;
+            
+            // More aggressive: if it has operators and contains variables/numbers/math symbols, it's probably math
+            // This catches cases like "x = 1/2" or "a = 2" that might otherwise be missed
+            const hasMathLikeContent = /[a-zA-Z]/.test(trimmedContent) && /\d/.test(trimmedContent);
+            const probablyMath = hasMathOperators && (hasMathLikeContent || hasMathSymbols || hasSuperscripts) && !isSimpleVariable;
+            
+            const shouldRenderAsMath = hasLatexCommands || 
+                definitelyMathWithSuperscripts ||
+                definitelyMath ||
+                probablyMath ||
+                (hasMathSymbols && (hasMathOperators || hasArithmetic) && !isSimpleVariable) ||
+                ((hasMathOperators || hasArithmetic || hasNegativeSign || hasMathParentheses) && !isSimpleVariable) ||
+                isMathematicalTerm ||
+                (hasVariableExpression && !isSimpleVariable) ||
+                (looksLikeEquation && !isSimpleVariable);
+
+            if (shouldRenderAsMath) {
+                // DEBUG: Log detection
+                console.log('[LatexRenderer] Detected math in backticks:', {
+                    original: content,
+                    trimmed: trimmedContent,
+                    hasSuperscripts,
+                    hasMathOperators,
+                    hasMathSymbols,
+                    definitelyMathWithSuperscripts,
+                    definitelyMath,
+                    probablyMath
+                });
+                
+                // Content inside backticks may not have been processed by fixLatexIssues
+                // So we need to convert Unicode to LaTeX, but be careful to avoid double conversion
+                let mathContent = content.replace(/\$/g, '').trim();
+
+                // CRITICAL: Check if content already has LaTeX commands (from fixLatexIssues)
+                // If it does, we should still check for remaining Unicode symbols that need conversion
+                const hasLaTeXCommands = /\\[a-zA-Z]+/.test(mathContent);
+                
+                // CRITICAL: Convert superscripts FIRST before square root conversion
+                // This prevents issues when superscripts appear inside square root expressions
+                // Always convert superscripts even if LaTeX commands exist (they might be in different parts)
+                // Use braces for better LaTeX compatibility: b² -> b^{2} instead of b^2
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])²+/g, '$1^{2}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])³+/g, '$1^{3}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁴+/g, '$1^{4}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁵+/g, '$1^{5}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁶+/g, '$1^{6}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁷+/g, '$1^{7}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁸+/g, '$1^{8}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁹+/g, '$1^{9}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])⁰+/g, '$1^{0}');
+                mathContent = mathContent.replace(/([a-zA-Z0-9\)\]])¹+/g, '$1^{1}');
+                // Handle standalone superscripts (at start of expression or after operators)
+                mathContent = mathContent.replace(/^²+/g, '^{2}');
+                mathContent = mathContent.replace(/^³+/g, '^{3}');
+                mathContent = mathContent.replace(/^⁴+/g, '^{4}');
+                mathContent = mathContent.replace(/^⁵+/g, '^{5}');
+                mathContent = mathContent.replace(/^⁶+/g, '^{6}');
+                mathContent = mathContent.replace(/^⁷+/g, '^{7}');
+                mathContent = mathContent.replace(/^⁸+/g, '^{8}');
+                mathContent = mathContent.replace(/^⁹+/g, '^{9}');
+                mathContent = mathContent.replace(/^⁰+/g, '^{0}');
+                mathContent = mathContent.replace(/^¹+/g, '^{1}');
+
+                // Convert Unicode square roots with proper nested parentheses handling
+                // This must be done regardless of whether LaTeX commands exist, as content may have mixed Unicode and LaTeX
+                mathContent = convertSquareRoots(mathContent);
+
+                // Only do full Unicode conversion if content doesn't already have LaTeX commands
+                // This prevents double conversion if fixLatexIssues already processed it
+                if (!hasLaTeXCommands) {
+                    // Convert Unicode symbols - CRITICAL: use single replace and handle duplicates
+                    // Convert multiple consecutive ± to single \pm to prevent rendering duplication
+                    mathContent = mathContent.replace(/±+/g, '\\pm');
+                    mathContent = mathContent.replace(/×/g, '\\times');
+                    mathContent = mathContent.replace(/÷/g, '\\div');
+                    mathContent = mathContent.replace(/≤/g, '\\leq');
+                    mathContent = mathContent.replace(/≥/g, '\\geq');
+                    mathContent = mathContent.replace(/≈/g, '\\approx');
+                    mathContent = mathContent.replace(/∞/g, '\\infty');
+                    mathContent = mathContent.replace(/∑/g, '\\sum');
+                    mathContent = mathContent.replace(/∏/g, '\\prod');
+                    mathContent = mathContent.replace(/∫/g, '\\int');
+                } else {
+                    // Content has LaTeX commands, but may still have Unicode symbols that weren't converted
+                    // Only convert Unicode symbols that aren't already LaTeX commands
+                    // This handles mixed content where some symbols were converted and others weren't
+                    mathContent = mathContent.replace(/(?<!\\)±+/g, '\\pm'); // Only convert ± that isn't already \pm
+                    mathContent = mathContent.replace(/(?<!\\)×/g, '\\times');
+                    mathContent = mathContent.replace(/(?<!\\)÷/g, '\\div');
+                    mathContent = mathContent.replace(/(?<!\\)≤/g, '\\leq');
+                    mathContent = mathContent.replace(/(?<!\\)≥/g, '\\geq');
+                    mathContent = mathContent.replace(/(?<!\\)≈/g, '\\approx');
+                    mathContent = mathContent.replace(/(?<!\\)∞/g, '\\infty');
+                    mathContent = mathContent.replace(/(?<!\\)∑/g, '\\sum');
+                    mathContent = mathContent.replace(/(?<!\\)∏/g, '\\prod');
+                    mathContent = mathContent.replace(/(?<!\\)∫/g, '\\int');
                 }
 
-                // Otherwise, render as regular inline code
-                return `<code class="inline-code">${content}</code>`;
-            });
-        }
+                if (mathContent) {
+                    try {
+                        const rendered = safeRenderKatex(mathContent, false, config.katexOptions);
+                        console.log('[LatexRenderer] Successfully rendered math:', {
+                            original: content,
+                            converted: mathContent,
+                            rendered: rendered.substring(0, 100) + '...'
+                        });
+                        return rendered;
+                    } catch (e) {
+                        // If math rendering fails, fall back to code
+                        console.error('[LatexRenderer] Math rendering failed:', {
+                            original: content,
+                            converted: mathContent,
+                            error: e
+                        });
+                        return `<code class="inline-code">${content}</code>`;
+                    }
+                } else {
+                    console.warn('[LatexRenderer] mathContent is empty after processing, falling back to code:', {
+                        original: content,
+                        trimmed: trimmedContent
+                    });
+                    return `<code class="inline-code">${content}</code>`;
+                }
+            }
+
+            // Otherwise, render as regular inline code
+            // DEBUG: Log when math is NOT detected
+            if (hasMathOperators || hasMathSymbols || hasSuperscripts) {
+                console.warn('[LatexRenderer] Math-like content NOT detected as math:', {
+                    original: content,
+                    trimmed: trimmedContent,
+                    hasSuperscripts,
+                    hasMathOperators,
+                    hasMathSymbols,
+                    hasMathLikeContent,
+                    isSimpleVariable,
+                    shouldRenderAsMath
+                });
+            }
+            return `<code class="inline-code">${content}</code>`;
+        });
 
         // Horizontal rules (if enabled)
         // NOTE: Horizontal rules are now processed earlier (Stage 2.5) before other markdown processing

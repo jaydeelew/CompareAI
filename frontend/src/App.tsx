@@ -3700,7 +3700,7 @@ function AppContent() {
             </ErrorBoundary>
 
             {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
-            {!isAuthenticated && (usageCount > 0 || usageCount >= ANONYMOUS_DAILY_LIMIT || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
+            {!authLoading && !isAuthenticated && (usageCount > 0 || usageCount >= ANONYMOUS_DAILY_LIMIT || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
               <div className="usage-tracking-banner" style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
