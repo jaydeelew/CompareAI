@@ -145,6 +145,7 @@ function AppContent() {
 
   // State not covered by hooks (declare before callbacks that use them)
   const selectedModelsGridRef = useRef<HTMLDivElement>(null);
+  const scrolledToTopRef = useRef<Set<string>>(new Set()); // Track which model cards have been scrolled to top
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -1352,6 +1353,32 @@ function AppContent() {
     }
   }, [user?.is_verified, error]);
 
+  // Scroll individual model result cards to top when they finish formatting (initial comparison only)
+  useEffect(() => {
+    if (isFollowUpMode) return; // Only for initial comparison, not follow-ups
+    
+    // Check each model's tab state
+    Object.entries(activeResultTabs).forEach(([modelId, tab]) => {
+      // If this model is on FORMATTED tab and we haven't scrolled it yet
+      // Also verify that a conversation exists for this model
+      if (tab === RESULT_TAB.FORMATTED && 
+          !scrolledToTopRef.current.has(modelId) &&
+          conversations.some(conv => conv.modelId === modelId)) {
+        // Mark as scrolled to avoid duplicate scrolling
+        scrolledToTopRef.current.add(modelId);
+        
+        // Wait for LatexRenderer to finish rendering, then scroll this card's conversation content to top
+        setTimeout(() => {
+          const safeId = getSafeId(modelId);
+          const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+          if (conversationContent) {
+            conversationContent.scrollTop = 0;
+          }
+        }, 200); // Delay to allow LatexRenderer to finish rendering
+      }
+    });
+  }, [activeResultTabs, isFollowUpMode, conversations]);
+
   // Scroll to results section when results are loaded (only once per comparison)
   useEffect(() => {
     if (response && !isFollowUpMode && !hasScrolledToResultsRef.current) {
@@ -2511,6 +2538,7 @@ function AppContent() {
     setProcessingTime(null);
     userCancelledRef.current = false;
     hasScrolledToResultsRef.current = false; // Reset scroll tracking for new comparison
+    scrolledToTopRef.current.clear(); // Reset per-card scroll tracking for new comparison
     autoScrollPausedRef.current.clear(); // Clear auto-scroll pause ref
     userInteractingRef.current.clear(); // Clear user interaction tracking
     lastScrollTopRef.current.clear(); // Clear scroll position tracking
