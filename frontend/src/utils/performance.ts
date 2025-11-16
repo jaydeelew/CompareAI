@@ -289,7 +289,7 @@ export function checkPerformanceBudgets(): {
     });
     
     // DOM Content Loaded
-    const domContentLoaded = nav.domContentLoadedEventEnd - nav.navigationStart;
+    const domContentLoaded = nav.domContentLoadedEventEnd - nav.fetchStart;
     metrics.push({
       name: 'DOMContentLoaded',
       value: domContentLoaded,
@@ -298,7 +298,7 @@ export function checkPerformanceBudgets(): {
     });
     
     // Load Complete
-    const loadComplete = nav.loadEventEnd - nav.navigationStart;
+    const loadComplete = nav.loadEventEnd - nav.fetchStart;
     metrics.push({
       name: 'LoadComplete',
       value: loadComplete,

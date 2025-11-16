@@ -39,7 +39,7 @@ export function useRenderPerformance(componentName: string): {
 /**
  * Hook to measure async operations
  */
-export function useAsyncPerformance<T>(
+export function useAsyncPerformance(
   operationName: string
 ): {
   measure: <R>(fn: () => Promise<R>) => Promise<R>;

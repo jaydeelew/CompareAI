@@ -237,7 +237,7 @@ export function restoreCodeBlocks(
 export function verifyCodeBlockPreservation(
   original: string,
   restored: string,
-  extraction: CodeBlockExtraction
+  _extraction: CodeBlockExtraction
 ): boolean {
   // Extract code blocks from both original and restored
   const originalExtraction = extractCodeBlocks(original);

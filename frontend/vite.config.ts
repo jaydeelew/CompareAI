@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { imagetools } from 'vite-imagetools'
@@ -19,23 +19,6 @@ export default defineConfig({
           })
         }
         return new URLSearchParams()
-      },
-      // Generate responsive images
-      extendOutputFormats: (builtins) => {
-        return {
-          ...builtins,
-          // Custom format for responsive images
-          responsive: (metadata) => {
-            return {
-              srcset: [
-                { src: metadata.src, width: 320 },
-                { src: metadata.src, width: 640 },
-                { src: metadata.src, width: 1024 },
-                { src: metadata.src, width: 1920 },
-              ],
-            }
-          },
-        }
       },
     }),
     // Bundle analyzer - generates stats.html in dist/ after build

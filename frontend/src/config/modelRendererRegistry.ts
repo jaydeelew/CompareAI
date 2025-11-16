@@ -8,11 +8,6 @@
 import type {
   ModelRendererConfig,
   DefaultRendererConfig,
-  MathDelimiterPattern,
-  PreprocessingOptions,
-  MarkdownProcessingRules,
-  KatexOptions,
-  CodeBlockPreservationSettings,
 } from '../types/rendererConfig';
 
 /**
