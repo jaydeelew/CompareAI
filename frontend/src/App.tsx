@@ -3694,6 +3694,7 @@ function AppContent() {
                   onDeleteConversation={deleteConversation}
                   getExtendedRecommendation={getExtendedRecommendation}
                   renderUsagePreview={renderUsagePreview}
+                  selectedModels={selectedModels}
                 />
               </ErrorBoundary>
             </Hero>

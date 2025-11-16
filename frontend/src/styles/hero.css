@@ -350,6 +350,28 @@
   scrollbar-width: none;
 }
 
+/* Usage Preview Container - Fixed height to prevent hero section expansion */
+.usage-preview-container {
+  height: 1.5rem;
+  min-height: 1.5rem;
+  max-height: 1.5rem;
+  display: block;
+  margin-top: 0;
+  overflow: hidden;
+  position: relative;
+  visibility: visible;
+  text-align: center;
+}
+
+/* Ensure usage preview content fits within container and doesn't cause expansion */
+.usage-preview-container > div {
+  margin-top: 0 !important;
+  line-height: 1.2;
+  font-size: 0.825rem;
+  display: inline-block;
+  max-width: 100%;
+}
+
 .textarea-actions {
   position: absolute;
   right: 16px;
@@ -718,6 +740,20 @@
 
   .note-content span {
     font-size: 0.8rem;
+  }
+
+  /* Usage preview container - maintain fixed height on mobile */
+  .usage-preview-container {
+    height: 1.5rem;
+    min-height: 1.5rem;
+    max-height: 1.5rem;
+  }
+
+  /* Extended mode usage preview may stack, but container height stays fixed */
+  .usage-preview-container .usage-preview-extended {
+    display: inline-block;
+    max-height: 1.5rem;
+    overflow: hidden;
   }
 }
 

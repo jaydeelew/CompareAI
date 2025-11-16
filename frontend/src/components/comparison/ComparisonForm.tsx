@@ -45,6 +45,9 @@ interface ComparisonFormProps {
   // Utilities
   getExtendedRecommendation: (input: string) => boolean;
   renderUsagePreview: () => React.ReactNode;
+  
+  // Model selection
+  selectedModels: string[];
 }
 
 /**
@@ -88,6 +91,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
   onDeleteConversation,
   getExtendedRecommendation,
   renderUsagePreview,
+  selectedModels,
 }) => {
   const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
   
@@ -382,7 +386,9 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       </div>
 
       {/* Usage Preview - Regular Mode */}
-      {!isFollowUpMode && input.trim() && renderUsagePreview()}
+      <div className="usage-preview-container">
+        {!isFollowUpMode && (input.trim() || selectedModels.length > 0) && renderUsagePreview()}
+      </div>
 
       {/* Context Warning & Usage Preview - Follow-up Mode */}
       {isFollowUpMode && conversations.length > 0 && (() => {
