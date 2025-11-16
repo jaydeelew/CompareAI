@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useCallback } from 'react';
+import React, { memo, useEffect, useCallback } from 'react';
 import type { User } from '../../types';
 import type { ConversationSummary, ModelConversation } from '../../types';
 import { truncatePrompt, formatDate } from '../../utils';
@@ -459,19 +459,21 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
 
         {/* History List */}
         {showHistoryDropdown && (() => {
-          const shouldHideScrollbar = historyLimit <= 3;
+          // Check if notification should be shown
+          const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+          const tierLimit = getConversationLimit(userTier);
+          const shouldShowNotification = (userTier === 'anonymous' || userTier === 'free') && 
+                                        conversationHistory.length >= tierLimit;
+          
+          // Allow scrolling when notification is present to ensure message is always visible
+          const shouldHideScrollbar = historyLimit <= 3 && !shouldShowNotification;
           
           // Calculate max height based on user tier
           // Each entry: 1rem top padding (16px) + content (~23px prompt + 8px margin + ~15px meta) + 1rem bottom padding (16px) ≈ 78px
           // Plus borders between items (1px each)
-          // Notification height: ~50px (margin-top 8px + padding 16px + content ~20px + padding 8px)
+          // Notification height: ~70px (margin-top 8px + padding-top 8px + 2 lines of text ~41px + padding-bottom 8px + some buffer)
           const getMaxHeight = () => {
-            // Check if notification should be shown
-            const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-            const tierLimit = getConversationLimit(userTier);
-            const shouldShowNotification = (userTier === 'anonymous' || userTier === 'free') && 
-                                          conversationHistory.length >= tierLimit;
-            const notificationHeight = shouldShowNotification ? 50 : 0;
+            const notificationHeight = shouldShowNotification ? 70 : 0;
             
             if (historyLimit === 2) {
               return `${165 + notificationHeight}px`; // Height for 2 entries + notification if present
