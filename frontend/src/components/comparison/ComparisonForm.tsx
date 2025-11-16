@@ -94,125 +94,166 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
   selectedModels,
 }) => {
   const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-  const defaultHeightRef = useRef<number | null>(null);
-  const isUserResizedRef = useRef<boolean>(false);
   
-  // Helper function to center cursor vertically when at default size
-  const centerCursorVertically = useCallback(() => {
+  // Prevent text from scrolling into button area (ChatGPT-style)
+  // Key insight: When scrolling, the bottom of visible TEXT should stop at the top of padding where buttons are
+  // scrollHeight includes padding, clientHeight includes padding (box-sizing: border-box)
+  // We want: bottom of visible text = top of padding area
+  // Formula: scrollTop + (clientHeight - paddingBottom) = scrollHeight - paddingBottom
+  // Therefore: maxScrollTop = scrollHeight - clientHeight
+  // But this shows padding. To prevent text in padding: maxScrollTop = scrollHeight - clientHeight - paddingBottom
+  const enforceScrollLimit = useCallback(() => {
     if (!textareaRef.current) return;
     
     const textarea = textareaRef.current;
     
-    // Only apply auto-scroll if textarea is at default size
-    if (isUserResizedRef.current || defaultHeightRef.current === null) return;
-    
-    // Check if still at default height (with tolerance)
-    const tolerance = 2;
-    const isAtDefault = Math.abs(textarea.offsetHeight - defaultHeightRef.current) <= tolerance;
-    if (!isAtDefault) return;
-    
-    // Get cursor position
-    const cursorPosition = textarea.selectionStart;
-    if (cursorPosition === null) return;
-    
-    // Create a hidden div with identical styling to measure cursor position
-    const measureDiv = document.createElement('div');
-    const computedStyle = window.getComputedStyle(textarea);
-    measureDiv.style.position = 'absolute';
-    measureDiv.style.visibility = 'hidden';
-    measureDiv.style.whiteSpace = 'pre-wrap';
-    measureDiv.style.wordWrap = 'break-word';
-    measureDiv.style.width = `${textarea.offsetWidth}px`;
-    measureDiv.style.padding = computedStyle.padding;
-    measureDiv.style.border = computedStyle.border;
-    measureDiv.style.fontSize = computedStyle.fontSize;
-    measureDiv.style.fontFamily = computedStyle.fontFamily;
-    measureDiv.style.fontWeight = computedStyle.fontWeight;
-    measureDiv.style.lineHeight = computedStyle.lineHeight;
-    measureDiv.style.letterSpacing = computedStyle.letterSpacing;
-    measureDiv.style.boxSizing = computedStyle.boxSizing;
-    
-    // Get text up to cursor position (use textarea value to avoid stale closure)
-    const textBeforeCursor = textarea.value.substring(0, cursorPosition);
-    measureDiv.textContent = textBeforeCursor;
-    
-    // Temporarily add to DOM to measure
-    document.body.appendChild(measureDiv);
-    const cursorTop = measureDiv.offsetHeight;
-    document.body.removeChild(measureDiv);
-    
-    // Calculate the center of the visible textarea
-    const textareaCenter = textarea.offsetHeight / 2;
-    
-    // Calculate desired scroll position to center the cursor
-    const desiredScrollTop = cursorTop - textareaCenter;
-    
-    // Apply scroll, but ensure we don't scroll past the beginning or end
-    const maxScrollTop = Math.max(0, textarea.scrollHeight - textarea.offsetHeight);
-    const clampedScrollTop = Math.max(0, Math.min(desiredScrollTop, maxScrollTop));
-    
-    textarea.scrollTop = clampedScrollTop;
-  }, []);
-  
-  // Track default height and detect user resizing
-  useEffect(() => {
-    if (!textareaRef.current) return;
-    
-    const textarea = textareaRef.current;
-    
-    // Store default height on first render
-    if (defaultHeightRef.current === null) {
-      defaultHeightRef.current = textarea.offsetHeight;
+    // Only enforce if textarea is scrollable
+    if (textarea.scrollHeight <= textarea.clientHeight) {
+      return;
     }
     
-    // Detect if user has manually resized the textarea
-    const handleResize = () => {
-      if (defaultHeightRef.current !== null) {
-        // Allow small tolerance for rounding differences
-        const tolerance = 2;
-        const isAtDefault = Math.abs(textarea.offsetHeight - defaultHeightRef.current) <= tolerance;
-        isUserResizedRef.current = !isAtDefault;
-      }
-    };
+    const computedStyle = window.getComputedStyle(textarea);
+    const paddingBottom = parseFloat(computedStyle.paddingBottom);
     
-    // Use ResizeObserver to detect manual resizing
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(textarea);
+    // Calculate max scroll position that keeps text above padding area
+    // When scrolled to this position, bottom of visible text aligns with top of padding
+    const maxScrollTop = Math.max(0, textarea.scrollHeight - textarea.clientHeight - paddingBottom);
     
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
-  
-  // Auto-scroll to center cursor vertically when at default size (on input change)
-  useEffect(() => {
-    centerCursorVertically();
-  }, [input, centerCursorVertically]);
-  
-  // Auto-scroll to center cursor on selection change (cursor movement)
-  useEffect(() => {
+    // Enforce scroll limit - prevent text from scrolling into button area
+    if (textarea.scrollTop > maxScrollTop) {
+      textarea.scrollTop = maxScrollTop;
+    }
+  }, [textareaRef]);
+
+  // Auto-expand textarea based on content (like ChatGPT)
+  // Scrollable after 5 lines (6th line triggers scrolling) - text never reaches buttons
+  const adjustTextareaHeight = useCallback(() => {
     if (!textareaRef.current) return;
     
     const textarea = textareaRef.current;
     
-    const handleSelectionChange = () => {
-      // Use requestAnimationFrame to ensure DOM is updated
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    
+    // Calculate height for exactly 5 lines of text
+    // The textarea has bottom padding (60px) where buttons are positioned
+    const computedStyle = window.getComputedStyle(textarea);
+    const fontSize = parseFloat(computedStyle.fontSize);
+    const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.6;
+    const paddingTop = parseFloat(computedStyle.paddingTop);
+    const paddingBottom = parseFloat(computedStyle.paddingBottom);
+    
+    // Calculate height for exactly 5 lines of text content
+    const lineHeightPx = lineHeight;
+    const fiveLinesHeight = lineHeightPx * 5; // Height for 5 lines of text
+    
+    // maxHeight = 5 lines + top padding + bottom padding (where buttons are)
+    // This ensures exactly 5 lines are visible, and buttons are in the padding area below
+    const maxHeight = fiveLinesHeight + paddingTop + paddingBottom;
+    
+    const minHeight = lineHeightPx + paddingTop + paddingBottom; // Minimum height for single line
+    const scrollHeight = textarea.scrollHeight;
+    
+    // Set height to maxHeight (5 lines) when content exceeds it, otherwise grow with content
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${newHeight}px`;
+    
+    // Enable scrolling when 6th line is needed (content exceeds 5 lines)
+    if (scrollHeight > maxHeight) {
+      textarea.style.overflowY = 'auto';
+      // Enforce scroll limit to prevent text from reaching buttons
       requestAnimationFrame(() => {
-        centerCursorVertically();
+        enforceScrollLimit();
+      });
+    } else {
+      textarea.style.overflowY = 'hidden';
+      // Reset scroll position when not scrolling
+      textarea.scrollTop = 0;
+    }
+  }, [enforceScrollLimit]);
+  
+  // Adjust height when input changes
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      adjustTextareaHeight();
+    });
+  }, [input, adjustTextareaHeight]);
+  
+  // Adjust height on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      requestAnimationFrame(() => {
+        adjustTextareaHeight();
       });
     };
     
-    // Listen for selection changes
-    textarea.addEventListener('keyup', handleSelectionChange);
-    textarea.addEventListener('click', handleSelectionChange);
-    textarea.addEventListener('select', handleSelectionChange);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [adjustTextareaHeight]);
+  
+  // Initial height adjustment on mount
+  useEffect(() => {
+    // Small delay to ensure textarea is rendered
+    const timer = setTimeout(() => {
+      adjustTextareaHeight();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [adjustTextareaHeight]);
+
+  // Add scroll handler to prevent text from scrolling into button area
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Handle scroll events to enforce limit
+    const scrollHandler = () => {
+      enforceScrollLimit();
+    };
+    
+    // Handle input events to enforce limit after content changes
+    const inputHandler = () => {
+      requestAnimationFrame(() => {
+        enforceScrollLimit();
+      });
+    };
+
+    textarea.addEventListener('scroll', scrollHandler, { passive: true });
+    textarea.addEventListener('input', inputHandler);
+    textarea.addEventListener('wheel', scrollHandler, { passive: true });
+
+    return () => {
+      textarea.removeEventListener('scroll', scrollHandler);
+      textarea.removeEventListener('input', inputHandler);
+      textarea.removeEventListener('wheel', scrollHandler);
+    };
+  }, [enforceScrollLimit]);
+  
+  // Continuous enforcement to catch browser's auto-scroll-to-cursor behavior
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    
+    let animationFrameId: number | null = null;
+    let isRunning = true;
+    
+    const continuousEnforce = () => {
+      if (!isRunning || !textareaRef.current) {
+        return;
+      }
+      
+      enforceScrollLimit();
+      animationFrameId = requestAnimationFrame(continuousEnforce);
+    };
+    
+    animationFrameId = requestAnimationFrame(continuousEnforce);
     
     return () => {
-      textarea.removeEventListener('keyup', handleSelectionChange);
-      textarea.removeEventListener('click', handleSelectionChange);
-      textarea.removeEventListener('select', handleSelectionChange);
+      isRunning = false;
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, [centerCursorVertically]);
+  }, [enforceScrollLimit]);
   
   return (
     <>
@@ -275,8 +316,47 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       </div>
 
       <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
-        {/* History Toggle Button */}
-        <div className="history-toggle-wrapper">
+        {/* Wrapper for textarea and buttons to keep buttons positioned relative to textarea */}
+        <div className="textarea-wrapper">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // adjustTextareaHeight will be called via useEffect
+              // Enforce scroll limit after browser's auto-scroll-to-cursor completes
+              requestAnimationFrame(() => {
+                enforceScrollLimit();
+                // Double-check after another frame to catch delayed scroll
+                requestAnimationFrame(() => {
+                  enforceScrollLimit();
+                });
+              });
+            }}
+            onScroll={() => {
+              // Immediately enforce on scroll events
+              enforceScrollLimit();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (isFollowUpMode) {
+                  onContinueConversation();
+                } else {
+                  onSubmitClick();
+                }
+              }
+            }}
+            placeholder={isFollowUpMode
+              ? "Enter your follow-up here"
+              : "Let's get started..."
+            }
+            className="hero-input-textarea"
+            rows={1}
+            data-testid="comparison-input-textarea"
+          />
+
+          {/* History Toggle Button - positioned on left side */}
           <button
             type="button"
             className={`history-toggle-button ${showHistoryDropdown ? 'active' : ''}`}
@@ -287,30 +367,95 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
               <path d="M6 9l6 6 6-6" />
             </svg>
           </button>
-        </div>
 
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              if (isFollowUpMode) {
-                onContinueConversation();
-              } else {
-                onSubmitClick();
-              }
-            }
-          }}
-          placeholder={isFollowUpMode
-            ? "Enter your follow-up here"
-            : "Let's get started..."
-          }
-          className="hero-input-textarea"
-          rows={1}
-          data-testid="comparison-input-textarea"
-        />
+          <div className="textarea-actions">
+            {(() => {
+              const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+              const regularLimit = getDailyLimit(userTier);
+              const extendedLimit = getExtendedLimit(userTier);
+
+              const currentRegularUsage = isAuthenticated && user
+                ? user.daily_usage_count
+                : usageCount;
+              const currentExtendedUsage = isAuthenticated && user
+                ? user.daily_extended_usage
+                : extendedUsageCount;
+
+              const regularRemaining = regularLimit - currentRegularUsage;
+              const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
+              const hasNoRemainingRegularResponses = regularRemaining <= 0;
+
+              const handleClick = (e: React.MouseEvent) => {
+                if ((hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isExtendedMode) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                onExtendedModeToggle();
+              };
+
+              const getTitle = () => {
+                if (isExtendedMode) {
+                  return 'Disable Extended mode';
+                }
+                if (hasNoRemainingRegularResponses) {
+                  return `No remaining model responses today.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`;
+                }
+                if (hasReachedExtendedLimit) {
+                  return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
+                }
+                
+                let tierDisplayName: string;
+                if (userTier.endsWith('_plus')) {
+                  const baseTier = userTier.replace('_plus', '');
+                  tierDisplayName = baseTier.charAt(0).toUpperCase() + baseTier.slice(1) + '+';
+                } else {
+                  tierDisplayName = userTier.split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                }
+                return `${tierDisplayName} tier users get ${extendedLimit} extended interactions`;
+              };
+
+              return (
+                <button
+                  className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
+                  onClick={handleClick}
+                  disabled={isLoading}
+                  style={(hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isLoading ? { cursor: 'not-allowed' } : undefined}
+                  title={getTitle()}
+                >
+                  E
+                </button>
+              );
+            })()}
+            <button
+              onClick={isFollowUpMode ? onContinueConversation : onSubmitClick}
+              disabled={(() => {
+                const usesExtendedTier = isExtendedMode;
+                const tierLimit = usesExtendedTier ? 15000 : 5000;
+                const exceedsLimit = input.length > tierLimit;
+
+                return isLoading ||
+                  exceedsLimit ||
+                  (isFollowUpMode && messageCount >= 24);
+              })()}
+              className={`textarea-icon-button submit-button ${!isFollowUpMode && !input.trim() ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
+              title={(() => {
+                if (messageCount >= 24) return 'Maximum conversation length reached - start a new comparison';
+                const usesExtendedTier = isExtendedMode;
+                const tierLimit = usesExtendedTier ? 15000 : 5000;
+                if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
+                return isFollowUpMode ? 'Continue conversation' : 'Compare models';
+              })()}
+              data-testid="comparison-submit-button"
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
         {/* History List */}
         {showHistoryDropdown && (() => {
@@ -414,94 +559,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
             </div>
           );
         })()}
-
-        <div className="textarea-actions">
-          {(() => {
-            const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-            const regularLimit = getDailyLimit(userTier);
-            const extendedLimit = getExtendedLimit(userTier);
-
-            const currentRegularUsage = isAuthenticated && user
-              ? user.daily_usage_count
-              : usageCount;
-            const currentExtendedUsage = isAuthenticated && user
-              ? user.daily_extended_usage
-              : extendedUsageCount;
-
-            const regularRemaining = regularLimit - currentRegularUsage;
-            const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
-            const hasNoRemainingRegularResponses = regularRemaining <= 0;
-
-            const handleClick = (e: React.MouseEvent) => {
-              if ((hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isExtendedMode) {
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-              }
-              onExtendedModeToggle();
-            };
-
-            const getTitle = () => {
-              if (isExtendedMode) {
-                return 'Disable Extended mode';
-              }
-              if (hasNoRemainingRegularResponses) {
-                return `No remaining model responses today.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`;
-              }
-              if (hasReachedExtendedLimit) {
-                return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
-              }
-              
-              let tierDisplayName: string;
-              if (userTier.endsWith('_plus')) {
-                const baseTier = userTier.replace('_plus', '');
-                tierDisplayName = baseTier.charAt(0).toUpperCase() + baseTier.slice(1) + '+';
-              } else {
-                tierDisplayName = userTier.split('_')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ');
-              }
-              return `${tierDisplayName} tier users get ${extendedLimit} extended interactions`;
-            };
-
-            return (
-              <button
-                className={`extended-mode-button ${isExtendedMode ? 'active' : ''} ${getExtendedRecommendation(input) ? 'recommended' : ''}`}
-                onClick={handleClick}
-                disabled={isLoading}
-                style={(hasReachedExtendedLimit || hasNoRemainingRegularResponses) && !isLoading ? { cursor: 'not-allowed' } : undefined}
-                title={getTitle()}
-              >
-                E
-              </button>
-            );
-          })()}
-          <button
-            onClick={isFollowUpMode ? onContinueConversation : onSubmitClick}
-            disabled={(() => {
-              const usesExtendedTier = isExtendedMode;
-              const tierLimit = usesExtendedTier ? 15000 : 5000;
-              const exceedsLimit = input.length > tierLimit;
-
-              return isLoading ||
-                exceedsLimit ||
-                (isFollowUpMode && messageCount >= 24);
-            })()}
-            className={`textarea-icon-button submit-button ${!isFollowUpMode && !input.trim() ? 'not-ready' : ''} ${isAnimatingButton ? 'animate-pulse-glow' : ''}`}
-            title={(() => {
-              if (messageCount >= 24) return 'Maximum conversation length reached - start a new comparison';
-              const usesExtendedTier = isExtendedMode;
-              const tierLimit = usesExtendedTier ? 15000 : 5000;
-              if (input.length > tierLimit) return `Input exceeds ${usesExtendedTier ? 'Extended' : 'Standard'} tier limit - reduce length or enable Extended mode`;
-              return isFollowUpMode ? 'Continue conversation' : 'Compare models';
-            })()}
-            data-testid="comparison-submit-button"
-          >
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
       </div>
 
       {/* Usage Preview - Regular Mode */}

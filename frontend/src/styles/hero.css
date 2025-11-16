@@ -293,23 +293,32 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  /* Ensure wrapper contains textarea and buttons for proper positioning */
 }
 
 .textarea-container:has(.history-inline-list) .hero-input-textarea {
   border-radius: 1.5rem 1.5rem 0 0;
   border-bottom: none;
+  /* Ensure bottom padding prevents text from scrolling into button area */
+  /* Buttons are 44px tall + 8px bottom offset = 52px from bottom */
+  /* Use 4rem (64px) to ensure text stops scrolling before reaching buttons */
+  padding-bottom: 4rem !important;
+  /* Ensure content doesn't overflow into button area */
+  box-sizing: border-box;
 }
 
 .hero-input-textarea {
   width: 100%;
-  padding: 1.2rem 7.5rem 1.2rem 3.5rem;
+  /* Bottom padding: 60px provides space for buttons (44px tall + 8px offset + 8px margin) */
+  /* Buttons are positioned inside this padded area, so text will never scroll into button area */
+  padding: 0.75rem 1.5rem 60px 2.5rem;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.5rem;
   font-size: 1.1rem;
   font-family: inherit;
   line-height: 1.6;
-  resize: vertical;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  resize: none; /* Disable manual resize for auto-expand behavior */
+  transition: height 0.2s ease-out, all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   color: var(--text-primary);
@@ -317,9 +326,12 @@
     0 8px 32px rgba(0, 0, 0, 0.12),
     0 4px 16px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  min-height: calc(1.1rem * 1.6 + 2.4rem + 4px);
+  min-height: calc(1.1rem * 1.6 + 1.5rem + 4px);
   font-weight: 500;
-  overflow: auto;
+  overflow-y: hidden; /* Hide vertical scrollbar, will show if content exceeds max height */
+  overflow-x: hidden;
+  vertical-align: top; /* Ensure text starts at top */
+  box-sizing: border-box; /* Ensure padding is included in height calculation */
 }
 
 .hero-input-textarea:focus {
@@ -331,7 +343,7 @@
     0 8px 24px rgba(0, 0, 0, 0.12),
     0 0 0 6px rgba(255, 255, 255, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transform: translateY(-4px) scale(1.01);
+  /* Removed transform to avoid interfering with auto-expand */
 }
 
 .hero-input-textarea::placeholder {
@@ -375,8 +387,8 @@
 .textarea-actions {
   position: absolute;
   right: 16px;
-  /* Position from top instead of bottom to keep buttons stable when history dropdown toggles */
-  top: calc(1.2rem + (1.1rem * 1.6) / 2 - 22px);
+  /* Position at bottom of textarea, stays at bottom as textarea expands */
+  bottom: 8px;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -390,9 +402,25 @@
   will-change: auto;
 }
 
+/* When history dropdown is visible, ensure buttons stay positioned correctly */
+/* Since textarea and buttons are siblings, buttons positioned at bottom: 8px are relative to container */
+/* When dropdown appears below textarea, container grows but buttons should stay at textarea bottom */
+/* We need to position buttons relative to textarea, not container bottom */
+/* Solution: Use a wrapper or position buttons from top. For now, ensure textarea padding prevents overlap */
+.textarea-container:has(.history-inline-list) .textarea-actions {
+  /* Keep buttons at same visual position - they should stay at textarea bottom */
+  /* The textarea has padding-bottom: 4rem (64px), buttons are 44px tall at bottom: 8px */
+  /* So buttons occupy space from 8px to 52px from textarea bottom, well within the 64px padding */
+  /* This ensures text scrolls out of view before reaching the button area */
+}
+
 /* Ensure buttons stay fixed relative to textarea wrapper, not container */
 .textarea-wrapper .textarea-actions {
   position: absolute;
+  /* Buttons are now positioned relative to textarea-wrapper, which contains the textarea */
+  /* This ensures buttons stay at textarea bottom even when history dropdown appears below */
+  bottom: 8px;
+  right: 16px;
 }
 
 .textarea-icon-button {
@@ -699,7 +727,7 @@
   }
 
   .hero-input-textarea {
-    padding: 1rem 6.5rem 1rem 1.5rem;
+    padding: 0.65rem 1rem 3.25rem 1.5rem; /* Reduced padding for more compact appearance */
     font-size: 1rem;
     min-height: auto;
     border-radius: 1.25rem;
@@ -707,8 +735,8 @@
 
   .textarea-actions {
     right: 12px;
-    /* Position from top to keep buttons stable when history dropdown toggles */
-    top: calc(1rem + (1.1rem * 1.6) / 2 - 20px);
+    /* Position at bottom of textarea, stays at bottom as textarea expands */
+    bottom: 6px;
     gap: 10px;
   }
 

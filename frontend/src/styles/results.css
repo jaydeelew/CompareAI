@@ -2252,25 +2252,19 @@ button.nav-button-primary {
 
 /* Conversation History Toggle Styles */
 .history-toggle-wrapper {
-  position: absolute;
-  left: 1rem;
-  /* Position from top: textarea top padding + half line height - half button height */
-  /* This ensures the chevron stays in the same place when dropdown toggles */
-  top: calc(1.2rem + (1.1rem * 1.6) / 2 - 12px);
-  z-index: 102;
-  pointer-events: auto;
-  /* Ensure position doesn't change when dropdown appears */
-  transition: none;
+  /* No longer used - button is now in textarea-actions */
+  display: none;
 }
 
 /* Ensure history toggle is positioned relative to textarea container */
 .textarea-wrapper .history-toggle-wrapper {
-  position: absolute;
+  display: none;
 }
 
-.history-toggle-button {
-  width: 24px;
-  height: 24px;
+/* Position history toggle button relative to textarea-wrapper */
+.textarea-wrapper .history-toggle-button {
+  width: 44px;
+  height: 44px;
   background-color: transparent;
   border: none;
   outline: none;
@@ -2278,11 +2272,37 @@ button.nav-button-primary {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
   color: #9ca3af;
   box-sizing: border-box;
   padding: 0;
   flex-shrink: 0;
+  /* Position on left side at same vertical level as other buttons */
+  position: absolute;
+  left: 16px;
+  bottom: 8px;
+  /* Ensure button stays stationary - no transform on button itself */
+  transform: none;
+  z-index: 1001;
+}
+
+.history-toggle-button {
+  /* Default styles - will be overridden by .textarea-wrapper .history-toggle-button */
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  color: #9ca3af;
+  box-sizing: border-box;
+  padding: 0;
+  flex-shrink: 0;
+  transform: none;
 }
 
 .history-toggle-button:focus {
@@ -2292,16 +2312,15 @@ button.nav-button-primary {
 
 .history-toggle-button:hover {
   color: #6b7280;
-  transform: translateY(1px);
+  /* No transform to prevent position shifting */
 }
 
 .history-toggle-button.active {
-  transform: rotate(180deg);
+  /* No transform on button - rotation is applied to SVG only */
 }
 
 .history-toggle-button.active:hover {
   color: #6b7280;
-  transform: rotate(180deg) translateY(1px);
 }
 
 .history-toggle-button svg {
@@ -2309,6 +2328,14 @@ button.nav-button-primary {
   height: 18px;
   stroke: currentColor;
   stroke-width: 2.5;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  /* Ensure SVG rotation doesn't affect button position */
+  transform-origin: center;
+}
+
+.history-toggle-button.active svg {
+  transform: rotate(180deg);
 }
 
 /* Inline history list that extends textarea depth */
@@ -2599,16 +2626,15 @@ button.nav-button-primary {
   }
 
   .history-toggle-wrapper {
-    /* Position from top: mobile textarea top padding (1rem) + half line height - half button height (40px) */
-    /* Center vertically in textarea and maintain spacing from placeholder */
-    top: calc(1rem + (1rem * 1.6) / 2 - 20px);
-    left: 0.75rem;
-    /* Add spacing between chevron and placeholder text */
+    /* No longer used */
+    display: none;
   }
 
   .history-toggle-button {
     width: 40px;
     height: 40px;
+    left: 12px;
+    bottom: 8px;
   }
 
   .history-toggle-button svg {

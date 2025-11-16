@@ -1462,7 +1462,7 @@ function AppContent() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (showHistoryDropdown && !target.closest('.history-toggle-wrapper') && !target.closest('.history-inline-list')) {
+      if (showHistoryDropdown && !target.closest('.history-toggle-button') && !target.closest('.history-inline-list')) {
         setShowHistoryDropdown(false);
       }
     };
