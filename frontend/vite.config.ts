@@ -1,4 +1,5 @@
-import { defineConfig } from 'vitest/config'
+/// <reference types="vitest/config" />
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { imagetools } from 'vite-imagetools'
@@ -29,7 +30,7 @@ export default defineConfig({
       brotliSize: true,
       template: 'treemap', // treemap, sunburst, network
     }),
-  ],
+  ] as any,
   cacheDir: '/tmp/vite-cache',
   server: {
     port: 5173,
