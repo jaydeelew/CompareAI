@@ -311,7 +311,7 @@
   width: 100%;
   /* Bottom padding: 60px provides space for buttons (44px tall + 8px offset + 8px margin) */
   /* Buttons are positioned inside this padded area, so text will never scroll into button area */
-  padding: 0.75rem 1.5rem 60px 2.5rem;
+  padding: 0.75rem 1.5rem 60px 1.5rem;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.5rem;
   font-size: 1.1rem;
