@@ -407,12 +407,9 @@
 /* When dropdown appears below textarea, container grows but buttons should stay at textarea bottom */
 /* We need to position buttons relative to textarea, not container bottom */
 /* Solution: Use a wrapper or position buttons from top. For now, ensure textarea padding prevents overlap */
-.textarea-container:has(.history-inline-list) .textarea-actions {
-  /* Keep buttons at same visual position - they should stay at textarea bottom */
-  /* The textarea has padding-bottom: 4rem (64px), buttons are 44px tall at bottom: 8px */
-  /* So buttons occupy space from 8px to 52px from textarea bottom, well within the 64px padding */
-  /* This ensures text scrolls out of view before reaching the button area */
-}
+/* Note: Buttons stay at textarea bottom due to textarea padding-bottom: 4rem (64px) */
+/* Buttons are 44px tall at bottom: 8px, occupying space from 8px to 52px from textarea bottom */
+/* This ensures text scrolls out of view before reaching the button area */
 
 /* Ensure buttons stay fixed relative to textarea wrapper, not container */
 .textarea-wrapper .textarea-actions {
