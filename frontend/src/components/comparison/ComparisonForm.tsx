@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useRef, useCallback } from 'react';
 import type { User } from '../../types';
 import type { ConversationSummary, ModelConversation } from '../../types';
 import { truncatePrompt, formatDate } from '../../utils';
@@ -94,6 +94,125 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
   selectedModels,
 }) => {
   const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
+  const defaultHeightRef = useRef<number | null>(null);
+  const isUserResizedRef = useRef<boolean>(false);
+  
+  // Helper function to center cursor vertically when at default size
+  const centerCursorVertically = useCallback(() => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    
+    // Only apply auto-scroll if textarea is at default size
+    if (isUserResizedRef.current || defaultHeightRef.current === null) return;
+    
+    // Check if still at default height (with tolerance)
+    const tolerance = 2;
+    const isAtDefault = Math.abs(textarea.offsetHeight - defaultHeightRef.current) <= tolerance;
+    if (!isAtDefault) return;
+    
+    // Get cursor position
+    const cursorPosition = textarea.selectionStart;
+    if (cursorPosition === null) return;
+    
+    // Create a hidden div with identical styling to measure cursor position
+    const measureDiv = document.createElement('div');
+    const computedStyle = window.getComputedStyle(textarea);
+    measureDiv.style.position = 'absolute';
+    measureDiv.style.visibility = 'hidden';
+    measureDiv.style.whiteSpace = 'pre-wrap';
+    measureDiv.style.wordWrap = 'break-word';
+    measureDiv.style.width = `${textarea.offsetWidth}px`;
+    measureDiv.style.padding = computedStyle.padding;
+    measureDiv.style.border = computedStyle.border;
+    measureDiv.style.fontSize = computedStyle.fontSize;
+    measureDiv.style.fontFamily = computedStyle.fontFamily;
+    measureDiv.style.fontWeight = computedStyle.fontWeight;
+    measureDiv.style.lineHeight = computedStyle.lineHeight;
+    measureDiv.style.letterSpacing = computedStyle.letterSpacing;
+    measureDiv.style.boxSizing = computedStyle.boxSizing;
+    
+    // Get text up to cursor position (use textarea value to avoid stale closure)
+    const textBeforeCursor = textarea.value.substring(0, cursorPosition);
+    measureDiv.textContent = textBeforeCursor;
+    
+    // Temporarily add to DOM to measure
+    document.body.appendChild(measureDiv);
+    const cursorTop = measureDiv.offsetHeight;
+    document.body.removeChild(measureDiv);
+    
+    // Calculate the center of the visible textarea
+    const textareaCenter = textarea.offsetHeight / 2;
+    
+    // Calculate desired scroll position to center the cursor
+    const desiredScrollTop = cursorTop - textareaCenter;
+    
+    // Apply scroll, but ensure we don't scroll past the beginning or end
+    const maxScrollTop = Math.max(0, textarea.scrollHeight - textarea.offsetHeight);
+    const clampedScrollTop = Math.max(0, Math.min(desiredScrollTop, maxScrollTop));
+    
+    textarea.scrollTop = clampedScrollTop;
+  }, []);
+  
+  // Track default height and detect user resizing
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    
+    // Store default height on first render
+    if (defaultHeightRef.current === null) {
+      defaultHeightRef.current = textarea.offsetHeight;
+    }
+    
+    // Detect if user has manually resized the textarea
+    const handleResize = () => {
+      if (defaultHeightRef.current !== null) {
+        // Allow small tolerance for rounding differences
+        const tolerance = 2;
+        const isAtDefault = Math.abs(textarea.offsetHeight - defaultHeightRef.current) <= tolerance;
+        isUserResizedRef.current = !isAtDefault;
+      }
+    };
+    
+    // Use ResizeObserver to detect manual resizing
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(textarea);
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+  
+  // Auto-scroll to center cursor vertically when at default size (on input change)
+  useEffect(() => {
+    centerCursorVertically();
+  }, [input, centerCursorVertically]);
+  
+  // Auto-scroll to center cursor on selection change (cursor movement)
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    
+    const handleSelectionChange = () => {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        centerCursorVertically();
+      });
+    };
+    
+    // Listen for selection changes
+    textarea.addEventListener('keyup', handleSelectionChange);
+    textarea.addEventListener('click', handleSelectionChange);
+    textarea.addEventListener('select', handleSelectionChange);
+    
+    return () => {
+      textarea.removeEventListener('keyup', handleSelectionChange);
+      textarea.removeEventListener('click', handleSelectionChange);
+      textarea.removeEventListener('select', handleSelectionChange);
+    };
+  }, [centerCursorVertically]);
   
   return (
     <>
