@@ -467,9 +467,11 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       </div>
 
       {/* Usage Preview - Regular Mode */}
-      <div className="usage-preview-container">
-        {!isFollowUpMode && (input.trim() || selectedModels.length > 0) && renderUsagePreview()}
-      </div>
+      {!isFollowUpMode && (
+        <div className="usage-preview-container">
+          {(input.trim() || selectedModels.length > 0) && renderUsagePreview()}
+        </div>
+      )}
 
       {/* Context Warning & Usage Preview - Follow-up Mode */}
       {isFollowUpMode && conversations.length > 0 && (() => {
@@ -501,7 +503,11 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
 
         return (
           <>
-            {messageCount > 0 && renderUsagePreview()}
+            {messageCount > 0 && (
+              <div className="usage-preview-container">
+                {renderUsagePreview()}
+              </div>
+            )}
 
             {warningLevel && (
               <div className={`context-warning ${warningLevel}`}>
