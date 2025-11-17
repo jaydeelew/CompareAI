@@ -2426,6 +2426,8 @@ button.nav-button-primary {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
+  box-shadow: 0 -2px 8px rgba(107, 114, 128, 0.2);
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .history-item:last-child {
@@ -2433,16 +2435,16 @@ button.nav-button-primary {
 }
 
 .history-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .history-item-active {
-  background: rgba(59, 130, 246, 0.15) !important;
+  background: rgba(249, 115, 22, 0.15) !important;
   font-weight: bold;
 }
 
 .history-item-active:hover {
-  background: rgba(59, 130, 246, 0.2) !important;
+  background: rgba(249, 115, 22, 0.2) !important;
 }
 
 .history-item-active .history-item-prompt,
@@ -2460,19 +2462,21 @@ button.nav-button-primary {
 
 .history-inline-list .history-item {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -2px 8px rgba(107, 114, 128, 0.15);
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .history-inline-list .history-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .history-inline-list .history-item-active {
-  background: rgba(59, 130, 246, 0.1) !important;
+  background: rgba(249, 115, 22, 0.12) !important;
   font-weight: bold;
 }
 
 .history-inline-list .history-item-active:hover {
-  background: rgba(59, 130, 246, 0.15) !important;
+  background: rgba(249, 115, 22, 0.16) !important;
 }
 
 .history-inline-list .history-item-active .history-item-prompt,
