@@ -112,6 +112,9 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     const paddingTop = parseFloat(computedStyle.paddingTop);
     const paddingBottom = parseFloat(computedStyle.paddingBottom);
 
+    // Get CSS min-height value to respect it (important for responsive design)
+    const cssMinHeight = parseFloat(computedStyle.minHeight) || 0;
+
     // Calculate height for exactly 5 lines of text content
     const lineHeightPx = lineHeight;
     const fiveLinesHeight = lineHeightPx * 5; // Height for 5 lines of text
@@ -120,11 +123,24 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     // This ensures exactly 5 lines are visible before scrolling starts
     const maxHeight = fiveLinesHeight + paddingTop + paddingBottom;
 
-    const minHeight = lineHeightPx + paddingTop + paddingBottom; // Minimum height for single line
+    // Use the maximum of calculated minHeight and CSS min-height to respect responsive design
+    const calculatedMinHeight = lineHeightPx + paddingTop + paddingBottom;
+    const minHeight = Math.max(calculatedMinHeight, cssMinHeight);
     const scrollHeight = textarea.scrollHeight;
 
-    // Set height to maxHeight (5 lines) when content exceeds it, otherwise grow with content
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    // When empty, use exactly the CSS min-height to match the action area height
+    const isEmpty = !input.trim();
+    let newHeight: number;
+
+    if (isEmpty) {
+      // Force empty textarea to match action area height exactly
+      newHeight = cssMinHeight;
+    } else {
+      // Set height to maxHeight (5 lines) when content exceeds it, otherwise grow with content
+      // But ensure it's at least the CSS min-height
+      newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    }
+
     textarea.style.height = `${newHeight}px`;
 
     // Enable scrolling when 6th line is needed (content exceeds 5 lines)
@@ -135,7 +151,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       // Reset scroll position when not scrolling
       textarea.scrollTop = 0;
     }
-  }, []);
+  }, [input]);
 
   // Adjust height when input changes
   useEffect(() => {
@@ -145,16 +161,25 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     });
   }, [input, adjustTextareaHeight]);
 
-  // Adjust height on window resize
+  // Adjust height on window resize - ensure it recalculates after media query changes
   useEffect(() => {
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
-      requestAnimationFrame(() => {
-        adjustTextareaHeight();
-      });
+      // Clear any pending resize handler
+      clearTimeout(resizeTimeout);
+      // Use a small delay to ensure media queries have been applied
+      resizeTimeout = setTimeout(() => {
+        requestAnimationFrame(() => {
+          adjustTextareaHeight();
+        });
+      }, 100);
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+    };
   }, [adjustTextareaHeight]);
 
   // Initial height adjustment on mount
