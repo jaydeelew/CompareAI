@@ -131,7 +131,7 @@ const looksMathematical = (content: string): boolean => {
  */
 const convertSquareRoots = (content: string): string => {
     let result = content;
-    
+
     // Function to find matching closing parenthesis for nested parentheses
     const findMatchingParen = (str: string, startPos: number): number => {
         let depth = 1;
@@ -143,59 +143,59 @@ const convertSquareRoots = (content: string): string => {
         }
         return depth === 0 ? pos - 1 : -1;
     };
-    
+
     // Convert √(expr) patterns with nested parentheses
     let searchPos = 0;
     while (searchPos < result.length) {
         const sqrtIndex = result.indexOf('√', searchPos);
         if (sqrtIndex === -1) break;
-        
+
         // Check if followed by opening parenthesis
         if (sqrtIndex + 1 < result.length && result[sqrtIndex + 1] === '(') {
             const openParenPos = sqrtIndex + 1;
             const closeParenPos = findMatchingParen(result, openParenPos);
-            
+
             if (closeParenPos !== -1) {
                 // Extract the content inside parentheses
                 const innerContent = result.substring(openParenPos + 1, closeParenPos);
                 // Replace √(innerContent) with \sqrt{innerContent}
-                result = result.substring(0, sqrtIndex) + 
-                        `\\sqrt{${innerContent}}` + 
-                        result.substring(closeParenPos + 1);
+                result = result.substring(0, sqrtIndex) +
+                    `\\sqrt{${innerContent}}` +
+                    result.substring(closeParenPos + 1);
                 searchPos = sqrtIndex + `\\sqrt{${innerContent}}`.length;
                 continue;
             }
         }
-        
+
         // Handle √ followed by digits: √123 -> \sqrt{123}
         if (sqrtIndex + 1 < result.length && /^\d+/.test(result.substring(sqrtIndex + 1))) {
             const match = result.substring(sqrtIndex + 1).match(/^\d+/);
             if (match) {
                 const num = match[0];
-                result = result.substring(0, sqrtIndex) + 
-                        `\\sqrt{${num}}` + 
-                        result.substring(sqrtIndex + 1 + num.length);
+                result = result.substring(0, sqrtIndex) +
+                    `\\sqrt{${num}}` +
+                    result.substring(sqrtIndex + 1 + num.length);
                 searchPos = sqrtIndex + `\\sqrt{${num}}`.length;
                 continue;
             }
         }
-        
+
         // Handle √ followed by letters: √abc -> \sqrt{abc}
         if (sqrtIndex + 1 < result.length && /^[a-zA-Z]+/.test(result.substring(sqrtIndex + 1))) {
             const match = result.substring(sqrtIndex + 1).match(/^[a-zA-Z]+/);
             if (match) {
                 const letters = match[0];
-                result = result.substring(0, sqrtIndex) + 
-                        `\\sqrt{${letters}}` + 
-                        result.substring(sqrtIndex + 1 + letters.length);
+                result = result.substring(0, sqrtIndex) +
+                    `\\sqrt{${letters}}` +
+                    result.substring(sqrtIndex + 1 + letters.length);
                 searchPos = sqrtIndex + `\\sqrt{${letters}}`.length;
                 continue;
             }
         }
-        
+
         searchPos = sqrtIndex + 1;
     }
-    
+
     return result;
 };
 
@@ -347,12 +347,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 .replace(/±/g, '\\pm') // Plus-minus
                 .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
                 .trim();
-            
+
             // Convert HTML entities and tags in denominator
             let den = denominator
                 .replace(/<[^>]*>/g, '') // Remove HTML tags
                 .trim();
-            
+
             // Wrap in LaTeX fraction and inline math delimiters
             return `\\(\\frac{${num}}{${den}}\\)`;
         });
@@ -370,7 +370,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 .replace(/±/g, '\\pm') // Plus-minus
                 .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
                 .trim();
-            
+
             // If it looks like a fraction structure, try to split it
             // Otherwise, just return the content wrapped in LaTeX
             return `(${converted})`;
@@ -1376,23 +1376,23 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         let superscriptRegex = /([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g;
         let superscriptMatch;
         const superscriptReplacements: Array<{ start: number, end: number, replacement: string }> = [];
-        
+
         while ((superscriptMatch = superscriptRegex.exec(rendered)) !== null) {
             const start = superscriptMatch.index;
             const end = start + superscriptMatch[0].length;
             const base = superscriptMatch[1];
             const sup = superscriptMatch[2];
-            
+
             // Check if this match is already inside KaTeX HTML
             const beforeMatch = rendered.substring(0, start);
             const lastKatexStart = beforeMatch.lastIndexOf('<span class="katex">');
             const lastKatexEnd = beforeMatch.lastIndexOf('</span>');
-            
+
             // If we're inside KaTeX HTML, skip processing
             if (lastKatexStart > lastKatexEnd) {
                 continue; // Already rendered, don't process again
             }
-            
+
             // CRITICAL: Check if we're inside inline code blocks (single backticks)
             // This prevents processing Unicode superscripts that will be handled by processInlineCode in Stage 7
             const backticksBefore = (beforeMatch.match(/`/g) || []).length;
@@ -1400,13 +1400,13 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             if (backticksBefore % 2 === 1) {
                 continue; // Skip - will be processed by processInlineCode
             }
-            
+
             // Also check if this is already in the form base^{number}
             const afterMatch = rendered.substring(end);
             if (afterMatch.startsWith('^{')) {
                 continue; // Already converted, skip
             }
-            
+
             const supMap: { [key: string]: string } = {
                 '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6',
                 '⁷': '7', '⁸': '8', '⁹': '9', '⁰': '0', '¹': '1'
@@ -1417,7 +1417,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 replacement: safeRenderKatex(`${base}^{${supMap[sup]}}`, false, config.katexOptions)
             });
         }
-        
+
         // Apply replacements from right to left to maintain positions
         superscriptReplacements.reverse().forEach(({ start, end, replacement }) => {
             rendered = rendered.substring(0, start) + replacement + rendered.substring(end);
@@ -1443,15 +1443,15 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
      */
     const preserveEquationLineBreaks = (text: string): string => {
         let processed = text;
-        
+
         // Pattern to match consecutive equation lines (lines starting with variable = ...)
         // We want to ensure there's a blank line between consecutive equation lines
         // so they render as separate lines instead of collapsing into one paragraph
-        
+
         // Match lines that look like equations: start with letter(s) optionally followed by 
         // subscript/superscript, then =, then math content (can include brackets, parentheses, operators, etc.)
         // We want to match consecutive such lines separated by only a single newline (not blank lines)
-        
+
         // Pattern explanation:
         // ^ - start of line
         // ([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+) - equation line: variable, optional superscripts/subscripts, =, math content
@@ -1459,17 +1459,17 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // ([a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹₀-₉₁-₉]*\s*=\s*[^\n]+) - another equation line
         // $ - end of line
         // gm flags: global and multiline
-        
+
         // Apply replacement multiple times to handle sequences of 3+ consecutive lines
         // Each pass will add blank lines between pairs, and subsequent passes will handle remaining pairs
         let previousLength = 0;
         let iterations = 0;
         const maxIterations = 10; // Safety limit
-        
+
         while (previousLength !== processed.length && iterations < maxIterations) {
             previousLength = processed.length;
             iterations++;
-            
+
             // Match two consecutive equation lines separated by a single newline
             // This ensures we don't match if there's already a blank line between them
             processed = processed.replace(
@@ -1477,7 +1477,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 '$1\n\n$2'
             );
         }
-        
+
         return processed;
     };
 
@@ -1542,7 +1542,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // Match: (non-whitespace) followed by (space) followed by (### or #### etc.)
         // Replace with: (text) + (newline) + (newline) + (header)
         processed = processed.replace(/(\S)\s+(#{1,6}\s+)/g, '$1\n\n$2');
-        
+
         // Additional fix: Ensure headers start at the beginning of a line
         // This handles cases where headers might have leading whitespace or other issues
         processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
@@ -1678,12 +1678,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         processed = processed.replace(/`([^`\n]+?)`/g, (_match, content) => {
             // Trim whitespace from content for detection
             const trimmedContent = content.trim();
-            
+
             // If inline code processing is explicitly disabled, render as code without math detection
             if (markdownRules.processInlineCode === false) {
                 return `<code class="inline-code">${content}</code>`;
             }
-            
+
             // Check if the content is actually LaTeX/math that should be rendered as math, not code
             // Look for LaTeX commands (like \sqrt, \frac, etc.) - this is the primary indicator
             const hasLatexCommands = /\\[a-zA-Z]+\{/.test(trimmedContent) || /\\(sqrt|frac|cdot|times|pm|neq|leq|geq|alpha|beta|gamma|pi|theta|infty|partial|boxed)/.test(trimmedContent);
@@ -1695,24 +1695,24 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Note: - needs to be escaped or at end of character class to be literal
             const hasMathOperators = /[=+\-*/()\[\]]/.test(trimmedContent);
             const hasArithmetic = /\d+\s*[+\-*/]\s*\d+/.test(trimmedContent);
-            
+
             // Check for mathematical expressions with variables and operators (e.g., ax² + bx + c = 0)
             // This catches equations that have variables with superscripts and operators
             // More permissive: match any letter followed by optional superscript and then operator
-            const hasVariableExpression = /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*\s*[+\-*/=]/.test(trimmedContent) || 
-                                          /[+\-*/=]\s*[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
-                                          // Also match patterns like "2x²" (number + variable + superscript)
-                                          /\d+[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
-                                          // Match any expression with multiple variables and operators
-                                          (/[a-zA-Z].*[+\-*/=]/.test(trimmedContent) && hasMathOperators);
-            
+            const hasVariableExpression = /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*\s*[+\-*/=]/.test(trimmedContent) ||
+                /[+\-*/=]\s*[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
+                // Also match patterns like "2x²" (number + variable + superscript)
+                /\d+[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]*/.test(trimmedContent) ||
+                // Match any expression with multiple variables and operators
+                (/[a-zA-Z].*[+\-*/=]/.test(trimmedContent) && hasMathOperators);
+
             // Check for equation-like patterns (has = with content on both sides that looks like math)
             // More permissive: if it has = and any math-like content, it's probably math
-            const looksLikeEquation = /=/.test(trimmedContent) && 
-                                     (hasMathOperators || hasMathSymbols || 
-                                      /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent) ||
-                                      /\d+[a-zA-Z]/.test(trimmedContent) ||
-                                      /[a-zA-Z]\d+/.test(trimmedContent));
+            const looksLikeEquation = /=/.test(trimmedContent) &&
+                (hasMathOperators || hasMathSymbols ||
+                    /[a-zA-Z][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent) ||
+                    /\d+[a-zA-Z]/.test(trimmedContent) ||
+                    /[a-zA-Z]\d+/.test(trimmedContent));
 
             // Check for mathematical coefficient notation: number followed by letter (e.g., 2a, 3x, 5y)
             // This is a common pattern in math that should be rendered as math, not code
@@ -1726,9 +1726,9 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Check for mathematical patterns: multiple terms that look like math (e.g., 2a, ab, x2)
             // But exclude simple single letters/numbers and prose-like patterns
-            const isMathematicalTerm = hasCoefficientNotation || 
-                (trimmedContent.length > 1 && /^[a-zA-Z0-9]+$/.test(trimmedContent) && 
-                 (/\d/.test(trimmedContent) && /[a-zA-Z]/.test(trimmedContent))); // Has both digits and letters
+            const isMathematicalTerm = hasCoefficientNotation ||
+                (trimmedContent.length > 1 && /^[a-zA-Z0-9]+$/.test(trimmedContent) &&
+                    (/\d/.test(trimmedContent) && /[a-zA-Z]/.test(trimmedContent))); // Has both digits and letters
 
             // Check if it's a simple single number or letter (should stay as code unless it has math context)
             const isSimpleNumber = /^-?\d+$/.test(trimmedContent);
@@ -1737,8 +1737,8 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // Simple single letters/numbers without math symbols should stay as code
             // BUT: if it has a negative sign or is part of a math expression, render as math
-            const isSimpleVariable = !hasNegativeSign && !hasMathParentheses && 
-                /^[a-zA-Z0-9\s,]+$/.test(trimmedContent) && 
+            const isSimpleVariable = !hasNegativeSign && !hasMathParentheses &&
+                /^[a-zA-Z0-9\s,]+$/.test(trimmedContent) &&
                 !hasMathSymbols && !hasLatexCommands && !isMathematicalTerm && isSimpleValue;
 
             // Only render as math if:
@@ -1749,21 +1749,21 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // 5. It has a negative sign or math parentheses (mathematical context), OR
             // 6. It has variable expressions with superscripts and operators (e.g., ax² + bx + c = 0), OR
             // 7. It looks like an equation (has = with math-like content on both sides)
-            
+
             // CRITICAL: If content has superscripts (²³⁴⁵⁶⁷⁸⁹⁰¹) AND operators, it's definitely math
             // This catches expressions like "ax² + bx + c = 0" which should always be math
             const hasSuperscripts = /[²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(trimmedContent);
             const definitelyMathWithSuperscripts = hasSuperscripts && hasMathOperators;
-            
+
             // If it has math symbols AND operators, it's definitely math (unless it's a simple variable)
             const definitelyMath = hasMathSymbols && hasMathOperators && !isSimpleVariable;
-            
+
             // More aggressive: if it has operators and contains variables/numbers/math symbols, it's probably math
             // This catches cases like "x = 1/2" or "a = 2" that might otherwise be missed
             const hasMathLikeContent = /[a-zA-Z]/.test(trimmedContent) && /\d/.test(trimmedContent);
             const probablyMath = hasMathOperators && (hasMathLikeContent || hasMathSymbols || hasSuperscripts) && !isSimpleVariable;
-            
-            const shouldRenderAsMath = hasLatexCommands || 
+
+            const shouldRenderAsMath = hasLatexCommands ||
                 definitelyMathWithSuperscripts ||
                 definitelyMath ||
                 probablyMath ||
@@ -1785,7 +1785,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     definitelyMath,
                     probablyMath
                 });
-                
+
                 // Content inside backticks may not have been processed by fixLatexIssues
                 // So we need to convert Unicode to LaTeX, but be careful to avoid double conversion
                 let mathContent = content.replace(/\$/g, '').trim();
@@ -1793,7 +1793,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 // CRITICAL: Check if content already has LaTeX commands (from fixLatexIssues)
                 // If it does, we should still check for remaining Unicode symbols that need conversion
                 const hasLaTeXCommands = /\\[a-zA-Z]+/.test(mathContent);
-                
+
                 // CRITICAL: Convert superscripts FIRST before square root conversion
                 // This prevents issues when superscripts appear inside square root expressions
                 // Always convert superscripts even if LaTeX commands exist (they might be in different parts)
@@ -1930,7 +1930,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/(<\/span>|<br\s*\/?>)(\s*)(#{1,6}\s+)/g, '$1\n\n$3');
             // Remove any leading whitespace from headers to ensure they start cleanly
             processed = processed.replace(/^(\s*)(#{1,6}\s+)/gm, '$2');
-            
+
             // More robust header matching: allow trailing whitespace and handle HTML content inside headers
             // Match headers even if they contain HTML tags from previous processing (e.g., <strong> tags)
             // Use . with /s flag equivalent ([^] or [\s\S]) but ensure single-line matching with $
@@ -1943,7 +1943,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             processed = processed.replace(/^###\s+([^\n]+?)\s*$/gm, '<h3>$1</h3>');
             processed = processed.replace(/^##\s+([^\n]+?)\s*$/gm, '<h2>$1</h2>');
             processed = processed.replace(/^#\s+([^\n]+?)\s*$/gm, '<h1>$1</h1>');
-            
+
             // Fallback: Remove any remaining header markers that weren't matched by the above patterns
             // This catches edge cases where headers might not have matched due to formatting issues
             // Only remove if they're at the start of a line and followed by a space (to avoid false positives)
@@ -2254,7 +2254,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         // CRITICAL: Remove paragraph tags that wrap block-level elements
         // Block-level elements (hr, headings, lists, etc.) should never be inside <p> tags
         // Apply patterns multiple times to catch nested cases and ensure all block-level elements are free
-        
+
         // Repeat the cleanup until no more changes occur (handles nested/overlapping cases)
         let previousLength = 0;
         let iterations = 0;
@@ -2262,34 +2262,34 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         while (previousLength !== processed.length && iterations < maxIterations) {
             previousLength = processed.length;
             iterations++;
-            
+
             // Pattern 1: Remove <p> that opens before a block-level element (with any whitespace)
             // Matches: <p>...<hr> or <p>...<h3> etc.
             processed = processed.replace(/<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
-            
+
             // Pattern 2: Remove </p><p> that wraps block-level elements (with optional whitespace)
             // Matches: </p><p><h3> or </p><p><hr> etc., including cases with whitespace/newlines
             processed = processed.replace(/(<\/p>\s*<p>)(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$2');
-            
+
             // Pattern 2b: Also handle </p> followed by whitespace/newlines then <p> then block element
             // Matches: </p>\n<p><h3> or </p> <p><h3> etc.
             processed = processed.replace(/<\/p>\s+<p>(\s*<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '</p>$1');
-            
+
             // Pattern 3: Remove </p> that closes after a block-level element
             // Matches: <hr></p> or <h3>...</h3></p> etc. (with optional whitespace)
             processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>/gi, '$1');
-            
+
             // Pattern 4: Remove paragraph tags between block-level elements
             // Matches: <hr></p><p><h3> or <h3>...</h3></p><p><h4> etc. (with optional whitespace)
             processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>|<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>\s*<p>\s*(<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*(\/)?>)/gi, '$1$3');
-            
+
             // Pattern 5: Remove orphaned </p> or <p> tags that are adjacent to block-level elements
             // Matches: </p><hr> or <hr><p> etc. (with optional whitespace)
             // IMPORTANT: Don't remove <p> after closing header tags if it's starting content (not wrapping another block element)
             processed = processed.replace(/<\/p>\s*(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)/gi, '$1');
             // Only remove <p> before block elements, not after closing tags (content after headers should be in paragraphs)
             processed = processed.replace(/(<(hr|h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*(\/)?>)\s*<p>/gi, '$1');
-            
+
             // Pattern 6: Remove any remaining <p> tags that directly contain only block-level elements
             // Matches: <p><h3>content</h3></p> -> <h3>content</h3>
             processed = processed.replace(/<p>(\s*<(h[1-6]|ul|ol|blockquote|pre|table|div|hr)[^>]*>[\s\S]*?<\/(h[1-6]|ul|ol|blockquote|pre|table|div)[^>]*>)\s*<\/p>/gi, '$1');
@@ -2547,32 +2547,32 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
             // First pass: Remove Unicode angle bracket format (most common internal format)
             processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
-            
+
             // Second pass: Remove double parentheses format
             while (processed.includes('((MDPH')) {
                 processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
             }
-            
+
             // Third pass: Remove curly braces format
             while (processed.includes('{{MDPH')) {
                 processed = processed.replace(/\{\{MDPH\d+\}\}/g, '');
             }
-            
+
             // Fourth pass: Handle corrupted Unicode angle bracket format: <<MDPH (should be ⟨⟨MDPH)
             while (processed.includes('<<MDPH')) {
                 processed = processed.replace(/<<MDPH\d+[^>]*>>?/g, '');
                 processed = processed.replace(/<<MDPH\d+\)\)/g, '');
                 processed = processed.replace(/<<MDPH\d+\(\(/g, '');
             }
-            
+
             // Fifth pass: Remove single parentheses/braces and plain MDPH patterns
             processed = processed.replace(/\(MDPH\d+\)/g, '');
             processed = processed.replace(/\{MDPH\d+\}/g, '');
-            
+
             // Sixth pass: Remove plain MDPH followed by digits (catches any remaining variations)
             // This is the most aggressive pattern and should catch everything
             processed = processed.replace(/(?<!⟨⟨)MDPH\d+(?!⟩⟩)/g, '');
-            
+
             // Final pass: Remove any remaining Unicode angle bracket format (safety check)
             processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
 
@@ -2580,7 +2580,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // This handles cases where placeholders might have been missed in earlier stages
             processed = restoreDisplayMath(processed, displayMathExtraction.mathBlocks);
             processed = restoreInlineMath(processed, inlineMathExtraction.mathBlocks);
-            
+
             // Render any restored math placeholders
             displayDelimiters.forEach(({ pattern }) => {
                 processed = processed.replace(pattern, (_match, math) => {
@@ -2598,7 +2598,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                     return safeRenderKatex(math, false, config.katexOptions);
                 });
             });
-            
+
             // Only remove placeholders that couldn't be restored (orphaned placeholders)
             // Check if placeholder indices are valid before removing
             processed = processed.replace(/__INLINE_MATH_(\d+)__/g, (_match, index) => {
@@ -2624,7 +2624,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 // Invalid index - remove the placeholder
                 return '';
             });
-            
+
             processed = processed.replace(/__DISPLAY_MATH_(\d+)__/g, (_match, index) => {
                 const blockIndex = parseInt(index, 10);
                 if (blockIndex >= 0 && blockIndex < displayMathExtraction.mathBlocks.length) {
@@ -2647,7 +2647,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
                 // Invalid index - remove the placeholder
                 return '';
             });
-            
+
             processed = processed.replace(/__CODE_BLOCK_\d+__/g, '');
 
             // Remove any malformed placeholder variations (case insensitive)
@@ -2671,7 +2671,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             while (previousCleanupLength !== processed.length && cleanupIterations < 5) {
                 previousCleanupLength = processed.length;
                 cleanupIterations++;
-                
+
                 // Remove all known MDPH placeholder formats
                 processed = processed.replace(/⟨⟨MDPH\d+⟩⟩/g, '');
                 processed = processed.replace(/\(\(MDPH\d+\)\)/g, '');
