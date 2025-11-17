@@ -53,11 +53,28 @@
 
 /* Usage tracking banner */
 .usage-tracking-banner {
-  position: relative;
-  width: 100vw !important;
-  margin-left: calc(-50vw + 50%) !important;
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
+  z-index: calc(var(--z-banner) - 1);
+  width: 100%;
+  animation: slideDown var(--transition-slow) ease-out;
+}
+
+/* Position usage banner below mock mode banner when both are visible */
+.app:has(.mock-mode-banner) .usage-tracking-banner {
+  top: 3.5rem;
+}
+
+/* Adjust app header when usage tracking banner is visible */
+.app:has(.usage-tracking-banner) .app-header {
+  margin-top: 3.5rem;
+}
+
+/* Adjust app header when both mock mode and usage banners are visible */
+.app:has(.mock-mode-banner):has(.usage-tracking-banner) .app-header {
+  margin-top: 7rem;
 }
 
 .usage-banner-content {

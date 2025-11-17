@@ -159,6 +159,23 @@ function AppContent() {
   const animationTimeoutRef = useRef<number | null>(null);
   const [isModelsHidden, setIsModelsHidden] = useState(false);
   const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({});
+  const [showUsageBanner, setShowUsageBanner] = useState(false);
+  const usageBannerTimeoutRef = useRef<number | null>(null);
+  const [submissionCount, setSubmissionCount] = useState<number>(() => {
+    // Load submission count from localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('compareai_submission_count');
+      if (stored) {
+        const data = JSON.parse(stored);
+        const today = new Date().toDateString();
+        // Reset if it's a new day
+        if (data.date === today) {
+          return data.count || 0;
+        }
+      }
+    }
+    return 0;
+  });
 
   // Callback for when the active conversation is deleted
   const handleDeleteActiveConversation = useCallback(() => {
@@ -1058,9 +1075,17 @@ function AppContent() {
           await refreshUser();
         } else {
           // Anonymous user: clear localStorage and reset UI state
-          // Reset usage counts
+          // Reset usage counts and submission count
+          setSubmissionCount(0);
+          localStorage.removeItem('compareai_submission_count');
           setUsageCount(0);
           setExtendedUsageCount(0);
+          setShowUsageBanner(false);
+          // Clear any existing timeout
+          if (usageBannerTimeoutRef.current !== null) {
+            window.clearTimeout(usageBannerTimeoutRef.current);
+            usageBannerTimeoutRef.current = null;
+          }
           localStorage.removeItem('compareai_usage');
           localStorage.removeItem('compareai_extended_usage');
 
@@ -1679,6 +1704,23 @@ function AppContent() {
       lastScrollTop.clear();
     };
   }, []);
+
+  // Cleanup usage banner timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (usageBannerTimeoutRef.current !== null) {
+        window.clearTimeout(usageBannerTimeoutRef.current);
+        usageBannerTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Check if limit is reached on mount and show banner permanently for anonymous users
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && usageCount >= ANONYMOUS_DAILY_LIMIT) {
+      setShowUsageBanner(true);
+    }
+  }, [authLoading, isAuthenticated, usageCount]);
 
   // Align "You" sections across all model cards after each round completes
   useEffect(() => {
@@ -3400,6 +3442,39 @@ function AppContent() {
           const newCount = (data as any).fingerprint_usage || data.daily_usage || 0;
           setUsageCount(newCount);
 
+          // Track submission count and show banner for anonymous users
+          if (!isAuthenticated) {
+            // Increment submission count
+            const newSubmissionCount = submissionCount + 1;
+            setSubmissionCount(newSubmissionCount);
+            
+            // Save to localStorage
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_submission_count', JSON.stringify({
+              count: newSubmissionCount,
+              date: today
+            }));
+
+            // Show banner on 5th, 7th, or 9th submission, or when limit is reached
+            // If limit is reached, keep it visible permanently
+            if (newCount >= ANONYMOUS_DAILY_LIMIT) {
+              setShowUsageBanner(true);
+              // Don't set timeout - keep it visible permanently when limit reached
+            } else if (newSubmissionCount === 5 || newSubmissionCount === 7 || newSubmissionCount === 9) {
+              // Clear any existing timeout
+              if (usageBannerTimeoutRef.current !== null) {
+                window.clearTimeout(usageBannerTimeoutRef.current);
+              }
+              // Show the banner
+              setShowUsageBanner(true);
+              // Hide it after 5 seconds (only if not at limit)
+              usageBannerTimeoutRef.current = window.setTimeout(() => {
+                setShowUsageBanner(false);
+                usageBannerTimeoutRef.current = null;
+              }, 5000);
+            }
+          }
+
           // Sync extended usage from backend if available
           const newExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
           if (newExtendedCount !== undefined) {
@@ -3430,6 +3505,39 @@ function AppContent() {
           }
           const newUsageCount = usageCount + selectedModels.length;
           setUsageCount(newUsageCount);
+
+          // Track submission count and show banner for anonymous users
+          if (!isAuthenticated) {
+            // Increment submission count
+            const newSubmissionCount = submissionCount + 1;
+            setSubmissionCount(newSubmissionCount);
+            
+            // Save to localStorage
+            const today = new Date().toDateString();
+            localStorage.setItem('compareai_submission_count', JSON.stringify({
+              count: newSubmissionCount,
+              date: today
+            }));
+
+            // Show banner on 5th, 7th, or 9th submission, or when limit is reached
+            // If limit is reached, keep it visible permanently
+            if (newUsageCount >= ANONYMOUS_DAILY_LIMIT) {
+              setShowUsageBanner(true);
+              // Don't set timeout - keep it visible permanently when limit reached
+            } else if (newSubmissionCount === 5 || newSubmissionCount === 7 || newSubmissionCount === 9) {
+              // Clear any existing timeout
+              if (usageBannerTimeoutRef.current !== null) {
+                window.clearTimeout(usageBannerTimeoutRef.current);
+              }
+              // Show the banner
+              setShowUsageBanner(true);
+              // Hide it after 5 seconds (only if not at limit)
+              usageBannerTimeoutRef.current = window.setTimeout(() => {
+                setShowUsageBanner(false);
+                usageBannerTimeoutRef.current = null;
+              }, 5000);
+            }
+          }
 
           // Calculate if this was an extended interaction - reuse variables from above
 
@@ -3617,6 +3725,37 @@ function AppContent() {
       {/* Only show when auth has finished loading (!authLoading) to prevent flash on refresh */}
       {!authLoading && !user && anonymousMockModeEnabled && currentView === 'main' && (
         <MockModeBanner isAnonymous={true} isDev={true} />
+      )}
+
+      {/* Usage tracking banner - Fixed at top, show on 5th/7th/9th submission or when limit reached */}
+      {!authLoading && !isAuthenticated && currentView === 'main' && (
+        (usageCount >= ANONYMOUS_DAILY_LIMIT || ((submissionCount === 5 || submissionCount === 7 || submissionCount === 9) && showUsageBanner && usageCount < ANONYMOUS_DAILY_LIMIT)) && (
+          <div className="usage-tracking-banner" style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            padding: '1rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+          }}>
+            <div className="usage-banner-content">
+              {usageCount < ANONYMOUS_DAILY_LIMIT ? (
+                <>
+                  <div className="usage-banner-text-desktop" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                    {`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today • Sign up for 20 free per day`}
+                  </div>
+                  <div className="usage-banner-text-mobile" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                    <div>{`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today`}</div>
+                    <div>Sign up for 20 free per day</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  Daily limit reached! Sign up for a free account to get 20 model responses per day.
+                </div>
+              )}
+            </div>
+          </div>
+        )
       )}
 
       {/* Admin Panel - Show if user is admin and in admin view */}
@@ -4007,60 +4146,6 @@ function AppContent() {
                 )}
               </section>
             </ErrorBoundary>
-
-            {/* Usage tracking banner - show for anonymous users who have made comparisons or reached the limit */}
-            {!authLoading && !isAuthenticated && (usageCount > 0 || usageCount >= ANONYMOUS_DAILY_LIMIT || (error && (error.includes('Daily limit') || error.includes('daily limit')))) && (
-              <div className="usage-tracking-banner" style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                padding: '1rem',
-                textAlign: 'center',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
-              }}>
-                <div className="usage-banner-content">
-                  {usageCount < ANONYMOUS_DAILY_LIMIT ? (
-                    <>
-                      <div className="usage-banner-text-desktop" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        {`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today • Sign up for 20 free per day`}
-                      </div>
-                      <div className="usage-banner-text-mobile" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        <div>{`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today`}</div>
-                        <div>Sign up for 20 free per day</div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                      Daily limit reached! Sign up for a free account to get 20 model responses per day.
-                    </div>
-                  )}
-                </div>
-
-                {/* Developer reset button - only show in development */}
-                {import.meta.env.DEV && (
-                  <button
-                    onClick={resetUsage}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      color: 'white',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      marginTop: '0.5rem'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                    }}
-                  >
-                    🔄 Reset Usage (Dev Only)
-                  </button>
-                )}
-              </div>
-            )}
 
             {isLoading && (
               <div className="loading-section">

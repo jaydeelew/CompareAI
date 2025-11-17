@@ -941,12 +941,10 @@ async def toggle_anonymous_mock_mode(
             detail="Anonymous mock mode is only available in development environment",
         )
 
-    from ..cache import get_cached_app_settings, invalidate_app_settings_cache
+    from ..cache import invalidate_app_settings_cache
 
-    def get_settings():
-        return db.query(AppSettings).first()
-
-    settings = get_cached_app_settings(get_settings)
+    # Query settings directly from database (not from cache) to ensure it's attached to the session
+    settings = db.query(AppSettings).first()
 
     # If no settings exist yet, create default ones
     if not settings:

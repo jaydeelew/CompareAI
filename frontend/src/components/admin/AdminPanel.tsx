@@ -486,8 +486,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 }
             }
 
-            // Refresh app settings
-            await fetchAppSettings();
+            const data = await response.json();
+            
+            // Update state immediately from the toggle response
+            if (appSettings) {
+                setAppSettings({
+                    ...appSettings,
+                    anonymous_mock_mode_enabled: data.anonymous_mock_mode_enabled
+                });
+            } else {
+                // If appSettings is null, fetch it to get is_development
+                await fetchAppSettings();
+            }
         } catch (err) {
             console.error('Error toggling anonymous mock mode:', err);
             setError(err instanceof Error ? err.message : 'Failed to toggle anonymous mock mode');
