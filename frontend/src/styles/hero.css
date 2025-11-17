@@ -743,6 +743,8 @@
   .textarea-container:has(.textarea-actions-area) .hero-input-textarea {
     border-bottom: none !important;
     margin-bottom: -1px; /* Overlap slightly to eliminate any visible line */
+    height: 40px !important; /* Fixed height on mobile - prevent auto-expand */
+    max-height: 40px !important; /* Prevent height increase */
   }
 
   .textarea-actions-area {

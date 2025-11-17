@@ -102,6 +102,18 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
 
     const textarea = textareaRef.current;
 
+    // Check if we're on mobile viewport (max-width: 768px)
+    const isMobile = window.innerWidth <= 768;
+
+    // On mobile, keep height fixed at min-height and enable scrolling
+    if (isMobile) {
+      const computedStyle = window.getComputedStyle(textarea);
+      const cssMinHeight = parseFloat(computedStyle.minHeight) || 40;
+      textarea.style.height = `${cssMinHeight}px`;
+      textarea.style.overflowY = 'auto';
+      return;
+    }
+
     // Reset height to auto to get the correct scrollHeight
     textarea.style.height = 'auto';
 
