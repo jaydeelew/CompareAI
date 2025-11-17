@@ -42,6 +42,8 @@ lsof -ti:5173 | xargs kill -9  # Kill frontend
 **Access:** http://localhost:5173  
 **Features:** Fastest startup (~3s), instant hot reload, direct API connection
 
+**Note:** You don't need to run `npm run build` during normal development. The dev server (`npm run dev`) serves files directly from source with hot reload. Only run `npm run build` before deploying to catch build issues early.
+
 ### Option B: Docker with Nginx - For Integration Testing
 
 **When to use:** Before commits, testing nginx routing, verifying production-like behavior
@@ -103,6 +105,17 @@ docker compose -f docker-compose.dev-ssl.yml down
 - Final testing before AWS deployment
 - Debugging production build issues
 
+### Pre-Deployment Build Check
+
+**Before deploying to production, it's good practice to run `npm run build` locally:**
+
+```bash
+cd frontend
+npm run build
+```
+
+This helps catch build issues early (TypeScript errors, missing files, etc.) before Docker builds on production. You don't need to run this every time you code, but running it before deploying helps ensure a smooth deployment process.
+
 ### Commands
 
 ```bash
@@ -146,6 +159,9 @@ cd CompareAI
 
 # Pull latest changes
 git pull origin master
+
+# Optional: Test build locally first (recommended before deploying)
+# cd frontend && npm run build && cd ..
 
 # Stop current production services
 docker compose -f docker-compose.ssl.yml down
