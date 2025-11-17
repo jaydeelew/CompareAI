@@ -2650,8 +2650,23 @@ button.nav-button-primary {
     height: 18px;
   }
 
+  /* Maintain alignment: button in actions area is 32px, SVG is 18px
+     Chevron left edge = actions area left padding (1rem = 16px) + (32px - 18px) / 2 = 23px */
   .hero-input-textarea {
-    padding: 1rem 6.5rem 1rem 3rem;
+    padding: 0.5rem 1rem 0.5rem 1.4375rem !important; /* Left padding: 1.4375rem (23px) to align with chevron */
+  }
+
+  /* Ensure actions area maintains consistent padding for alignment */
+  .textarea-actions-area {
+    padding: 0.5rem 1rem !important; /* Left padding: 1rem (16px) */
+  }
+
+  /* Button in actions area remains 32px (higher specificity selector takes precedence) */
+  .textarea-actions-area .history-toggle-button {
+    width: 32px !important;
+    height: 32px !important;
+    left: auto !important;
+    bottom: auto !important;
   }
 
   .history-signup-message {
