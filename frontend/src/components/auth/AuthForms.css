@@ -174,7 +174,7 @@ input:-webkit-autofill:active {
     font-size: 0.925rem;
     font-weight: 600;
     color: white;
-    background: linear-gradient(135deg, #1e40af 0%, #0ea5e9 100%);
+    background: linear-gradient(135deg, #1a78cf 0%, #4aa8ef 100%);
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -184,7 +184,7 @@ input:-webkit-autofill:active {
 
 .auth-submit-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+    box-shadow: 0 4px 12px rgba(26, 120, 207, 0.4);
 }
 
 .auth-submit-btn:active:not(:disabled) {
