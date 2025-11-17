@@ -827,11 +827,16 @@
     max-height: 1.5rem;
   }
 
-  /* Extended mode usage preview may stack, but container height stays fixed */
+  /* Extended mode usage preview - allow container to expand for stacked lines */
   .usage-preview-container .usage-preview-extended {
     display: inline-block;
-    max-height: 1.5rem;
-    overflow: hidden;
+  }
+
+  /* When extended mode is active, increase container height to fit two lines */
+  .usage-preview-container:has(.usage-preview-extended) {
+    height: auto;
+    min-height: 1.5rem;
+    max-height: none;
   }
 }
 
