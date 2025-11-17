@@ -296,22 +296,19 @@
   /* Ensure wrapper contains textarea and buttons for proper positioning */
 }
 
+/* When history dropdown is visible, adjust border radius */
 .textarea-container:has(.history-inline-list) .hero-input-textarea {
   border-radius: 1.5rem 1.5rem 0 0;
   border-bottom: none;
-  /* Ensure bottom padding prevents text from scrolling into button area */
-  /* Buttons are 44px tall + 8px bottom offset = 52px from bottom */
-  /* Use 4rem (64px) to ensure text stops scrolling before reaching buttons */
-  padding-bottom: 4rem !important;
-  /* Ensure content doesn't overflow into button area */
-  box-sizing: border-box;
+}
+
+.textarea-container:has(.history-inline-list) .textarea-actions-area {
+  border-radius: 0 0 0 0;
 }
 
 .hero-input-textarea {
   width: 100%;
-  /* Bottom padding: 60px provides space for buttons (44px tall + 8px offset + 8px margin) */
-  /* Buttons are positioned inside this padded area, so text will never scroll into button area */
-  padding: 0.75rem 1.5rem 60px 1.5rem;
+  padding: 0.5rem 1.25rem;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.5rem;
   font-size: 1.1rem;
@@ -326,7 +323,7 @@
     0 8px 32px rgba(0, 0, 0, 0.12),
     0 4px 16px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  min-height: calc(1.1rem * 1.6 + 1.5rem + 4px);
+  min-height: calc(1.1rem * 1.6 + 1rem + 4px);
   font-weight: 500;
   overflow-y: hidden; /* Hide vertical scrollbar, will show if content exceeds max height */
   overflow-x: hidden;
@@ -334,17 +331,75 @@
   box-sizing: border-box; /* Ensure padding is included in height calculation */
 }
 
+/* When actions area is present, textarea should have rounded top corners only */
+.textarea-container:has(.textarea-actions-area) .hero-input-textarea {
+  border-radius: 1.5rem 1.5rem 0 0;
+  border-bottom: none;
+  /* Ensure exact same visual properties as actions area for seamless appearance */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Remove all inset shadows to prevent any visible line between sections */
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Actions area below textarea - looks like part of textarea */
+.textarea-actions-area {
+  position: relative;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-radius: 0 0 1.5rem 1.5rem;
+  /* Match textarea exactly - same background, backdrop-filter, and transition */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Remove all inset shadows to prevent any visible line between sections */
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* When history dropdown is visible, adjust actions area border */
+.textarea-container:has(.history-inline-list) .textarea-actions-area {
+  border-radius: 0;
+}
+
 .hero-input-textarea:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.2),
-    0 8px 24px rgba(0, 0, 0, 0.12),
-    0 0 0 6px rgba(255, 255, 255, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   /* Removed transform to avoid interfering with auto-expand */
 }
+
+/* When textarea is focused, update actions area border to match */
+.textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+/* Apply focus shadows - remove all inset shadows to prevent visible line */
+.textarea-container:has(.hero-input-textarea:focus) .hero-input-textarea {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Actions area: remove all inset shadows to prevent visible line */
+.textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
 
 .hero-input-textarea::placeholder {
   color: var(--text-muted);
@@ -385,10 +440,6 @@
 }
 
 .textarea-actions {
-  position: absolute;
-  right: 16px;
-  /* Position at bottom of textarea, stays at bottom as textarea expands */
-  bottom: 8px;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -400,24 +451,7 @@
   transition: none;
   transform: translateZ(0);
   will-change: auto;
-}
-
-/* When history dropdown is visible, ensure buttons stay positioned correctly */
-/* Since textarea and buttons are siblings, buttons positioned at bottom: 8px are relative to container */
-/* When dropdown appears below textarea, container grows but buttons should stay at textarea bottom */
-/* We need to position buttons relative to textarea, not container bottom */
-/* Solution: Use a wrapper or position buttons from top. For now, ensure textarea padding prevents overlap */
-/* Note: Buttons stay at textarea bottom due to textarea padding-bottom: 4rem (64px) */
-/* Buttons are 44px tall at bottom: 8px, occupying space from 8px to 52px from textarea bottom */
-/* This ensures text scrolls out of view before reaching the button area */
-
-/* Ensure buttons stay fixed relative to textarea wrapper, not container */
-.textarea-wrapper .textarea-actions {
-  position: absolute;
-  /* Buttons are now positioned relative to textarea-wrapper, which contains the textarea */
-  /* This ensures buttons stay at textarea bottom even when history dropdown appears below */
-  bottom: 8px;
-  right: 16px;
+  margin-left: auto;
 }
 
 .textarea-icon-button {
@@ -724,16 +758,18 @@
   }
 
   .hero-input-textarea {
-    padding: 0.65rem 1rem 3.25rem 1.5rem; /* Reduced padding for more compact appearance */
+    padding: 0.5rem 1rem;
     font-size: 1rem;
     min-height: auto;
     border-radius: 1.25rem;
   }
 
+  .textarea-actions-area {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+  }
+
   .textarea-actions {
-    right: 12px;
-    /* Position at bottom of textarea, stays at bottom as textarea expands */
-    bottom: 6px;
     gap: 10px;
   }
 

@@ -2261,8 +2261,8 @@ button.nav-button-primary {
   display: none;
 }
 
-/* Position history toggle button relative to textarea-wrapper */
-.textarea-wrapper .history-toggle-button {
+/* Position history toggle button in actions area */
+.textarea-actions-area .history-toggle-button {
   width: 44px;
   height: 44px;
   background-color: transparent;
@@ -2278,9 +2278,7 @@ button.nav-button-primary {
   padding: 0;
   flex-shrink: 0;
   /* Position on left side at same vertical level as other buttons */
-  position: absolute;
-  left: 16px;
-  bottom: 8px;
+  position: relative;
   /* Ensure button stays stationary - no transform on button itself */
   transform: none;
   z-index: 1001;

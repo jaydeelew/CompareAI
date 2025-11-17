@@ -95,38 +95,8 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
 }) => {
   const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
   
-  // Prevent text from scrolling into button area (ChatGPT-style)
-  // Key insight: When scrolling, the bottom of visible TEXT should stop at the top of padding where buttons are
-  // scrollHeight includes padding, clientHeight includes padding (box-sizing: border-box)
-  // We want: bottom of visible text = top of padding area
-  // Formula: scrollTop + (clientHeight - paddingBottom) = scrollHeight - paddingBottom
-  // Therefore: maxScrollTop = scrollHeight - clientHeight
-  // But this shows padding. To prevent text in padding: maxScrollTop = scrollHeight - clientHeight - paddingBottom
-  const enforceScrollLimit = useCallback(() => {
-    if (!textareaRef.current) return;
-    
-    const textarea = textareaRef.current;
-    
-    // Only enforce if textarea is scrollable
-    if (textarea.scrollHeight <= textarea.clientHeight) {
-      return;
-    }
-    
-    const computedStyle = window.getComputedStyle(textarea);
-    const paddingBottom = parseFloat(computedStyle.paddingBottom);
-    
-    // Calculate max scroll position that keeps text above padding area
-    // When scrolled to this position, bottom of visible text aligns with top of padding
-    const maxScrollTop = Math.max(0, textarea.scrollHeight - textarea.clientHeight - paddingBottom);
-    
-    // Enforce scroll limit - prevent text from scrolling into button area
-    if (textarea.scrollTop > maxScrollTop) {
-      textarea.scrollTop = maxScrollTop;
-    }
-  }, [textareaRef]);
-
   // Auto-expand textarea based on content (like ChatGPT)
-  // Scrollable after 5 lines (6th line triggers scrolling) - text never reaches buttons
+  // Scrollable after 5 lines (6th line triggers scrolling)
   const adjustTextareaHeight = useCallback(() => {
     if (!textareaRef.current) return;
     
@@ -136,7 +106,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     textarea.style.height = 'auto';
     
     // Calculate height for exactly 5 lines of text
-    // The textarea has bottom padding (60px) where buttons are positioned
     const computedStyle = window.getComputedStyle(textarea);
     const fontSize = parseFloat(computedStyle.fontSize);
     const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.6;
@@ -147,8 +116,8 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     const lineHeightPx = lineHeight;
     const fiveLinesHeight = lineHeightPx * 5; // Height for 5 lines of text
     
-    // maxHeight = 5 lines + top padding + bottom padding (where buttons are)
-    // This ensures exactly 5 lines are visible, and buttons are in the padding area below
+    // maxHeight = 5 lines + top padding + bottom padding
+    // This ensures exactly 5 lines are visible before scrolling starts
     const maxHeight = fiveLinesHeight + paddingTop + paddingBottom;
     
     const minHeight = lineHeightPx + paddingTop + paddingBottom; // Minimum height for single line
@@ -161,16 +130,12 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     // Enable scrolling when 6th line is needed (content exceeds 5 lines)
     if (scrollHeight > maxHeight) {
       textarea.style.overflowY = 'auto';
-      // Enforce scroll limit to prevent text from reaching buttons
-      requestAnimationFrame(() => {
-        enforceScrollLimit();
-      });
     } else {
       textarea.style.overflowY = 'hidden';
       // Reset scroll position when not scrolling
       textarea.scrollTop = 0;
     }
-  }, [enforceScrollLimit]);
+  }, []);
   
   // Adjust height when input changes
   useEffect(() => {
@@ -201,59 +166,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     return () => clearTimeout(timer);
   }, [adjustTextareaHeight]);
 
-  // Add scroll handler to prevent text from scrolling into button area
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    // Handle scroll events to enforce limit
-    const scrollHandler = () => {
-      enforceScrollLimit();
-    };
-    
-    // Handle input events to enforce limit after content changes
-    const inputHandler = () => {
-      requestAnimationFrame(() => {
-        enforceScrollLimit();
-      });
-    };
-
-    textarea.addEventListener('scroll', scrollHandler, { passive: true });
-    textarea.addEventListener('input', inputHandler);
-    textarea.addEventListener('wheel', scrollHandler, { passive: true });
-
-    return () => {
-      textarea.removeEventListener('scroll', scrollHandler);
-      textarea.removeEventListener('input', inputHandler);
-      textarea.removeEventListener('wheel', scrollHandler);
-    };
-  }, [enforceScrollLimit]);
-  
-  // Continuous enforcement to catch browser's auto-scroll-to-cursor behavior
-  useEffect(() => {
-    if (!textareaRef.current) return;
-    
-    let animationFrameId: number | null = null;
-    let isRunning = true;
-    
-    const continuousEnforce = () => {
-      if (!isRunning || !textareaRef.current) {
-        return;
-      }
-      
-      enforceScrollLimit();
-      animationFrameId = requestAnimationFrame(continuousEnforce);
-    };
-    
-    animationFrameId = requestAnimationFrame(continuousEnforce);
-    
-    return () => {
-      isRunning = false;
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [enforceScrollLimit]);
   
   return (
     <>
@@ -316,7 +228,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       </div>
 
       <div className={`textarea-container ${isAnimatingTextarea ? 'animate-pulse-border' : ''}`}>
-        {/* Wrapper for textarea and buttons to keep buttons positioned relative to textarea */}
+        {/* Wrapper for textarea */}
         <div className="textarea-wrapper">
           <textarea
             ref={textareaRef}
@@ -324,18 +236,6 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
             onChange={(e) => {
               setInput(e.target.value);
               // adjustTextareaHeight will be called via useEffect
-              // Enforce scroll limit after browser's auto-scroll-to-cursor completes
-              requestAnimationFrame(() => {
-                enforceScrollLimit();
-                // Double-check after another frame to catch delayed scroll
-                requestAnimationFrame(() => {
-                  enforceScrollLimit();
-                });
-              });
-            }}
-            onScroll={() => {
-              // Immediately enforce on scroll events
-              enforceScrollLimit();
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -355,7 +255,10 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
             rows={1}
             data-testid="comparison-input-textarea"
           />
+        </div>
 
+        {/* Actions area below textarea - looks like part of textarea */}
+        <div className="textarea-actions-area">
           {/* History Toggle Button - positioned on left side */}
           <button
             type="button"
