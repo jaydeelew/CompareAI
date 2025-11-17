@@ -308,7 +308,7 @@
 
 .hero-input-textarea {
   width: 100%;
-  padding: 0.5rem 1.25rem;
+  padding: 0.5rem 1.25rem 1rem 1.25rem; /* Extra bottom padding to ensure text doesn't sit at bottom edge */
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 1.5rem;
   font-size: 1.1rem;
@@ -325,10 +325,11 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   min-height: calc(1.1rem * 1.6 + 1rem + 4px);
   font-weight: 500;
-  overflow-y: hidden; /* Hide vertical scrollbar, will show if content exceeds max height */
-  overflow-x: hidden;
+  overflow-y: auto; /* Standard scrolling behavior */
+  overflow-x: auto; /* Standard horizontal scrolling if needed */
   vertical-align: top; /* Ensure text starts at top */
   box-sizing: border-box; /* Ensure padding is included in height calculation */
+  /* Text handling uses browser defaults for standard form behavior */
 }
 
 /* When actions area is present, textarea should have rounded top corners only */
@@ -407,15 +408,7 @@
   opacity: 0.8;
 }
 
-/* Hide scrollbar */
-.hero-input-textarea::-webkit-scrollbar {
-  display: none;
-}
-
-.hero-input-textarea {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* Scrollbar styling uses browser defaults for standard form behavior */
 
 /* Usage Preview Container - Fixed height to prevent hero section expansion */
 .usage-preview-container {
@@ -758,7 +751,7 @@
   }
 
   .hero-input-textarea {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem 1rem 1rem; /* Extra bottom padding to ensure text doesn't sit at bottom edge */
     font-size: 1rem;
     min-height: auto;
     border-radius: 1.25rem;
