@@ -51,6 +51,12 @@ button:visited {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
+/* When banners are visible, ensure no white gap appears */
+.app:has(.usage-tracking-banner) .hero-section,
+.app:has(.mock-mode-banner) .hero-section {
+  /* Hero section background will cover any gap */
+}
+
 /* Links */
 a {
   color: inherit;

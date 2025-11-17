@@ -3467,11 +3467,11 @@ function AppContent() {
               }
               // Show the banner
               setShowUsageBanner(true);
-              // Hide it after 5 seconds (only if not at limit)
+              // Hide it after 10 seconds (only if not at limit)
               usageBannerTimeoutRef.current = window.setTimeout(() => {
                 setShowUsageBanner(false);
                 usageBannerTimeoutRef.current = null;
-              }, 5000);
+              }, 10000);
             }
           }
 
@@ -3531,11 +3531,11 @@ function AppContent() {
               }
               // Show the banner
               setShowUsageBanner(true);
-              // Hide it after 5 seconds (only if not at limit)
+              // Hide it after 10 seconds (only if not at limit)
               usageBannerTimeoutRef.current = window.setTimeout(() => {
                 setShowUsageBanner(false);
                 usageBannerTimeoutRef.current = null;
-              }, 5000);
+              }, 10000);
             }
           }
 
