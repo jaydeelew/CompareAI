@@ -118,7 +118,32 @@ export const TermsOfService: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2>11. Prohibited Uses</h2>
+                        <h2>11. reCAPTCHA</h2>
+                        <p>
+                            This site is protected by reCAPTCHA and the Google{' '}
+                            <a 
+                                href="https://policies.google.com/privacy" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ color: '#0ea5e9', textDecoration: 'underline' }}
+                            >
+                                Privacy Policy
+                            </a>
+                            {' '}and{' '}
+                            <a 
+                                href="https://policies.google.com/terms" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ color: '#0ea5e9', textDecoration: 'underline' }}
+                            >
+                                Terms of Service
+                            </a>
+                            {' '}apply.
+                        </p>
+                    </section>
+
+                    <section>
+                        <h2>12. Prohibited Uses</h2>
                         <p>
                             You agree not to use compareIntel.com:
                         </p>
@@ -132,14 +157,14 @@ export const TermsOfService: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2>12. Termination</h2>
+                        <h2>13. Termination</h2>
                         <p>
                             The operator of compareIntel.com may terminate or suspend your account and access to the Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach these Terms of Service. Upon termination, your right to use compareIntel.com will immediately cease.
                         </p>
                     </section>
 
                     <section>
-                        <h2>13. Governing Law and Dispute Resolution</h2>
+                        <h2>14. Governing Law and Dispute Resolution</h2>
                         <p>
                             These Terms shall be governed by and construed in accordance with the laws of the United States and the state in which the operator of compareIntel.com resides, without regard to its conflict of law provisions. Any disputes arising under or in connection with these Terms shall be subject to the exclusive jurisdiction of the courts in that jurisdiction.
                         </p>
@@ -149,14 +174,14 @@ export const TermsOfService: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2>14. Severability</h2>
+                        <h2>15. Severability</h2>
                         <p>
                             If any provision of these Terms of Service is found to be unenforceable or invalid, that provision shall be limited or eliminated to the minimum extent necessary so that these Terms shall otherwise remain in full force and effect and enforceable.
                         </p>
                     </section>
 
                     <section>
-                        <h2>15. Changes to Terms</h2>
+                        <h2>16. Changes to Terms</h2>
                         <p>
                             The operator of compareIntel.com reserves the right, at its sole discretion, to modify or replace these Terms at any time. If a revision is material, the operator will provide at least 30 days notice prior to any new terms taking effect. What constitutes a material change will be determined at the operator's sole discretion.
                         </p>
@@ -166,21 +191,21 @@ export const TermsOfService: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2>16. Entire Agreement</h2>
+                        <h2>17. Entire Agreement</h2>
                         <p>
                             These Terms of Service, together with the Privacy Policy and any other legal notices published by the operator of compareIntel.com on the Service, shall constitute the entire agreement between you and the operator of compareIntel.com concerning compareIntel.com.
                         </p>
                     </section>
 
                     <section>
-                        <h2>17. Waiver</h2>
+                        <h2>18. Waiver</h2>
                         <p>
                             No waiver of any term of these Terms of Service shall be deemed a further or continuing waiver of such term or any other term, and the operator of compareIntel.com's failure to assert any right or provision under these Terms of Service shall not constitute a waiver of such right or provision.
                         </p>
                     </section>
 
                     <section>
-                        <h2>18. Contact Information</h2>
+                        <h2>19. Contact Information</h2>
                         <p>
                             If you have any questions about these Terms of Service, please contact the operator of compareIntel.com through the appropriate channels provided on compareIntel.com.
                         </p>

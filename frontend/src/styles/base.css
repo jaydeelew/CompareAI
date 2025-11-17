@@ -71,3 +71,10 @@ h1, h2, h3, h4, h5, h6 {
   line-height: var(--line-tight);
 }
 
+/* Hide Google reCAPTCHA badge */
+.grecaptcha-badge {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
