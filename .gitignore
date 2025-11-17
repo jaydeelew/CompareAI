@@ -207,7 +207,9 @@ openrouter_models.json
 *.sqlite3
 
 # Docker
-.dockerignore
+# Allow backend/.dockerignore to be tracked (it's needed for builds)
+!backend/.dockerignore
+!frontend/.dockerignore
 docker-compose.override.yml
 .docker/
 docker-data/
