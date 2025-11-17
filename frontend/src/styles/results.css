@@ -2343,7 +2343,7 @@ button.nav-button-primary {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   /* max-height set dynamically in JS based on tier (170px for 2 items, 255px for 3 items, 300px for scrollable) */
   overflow-y: auto;
-  border-radius: 0 0 0.75rem 0.75rem;
+  border-radius: 0 0 1.5rem 1.5rem;
   animation: slideDown 0.2s ease-out;
   /* Custom scrollbar styling to match dropdown gradient */
   scrollbar-width: thin;
@@ -2439,12 +2439,12 @@ button.nav-button-primary {
 }
 
 .history-item-active {
-  background: rgba(249, 115, 22, 0.15) !important;
+  background: rgba(249, 115, 22, 0.25) !important;
   font-weight: bold;
 }
 
 .history-item-active:hover {
-  background: rgba(249, 115, 22, 0.2) !important;
+  background: rgba(249, 115, 22, 0.3) !important;
 }
 
 .history-item-active .history-item-prompt,
@@ -2471,12 +2471,12 @@ button.nav-button-primary {
 }
 
 .history-inline-list .history-item-active {
-  background: rgba(249, 115, 22, 0.12) !important;
+  background: rgba(249, 115, 22, 0.2) !important;
   font-weight: bold;
 }
 
 .history-inline-list .history-item-active:hover {
-  background: rgba(249, 115, 22, 0.16) !important;
+  background: rgba(249, 115, 22, 0.25) !important;
 }
 
 .history-inline-list .history-item-active .history-item-prompt,
@@ -2618,6 +2618,12 @@ button.nav-button-primary {
   background: rgba(59, 130, 246, 1);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+@media (max-width: 768px) {
+  .history-inline-list {
+    border-radius: 0 0 1.25rem 1.25rem;
+  }
 }
 
 @media (max-width: 640px) {
