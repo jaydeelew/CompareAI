@@ -283,7 +283,6 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.15));
   min-height: 60px;
   overflow: visible;
 }
@@ -316,13 +315,9 @@
   line-height: 1.6;
   resize: none; /* Disable manual resize for auto-expand behavior */
   transition: height 0.2s ease-out, all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: rgba(255, 255, 255, 0.92);
+  background: white;
   backdrop-filter: blur(20px);
   color: var(--text-primary);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   min-height: 40px; /* Fixed height to match actions area */
   font-weight: 500;
   overflow-y: auto; /* Standard scrolling behavior */
@@ -337,13 +332,9 @@
   border-radius: 1.5rem 1.5rem 0 0;
   border-bottom: none;
   /* Ensure exact same visual properties as actions area for seamless appearance */
-  background: rgba(255, 255, 255, 0.92);
+  background: white;
   backdrop-filter: blur(20px);
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Remove all inset shadows to prevent any visible line between sections */
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* Actions area below textarea - looks like part of textarea */
@@ -357,13 +348,9 @@
   border-top: none;
   border-radius: 0 0 1.5rem 1.5rem;
   /* Match textarea exactly - same background, backdrop-filter, and transition */
-  background: rgba(255, 255, 255, 0.92);
+  background: white;
   backdrop-filter: blur(20px);
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Remove all inset shadows to prevent any visible line between sections */
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -378,28 +365,22 @@
 .hero-input-textarea:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.96);
+  background: white;
   /* Removed transform to avoid interfering with auto-expand */
 }
 
 /* When textarea is focused, update actions area border to match */
 .textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {
   border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.96);
+  background: white;
 }
 
 /* Apply focus shadows - remove all inset shadows to prevent visible line */
 .textarea-container:has(.hero-input-textarea:focus) .hero-input-textarea {
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.2),
-    0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Actions area: remove all inset shadows to prevent visible line */
 .textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.2),
-    0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 
