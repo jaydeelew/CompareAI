@@ -2662,6 +2662,7 @@ function AppContent() {
     if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
       setError(`You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -2670,6 +2671,7 @@ function AppContent() {
       const remaining = regularLimit - currentUsageCount;
       // State and localStorage are already updated above, so UI components will show correct values
       setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
