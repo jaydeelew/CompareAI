@@ -2439,12 +2439,12 @@ button.nav-button-primary {
 }
 
 .history-item-active {
-  background: rgba(249, 115, 22, 0.25) !important;
+  background: rgba(59, 130, 246, 0.3) !important;
   font-weight: bold;
 }
 
 .history-item-active:hover {
-  background: rgba(249, 115, 22, 0.3) !important;
+  background: rgba(59, 130, 246, 0.35) !important;
 }
 
 .history-item-active .history-item-prompt,
@@ -2471,12 +2471,12 @@ button.nav-button-primary {
 }
 
 .history-inline-list .history-item-active {
-  background: rgba(249, 115, 22, 0.2) !important;
+  background: rgba(59, 130, 246, 0.25) !important;
   font-weight: bold;
 }
 
 .history-inline-list .history-item-active:hover {
-  background: rgba(249, 115, 22, 0.25) !important;
+  background: rgba(59, 130, 246, 0.3) !important;
 }
 
 .history-inline-list .history-item-active .history-item-prompt,
