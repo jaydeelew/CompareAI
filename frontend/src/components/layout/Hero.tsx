@@ -46,7 +46,8 @@ export function Hero({ visibleTooltip, onCapabilityTileTap, children }: HeroProp
           <span className="hero-title-second-line">Side by Side</span>
         </h2>
         <p className="hero-subtitle">
-          Get concurrent responses from multiple AI models to find the best solution for your needs
+          Get concurrent responses from multiple AI models{" "}
+          <span className="hero-subtitle-second-line">to find the best solution for your needs</span>
         </p>
 
         <div className="hero-capabilities">

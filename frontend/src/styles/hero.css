@@ -85,6 +85,11 @@
   animation: fadeInUp 1s ease-out 0.15s both;
 }
 
+/* Enable line break in hero subtitle after "models" */
+.hero-subtitle-second-line {
+  display: block;
+}
+
 /* Hero Capabilities Section */
 .hero-capabilities {
   display: grid;
