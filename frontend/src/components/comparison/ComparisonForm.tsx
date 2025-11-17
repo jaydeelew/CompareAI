@@ -9,23 +9,23 @@ interface ComparisonFormProps {
   input: string;
   setInput: (value: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
-  
+
   // Mode state
   isFollowUpMode: boolean;
   isExtendedMode: boolean;
   isLoading: boolean;
   isAnimatingButton: boolean;
   isAnimatingTextarea: boolean;
-  
+
   // User state
   isAuthenticated: boolean;
   user: User | null;
   usageCount: number;
   extendedUsageCount: number;
-  
+
   // Conversations
   conversations: ModelConversation[];
-  
+
   // History
   showHistoryDropdown: boolean;
   setShowHistoryDropdown: (show: boolean) => void;
@@ -33,7 +33,7 @@ interface ComparisonFormProps {
   isLoadingHistory: boolean;
   historyLimit: number;
   currentVisibleComparisonId: string | null;
-  
+
   // Handlers
   onSubmitClick: () => void;
   onContinueConversation: () => void;
@@ -41,11 +41,11 @@ interface ComparisonFormProps {
   onExtendedModeToggle: () => void;
   onLoadConversation: (summary: ConversationSummary) => void;
   onDeleteConversation: (summary: ConversationSummary, e: React.MouseEvent) => void;
-  
+
   // Utilities
   getExtendedRecommendation: (input: string) => boolean;
   renderUsagePreview: () => React.ReactNode;
-  
+
   // Model selection
   selectedModels: string[];
 }
@@ -94,39 +94,39 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
   selectedModels,
 }) => {
   const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-  
+
   // Auto-expand textarea based on content (like ChatGPT)
   // Scrollable after 5 lines (6th line triggers scrolling)
   const adjustTextareaHeight = useCallback(() => {
     if (!textareaRef.current) return;
-    
+
     const textarea = textareaRef.current;
-    
+
     // Reset height to auto to get the correct scrollHeight
     textarea.style.height = 'auto';
-    
+
     // Calculate height for exactly 5 lines of text
     const computedStyle = window.getComputedStyle(textarea);
     const fontSize = parseFloat(computedStyle.fontSize);
     const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.6;
     const paddingTop = parseFloat(computedStyle.paddingTop);
     const paddingBottom = parseFloat(computedStyle.paddingBottom);
-    
+
     // Calculate height for exactly 5 lines of text content
     const lineHeightPx = lineHeight;
     const fiveLinesHeight = lineHeightPx * 5; // Height for 5 lines of text
-    
+
     // maxHeight = 5 lines + top padding + bottom padding
     // This ensures exactly 5 lines are visible before scrolling starts
     const maxHeight = fiveLinesHeight + paddingTop + paddingBottom;
-    
+
     const minHeight = lineHeightPx + paddingTop + paddingBottom; // Minimum height for single line
     const scrollHeight = textarea.scrollHeight;
-    
+
     // Set height to maxHeight (5 lines) when content exceeds it, otherwise grow with content
     const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${newHeight}px`;
-    
+
     // Enable scrolling when 6th line is needed (content exceeds 5 lines)
     if (scrollHeight > maxHeight) {
       textarea.style.overflowY = 'auto';
@@ -136,7 +136,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       textarea.scrollTop = 0;
     }
   }, []);
-  
+
   // Adjust height when input changes
   useEffect(() => {
     // Use requestAnimationFrame to ensure DOM is updated
@@ -144,7 +144,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
       adjustTextareaHeight();
     });
   }, [input, adjustTextareaHeight]);
-  
+
   // Adjust height on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -152,11 +152,11 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
         adjustTextareaHeight();
       });
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [adjustTextareaHeight]);
-  
+
   // Initial height adjustment on mount
   useEffect(() => {
     // Small delay to ensure textarea is rendered
@@ -166,7 +166,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
     return () => clearTimeout(timer);
   }, [adjustTextareaHeight]);
 
-  
+
   return (
     <>
       <div className="follow-up-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -248,7 +248,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
               }
             }}
             placeholder={isFollowUpMode
-              ? "Enter your follow-up here"
+              ? "Continue your conversation here"
               : "Let's get started..."
             }
             className="hero-input-textarea"
@@ -307,7 +307,7 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
                 if (hasReachedExtendedLimit) {
                   return `Daily Extended tier limit of ${extendedLimit} interactions reached`;
                 }
-                
+
                 let tierDisplayName: string;
                 if (userTier.endsWith('_plus')) {
                   const baseTier = userTier.replace('_plus', '');
@@ -365,19 +365,19 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
           // Check if notification should be shown
           const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
           const tierLimit = getConversationLimit(userTier);
-          const shouldShowNotification = (userTier === 'anonymous' || userTier === 'free') && 
-                                        conversationHistory.length >= tierLimit;
-          
+          const shouldShowNotification = (userTier === 'anonymous' || userTier === 'free') &&
+            conversationHistory.length >= tierLimit;
+
           // Allow scrolling when notification is present to ensure message is always visible
           const shouldHideScrollbar = historyLimit <= 3 && !shouldShowNotification;
-          
+
           // Calculate max height based on user tier
           // Each entry: 1rem top padding (16px) + content (~23px prompt + 8px margin + ~15px meta) + 1rem bottom padding (16px) ≈ 78px
           // Plus borders between items (1px each)
           // Notification height: ~70px (margin-top 8px + padding-top 8px + 2 lines of text ~41px + padding-bottom 8px + some buffer)
           const getMaxHeight = () => {
             const notificationHeight = shouldShowNotification ? 70 : 0;
-            
+
             if (historyLimit === 2) {
               return `${165 + notificationHeight}px`; // Height for 2 entries + notification if present
             }
