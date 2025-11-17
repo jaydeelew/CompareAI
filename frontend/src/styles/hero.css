@@ -44,8 +44,13 @@
 }
 
 /* Enable controlled line break in hero title on mobile */
+.hero-title-first-line {
+  display: inline;
+}
+
 .hero-title-second-line {
   display: inline;
+  margin-left: 0.25em; /* Add space between words on desktop */
 }
 
 .hero-content {
@@ -657,6 +662,17 @@
     margin-bottom: 0.75rem;
     line-height: 1.3;
     padding-bottom: 0.2rem;
+  }
+
+  .hero-title-first-line {
+    display: block !important;
+    width: 100%;
+  }
+
+  .hero-title-second-line {
+    display: block !important;
+    margin-left: 0 !important;
+    width: 100%;
   }
 
   .hero-subtitle {

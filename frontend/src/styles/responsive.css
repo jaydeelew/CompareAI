@@ -14,8 +14,13 @@
     --models-header-control-height: 32px;
   }
 
+  .hero-title-first-line {
+    display: block;
+  }
+
   .hero-title-second-line {
     display: block;
+    margin-left: 0; /* Remove left margin on mobile since it's on a new line */
   }
 }
 
