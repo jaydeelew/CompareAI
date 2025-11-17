@@ -1046,8 +1046,8 @@ function AppContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations]);
 
-  // Developer reset function
-  const resetUsage = async () => {
+  // Developer reset function (intentionally unused - available for debugging via console)
+  const _resetUsage = async () => {
     try {
       // Save currently displayed conversations to preserve them after reset
       const currentDisplayedConversations = [...conversations];
@@ -1124,7 +1124,7 @@ function AppContent() {
         }
       }
     } catch (error) {
-      console.error('Unexpected error in resetUsage:', error);
+      console.error('Unexpected error in _resetUsage:', error);
     }
   };
 
