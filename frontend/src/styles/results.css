@@ -2159,8 +2159,8 @@ button.nav-button-primary {
 
 /* Extended Mode Button */
 .extended-mode-button {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: transparent;
   border: 1px solid #d1d5db;
@@ -2263,8 +2263,8 @@ button.nav-button-primary {
 
 /* Position history toggle button in actions area */
 .textarea-actions-area .history-toggle-button {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   background-color: transparent;
   border: none;
   outline: none;
