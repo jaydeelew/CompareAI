@@ -233,11 +233,10 @@ export const ComparisonForm = memo<ComparisonFormProps>(({
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 style={{
-                  width: '22px',
-                  height: '22px',
+                  width: '20px',
+                  height: '20px',
                   display: 'block',
-                  margin: 0,
-                  transform: 'translate(0px, 1px)'
+                  flexShrink: 0
                 }}
               >
                 <path d="M12 2v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
