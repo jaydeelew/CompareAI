@@ -4194,18 +4194,18 @@ function AppContent() {
                       </g>
                       {/* Spark effect flowing from meeting point - 12 particles in circular formation */}
                       <g className="spark-effect">
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
-                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="#ff9500" />
                       </g>
                     </svg>
                   </div>
