@@ -55,10 +55,6 @@ def get_daily_limit(tier: str) -> int:
     
     limit = SUBSCRIPTION_LIMITS.get(normalized_tier, ANONYMOUS_DAILY_LIMIT)
     
-    # Debug logging if we're defaulting to anonymous limit for a non-anonymous tier
-    if normalized_tier and normalized_tier != "anonymous" and limit == ANONYMOUS_DAILY_LIMIT:
-        print(f"[get_daily_limit] WARNING: Tier '{tier}' (normalized: '{normalized_tier}') not found in SUBSCRIPTION_LIMITS, defaulting to anonymous limit. Available tiers: {list(SUBSCRIPTION_LIMITS.keys())}")
-    
     return limit
 
 
