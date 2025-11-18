@@ -58,8 +58,29 @@ def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
         user.usage_reset_date = today
         db.commit()
 
+    # Normalize subscription tier (strip whitespace, handle case variations)
+    subscription_tier = (user.subscription_tier or "").strip().lower()
+    
+    # Map common variations to standard tier names
+    tier_mapping = {
+        "pro+": "pro_plus",
+        "pro +": "pro_plus",
+        "pro-plus": "pro_plus",
+        "starter+": "starter_plus",
+        "starter +": "starter_plus",
+        "starter-plus": "starter_plus",
+    }
+    subscription_tier = tier_mapping.get(subscription_tier, subscription_tier)
+    
     # Get daily limit based on subscription tier
-    daily_limit = get_daily_limit(user.subscription_tier)
+    daily_limit = get_daily_limit(subscription_tier)
+    
+    # Debug logging for pro_plus users to help diagnose issues
+    if subscription_tier == "pro_plus" or user.subscription_tier and "pro" in user.subscription_tier.lower() and "plus" in user.subscription_tier.lower():
+        print(f"[check_user_rate_limit] User {user.email}: subscription_tier='{user.subscription_tier}' (normalized: '{subscription_tier}'), daily_limit={daily_limit}, usage_count={user.daily_usage_count}")
+        # If we got the anonymous limit for a pro_plus user, log a warning
+        if daily_limit == ANONYMOUS_DAILY_LIMIT:
+            print(f"[check_user_rate_limit] WARNING: Pro+ user {user.email} got anonymous limit! Original tier: '{user.subscription_tier}', Normalized: '{subscription_tier}'")
 
     # Check if user is within limit
     is_allowed = user.daily_usage_count < daily_limit

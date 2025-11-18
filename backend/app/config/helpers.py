@@ -39,7 +39,27 @@ def get_daily_limit(tier: str) -> int:
     Returns:
         Daily limit for model responses
     """
-    return SUBSCRIPTION_LIMITS.get(tier, ANONYMOUS_DAILY_LIMIT)
+    # Normalize tier name (strip whitespace, lowercase)
+    normalized_tier = (tier or "").strip().lower() if tier else ""
+    
+    # Map common variations to standard tier names
+    tier_mapping = {
+        "pro+": "pro_plus",
+        "pro +": "pro_plus",
+        "pro-plus": "pro_plus",
+        "starter+": "starter_plus",
+        "starter +": "starter_plus",
+        "starter-plus": "starter_plus",
+    }
+    normalized_tier = tier_mapping.get(normalized_tier, normalized_tier)
+    
+    limit = SUBSCRIPTION_LIMITS.get(normalized_tier, ANONYMOUS_DAILY_LIMIT)
+    
+    # Debug logging if we're defaulting to anonymous limit for a non-anonymous tier
+    if normalized_tier and normalized_tier != "anonymous" and limit == ANONYMOUS_DAILY_LIMIT:
+        print(f"[get_daily_limit] WARNING: Tier '{tier}' (normalized: '{normalized_tier}') not found in SUBSCRIPTION_LIMITS, defaulting to anonymous limit. Available tiers: {list(SUBSCRIPTION_LIMITS.keys())}")
+    
+    return limit
 
 
 def get_extended_limit(tier: str) -> int:

@@ -414,6 +414,9 @@ async def compare(
     overage_charge = 0.0
 
     if current_user:
+        # Debug logging for authentication and tier
+        print(f"[API] Authenticated user: {current_user.email}, subscription_tier: '{current_user.subscription_tier}', is_active: {current_user.is_active}")
+        
         # Authenticated user - check subscription tier limits (model response based)
         is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
 
@@ -438,12 +441,17 @@ async def compare(
             else:
                 # Free tier - no overages allowed
                 models_available = max(0, daily_limit - usage_count)
-                starter_limit = get_daily_limit("starter")
-                pro_limit = get_daily_limit("pro")
+                # Provide more helpful error message based on actual tier
+                tier_name = current_user.subscription_tier or "unknown"
+                if tier_name.lower() in ["pro_plus", "pro+", "pro +"]:
+                    error_msg = f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. Please contact support if you believe this is an error."
+                else:
+                    starter_limit = get_daily_limit("starter")
+                    pro_limit = get_daily_limit("pro")
+                    error_msg = f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. Upgrade to Starter ({starter_limit}/day) or Pro ({pro_limit}/day) for more capacity and overage options."
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. "
-                    f"Upgrade to Starter ({starter_limit}/day) or Pro ({pro_limit}/day) for more capacity and overage options.",
+                    detail=error_msg,
                 )
 
         # Don't increment here - wait until we know if requests succeeded
@@ -451,6 +459,9 @@ async def compare(
         if is_overage:
             print(f"Authenticated user {current_user.email} - Overage requested")
     else:
+        # Debug logging for anonymous users
+        print(f"[API] Anonymous user - IP: {client_ip}, fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'}...")
+        
         # Anonymous user - check IP/fingerprint limits (model response based)
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
 
@@ -739,6 +750,9 @@ async def compare_stream(
     overage_charge = 0.0
 
     if current_user:
+        # Debug logging for authentication and tier
+        print(f"[API] Authenticated user: {current_user.email}, subscription_tier: '{current_user.subscription_tier}', is_active: {current_user.is_active}")
+        
         is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
 
         if usage_count + num_models > daily_limit:
@@ -754,15 +768,23 @@ async def compare_stream(
                 )
             else:
                 models_available = max(0, daily_limit - usage_count)
+                # Provide more helpful error message based on actual tier
+                tier_name = current_user.subscription_tier or "unknown"
+                if tier_name.lower() in ["pro_plus", "pro+", "pro +"]:
+                    error_msg = f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. Please contact support if you believe this is an error."
+                else:
+                    error_msg = f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. Upgrade to Starter (150/day) or Pro (450/day) for more capacity."
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. "
-                    f"Upgrade to Starter (150/day) or Pro (450/day) for more capacity.",
+                    detail=error_msg,
                 )
 
         # Don't increment here - wait until we know if requests succeeded
         print(f"Authenticated user {current_user.email} - Checking limits")
     else:
+        # Debug logging for anonymous users
+        print(f"[API] Anonymous user - IP: {client_ip}, fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'}...")
+        
         ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
         fingerprint_allowed = True
         fingerprint_count = 0
