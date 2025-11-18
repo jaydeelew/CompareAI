@@ -4195,53 +4195,55 @@ function AppContent() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                     <h2 style={{ margin: 0 }}>Comparison Results</h2>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      {/* Scroll Lock Toggle */}
-                      <button
-                        onClick={() => {
-                          setIsScrollLocked(!isScrollLocked);
-                        }}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          fontSize: '0.875rem',
-                          border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
-                          background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
-                          color: isScrollLocked ? 'white' : '#666',
-                          borderRadius: 'var(--radius-md)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          outline: 'none'
-                        }}
-                        title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
-                        onMouseOver={(e) => {
-                          if (!isScrollLocked) {
-                            e.currentTarget.style.borderColor = '#999';
-                            e.currentTarget.style.color = '#333';
-                          }
-                        }}
-                        onMouseOut={(e) => {
-                          if (!isScrollLocked) {
-                            e.currentTarget.style.borderColor = '#cccccc';
-                            e.currentTarget.style.color = '#666';
-                          }
-                        }}
-                      >
-                        <span>Scroll</span>
-                        {isScrollLocked ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                        ) : (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                            <line x1="7" y1="11" x2="7" y2="7" />
-                          </svg>
-                        )}
-                      </button>
+                      {/* Scroll Lock Toggle - Only show when multiple models are running */}
+                      {conversations.length > 1 && (
+                        <button
+                          onClick={() => {
+                            setIsScrollLocked(!isScrollLocked);
+                          }}
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            fontSize: '0.875rem',
+                            border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
+                            background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
+                            color: isScrollLocked ? 'white' : '#666',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            outline: 'none'
+                          }}
+                          title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
+                          onMouseOver={(e) => {
+                            if (!isScrollLocked) {
+                              e.currentTarget.style.borderColor = '#999';
+                              e.currentTarget.style.color = '#333';
+                            }
+                          }}
+                          onMouseOut={(e) => {
+                            if (!isScrollLocked) {
+                              e.currentTarget.style.borderColor = '#cccccc';
+                              e.currentTarget.style.color = '#666';
+                            }
+                          }}
+                        >
+                          <span>Scroll</span>
+                          {isScrollLocked ? (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                              <line x1="7" y1="11" x2="7" y2="7" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                       {!isFollowUpMode && (
                         <button
                           onClick={handleFollowUp}
