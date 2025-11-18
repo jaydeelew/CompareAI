@@ -158,6 +158,7 @@ function AppContent() {
   const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
   const animationTimeoutRef = useRef<number | null>(null);
   const [isModelsHidden, setIsModelsHidden] = useState(false);
+  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
   const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({});
   const [showUsageBanner, setShowUsageBanner] = useState(false);
   const usageBannerTimeoutRef = useRef<number | null>(null);
@@ -224,6 +225,23 @@ function AppContent() {
 
   useEffect(() => {
     const handleResize = () => setIsWideLayout(window.innerWidth > 1000);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Auto-collapse metadata section when screen size triggers toggle layout (<= 1200px)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1200) {
+        setIsMetadataCollapsed(true);
+      } else {
+        setIsMetadataCollapsed(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -705,7 +723,7 @@ function AppContent() {
           // Try to write to clipboard with retry logic
           let copySuccess = false;
           let lastError: Error | null = null;
-          
+
           // Attempt clipboard write with up to 2 retries
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
@@ -717,33 +735,33 @@ function AppContent() {
             } catch (err) {
               lastError = err instanceof Error ? err : new Error(String(err));
               console.error(`Clipboard copy attempt ${attempt + 1} failed:`, lastError);
-              
+
               // If it's a permission error or security error, don't retry
-              if (lastError.name === 'NotAllowedError' || 
-                  lastError.name === 'SecurityError' ||
-                  lastError.message.includes('permission') ||
-                  lastError.message.includes('denied')) {
+              if (lastError.name === 'NotAllowedError' ||
+                lastError.name === 'SecurityError' ||
+                lastError.message.includes('permission') ||
+                lastError.message.includes('denied')) {
                 break;
               }
-              
+
               // Wait a bit before retrying (only if not the last attempt)
               if (attempt < 2) {
                 await new Promise(resolve => setTimeout(resolve, 200));
               }
             }
           }
-          
+
           if (copySuccess) {
             // Update notification in place for seamless transition
             copyingNotification.update('Screenshot copied to clipboard!', 'success');
           } else {
             // Show specific error message
-            const errorMsg = lastError 
+            const errorMsg = lastError
               ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
               : 'Clipboard copy failed. Image downloaded instead.';
             copyingNotification.update(errorMsg, 'error');
             console.error('Clipboard copy failed after retries:', lastError);
-            
+
             // Fallback: download the image
             const link = document.createElement('a');
             link.download = `model_${safeId}_messages.png`;
@@ -757,7 +775,7 @@ function AppContent() {
           const errorMsg = `Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`;
           copyingNotification.update(errorMsg, 'error');
           console.error('Unexpected error during clipboard copy:', error);
-          
+
           // Fallback: download the image
           const link = document.createElement('a');
           link.download = `model_${safeId}_messages.png`;
@@ -767,10 +785,10 @@ function AppContent() {
         }
       } else if (blob) {
         // Clipboard API not available
-        const reason = !navigator.clipboard 
-          ? 'Clipboard API not available' 
-          : !window.ClipboardItem 
-            ? 'ClipboardItem not supported' 
+        const reason = !navigator.clipboard
+          ? 'Clipboard API not available'
+          : !window.ClipboardItem
+            ? 'ClipboardItem not supported'
             : 'Unknown reason';
         copyingNotification.update(`${reason}. Image downloaded.`, 'error');
         console.warn('Clipboard not supported:', { clipboard: !!navigator.clipboard, ClipboardItem: !!window.ClipboardItem });
@@ -829,7 +847,7 @@ function AppContent() {
     const messageSafeId = getSafeId(messageId);
     const messageContentId = `message-content-${safeId}-${messageSafeId}`;
     const currentTab = (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED;
-    
+
     try {
       if (currentTab === RESULT_TAB.FORMATTED) {
         // Take a screenshot of the formatted message
@@ -894,7 +912,7 @@ function AppContent() {
               // Try to write to clipboard with retry logic
               let copySuccess = false;
               let lastError: Error | null = null;
-              
+
               for (let attempt = 0; attempt < 3; attempt++) {
                 try {
                   await navigator.clipboard.write([
@@ -904,28 +922,28 @@ function AppContent() {
                   break;
                 } catch (err) {
                   lastError = err instanceof Error ? err : new Error(String(err));
-                  
-                  if (lastError.name === 'NotAllowedError' || 
-                      lastError.name === 'SecurityError' ||
-                      lastError.message.includes('permission') ||
-                      lastError.message.includes('denied')) {
+
+                  if (lastError.name === 'NotAllowedError' ||
+                    lastError.name === 'SecurityError' ||
+                    lastError.message.includes('permission') ||
+                    lastError.message.includes('denied')) {
                     break;
                   }
-                  
+
                   if (attempt < 2) {
                     await new Promise(resolve => setTimeout(resolve, 200));
                   }
                 }
               }
-              
+
               if (copySuccess) {
                 copyingNotification.update('Screenshot copied to clipboard!', 'success');
               } else {
-                const errorMsg = lastError 
+                const errorMsg = lastError
                   ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
                   : 'Clipboard copy failed. Image downloaded instead.';
                 copyingNotification.update(errorMsg, 'error');
-                
+
                 // Fallback: download the image
                 const link = document.createElement('a');
                 link.download = `message_${safeId}_${messageSafeId}.png`;
@@ -936,7 +954,7 @@ function AppContent() {
             } catch (err) {
               const error = err instanceof Error ? err : new Error(String(err));
               copyingNotification.update(`Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`, 'error');
-              
+
               // Fallback: download the image
               const link = document.createElement('a');
               link.download = `message_${safeId}_${messageSafeId}.png`;
@@ -945,10 +963,10 @@ function AppContent() {
               URL.revokeObjectURL(link.href);
             }
           } else if (blob) {
-            const reason = !navigator.clipboard 
-              ? 'Clipboard API not available' 
-              : !window.ClipboardItem 
-                ? 'ClipboardItem not supported' 
+            const reason = !navigator.clipboard
+              ? 'Clipboard API not available'
+              : !window.ClipboardItem
+                ? 'ClipboardItem not supported'
                 : 'Unknown reason';
             copyingNotification.update(`${reason}. Image downloaded.`, 'error');
             const link = document.createElement('a');
@@ -1547,17 +1565,17 @@ function AppContent() {
   // Scroll individual model result cards to top when they finish formatting (initial comparison only)
   useEffect(() => {
     if (isFollowUpMode) return; // Only for initial comparison, not follow-ups
-    
+
     // Check each model's tab state
     Object.entries(activeResultTabs).forEach(([modelId, tab]) => {
       // If this model is on FORMATTED tab and we haven't scrolled it yet
       // Also verify that a conversation exists for this model
-      if (tab === RESULT_TAB.FORMATTED && 
-          !scrolledToTopRef.current.has(modelId) &&
-          conversations.some(conv => conv.modelId === modelId)) {
+      if (tab === RESULT_TAB.FORMATTED &&
+        !scrolledToTopRef.current.has(modelId) &&
+        conversations.some(conv => conv.modelId === modelId)) {
         // Mark as scrolled to avoid duplicate scrolling
         scrolledToTopRef.current.add(modelId);
-        
+
         // Wait for LatexRenderer to finish rendering, then scroll this card's conversation content to top
         setTimeout(() => {
           const safeId = getSafeId(modelId);
@@ -1594,24 +1612,24 @@ function AppContent() {
   useEffect(() => {
     // Only for initial comparison, not follow-ups
     if (isFollowUpMode || !shouldScrollToTopAfterFormattingRef.current) return;
-    
+
     // Check if all selected models are formatted
     const allModelsFormatted = selectedModels.every(modelId => {
       const modelIdFormatted = createModelId(modelId);
       const tab = activeResultTabs[modelIdFormatted];
       return tab === RESULT_TAB.FORMATTED;
     });
-    
+
     // Also check that conversations exist for all models
     const allConversationsExist = selectedModels.every(modelId => {
       const modelIdFormatted = createModelId(modelId);
       return conversations.some(conv => conv.modelId === modelIdFormatted);
     });
-    
+
     if (allModelsFormatted && allConversationsExist) {
       // Reset the flag to prevent duplicate scrolling
       shouldScrollToTopAfterFormattingRef.current = false;
-      
+
       // Wait for LatexRenderer to finish rendering, then scroll all conversation cards to top
       setTimeout(() => {
         selectedModels.forEach(modelId => {
@@ -2398,7 +2416,7 @@ function AppContent() {
     const otherModelIds = conversations
       .map(conv => conv.modelId)
       .filter(id => id !== currentModelId);
-    
+
     // Add all other model IDs to closedCards
     setClosedCards(prev => {
       const newSet = new Set(prev);
@@ -2890,7 +2908,7 @@ function AppContent() {
       // Streaming variables are declared outside try block for timeout handling
       let lastUpdateTime = Date.now();
       const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
-      
+
       // Clear previous model errors at start of new comparison
       setModelErrors({});
 
@@ -3007,7 +3025,7 @@ function AppContent() {
                       formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED;
                     });
                     setActiveResultTabs(formattedTabs);
-                    
+
                     // For initial comparison only, set flag to scroll to top after formatting is applied
                     if (!isFollowUpMode) {
                       shouldScrollToTopAfterFormattingRef.current = true;
@@ -3454,7 +3472,7 @@ function AppContent() {
             // Increment submission count
             const newSubmissionCount = submissionCount + 1;
             setSubmissionCount(newSubmissionCount);
-            
+
             // Save to localStorage
             const today = new Date().toDateString();
             localStorage.setItem('compareai_submission_count', JSON.stringify({
@@ -3518,7 +3536,7 @@ function AppContent() {
             // Increment submission count
             const newSubmissionCount = submissionCount + 1;
             setSubmissionCount(newSubmissionCount);
-            
+
             // Save to localStorage
             const today = new Date().toDateString();
             localStorage.setItem('compareai_submission_count', JSON.stringify({
@@ -4265,47 +4283,83 @@ function AppContent() {
 
                   {/* Metadata */}
                   {response && (
-                    <div className="results-metadata">
-                      <div className="metadata-item">
-                        <span className="metadata-label">Input Length:</span>
-                        <span className="metadata-value">{response.metadata.input_length} characters</span>
+                    <div className={`results-metadata ${isMetadataCollapsed ? 'collapsed' : ''}`}>
+                      <div className="metadata-header">
+                        {isMetadataCollapsed && (
+                          <span className="metadata-details-text" style={{ marginRight: 'auto' }}>Details...</span>
+                        )}
+                        <button
+                          className="metadata-toggle-arrow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMetadataCollapsed(!isMetadataCollapsed);
+                          }}
+                          style={{
+                            padding: '0.5rem',
+                            fontSize: '1.25rem',
+                            border: 'none',
+                            outline: 'none',
+                            boxShadow: 'none',
+                            background: 'transparent',
+                            color: 'var(--primary-color)',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '36px',
+                            height: '36px',
+                            fontWeight: 'bold'
+                          }}
+                          title={isMetadataCollapsed ? 'Show details' : 'Hide details'}
+                        >
+                          {isMetadataCollapsed ? '▼' : '▲'}
+                        </button>
                       </div>
-                      <div className="metadata-item">
-                        <span className="metadata-label">Models Successful:</span>
-                        <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
-                          {response.metadata.models_successful}/{response.metadata.models_requested}
-                        </span>
-                      </div>
-                      {Object.keys(response.results).length > 0 && (
-                        <div className="metadata-item">
-                          <span className="metadata-label">Results Visible:</span>
-                          <span className="metadata-value">
-                            {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
-                          </span>
-                        </div>
-                      )}
-                      {response.metadata.models_failed > 0 && (
-                        <div className="metadata-item">
-                          <span className="metadata-label">Models Failed:</span>
-                          <span className="metadata-value failed">{response.metadata.models_failed}</span>
-                        </div>
-                      )}
-                      {processingTime && (
-                        <div className="metadata-item">
-                          <span className="metadata-label">Processing Time:</span>
-                          <span className="metadata-value">
-                            {(() => {
-                              if (processingTime < 1000) {
-                                return `${processingTime}ms`;
-                              } else if (processingTime < 60000) {
-                                return `${(processingTime / 1000).toFixed(1)}s`;
-                              } else {
-                                const minutes = Math.floor(processingTime / 60000);
-                                const seconds = Math.floor((processingTime % 60000) / 1000);
-                                return `${minutes}m ${seconds}s`;
-                              }
-                            })()}
-                          </span>
+                      {!isMetadataCollapsed && (
+                        <div className="metadata-items">
+                          <div className="metadata-item">
+                            <span className="metadata-label">Input Length:</span>
+                            <span className="metadata-value">{response.metadata.input_length} characters</span>
+                          </div>
+                          <div className="metadata-item">
+                            <span className="metadata-label">Models Successful:</span>
+                            <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
+                              {response.metadata.models_successful}/{response.metadata.models_requested}
+                            </span>
+                          </div>
+                          {Object.keys(response.results).length > 0 && (
+                            <div className="metadata-item">
+                              <span className="metadata-label">Results Visible:</span>
+                              <span className="metadata-value">
+                                {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                              </span>
+                            </div>
+                          )}
+                          {response.metadata.models_failed > 0 && (
+                            <div className="metadata-item">
+                              <span className="metadata-label">Models Failed:</span>
+                              <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                            </div>
+                          )}
+                          {processingTime && (
+                            <div className="metadata-item">
+                              <span className="metadata-label">Processing Time:</span>
+                              <span className="metadata-value">
+                                {(() => {
+                                  if (processingTime < 1000) {
+                                    return `${processingTime}ms`;
+                                  } else if (processingTime < 60000) {
+                                    return `${(processingTime / 1000).toFixed(1)}s`;
+                                  } else {
+                                    const minutes = Math.floor(processingTime / 60000);
+                                    const seconds = Math.floor((processingTime % 60000) / 1000);
+                                    return `${minutes}m ${seconds}s`;
+                                  }
+                                })()}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
