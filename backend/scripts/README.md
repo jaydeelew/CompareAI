@@ -9,6 +9,8 @@ These scripts are used to:
 2. Analyze the responses to identify formatting patterns, delimiters, and issues
 3. Generate data needed for creating model-specific renderer configurations
 
+**Important:** All scripts automatically skip models that already have individual renderer configurations, preserving your manual customizations. See [Adding New Models Workflow](../../docs/development/ADDING_NEW_MODELS.md) for the complete workflow.
+
 ## Scripts
 
 ### `test_prompts.py`
@@ -66,6 +68,9 @@ python scripts/collect_model_responses.py --quiet
 - `--delay`: Delay between requests in seconds (default: 1.0)
 - `--max-retries`: Maximum retries for failed requests (default: 3)
 - `--quiet`: Suppress verbose output
+- `--output-file`: Specific output filename to use (for resuming)
+
+**Note:** Models that already have renderer configurations are automatically skipped.
 
 **Output:**
 - Saves JSON file with all collected responses
@@ -99,6 +104,8 @@ python scripts/analyze_responses.py responses.json --quiet
 - `--format`: Output format - `json`, `markdown`, or `both` (default: `both`)
 - `--quiet`: Suppress verbose output
 
+**Note:** Models that already have renderer configurations are automatically skipped.
+
 **Output:**
 - JSON file with detailed analysis data
 - Markdown report with human-readable summary
@@ -108,6 +115,33 @@ python scripts/analyze_responses.py responses.json --quiet
   - Rendering issues found
   - Code block preservation status
   - Models needing manual review
+
+### `generate_renderer_configs.py`
+
+Generates renderer configurations from analysis data.
+
+**Usage:**
+```bash
+# Generate configs (preserves existing configs by default)
+python scripts/generate_renderer_configs.py data/analysis/analysis_TIMESTAMP.json
+
+# Specify output file
+python scripts/generate_renderer_configs.py analysis.json --output frontend/src/config/model_renderer_configs.json
+
+# Overwrite existing configs (use with caution!)
+python scripts/generate_renderer_configs.py analysis.json --overwrite
+```
+
+**Options:**
+- `analysis_file`: Path to analysis JSON file (required)
+- `--output`: Output file path (default: `frontend/src/config/model_renderer_configs.json`)
+- `--quiet`: Suppress verbose output
+- `--overwrite`: Overwrite existing configs instead of preserving them
+
+**Note:** 
+- By default, preserves existing configs and only generates configs for new models
+- Models that already have configs are skipped
+- Use `--overwrite` flag to regenerate all configs (backup first!)
 
 ## Workflow
 
@@ -186,6 +220,16 @@ The collection script includes:
 - Graceful handling of unavailable models
 - Partial results saving (if interrupted)
 
+## Adding New Models
+
+When new models are added to the application, use the complete workflow:
+
+1. **Collect responses** from new models
+2. **Analyze responses** to identify patterns
+3. **Generate configs** for new models
+
+See [Adding New Models Workflow](../../docs/development/ADDING_NEW_MODELS.md) for detailed instructions.
+
 ## Best Practices
 
 1. **Start Small**: Test with a few models first before running full collection
@@ -200,6 +244,8 @@ The collection script includes:
 4. **Review Analysis**: Always review the markdown report before proceeding to configuration generation
 
 5. **Version Control**: Don't commit collected response files (they're large and change frequently)
+
+6. **Preserve Manual Changes**: Scripts automatically skip models with existing configs - your manual customizations are safe!
 
 ## Troubleshooting
 

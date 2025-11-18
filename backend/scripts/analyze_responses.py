@@ -29,6 +29,11 @@ from typing import Dict, List, Set, Optional
 from collections import defaultdict
 from datetime import datetime
 
+# Add parent directory to path to import script modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from scripts.config_helpers import has_model_config
+
 
 class ResponseAnalyzer:
     """Analyzes model responses to identify rendering patterns."""
@@ -236,9 +241,16 @@ class ResponseAnalyzer:
         self.log(f"Found {len(results)} models to analyze\n")
         
         analyses = {}
+        skipped_count = 0
         
         for model_id, model_data in results.items():
             if "responses" not in model_data:
+                continue
+            
+            # Skip models that already have configs
+            if has_model_config(model_id):
+                self.log(f"  Skipping {model_id} (already has renderer config)")
+                skipped_count += 1
                 continue
             
             analysis = self.analyze_model_responses(
@@ -246,6 +258,9 @@ class ResponseAnalyzer:
                 responses=model_data["responses"]
             )
             analyses[model_id] = analysis
+        
+        if skipped_count > 0:
+            self.log(f"\nSkipped {skipped_count} model(s) that already have renderer configs")
         
         return {
             "analysis_metadata": {

@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.model_runner import call_openrouter, OPENROUTER_MODELS
 from scripts.test_prompts import TEST_PROMPTS, get_prompt_by_name, get_all_prompt_names
+from scripts.config_helpers import filter_models_without_configs, has_model_config
 
 
 class ResponseCollector:
@@ -183,9 +184,19 @@ class ResponseCollector:
         if self.existing_results:
             results = copy.deepcopy(self.existing_results)
 
-        # Filter to available models only
+        # Filter out models that already have configs
+        model_ids_without_configs = filter_models_without_configs(model_ids)
+        skipped_configs = len(model_ids) - len(model_ids_without_configs)
+        if skipped_configs > 0:
+            self.log(f"\nSkipping {skipped_configs} model(s) that already have renderer configs:")
+            for mid in model_ids:
+                if mid not in model_ids_without_configs:
+                    self.log(f"  - {mid}")
+
+        # Filter to available models only (and those without configs)
         available_models = [
-            m for m in OPENROUTER_MODELS if m.get("id") in model_ids and m.get("available", True)
+            m for m in OPENROUTER_MODELS 
+            if m.get("id") in model_ids_without_configs and m.get("available", True)
         ]
 
         # Get prompts
