@@ -49,7 +49,7 @@ The AI assistant will create a Python script that generates renderer configurati
    - Validates generated configurations
 
 2. **Configuration Output Format**
-   - JSON file: `backend/data/renderer_configs/model_renderer_configs.json`
+   - JSON file: `frontend/src/config/model_renderer_configs.json`
    - Array of `ModelRendererConfig` objects
    - Ready to be loaded by frontend registry
 
@@ -59,7 +59,7 @@ The AI assistant will generate configurations using best practices and test them
 
 ### What Will Be Created
 
-1. **Generated Configuration File** (`backend/data/renderer_configs/model_renderer_configs.json`)
+1. **Generated Configuration File** (`frontend/src/config/model_renderer_configs.json`)
    - Configurations for all 52 models
    - Based on Phase 1 analysis data
    - Follows registry schema from Phase 2
@@ -150,7 +150,7 @@ The AI assistant will complete the following:
 
 - [ ] Create `backend/scripts/generate_renderer_configs.py` script
 - [ ] Generate configurations for all 52 models
-- [ ] Create `backend/data/renderer_configs/model_renderer_configs.json`
+- [ ] Create `frontend/src/config/model_renderer_configs.json`
 - [ ] Update `frontend/src/config/loadModelConfigs.ts` to load static configs
 - [ ] Create configuration generator tests
 - [ ] Create configuration validation tests

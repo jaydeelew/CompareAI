@@ -10,7 +10,7 @@ Usage:
     python scripts/generate_renderer_configs.py <analysis_file.json> [--output FILE]
 
 Options:
-    --output: Output file path (default: backend/data/renderer_configs/model_renderer_configs.json)
+    --output: Output file path (default: frontend/src/config/model_renderer_configs.json)
 """
 
 import json
@@ -274,7 +274,7 @@ def main():
     parser.add_argument(
         '--output',
         type=str,
-        default='backend/data/renderer_configs/model_renderer_configs.json',
+        default='frontend/src/config/model_renderer_configs.json',
         help='Output file path'
     )
     parser.add_argument(
