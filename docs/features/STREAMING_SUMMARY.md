@@ -231,7 +231,7 @@ data: {"type":"complete","metadata":{...}}
 
 **Check:**
 
-- Nginx timeout settings (increase to 300s)
+- Nginx timeout settings (should be 660s / 11 minutes to accommodate extended mode requests)
 - OpenRouter API timeout settings
 - Network stability
 
@@ -260,8 +260,9 @@ location /compare-stream {
     proxy_pass http://backend:8000;
     proxy_buffering off;  # Critical for streaming!
     proxy_cache off;
-    proxy_read_timeout 300s;
-    proxy_connect_timeout 300s;
+    proxy_read_timeout 660s;    # 11 minutes (accommodates extended mode up to 10 min)
+    proxy_send_timeout 660s;    # 11 minutes (accommodates extended mode up to 10 min)
+    proxy_connect_timeout 15s;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
 }

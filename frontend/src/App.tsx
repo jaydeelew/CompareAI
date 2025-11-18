@@ -2878,12 +2878,15 @@ function AppContent() {
 
     const startTime = Date.now();
 
-    // Dynamic timeout based on number of models selected
-    // For large selections (50+ models), allow up to 8 minutes
-    const baseTimeout = 60000; // 1 minute base
-    const additionalTime = Math.floor(selectedModels.length / 5) * 15000; // 15s per 5 models
-    const maxTimeout = selectedModels.length > 40 ? 480000 : 300000; // 8 minutes for 40+ models, 5 minutes otherwise
-    const dynamicTimeout = Math.min(baseTimeout + additionalTime, maxTimeout);
+    // Dynamic timeout based on request complexity
+    // Models run concurrently, so timeout is based on slowest model + overhead, not sum
+    // Extended mode requests need more time due to larger inputs (15K vs 5K chars, 8K vs 4K tokens)
+    // Each model processes more tokens in extended mode, so the slowest model takes longer
+    const baseTimeout = 180000; // 3 minutes base (covers slowest model + network overhead)
+    const extendedModeBonus = isExtendedMode ? 120000 : 0; // Add 2 minutes for extended mode (3x larger inputs = slower processing)
+    // Max timeout caps: higher for extended mode due to larger token processing
+    const maxTimeout = isExtendedMode ? 600000 : 480000; // 10 min extended / 8 min standard
+    const dynamicTimeout = Math.min(baseTimeout + extendedModeBonus, maxTimeout);
 
     // Declare streaming variables outside try block so they're accessible in catch block for timeout handling
     const streamingResults: { [key: string]: string } = {};
