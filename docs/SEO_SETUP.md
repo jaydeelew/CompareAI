@@ -251,6 +251,14 @@ If Facebook Debugger reports that `og:image` should be explicitly provided:
 - ✅ Add `og:image:alt` property for accessibility
 - After making changes, use Facebook's "Scrape Again" button to refresh the cache
 
+### Facebook Sharing Debugger - "Missing Properties: fb:app_id"
+If Facebook Debugger reports missing `fb:app_id`:
+- **Note**: `fb:app_id` is deprecated and not required for basic sharing functionality
+- The warning can be safely ignored, but to suppress it:
+  - Option 1: Use Facebook's default App ID (already added): `966242223397117`
+  - Option 2: Create your own Facebook App at https://developers.facebook.com/ and use your App ID
+- The meta tag is included in `index.html` using Facebook's default App ID to suppress the warning
+
 ## Resources
 
 - [Google Search Central](https://developers.google.com/search)
