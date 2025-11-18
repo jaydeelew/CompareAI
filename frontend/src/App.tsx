@@ -3709,7 +3709,7 @@ function AppContent() {
         color: 'rgba(255, 255, 255, 0.85)'
       }}>
         <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
-          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected of <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
         </span>
         {isExtendedInteraction && (
           <span className="usage-preview-item">
