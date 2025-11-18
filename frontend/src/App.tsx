@@ -147,6 +147,7 @@ function AppContent() {
   const selectedModelsGridRef = useRef<HTMLDivElement>(null);
   const scrolledToTopRef = useRef<Set<string>>(new Set()); // Track which model cards have been scrolled to top
   const shouldScrollToTopAfterFormattingRef = useRef<boolean>(false); // Track if we should scroll to top after all models format (initial comparison only)
+  const isPageScrollingRef = useRef<boolean>(false); // Track if user is scrolling the page
   const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -1701,6 +1702,49 @@ function AppContent() {
     }
   }, [selectedModels.length, isLoading, browserFingerprint, isAuthenticated, fetchRateLimitStatus, refreshUser]);
 
+  // Detect page-level scrolling to prevent card auto-scroll from interfering
+  useEffect(() => {
+    let lastPageScrollTop = window.scrollY || document.documentElement.scrollTop;
+    let scrollTimeout: number | null = null;
+
+    const handlePageScroll = () => {
+      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+
+      // Only mark as page scrolling if there's actual scroll movement
+      // This prevents false positives from programmatic scrolls
+      if (Math.abs(currentScrollTop - lastPageScrollTop) > 1) {
+        isPageScrollingRef.current = true;
+
+        // Clear any existing timeout
+        if (scrollTimeout !== null) {
+          clearTimeout(scrollTimeout);
+        }
+
+        // Reset flag after scrolling stops (150ms of no scroll activity)
+        scrollTimeout = window.setTimeout(() => {
+          isPageScrollingRef.current = false;
+          scrollTimeout = null;
+        }, 150);
+      }
+
+      lastPageScrollTop = currentScrollTop;
+    };
+
+    // Use passive listener for better performance
+    window.addEventListener('scroll', handlePageScroll, { passive: true });
+    window.addEventListener('wheel', handlePageScroll, { passive: true });
+    window.addEventListener('touchmove', handlePageScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handlePageScroll);
+      window.removeEventListener('wheel', handlePageScroll);
+      window.removeEventListener('touchmove', handlePageScroll);
+      if (scrollTimeout !== null) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, []);
+
   // Cleanup scroll listeners on unmount
   useEffect(() => {
     // Capture ref values at mount time
@@ -3160,8 +3204,12 @@ function AppContent() {
               // Auto-scroll each conversation card to bottom as content streams in
               // BUT only for models that are still streaming (not completed yet)
               // AND respect user's manual scroll position (pause if user scrolled up)
+              // AND pause if user is scrolling the page to prevent interference
               // Use requestAnimationFrame for smooth scrolling
               requestAnimationFrame(() => {
+                // Don't auto-scroll cards if user is actively scrolling the page
+                if (isPageScrollingRef.current) return;
+
                 Object.keys(streamingResults).forEach(modelId => {
                   // Skip auto-scrolling for completed models so users can scroll through them
                   if (completedModels.has(modelId)) return;
@@ -3173,6 +3221,7 @@ function AppContent() {
                   const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
                   const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
                   if (conversationContent) {
+                    // Use scrollTop assignment without triggering events that interfere with page scroll
                     conversationContent.scrollTop = conversationContent.scrollHeight;
                   }
                 });
