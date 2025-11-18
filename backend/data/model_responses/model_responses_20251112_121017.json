@@ -1,12 +1,12 @@
 {
   "collection_metadata": {
-    "last_updated": "2025-11-12T18:05:58.287048",
-    "total_models": 52,
+    "last_updated": "2025-11-18T15:15:13.622426",
+    "total_models": 56,
     "collection_stats": {
-      "total_requests": 156,
-      "successful": 156,
+      "total_requests": 52,
+      "successful": 52,
       "failed": 0,
-      "skipped": 520,
+      "skipped": 0,
       "errors": []
     },
     "script_version": "1.0",
@@ -6092,6 +6092,474 @@
       },
       "metadata": {
         "collection_timestamp": "2025-11-12T18:05:01.670375",
+        "total_prompts": 13,
+        "successful_responses": 13,
+        "failed_responses": 0
+      }
+    },
+    "openai/gpt-5.1": {
+      "model_name": "GPT-5.1",
+      "model_id": "openai/gpt-5.1",
+      "provider": "OpenAI",
+      "responses": {
+        "complex_math_display": {
+          "prompt": "Solve this step by step:\n\nGiven the quadratic equation: $$ax^2 + bx + c = 0$$\n\nShow that the solutions are:\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nThen explain why when $b^2 - 4ac < 0$, the solutions are complex numbers.\n\nAlso show the integral:\n$$\\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAnd the matrix equation:\n$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} e \\\\ f \\end{pmatrix}$$",
+          "prompt_name": "complex_math_display",
+          "response": "### 1. Solving the quadratic equation \\(ax^2 + bx + c = 0\\)\n\nAssume \\(a \\neq 0\\) (otherwise it's not quadratic).\n\nStart with:\n\\[\nax^2 + bx + c = 0\n\\]\n\n**Step 1: Divide through by \\(a\\)**  \n\\[\nx^2 + \\frac{b}{a}x + \\frac{c}{a} = 0\n\\]\n\n**Step 2: Move the constant term to the right side**\n\\[\nx^2 + \\frac{b}{a}x = -\\frac{c}{a}\n\\]\n\n**Step 3: Complete the square**\n\nTake half of \\(\\frac{b}{a}\\), which is \\(\\frac{b}{2a}\\), and square it:\n\\[\n\\left(\\frac{b}{2a}\\right)^2 = \\frac{b^2}{4a^2}\n\\]\n\nAdd this to both sides:\n\\[\nx^2 + \\frac{b}{a}x + \\frac{b^2}{4a^2} = -\\frac{c}{a} + \\frac{b^2}{4a^2}\n\\]\n\nThe left side is now a perfect square:\n\\[\n\\left(x + \\frac{b}{2a}\\right)^2 = -\\frac{c}{a} + \\frac{b^2}{4a^2}\n\\]\n\n**Step 4: Simplify the right side**\n\nWrite \\(-\\frac{c}{a}\\) with denominator \\(4a^2\\):\n\\[\n-\\frac{c}{a} = -\\frac{4ac}{4a^2}\n\\]\n\nSo:\n\\[\n-\\frac{c}{a} + \\frac{b^2}{4a^2} = \\frac{b^2 - 4ac}{4a^2}\n\\]\n\nThus:\n\\[\n\\left(x + \\frac{b}{2a}\\right)^2 = \\frac{b^2 - 4ac}{4a^2}\n\\]\n\n**Step 5: Take square roots of both sides**\n\\[\nx + \\frac{b}{2a} = \\pm \\frac{\\sqrt{b^2 - 4ac}}{2a}\n\\]\n\n**Step 6: Solve for \\(x\\)**\n\\[\nx = -\\frac{b}{2a} \\pm \\frac{\\sqrt{b^2 - 4ac}}{2a}\n\\]\n\\[\n\\boxed{x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}}\n\\]\n\n---\n\n### 2. Why \\(b^2 - 4ac < 0\\) gives complex solutions\n\nThe quadratic formula is:\n\\[\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\nThe expression under the square root,\n\\[\n\\Delta = b^2 - 4ac,\n\\]\nis called the **discriminant**.\n\n- If \\(\\Delta > 0\\): \\(\\sqrt{\\Delta}\\) is a positive real number → two distinct real solutions.\n- If \\(\\Delta = 0\\): \\(\\sqrt{\\Delta} = 0\\) → one real solution (a repeated root).\n- If \\(\\Delta < 0\\): then \\(\\sqrt{\\Delta} = \\sqrt{b^2 - 4ac}\\) is the square root of a **negative** number.\n\nWrite\n\\[\n\\Delta = -k \\quad \\text{with } k > 0.\n\\]\nThen\n\\[\n\\sqrt{\\Delta} = \\sqrt{-k} = i\\sqrt{k},\n\\]\nwhere \\(i\\) is the imaginary unit (\\(i^2 = -1\\)).\n\nSo when \\(b^2 - 4ac < 0\\), the solutions are:\n\\[\nx = \\frac{-b \\pm i\\sqrt{|b^2 - 4ac|}}{2a},\n\\]\nwhich are **complex numbers** (they have nonzero imaginary parts).\n\n---\n\n### 3. Evaluating the integral \\(\\displaystyle \\int_0^{\\infty} e^{-x^2} \\, dx\\)\n\nDefine\n\\[\nI = \\int_0^{\\infty} e^{-x^2} \\, dx.\n\\]\n\nWe cannot find an elementary antiderivative, so we use a trick: compute \\(I^2\\) as a double integral.\n\n**Step 1: Square the integral**\n\\[\nI^2 = \\left(\\int_0^{\\infty} e^{-x^2} \\, dx \\right)\\left(\\int_0^{\\infty} e^{-y^2} \\, dy \\right)\n= \\int_0^{\\infty} \\int_0^{\\infty} e^{-(x^2 + y^2)} \\, dx \\, dy.\n\\]\n\nThis is an integral over the first quadrant of the plane.\n\n**Step 2: Switch to polar coordinates**\n\nIn polar coordinates:\n\\[\nx = r\\cos\\theta, \\quad y = r\\sin\\theta, \\quad x^2 + y^2 = r^2,\n\\]\nand the Jacobian gives:\n\\[\ndx\\,dy = r \\, dr\\, d\\theta.\n\\]\n\nThe first quadrant corresponds to:\n\\[\n0 \\le \\theta \\le \\frac{\\pi}{2}, \\quad 0 \\le r < \\infty.\n\\]\n\nSo:\n\\[\nI^2 = \\int_{\\theta=0}^{\\pi/2} \\int_{r=0}^{\\infty} e^{-r^2} \\, r \\, dr \\, d\\theta.\n\\]\n\n**Step 3: Compute the inner integral in \\(r\\)**\n\nLet \\(u = r^2\\), then \\(du = 2r\\,dr\\), so \\(r\\,dr = \\frac{1}{2}du\\).\n\nThus:\n\\[\n\\int_0^{\\infty} e^{-r^2} r \\, dr \n= \\frac{1}{2}\\int_0^{\\infty} e^{-u} \\, du\n= \\frac{1}{2}\\big[-e^{-u}\\big]_0^{\\infty}\n= \\frac{1}{2}(0 - (-1)) = \\frac{1}{2}.\n\\]\n\n**Step 4: Compute the full double integral**\n\n\\[\nI^2 = \\int_0^{\\pi/2} \\left( \\frac{1}{2} \\right) d\\theta\n= \\frac{1}{2} \\left[ \\theta \\right]_0^{\\pi/2}\n= \\frac{1}{2} \\cdot \\frac{\\pi}{2}\n= \\frac{\\pi}{4}.\n\\]\n\nThus:\n\\[\nI^2 = \\frac{\\pi}{4}\n\\quad \\Rightarrow \\quad\nI = \\sqrt{\\frac{\\pi}{4}} = \\frac{\\sqrt{\\pi}}{2},\n\\]\nand since the integral is clearly positive,\n\\[\n\\boxed{\\int_0^{\\infty} e^{-x^2} \\, dx = \\frac{\\sqrt{\\pi}}{2}}.\n\\]\n\n---\n\n### 4. The matrix equation\n\\[\n\\begin{pmatrix} a & b \\\\[4pt] c & d \\end{pmatrix}\n\\begin{pmatrix} x \\\\[4pt] y \\end{pmatrix}\n=\n\\begin{pmatrix} e \\\\[4pt] f \\end{pmatrix}\n\\]\n\nThis matrix equation represents the system of linear equations:\n\\[\n\\begin{cases}\nax + by = e, \\\\\ncx + dy = f.\n\\end{cases}\n\\]\n\nAssuming the matrix is invertible, i.e.,\n\\[\n\\det \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} = ad - bc \\neq 0,\n\\]\nits inverse is:\n\\[\n\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}^{-1}\n= \\frac{1}{ad - bc}\n\\begin{pmatrix} d & -b \\\\ -c & a \\end{pmatrix}.\n\\]\n\nThen\n\\[\n\\begin{pmatrix} x \\\\ y \\end{pmatrix}\n=\n\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}^{-1}\n\\begin{pmatrix} e \\\\ f \\end{pmatrix}\n=\n\\frac{1}{ad - bc}\n\\begin{pmatrix}\nd & -b \\\\\n-c & a\n\\end{pmatrix}\n\\begin{pmatrix} e \\\\ f \\end{pmatrix}.\n\\]\n\nCompute the product:\n\\[\n\\begin{pmatrix} x \\\\ y \\end{pmatrix}\n=\n\\frac{1}{ad - bc}\n\\begin{pmatrix}\nde - bf \\\\\n-ae + cf\n\\end{pmatrix}.\n\\]\n\nSo explicitly:\n\\[\n\\boxed{\nx = \\frac{de - bf}{ad - bc}, \\quad\ny = \\frac{cf - ae}{ad - bc}\n}\n\\]\n(provided \\(ad - bc \\neq 0\\)).",
+          "timestamp": "2025-11-18T15:09:04.623670",
+          "success": true,
+          "attempts": 1
+        },
+        "inline_math_mixed": {
+          "prompt": "Explain the following concepts:\n\nThe Pythagorean theorem states that $a^2 + b^2 = c^2$ where $c$ is the hypotenuse.\n\nEinstein's mass-energy equivalence is $E = mc^2$.\n\nThe derivative of $f(x) = x^2$ is $f'(x) = 2x$.\n\nThe limit as $x$ approaches infinity of $\\frac{1}{x}$ is $0$.\n\nWhen $\\alpha = 0.05$, we reject the null hypothesis if $p < \\alpha$.\n\nThe sum $\\sum_{i=1}^{n} x_i$ represents the total of all values.",
+          "prompt_name": "inline_math_mixed",
+          "response": "Here’s an explanation of each statement, one by one.\n\n---\n\n### 1. Pythagorean theorem:  \n**Statement:** For a right triangle with legs \\(a\\) and \\(b\\) and hypotenuse \\(c\\),\n\\[\na^2 + b^2 = c^2.\n\\]\n\n**Meaning:**  \nIn any right triangle (one angle is \\(90^\\circ\\)):\n\n- \\(a\\) and \\(b\\) are the two shorter sides (the sides that form the right angle).\n- \\(c\\) is the hypotenuse, the side opposite the right angle and the longest side.\n\nThe theorem says:  \n> The square of the hypotenuse’s length equals the sum of the squares of the other two sides’ lengths.\n\nGeometrically, if you draw a square on each side of the triangle, the area of the square on the hypotenuse equals the sum of the areas of the squares on the legs.\n\n---\n\n### 2. Einstein’s mass–energy equivalence:  \n**Statement:**\n\\[\nE = mc^2\n\\]\n\n**Meaning:**  \n- \\(E\\) is energy.\n- \\(m\\) is mass.\n- \\(c\\) is the speed of light in a vacuum (about \\(3 \\times 10^8\\) m/s).\n\nThe formula says that mass and energy are two forms of the same thing: a mass \\(m\\) “contains” an amount of energy equal to \\(mc^2\\), even if it’s at rest. Because \\(c^2\\) is huge, a small amount of mass corresponds to a very large amount of energy. This underlies processes like nuclear reactions, where tiny changes in mass release large amounts of energy.\n\n---\n\n### 3. Derivative of \\(f(x) = x^2\\):  \n**Statement:**\n\\[\nf(x) = x^2 \\quad \\Rightarrow \\quad f'(x) = 2x.\n\\]\n\n**Meaning:**  \nThe derivative \\(f'(x)\\) measures the instantaneous rate of change of \\(f(x)\\) with respect to \\(x\\), or the slope of the tangent line to the curve \\(y = x^2\\) at a point.\n\nFor \\(f(x) = x^2\\), the slope is not constant; it depends on \\(x\\). The derivative \\(f'(x) = 2x\\) means:\n\n- At \\(x = 1\\), slope is \\(2\\).\n- At \\(x = 0\\), slope is \\(0\\).\n- At \\(x = 3\\), slope is \\(6\\), etc.\n\nFormally, using the limit definition:\n\\[\nf'(x) = \\lim_{h \\to 0} \\frac{(x+h)^2 - x^2}{h}\n= \\lim_{h \\to 0} \\frac{2xh + h^2}{h}\n= \\lim_{h \\to 0} (2x + h) = 2x.\n\\]\n\n---\n\n### 4. Limit of \\(\\frac{1}{x}\\) as \\(x \\to \\infty\\):  \n**Statement:**\n\\[\n\\lim_{x \\to \\infty} \\frac{1}{x} = 0.\n\\]\n\n**Meaning:**  \nAs \\(x\\) gets larger and larger (goes to infinity), the value of \\(1/x\\) gets smaller and smaller, approaching 0.\n\n- At \\(x = 10\\), \\(1/x = 0.1\\)\n- At \\(x = 100\\), \\(1/x = 0.01\\)\n- At \\(x = 1000\\), \\(1/x = 0.001\\), etc.\n\nWe say the limit is 0 because \\(1/x\\) can be made as close to 0 as we like by taking \\(x\\) sufficiently large. It never actually equals 0 for any finite \\(x\\), but it approaches 0 without bound.\n\n---\n\n### 5. Hypothesis testing with \\(\\alpha = 0.05\\):  \n**Statement:**  \nWhen \\(\\alpha = 0.05\\), we reject the null hypothesis if \\(p < \\alpha\\).\n\n**Meaning:**  \nIn statistical hypothesis testing:\n\n- The **null hypothesis** \\(H_0\\) is a default claim (e.g., “no effect,” “no difference”).\n- The **p-value** is the probability, under \\(H_0\\), of observing data as extreme as (or more extreme than) what was actually observed.\n- \\(\\alpha\\) is the **significance level**, a threshold chosen in advance. \\(\\alpha = 0.05\\) means we’re willing to accept about a 5% chance of rejecting \\(H_0\\) when it is actually true (Type I error).\n\nThe rule:\n- If \\(p < 0.05\\): the data are considered unlikely under \\(H_0\\), so we **reject** \\(H_0\\).\n- If \\(p \\ge 0.05\\): we do **not** reject \\(H_0\\) (evidence is not strong enough).\n\nIt does not prove \\(H_0\\) is false; it just indicates whether the data provide enough evidence against it at the chosen significance level.\n\n---\n\n### 6. The sum \\(\\sum_{i=1}^{n} x_i\\):  \n**Statement:**\n\\[\n\\sum_{i=1}^{n} x_i\n\\]\n\n**Meaning:**  \nThis is sigma notation for a sum. It means:\n\n\\[\nx_1 + x_2 + x_3 + \\cdots + x_n.\n\\]\n\n- \\(i\\) is the index of summation.\n- \\(i = 1\\) is the starting index.\n- \\(n\\) is the ending index.\n- \\(x_i\\) is the \\(i\\)-th value in some list or sequence.\n\nSo \\(\\sum_{i=1}^{n} x_i\\) represents the **total of all values** \\(x_1, x_2, \\dots, x_n\\). This is used throughout mathematics and statistics, for example when computing the mean:\n\\[\n\\bar{x} = \\frac{1}{n} \\sum_{i=1}^{n} x_i.\n\\]\n\n---\n\nIf you’d like, I can connect these ideas to each other (e.g., how derivatives and limits relate, or where sums show up in statistics with \\(p\\)-values).",
+          "timestamp": "2025-11-18T15:09:27.315999",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_lists": {
+          "prompt": "Create a markdown list with:\n\n1. First item with **bold** and *italic* text\n2. Second item with inline math: $E = mc^2$\n3. Third item with a code block:\n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:\n   $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n5. Fifth item with a [link](https://example.com)\n6. Sixth item with `inline code` and more text\n\nAlso create an unordered list:\n- Item A with **bold**\n- Item B with *italic*\n- Item C with $x = y + z$\n- Item D with `code`",
+          "prompt_name": "markdown_lists",
+          "response": "1. First item with **bold** and *italic* text  \n2. Second item with inline math: $E = mc^2$  \n3. Third item with a code block:\n\n    ```python\n    def hello():\n        print(\"world\")\n    ```\n\n4. Fourth item with display math:\n\n    $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\n5. Fifth item with a [link](https://example.com)  \n6. Sixth item with `inline code` and more text  \n\n- Item A with **bold**\n- Item B with *italic*\n- Item C with $x = y + z$\n- Item D with `code`",
+          "timestamp": "2025-11-18T15:09:34.660123",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_headers": {
+          "prompt": "Create a document with headers:\n\n# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "prompt_name": "markdown_headers",
+          "response": "# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: \n$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "timestamp": "2025-11-18T15:09:37.655665",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_tables": {
+          "prompt": "Create a markdown table:\n\n| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | $A = \\pi r^2$ | $25\\pi$ |\n| Volume | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$ | $100\\pi$ |\n\nAlso include a table with display math:\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |",
+          "prompt_name": "markdown_tables",
+          "response": "```markdown\n| Variable      | Formula          | Value            |\n|--------------|------------------|------------------|\n| Area         | $A = \\pi r^2$    | $25\\pi$          |\n| Volume       | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$   | $100\\pi$         |\n\n| Equation      | Description             |\n|---------------|-------------------------|\n| $$E = mc^2$$  | Mass-energy equivalence |\n| $$F = ma$$    | Newton's second law     |\n```",
+          "timestamp": "2025-11-18T15:09:42.063411",
+          "success": true,
+          "attempts": 1
+        },
+        "edge_cases_dollar_signs": {
+          "prompt": "Render these correctly:\n\n- Dollar signs in text: The price is $50\n- Math with dollars: $x = \\$50 + y$\n- Multiple dollars: The cost is $100, $200, or $300\n- Code with math: `const price = $50`\n- Display math: $$\\sum_{i=1}^{n} \\$x_i$$\n- Text with dollar: I have $5 in my pocket\n- Mixed: Price $p$ where $p = \\$50 + tax$",
+          "prompt_name": "edge_cases_dollar_signs",
+          "response": "Here’s how to write them so they render correctly in Markdown/LaTeX (with MathJax):\n\n```markdown\n- Dollar signs in text: The price is \\$50\n\n- Math with dollars: $x = \\$50 + y$\n\n- Multiple dollars: The cost is \\$100, \\$200, or \\$300\n\n- Code with math: `const price = $50`\n\n- Display math:\n  $$\\sum_{i=1}^{n} \\$x_i$$\n\n- Text with dollar: I have \\$5 in my pocket\n\n- Mixed: Price $p$ where $p = \\$50 + \\text{tax}$\n```\n\nRendered result:\n\n- Dollar signs in text: The price is \\$50  \n- Math with dollars: $x = \\$50 + y$  \n- Multiple dollars: The cost is \\$100, \\$200, or \\$300  \n- Code with math: `const price = $50`  \n- Display math:  \n  $$\\sum_{i=1}^{n} \\$x_i$$  \n- Text with dollar: I have \\$5 in my pocket  \n- Mixed: Price $p$ where $p = \\$50 + \\text{tax}$",
+          "timestamp": "2025-11-18T15:10:17.779796",
+          "success": true,
+          "attempts": 1
+        },
+        "code_blocks_preservation": {
+          "prompt": "Show code examples in different languages:\n\nPython:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (should NOT be rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (should NOT be rendered as math):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "prompt_name": "code_blocks_preservation",
+          "response": "Python:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (should NOT be rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (should NOT be rendered as math):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "timestamp": "2025-11-18T15:10:26.041516",
+          "success": true,
+          "attempts": 1
+        },
+        "mixed_content_complex": {
+          "prompt": "Create a comprehensive response with:\n\n# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states: $a^2 + b^2 = c^2$\n\nIn matrix form:\n$$\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2$$\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: $x = 1$\n2. Second: $y = 2$\n3. Third: $z = x + y = 3$\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| $x$ | $1$ |\n| $y$ | $2$ |\n| $z$ | $3$ |\n\n**Note:** This only works in Euclidean space.",
+          "prompt_name": "mixed_content_complex",
+          "response": "# The Pythagorean Theorem in Euclidean Space\n\n## Introduction\n\nThe **Pythagorean theorem** describes the fundamental relationship between the sides of a right triangle. If a right triangle has legs of lengths \\(a\\) and \\(b\\), and hypotenuse of length \\(c\\), then:\n\n\\[\na^2 + b^2 = c^2\n\\]\n\nThis can also be expressed using vector and matrix notation. If we consider the vector \\(\\begin{pmatrix} a \\\\ b \\end{pmatrix}\\) in \\(\\mathbb{R}^2\\), then the square of its Euclidean norm (length) is:\n\n\\[\n\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T\n\\begin{pmatrix} a \\\\ b \\end{pmatrix}\n= a^2 + b^2 = c^2\n\\]\n\nThis shows that the hypotenuse length \\(c\\) is just the norm of the vector formed by the legs of the triangle.\n\n## Code Example\n\nBelow is a simple Python function that uses the Pythagorean theorem to compute the hypotenuse \\(c\\) given the legs \\(a\\) and \\(b\\):\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n\n# Example usage:\n# a = 3, b = 4 should give c = 5\nprint(pythagorean(3, 4))  # Output: 5.0\n```\n\nThis function directly implements the formula \\(c = \\sqrt{a^2 + b^2}\\).\n\n## List\n\nAssume we have three variables defined as follows:\n\n1. First: \\(x = 1\\)\n2. Second: \\(y = 2\\)\n3. Third: \\(z = x + y = 3\\)\n\nThese simple values can serve as example inputs or parameters in related computations.\n\n## Table\n\nThe same relationships can be summarized in tabular form:\n\n| Variable | Value |\n|----------|-------|\n| \\(x\\)    | \\(1\\) |\n| \\(y\\)    | \\(2\\) |\n| \\(z\\)    | \\(3\\) |\n\nThis table just restates the assignments and the result of \\(z = x + y\\).\n\n---\n\n**Note:** The Pythagorean theorem, and the norm interpretation using vector/matrix notation, **only holds in Euclidean space** with the standard inner product. In non-Euclidean geometries (such as spherical or hyperbolic geometry), or with different inner products, the relationship between the sides of a “triangle” is generally different and must be described by other formulas.",
+          "timestamp": "2025-11-18T15:10:35.100290",
+          "success": true,
+          "attempts": 1
+        },
+        "blockquotes_and_special": {
+          "prompt": "Create content with blockquotes:\n\n> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAlso include:\n\n- Horizontal rule below:\n\n---\n\nAnd more content with **bold**, *italic*, and `code`.\n\n> Nested quote with $x = y + z$",
+          "prompt_name": "blockquotes_and_special",
+          "response": "> This is a quote with math: $E = mc^2$  \n>  \n> And display math:  \n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nHere is some regular text following the quote.\n\n- Horizontal rule below:\n\n---\n\nNow for more content with different styles:\n\n- This is **bold** text.\n- This is *italic* text.\n- This is `inline code`.\n\nYou can also combine them, like **bold and *italic*** or `code with math-like syntax: a^2 + b^2 = c^2`.\n\n> Nested quote with $x = y + z$  \n> \n> > This is a deeper nested quote with inline math: $\\alpha + \\beta = \\gamma$",
+          "timestamp": "2025-11-18T15:10:41.351245",
+          "success": true,
+          "attempts": 1
+        },
+        "unicode_and_special_chars": {
+          "prompt": "Use various mathematical symbols:\n\nGreek letters: $\\alpha, \\beta, \\gamma, \\pi, \\theta, \\lambda$\n\nOperators: $\\sum, \\prod, \\int, \\partial$\n\nRelations: $\\leq, \\geq, \\neq, \\approx, \\equiv$\n\nSet theory: $\\in, \\subset, \\cup, \\cap, \\emptyset$\n\nSpecial: $\\infty, \\nabla, \\Delta, \\forall, \\exists$\n\nDisplay versions:\n$$\\sum_{i=1}^{n} x_i, \\quad \\prod_{j=1}^{m} y_j, \\quad \\int_a^b f(x) dx$$",
+          "prompt_name": "unicode_and_special_chars",
+          "response": "Here is a short mathematical “mini‑theorem” using all of your requested symbols.\n\nWe consider parameters \\(\\alpha, \\beta, \\gamma, \\pi, \\theta, \\lambda \\in \\mathbb{R}\\).  \nAssume there exists a sequence \\(\\{x_i\\}_{i=1}^n \\subset \\mathbb{R}\\) and \\(\\{y_j\\}_{j=1}^m \\subset \\mathbb{R}\\) such that  \n\\[\n\\sum_{i=1}^{n} x_i \\leq \\alpha, \n\\quad\n\\prod_{j=1}^{m} y_j \\geq \\beta,\n\\quad\n\\alpha \\neq \\beta.\n\\]\n\nDefine the function\n\\[\nf(x) = \\gamma x^2 + \\lambda \\sin(\\theta x),\n\\]\nand suppose\n\\[\n\\int_a^b f(x)\\,dx \\approx \\pi,\n\\]\nwhere \\(a \\leq b\\).\n\nLet a set \\(A \\subset \\mathbb{R}\\) be given and define\n\\[\nB = \\{ x \\in A : f(x) \\geq 0 \\}.\n\\]\nThen we have\n\\[\nB \\subset A, \n\\quad\nA \\cup B = A, \n\\quad\nA \\cap B = B, \n\\quad\nA \\neq \\emptyset.\n\\]\n\nConsider a function \\(u : \\mathbb{R}^n \\to \\mathbb{R}\\) with gradient \\(\\nabla u\\) and Laplacian\n\\[\n\\Delta u = \\sum_{k=1}^{n} \\partial_{x_k}^2 u.\n\\]\nAssume\n\\[\n\\forall x \\in A, \\ \\Delta u(x) \\equiv 0\n\\quad\\text{and}\\quad\n\\exists x_0 \\in A \\ \\text{such that} \\ u(x_0) = 0.\n\\]\n\nIf, in addition,\n\\[\n\\|\\nabla u(x)\\| \\leq C < \\infty \\quad \\forall x \\in A,\n\\]\nthen \\(u\\) is bounded on \\(A\\).\n\nTo highlight the display versions explicitly:\n\n\\[\n\\sum_{i=1}^{n} x_i, \n\\qquad \n\\prod_{j=1}^{m} y_j, \n\\qquad \n\\int_a^b f(x)\\,dx.\n\\]",
+          "timestamp": "2025-11-18T15:10:56.127280",
+          "success": true,
+          "attempts": 1
+        },
+        "fractions_and_complex_expressions": {
+          "prompt": "Show complex mathematical expressions:\n\nSimple fraction: $\\frac{1}{2}$\n\nNested fraction: $\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}$\n\nDisplay fraction:\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nComplex expression:\n$$\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0$$\n\nWith subscripts and superscripts:\n$$x_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)$$",
+          "prompt_name": "fractions_and_complex_expressions",
+          "response": "Here are your expressions written in LaTeX (they are already correct) plus a few additional complex ones for reference.\n\nYour examples\n-------------\n\nInline simple fraction:  \n`\\frac{1}{2}` → \\(\\frac{1}{2}\\)\n\nNested fraction:  \n`\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}` →  \n\\[\n\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}\n\\]\n\nDisplay fraction (quadratic formula):  \n```tex\n\\[\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n```\ngives\n\\[\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\nPDE (Laplace’s equation):  \n```tex\n\\[\n\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0\n\\]\n```\ngives\n\\[\n\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0\n\\]\n\nWith subscripts and superscripts:\n```tex\n\\[\nx_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)\n\\]\n```\ngives\n\\[\nx_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)\n\\]\n\nA few more complex examples\n---------------------------\n\nSummation and product:\n```tex\n\\[\n\\sum_{i=1}^n \\prod_{j=1}^m a_{i,j}\n\\]\n```\n\\[\n\\sum_{i=1}^n \\prod_{j=1}^m a_{i,j}\n\\]\n\nIntegral with limits and exponent:\n```tex\n\\[\n\\int_{0}^{\\infty} x^n e^{-x} \\, dx = n!\n\\]\n```\n\\[\n\\int_{0}^{\\infty} x^n e^{-x} \\, dx = n!\n\\]\n\nMatrix:\n```tex\n\\[\nA = \\begin{pmatrix}\na_{11} & a_{12} & \\dots & a_{1n} \\\\\na_{21} & a_{22} & \\dots & a_{2n} \\\\\n\\vdots & \\vdots & \\ddots & \\vdots \\\\\na_{m1} & a_{m2} & \\dots & a_{mn}\n\\end{pmatrix}\n\\]\n```\n\\[\nA = \\begin{pmatrix}\na_{11} & a_{12} & \\dots & a_{1n} \\\\\na_{21} & a_{22} & \\dots & a_{2n} \\\\\n\\vdots & \\vdots & \\ddots & \\vdots \\\\\na_{m1} & a_{m2} & \\dots & a_{mn}\n\\end{pmatrix}\n\\]\n\nEuler–Lagrange equation:\n```tex\n\\[\n\\frac{d}{dx}\\left( \\frac{\\partial L}{\\partial \\dot{q}} \\right)\n- \\frac{\\partial L}{\\partial q} = 0\n\\]\n```\n\\[\n\\frac{d}{dx}\\left( \\frac{\\partial L}{\\partial \\dot{q}} \\right)\n- \\frac{\\partial L}{\\partial q} = 0\n\\]\n\nIf you tell me the topic (calculus, linear algebra, PDE, probability, etc.), I can tailor more examples to that area.",
+          "timestamp": "2025-11-18T15:11:13.133817",
+          "success": true,
+          "attempts": 1
+        },
+        "links_and_references": {
+          "prompt": "Create content with links:\n\nSee [this equation](https://example.com): $E = mc^2$\n\nReference to equation (1): $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nMore links:\n- [Wikipedia](https://wikipedia.org) has info on $\\pi$\n- [MathWorld](https://mathworld.wolfram.com) explains $e^{i\\pi} + 1 = 0$\n\nInline reference: As shown in equation $x = y + z$, we can see...",
+          "prompt_name": "links_and_references",
+          "response": "According to [Einstein’s theory of relativity](https://example.com), the relationship between mass and energy is given by the famous equation  \n\\(E = mc^2\\),  \nwhere \\(E\\) is energy, \\(m\\) is mass, and \\(c\\) is the speed of light in a vacuum. This shows that even a small amount of mass corresponds to a large amount of energy due to the factor \\(c^2\\).\n\nWhen solving polynomial equations, one of the most widely used formulas is the quadratic formula. For a quadratic equation \\(ax^2 + bx + c = 0\\), the solutions are given by equation (1):\n\\[\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} \\tag{1}\n\\]\nThis formula gives all possible real (and complex) roots of any quadratic equation, provided that \\(a \\neq 0\\).\n\nFor constants and special numbers, several key references are useful:\n\n- [Wikipedia](https://wikipedia.org) has extensive information on the number \\(\\pi\\), including its geometric meaning as the ratio of a circle’s circumference to its diameter, as well as many of its notable series and product representations.\n- [MathWorld](https://mathworld.wolfram.com) explains the celebrated identity\n  \\[\n  e^{i\\pi} + 1 = 0,\n  \\]\n  which links five of the most fundamental constants in mathematics: \\(e\\), \\(i\\), \\(\\pi\\), 1, and 0.\n\nIn many derivations, we often start from a simple relation such as \\(x = y + z\\). As shown in equation \\(x = y + z\\), we can see how a variable can be decomposed into the sum of two components, which is a common step in both algebraic manipulation and physical modeling (for example, decomposing a total quantity into independent contributions).\n\nFor further reading on these topics:\n\n- Relativity and \\(E = mc^2\\): [Relativity on Wikipedia](https://en.wikipedia.org/wiki/Theory_of_relativity)  \n- Quadratic equations and their solutions: [Quadratic Equation on Wikipedia](https://en.wikipedia.org/wiki/Quadratic_equation)  \n- Euler’s identity and complex analysis: [Euler’s Identity on MathWorld](https://mathworld.wolfram.com/EulerIdentity.html)",
+          "timestamp": "2025-11-18T15:11:43.029123",
+          "success": true,
+          "attempts": 1
+        },
+        "nested_structures": {
+          "prompt": "Create nested structures:\n\n1. First level\n   - Second level with $x = 1$\n   - Another second level\n     - Third level with $$y = x^2$$\n2. Back to first level\n\n> Quote level 1\n> > Quote level 2 with $z = x + y$\n> > > Quote level 3\n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "prompt_name": "nested_structures",
+          "response": "1. First level\n   - Second level with $x = 1$\n   - Another second level\n     - Third level with\n       $$y = x^2$$\n2. Back to first level\n\n> Quote level 1  \n> > Quote level 2 with $z = x + y$  \n> > > Quote level 3\n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "timestamp": "2025-11-18T15:12:00.048716",
+          "success": true,
+          "attempts": 1
+        }
+      },
+      "metadata": {
+        "collection_timestamp": "2025-11-18T15:08:35.136040",
+        "total_prompts": 13,
+        "successful_responses": 13,
+        "failed_responses": 0
+      }
+    },
+    "openai/gpt-5.1-chat": {
+      "model_name": "GPT-5.1 Chat",
+      "model_id": "openai/gpt-5.1-chat",
+      "provider": "OpenAI",
+      "responses": {
+        "complex_math_display": {
+          "prompt": "Solve this step by step:\n\nGiven the quadratic equation: $$ax^2 + bx + c = 0$$\n\nShow that the solutions are:\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nThen explain why when $b^2 - 4ac < 0$, the solutions are complex numbers.\n\nAlso show the integral:\n$$\\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAnd the matrix equation:\n$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} e \\\\ f \\end{pmatrix}$$",
+          "prompt_name": "complex_math_display",
+          "response": "Below is a clear, complete, step‑by‑step answer using the mathematical expressions you provided.\n\nStep 1: Derive the quadratic formula  \nStart with  \nax² + bx + c = 0  \nAssume a ≠ 0.  \nDivide both sides by a:  \nx² + (b/a)x + c/a = 0  \nComplete the square:  \nx² + (b/a)x = −c/a  \nAdd (b/2a)² to both sides:  \nx² + (b/a)x + (b²/4a²) = (b²/4a²) − c/a  \nLeft side becomes a square:  \n(x + b/2a)² = (b² − 4ac)/(4a²)  \nTake square roots:  \nx + b/2a = ± sqrt(b² − 4ac)/(2a)  \nSolve for x:  \nx = [−b ± sqrt(b² − 4ac)] / (2a)\n\nStep 2: Why b² − 4ac < 0 gives complex solutions  \nIf b² − 4ac < 0, then the expression under the square root is negative.  \nThe square root of a negative number cannot be real; it becomes:  \nsqrt(−k) = i sqrt(k).  \nThus the quadratic formula includes an imaginary part, so the solutions are complex numbers.\n\nStep 3: Evaluate the Gaussian integral  \nThe integral  \n∫₀^∞ e^(−x²) dx  \nis known to equal sqrt(pi)/2.  \nA standard derivation squares the integral, converts to polar coordinates, and evaluates:  \n(∫₀^∞ e^(−x²) dx)² = ∫₀^∞ ∫₀^∞ e^(−(x² + y²)) dx dy  \nSwitching to polar coordinates gives  \n= ∫₀^(π/2) ∫₀^∞ e^(−r²) r dr dθ = (π/2)(1/2)  \nTaking the square root yields  \n∫₀^∞ e^(−x²) dx = sqrt(pi)/2.\n\nStep 4: Matrix equation  \nThe matrix equation  \n[ a  b ] [ x ] = [ e ]  \n[ c  d ] [ y ]   [ f ]  \nrepresents the linear system  \nax + by = e  \ncx + dy = f.\n\nLet me know if you want any of these steps done in alternative ways.",
+          "timestamp": "2025-11-18T15:12:09.510810",
+          "success": true,
+          "attempts": 1
+        },
+        "inline_math_mixed": {
+          "prompt": "Explain the following concepts:\n\nThe Pythagorean theorem states that $a^2 + b^2 = c^2$ where $c$ is the hypotenuse.\n\nEinstein's mass-energy equivalence is $E = mc^2$.\n\nThe derivative of $f(x) = x^2$ is $f'(x) = 2x$.\n\nThe limit as $x$ approaches infinity of $\\frac{1}{x}$ is $0$.\n\nWhen $\\alpha = 0.05$, we reject the null hypothesis if $p < \\alpha$.\n\nThe sum $\\sum_{i=1}^{n} x_i$ represents the total of all values.",
+          "prompt_name": "inline_math_mixed",
+          "response": "Here are brief, complete explanations of each concept, using plain text instead of LaTeX:\n\n• Pythagorean theorem: In a right triangle, the square of the hypotenuse (the side opposite the right angle) equals the sum of the squares of the other two sides.\n\n• Einstein’s mass‑energy equivalence: Energy equals mass multiplied by the square of the speed of light. This means mass can be viewed as a form of stored energy.\n\n• Derivative of f(x) = x²: The derivative, 2x, gives the rate at which x² changes with respect to x.\n\n• Limit of 1/x as x approaches infinity: As x becomes larger and larger, the value of 1 divided by x gets closer and closer to zero.\n\n• Hypothesis testing rule at alpha = 0.05: You reject the null hypothesis when the p‑value is less than 0.05, meaning the observed result is unlikely under the null.\n\n• Sum notation Σ from i = 1 to n of x_i: This represents adding all the values x₁, x₂, ..., xₙ together.",
+          "timestamp": "2025-11-18T15:12:14.065035",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_lists": {
+          "prompt": "Create a markdown list with:\n\n1. First item with **bold** and *italic* text\n2. Second item with inline math: $E = mc^2$\n3. Third item with a code block:\n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:\n   $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n5. Fifth item with a [link](https://example.com)\n6. Sixth item with `inline code` and more text\n\nAlso create an unordered list:\n- Item A with **bold**\n- Item B with *italic*\n- Item C with $x = y + z$\n- Item D with `code`",
+          "prompt_name": "markdown_lists",
+          "response": "1. First item with **bold** and *italic* text  \n2. Second item with inline math: $E = mc^2$  \n3. Third item with a code block:  \n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:  \n   $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n5. Fifth item with a [link](https://example.com)  \n6. Sixth item with `inline code` and more text  \n\n- Item A with **bold**  \n- Item B with *italic*  \n- Item C with $x = y + z$  \n- Item D with `code`",
+          "timestamp": "2025-11-18T15:12:19.186717",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_headers": {
+          "prompt": "Create a document with headers:\n\n# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "prompt_name": "markdown_headers",
+          "response": "# Main Title\n\n## Section 1\n\nThis section contains an equation: \\(y = mx + b\\)\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation:  \n\\(\\displaystyle \\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\\)\n\n### Subsection 2.1\n\nFinal content.",
+          "timestamp": "2025-11-18T15:12:22.725469",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_tables": {
+          "prompt": "Create a markdown table:\n\n| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | $A = \\pi r^2$ | $25\\pi$ |\n| Volume | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$ | $100\\pi$ |\n\nAlso include a table with display math:\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |",
+          "prompt_name": "markdown_tables",
+          "response": "```markdown\n| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | $A = \\pi r^2$ | $25\\pi$ |\n| Volume | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$ | $100\\pi$ |\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |\n```",
+          "timestamp": "2025-11-18T15:12:26.001042",
+          "success": true,
+          "attempts": 1
+        },
+        "edge_cases_dollar_signs": {
+          "prompt": "Render these correctly:\n\n- Dollar signs in text: The price is $50\n- Math with dollars: $x = \\$50 + y$\n- Multiple dollars: The cost is $100, $200, or $300\n- Code with math: `const price = $50`\n- Display math: $$\\sum_{i=1}^{n} \\$x_i$$\n- Text with dollar: I have $5 in my pocket\n- Mixed: Price $p$ where $p = \\$50 + tax$",
+          "prompt_name": "edge_cases_dollar_signs",
+          "response": "Here are the corrected renderings, with literal dollar signs escaped and math left intact:\n\n- Dollar signs in text: The price is \\$50\n- Math with dollars: \\( x = \\$50 + y \\)\n- Multiple dollars: The cost is \\$100, \\$200, or \\$300\n- Code with math: `const price = $50`\n- Display math:  \n  \\[\n  \\sum_{i=1}^{n} \\$x_i\n  \\]\n- Text with dollar: I have \\$5 in my pocket\n- Mixed: Price \\( p \\) where \\( p = \\$50 + \\text{tax} \\)",
+          "timestamp": "2025-11-18T15:12:30.371573",
+          "success": true,
+          "attempts": 1
+        },
+        "code_blocks_preservation": {
+          "prompt": "Show code examples in different languages:\n\nPython:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (should NOT be rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (should NOT be rendered as math):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "prompt_name": "code_blocks_preservation",
+          "response": "Here are the code examples exactly as provided:\n\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "timestamp": "2025-11-18T15:12:34.815312",
+          "success": true,
+          "attempts": 1
+        },
+        "mixed_content_complex": {
+          "prompt": "Create a comprehensive response with:\n\n# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states: $a^2 + b^2 = c^2$\n\nIn matrix form:\n$$\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2$$\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: $x = 1$\n2. Second: $y = 2$\n3. Third: $z = x + y = 3$\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| $x$ | $1$ |\n| $y$ | $2$ |\n| $z$ | $3$ |\n\n**Note:** This only works in Euclidean space.",
+          "prompt_name": "mixed_content_complex",
+          "response": "# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states:  \n\\(a^2 + b^2 = c^2\\)\n\nIn matrix form:  \n\\(\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2\\)\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: \\(x = 1\\)  \n2. Second: \\(y = 2\\)  \n3. Third: \\(z = x + y = 3\\)\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| \\(x\\) | 1 |\n| \\(y\\) | 2 |\n| \\(z\\) | 3 |\n\n**Note:** This only works in Euclidean space.",
+          "timestamp": "2025-11-18T15:12:39.018185",
+          "success": true,
+          "attempts": 1
+        },
+        "blockquotes_and_special": {
+          "prompt": "Create content with blockquotes:\n\n> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAlso include:\n\n- Horizontal rule below:\n\n---\n\nAnd more content with **bold**, *italic*, and `code`.\n\n> Nested quote with $x = y + z$",
+          "prompt_name": "blockquotes_and_special",
+          "response": "> This is a quote with math: $E = mc^2$  \n>  \n> And display math:  \n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\n---\n\nMore content with **bold**, *italic*, and `code`.\n\n> Nested quote with $x = y + z$",
+          "timestamp": "2025-11-18T15:12:42.787069",
+          "success": true,
+          "attempts": 1
+        },
+        "unicode_and_special_chars": {
+          "prompt": "Use various mathematical symbols:\n\nGreek letters: $\\alpha, \\beta, \\gamma, \\pi, \\theta, \\lambda$\n\nOperators: $\\sum, \\prod, \\int, \\partial$\n\nRelations: $\\leq, \\geq, \\neq, \\approx, \\equiv$\n\nSet theory: $\\in, \\subset, \\cup, \\cap, \\emptyset$\n\nSpecial: $\\infty, \\nabla, \\Delta, \\forall, \\exists$\n\nDisplay versions:\n$$\\sum_{i=1}^{n} x_i, \\quad \\prod_{j=1}^{m} y_j, \\quad \\int_a^b f(x) dx$$",
+          "prompt_name": "unicode_and_special_chars",
+          "response": "Here are examples using all the symbols you listed:\n\nGreek letters:\n\\(\\alpha + \\beta = \\gamma\\), \\(\\pi \\theta = \\lambda^2\\)\n\nOperators:\n\\(\\sum_{i=1}^{n} i^2,\\quad \\prod_{k=1}^{p} \\alpha_k,\\quad \\int_0^{\\pi} \\sin(x)\\,dx,\\quad \\partial_\\theta f(\\theta,\\lambda)\\)\n\nRelations:\n\\(\\alpha \\leq \\beta,\\quad \\gamma \\geq \\theta,\\quad \\lambda \\neq 0,\\quad \\pi \\approx 3.14159,\\quad f(x) \\equiv g(x)\\)\n\nSet theory:\n\\(x \\in A,\\quad A \\subset B,\\quad A \\cup B,\\quad A \\cap B,\\quad \\emptyset \\subset A\\)\n\nSpecial:\n\\(\\infty,\\quad \\nabla f,\\quad \\Delta x,\\quad \\forall x \\in \\mathbb{R},\\quad \\exists \\lambda > 0\\)\n\nDisplay versions:\n\\[\n\\sum_{i=1}^{n} x_i,\\qquad \n\\prod_{j=1}^{m} y_j,\\qquad \n\\int_a^b f(x)\\,dx\n\\]",
+          "timestamp": "2025-11-18T15:12:48.059902",
+          "success": true,
+          "attempts": 1
+        },
+        "fractions_and_complex_expressions": {
+          "prompt": "Show complex mathematical expressions:\n\nSimple fraction: $\\frac{1}{2}$\n\nNested fraction: $\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}$\n\nDisplay fraction:\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nComplex expression:\n$$\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0$$\n\nWith subscripts and superscripts:\n$$x_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)$$",
+          "prompt_name": "fractions_and_complex_expressions",
+          "response": "Here are the expressions exactly as written, using LaTeX:\n\nSimple fraction:  \n\\(\\frac{1}{2}\\)\n\nNested fraction:  \n\\(\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}\\)\n\nDisplay fraction:  \n\\[\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\nComplex expression:  \n\\[\n\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0\n\\]\n\nWith subscripts and superscripts:  \n\\[\nx_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)\n\\]",
+          "timestamp": "2025-11-18T15:12:52.635083",
+          "success": true,
+          "attempts": 1
+        },
+        "links_and_references": {
+          "prompt": "Create content with links:\n\nSee [this equation](https://example.com): $E = mc^2$\n\nReference to equation (1): $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nMore links:\n- [Wikipedia](https://wikipedia.org) has info on $\\pi$\n- [MathWorld](https://mathworld.wolfram.com) explains $e^{i\\pi} + 1 = 0$\n\nInline reference: As shown in equation $x = y + z$, we can see...",
+          "prompt_name": "links_and_references",
+          "response": "Here is the requested content with links and equations:\n\nSee [this equation](https://example.com):  \n\\(E = mc^2\\)\n\nReference to equation (1):  \n\\[\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\nMore links:  \n- [Wikipedia](https://wikipedia.org) has info on \\(\\pi\\)  \n- [MathWorld](https://mathworld.wolfram.com) explains \\(e^{i\\pi} + 1 = 0\\)\n\nInline reference: As shown in equation \\(x = y + z\\), we can see…",
+          "timestamp": "2025-11-18T15:12:58.535933",
+          "success": true,
+          "attempts": 1
+        },
+        "nested_structures": {
+          "prompt": "Create nested structures:\n\n1. First level\n   - Second level with $x = 1$\n   - Another second level\n     - Third level with $$y = x^2$$\n2. Back to first level\n\n> Quote level 1\n> > Quote level 2 with $z = x + y$\n> > > Quote level 3\n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "prompt_name": "nested_structures",
+          "response": "1. First level  \n   - Second level with $x = 1$  \n   - Another second level  \n     - Third level with $$y = x^2$$  \n2. Back to first level  \n\n> Quote level 1  \n> > Quote level 2 with $z = x + y$  \n> > > Quote level 3  \n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "timestamp": "2025-11-18T15:13:03.000694",
+          "success": true,
+          "attempts": 1
+        }
+      },
+      "metadata": {
+        "collection_timestamp": "2025-11-18T15:12:01.127737",
+        "total_prompts": 13,
+        "successful_responses": 13,
+        "failed_responses": 0
+      }
+    },
+    "openai/gpt-5.1-codex": {
+      "model_name": "GPT-5.1-Codex",
+      "model_id": "openai/gpt-5.1-codex",
+      "provider": "OpenAI",
+      "responses": {
+        "complex_math_display": {
+          "prompt": "Solve this step by step:\n\nGiven the quadratic equation: $$ax^2 + bx + c = 0$$\n\nShow that the solutions are:\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nThen explain why when $b^2 - 4ac < 0$, the solutions are complex numbers.\n\nAlso show the integral:\n$$\\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAnd the matrix equation:\n$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} e \\\\ f \\end{pmatrix}$$",
+          "prompt_name": "complex_math_display",
+          "response": "Sure! Here's a step-by-step solution addressing each part of your request:\n\n---\n\n### 1. Solving the Quadratic Equation \\( ax^2 + bx + c = 0 \\)\n\nTo solve for \\( x \\), start with the general quadratic equation:\n\n\\[\nax^2 + bx + c = 0\n\\]\n\n**Step 1: Divide through by \\( a \\)** (assuming \\( a \\neq 0 \\)):\n\n\\[\nx^2 + \\frac{b}{a}x + \\frac{c}{a} = 0\n\\]\n\n**Step 2: Complete the square**\n\nMove the constant term to the other side:\n\n\\[\nx^2 + \\frac{b}{a}x = -\\frac{c}{a}\n\\]\n\nAdd \\(\\left(\\frac{b}{2a}\\right)^2\\) to both sides to complete the square:\n\n\\[\nx^2 + \\frac{b}{a}x + \\left(\\frac{b}{2a}\\right)^2 = -\\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^2\n\\]\n\nLeft side becomes a perfect square:\n\n\\[\n\\left(x + \\frac{b}{2a}\\right)^2 = \\frac{b^2 - 4ac}{4a^2}\n\\]\n\n**Step 3: Take the square root of both sides**\n\n\\[\nx + \\frac{b}{2a} = \\pm \\frac{\\sqrt{b^2 - 4ac}}{2a}\n\\]\n\n**Step 4: Solve for \\( x \\)**\n\n\\[\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\nThis is the quadratic formula.\n\n---\n\n### 2. Why Complex Solutions When \\( b^2 - 4ac < 0 \\)\n\nThe expression under the square root, \\( b^2 - 4ac \\), is called the discriminant. When \\( b^2 - 4ac < 0 \\), the square root involves a negative number, which leads to complex numbers:\n\n\\[\n\\sqrt{b^2 - 4ac} = \\sqrt{-k} = i\\sqrt{k} \\quad \\text{for } k > 0\n\\]\n\nThus, the solutions become:\n\n\\[\nx = \\frac{-b \\pm i\\sqrt{4ac - b^2}}{2a}\n\\]\n\nSo, the solutions are complex conjugates when the discriminant is negative.\n\n---\n\n### 3. Integral of \\( e^{-x^2} \\) from 0 to Infinity\n\nThis is the Gaussian integral over the positive real axis:\n\n\\[\n\\int_0^{\\infty} e^{-x^2} \\, dx = \\frac{\\sqrt{\\pi}}{2}\n\\]\n\nThis result comes from evaluating the full Gaussian integral \\( \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi} \\), and recognizing the symmetry, so the integral from 0 to ∞ is half of that.\n\n---\n\n### 4. Matrix Equation\n\nThe matrix equation:\n\n\\[\n\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} e \\\\ f \\end{pmatrix}\n\\]\n\nrepresents a system of linear equations:\n\n\\[\n\\begin{cases}\nax + by = e \\\\\ncx + dy = f\n\\end{cases}\n\\]\n\nTo solve it, you can use methods like substitution, elimination, or matrix inversion (if \\( ad - bc \\neq 0 \\)).\n\n---\n\nLet me know if you want the derivation for the Gaussian integral or the explicit solution to the matrix system!",
+          "timestamp": "2025-11-18T15:13:19.938021",
+          "success": true,
+          "attempts": 1
+        },
+        "inline_math_mixed": {
+          "prompt": "Explain the following concepts:\n\nThe Pythagorean theorem states that $a^2 + b^2 = c^2$ where $c$ is the hypotenuse.\n\nEinstein's mass-energy equivalence is $E = mc^2$.\n\nThe derivative of $f(x) = x^2$ is $f'(x) = 2x$.\n\nThe limit as $x$ approaches infinity of $\\frac{1}{x}$ is $0$.\n\nWhen $\\alpha = 0.05$, we reject the null hypothesis if $p < \\alpha$.\n\nThe sum $\\sum_{i=1}^{n} x_i$ represents the total of all values.",
+          "prompt_name": "inline_math_mixed",
+          "response": "Here’s a full explanation of each concept:\n\n1. **Pythagorean Theorem**:  \n   This theorem applies to right triangles—triangles with one right angle. It states that if a right triangle has legs of lengths \\(a\\) and \\(b\\), and a hypotenuse (the side opposite the right angle) of length \\(c\\), then the relationship \\(a^2 + b^2 = c^2\\) always holds. This means the square of the hypotenuse’s length equals the sum of the squares of the other two sides. It’s fundamental in geometry and is used to find distances and lengths in right-angled settings.\n\n2. **Einstein’s Mass-Energy Equivalence**:  \n   Einstein’s famous equation \\(E = mc^2\\) shows that mass (\\(m\\)) and energy (\\(E\\)) are interchangeable. Here, \\(c\\) represents the speed of light in a vacuum, approximately \\(3 \\times 10^8\\) meters per second. Because \\(c^2\\) is so large, even a tiny amount of mass corresponds to a huge amount of energy. This principle underlies nuclear reactions, where small changes in mass release large amounts of energy.\n\n3. **Derivative of \\(f(x) = x^2\\)**:  \n   The derivative measures how a function changes as its input \\(x\\) changes. For the function \\(f(x) = x^2\\), the derivative is \\(f'(x) = 2x\\). This means that at any point \\(x\\), the rate of change or slope of \\(f(x)\\) is \\(2x\\). For example, at \\(x = 3\\), the slope of the tangent line to the curve \\(y = x^2\\) is \\(6\\), reflecting the function’s increasing steepness as \\(x\\) grows.\n\n4. **Limit of \\(\\frac{1}{x}\\) as \\(x \\to \\infty\\)**:  \n   When \\(x\\) increases without bound (approaches infinity), the expression \\(1/x\\) gets closer and closer to 0. So, \\(\\lim_{x \\to \\infty} \\frac{1}{x} = 0\\). This formalizes the intuitive idea that dividing 1 by larger and larger numbers yields values that shrink toward zero, even though they never actually reach zero for any finite \\(x\\).\n\n5. **Hypothesis Testing at \\(\\alpha = 0.05\\)**:  \n   In hypothesis testing, \\(\\alpha\\) (the significance level) is the threshold for deciding whether to reject the null hypothesis. When \\(\\alpha = 0.05\\), we reject the null hypothesis if the observed p-value is less than 0.05. This corresponds to a 5% risk of rejecting the null hypothesis when it is actually true—a commonly accepted standard for statistical significance.\n\n6. **Sum \\(\\sum_{i=1}^{n} x_i\\)**:  \n   This notation denotes the sum of a sequence of values \\(x_1, x_2, \\ldots, x_n\\). The expression \\(\\sum_{i=1}^{n} x_i\\) means you add up each value \\(x_i\\) for \\(i\\) starting at 1 and ending at \\(n\\). It’s a concise way to express total quantities, averages, and other aggregate measures in mathematics, statistics, and many applied fields.",
+          "timestamp": "2025-11-18T15:13:31.210533",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_lists": {
+          "prompt": "Create a markdown list with:\n\n1. First item with **bold** and *italic* text\n2. Second item with inline math: $E = mc^2$\n3. Third item with a code block:\n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:\n   $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n5. Fifth item with a [link](https://example.com)\n6. Sixth item with `inline code` and more text\n\nAlso create an unordered list:\n- Item A with **bold**\n- Item B with *italic*\n- Item C with $x = y + z$\n- Item D with `code`",
+          "prompt_name": "markdown_lists",
+          "response": "1. First item with **bold** and *italic* text  \n2. Second item with inline math: \\(E = mc^2\\)  \n3. Third item with a code block:  \n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:  \n   \\[\n   \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\n   \\]\n5. Fifth item with a [link](https://example.com)  \n6. Sixth item with `inline code` and more text  \n\n- Item A with **bold**\n- Item B with *italic*\n- Item C with \\(x = y + z\\)\n- Item D with `code`",
+          "timestamp": "2025-11-18T15:13:34.661982",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_headers": {
+          "prompt": "Create a document with headers:\n\n# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "prompt_name": "markdown_headers",
+          "response": "# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "timestamp": "2025-11-18T15:13:36.931510",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_tables": {
+          "prompt": "Create a markdown table:\n\n| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | $A = \\pi r^2$ | $25\\pi$ |\n| Volume | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$ | $100\\pi$ |\n\nAlso include a table with display math:\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |",
+          "prompt_name": "markdown_tables",
+          "response": "Here are the tables you requested:\n\n| Variable      | Formula             | Value             |\n|---------------|---------------------|-------------------|\n| Area          | $A = \\pi r^2$       | $25\\pi$           |\n| Volume        | $V = \\dfrac{4}{3}\\pi r^3$ | $\\dfrac{500\\pi}{3}$ |\n| Surface Area  | $S = 4\\pi r^2$      | $100\\pi$          |\n\n| Equation            | Description             |\n|---------------------|-------------------------|\n| $$E = mc^2$$        | Mass-energy equivalence |\n| $$F = ma$$          | Newton's second law     |",
+          "timestamp": "2025-11-18T15:13:40.601162",
+          "success": true,
+          "attempts": 1
+        },
+        "edge_cases_dollar_signs": {
+          "prompt": "Render these correctly:\n\n- Dollar signs in text: The price is $50\n- Math with dollars: $x = \\$50 + y$\n- Multiple dollars: The cost is $100, $200, or $300\n- Code with math: `const price = $50`\n- Display math: $$\\sum_{i=1}^{n} \\$x_i$$\n- Text with dollar: I have $5 in my pocket\n- Mixed: Price $p$ where $p = \\$50 + tax$",
+          "prompt_name": "edge_cases_dollar_signs",
+          "response": "- The price is \\$50  \n- Math with dollars: \\( x = \\$50 + y \\)  \n- Multiple dollars: The cost is \\$100, \\$200, or \\$300  \n- Code with math: `const price = $50`  \n- Display math: \\[\n  \\sum_{i=1}^{n} \\$x_i\n  \\]  \n- Text with dollar: I have \\$5 in my pocket  \n- Mixed: Price \\( p \\) where \\( p = \\$50 + \\text{tax} \\)",
+          "timestamp": "2025-11-18T15:13:45.588536",
+          "success": true,
+          "attempts": 1
+        },
+        "code_blocks_preservation": {
+          "prompt": "Show code examples in different languages:\n\nPython:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (should NOT be rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (should NOT be rendered as math):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "prompt_name": "code_blocks_preservation",
+          "response": "Here are the code examples in different languages, with each snippet kept inside code fences exactly as provided:\n\nPython:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (kept as literal code, not rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (still code, not math rendering):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs (preserved literally):\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "timestamp": "2025-11-18T15:13:49.642769",
+          "success": true,
+          "attempts": 1
+        },
+        "mixed_content_complex": {
+          "prompt": "Create a comprehensive response with:\n\n# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states: $a^2 + b^2 = c^2$\n\nIn matrix form:\n$$\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2$$\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: $x = 1$\n2. Second: $y = 2$\n3. Third: $z = x + y = 3$\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| $x$ | $1$ |\n| $y$ | $2$ |\n| $z$ | $3$ |\n\n**Note:** This only works in Euclidean space.",
+          "prompt_name": "mixed_content_complex",
+          "response": "# Exploring the Pythagorean Theorem\n\n## Introduction\n\nThe **Pythagorean theorem** states: $a^2 + b^2 = c^2$\n\nIn matrix form:\n$$\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2$$\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: $x = 1$\n2. Second: $y = 2$\n3. Third: $z = x + y = 3$\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| $x$ | $1$ |\n| $y$ | $2$ |\n| $z$ | $3$ |\n\n**Note:** This only works in Euclidean space.",
+          "timestamp": "2025-11-18T15:13:53.169537",
+          "success": true,
+          "attempts": 1
+        },
+        "blockquotes_and_special": {
+          "prompt": "Create content with blockquotes:\n\n> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAlso include:\n\n- Horizontal rule below:\n\n---\n\nAnd more content with **bold**, *italic*, and `code`.\n\n> Nested quote with $x = y + z$",
+          "prompt_name": "blockquotes_and_special",
+          "response": "> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\n---\n\nHere is some additional content featuring **bold emphasis**, *italic emphasis*, and inline `code` for clarity.\n\n> Nested quote with $x = y + z$",
+          "timestamp": "2025-11-18T15:13:56.014855",
+          "success": true,
+          "attempts": 1
+        },
+        "unicode_and_special_chars": {
+          "prompt": "Use various mathematical symbols:\n\nGreek letters: $\\alpha, \\beta, \\gamma, \\pi, \\theta, \\lambda$\n\nOperators: $\\sum, \\prod, \\int, \\partial$\n\nRelations: $\\leq, \\geq, \\neq, \\approx, \\equiv$\n\nSet theory: $\\in, \\subset, \\cup, \\cap, \\emptyset$\n\nSpecial: $\\infty, \\nabla, \\Delta, \\forall, \\exists$\n\nDisplay versions:\n$$\\sum_{i=1}^{n} x_i, \\quad \\prod_{j=1}^{m} y_j, \\quad \\int_a^b f(x) dx$$",
+          "prompt_name": "unicode_and_special_chars",
+          "response": "Here is an illustrative paragraph incorporating all the requested mathematical symbols and the display expressions:\n\nLet $\\alpha, \\beta, \\gamma \\in \\mathbb{R}$ with $\\alpha \\leq \\beta \\leq \\gamma$, and consider the angle $\\theta$ such that $\\theta \\approx \\pi/3$. Define a sequence $\\{x_i\\}_{i=1}^n$ and a family $\\{y_j\\}_{j=1}^m$, where $\\lambda \\neq 0$ serves as a scaling factor. Suppose there exists a function $f$ for which $\\nabla f = 0$ only at isolated points, and its Laplacian satisfies $\\Delta f \\geq 0$. For all $\\forall$ covectors $\\omega$, we analyze $\\partial_{\\theta}(\\alpha \\cup \\beta)$ and note that $\\gamma \\cap \\emptyset = \\emptyset$. Furthermore, we assume $A \\subset B$ yet $C \\not\\subset D$, with the union $A \\cup C$ and intersection $B \\cap D$ both finite, although the overall parameter space may stretch to $\\infty$. If $\\exists$ a structure such that $X \\equiv Y$, then $\\prod y_j$ behaves compatibly with $\\sum x_i$, and we emphasize that $f(a) \\neq f(b)$ unless additional symmetry is imposed.\n\nDisplayed expressions:\n$$\\sum_{i=1}^{n} x_i, \\quad \\prod_{j=1}^{m} y_j, \\quad \\int_a^b f(x)\\, dx$$",
+          "timestamp": "2025-11-18T15:14:01.256668",
+          "success": true,
+          "attempts": 1
+        },
+        "fractions_and_complex_expressions": {
+          "prompt": "Show complex mathematical expressions:\n\nSimple fraction: $\\frac{1}{2}$\n\nNested fraction: $\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}$\n\nDisplay fraction:\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nComplex expression:\n$$\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0$$\n\nWith subscripts and superscripts:\n$$x_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)$$",
+          "prompt_name": "fractions_and_complex_expressions",
+          "response": "Here are the requested complex mathematical expressions:\n\n1. Simple fraction:\n\\[\n\\frac{1}{2}\n\\]\n\n2. Nested fraction:\n\\[\n\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}\n\\]\n\n3. Display fraction:\n\\[\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\n4. Complex expression (Laplace equation):\n\\[\n\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0\n\\]\n\n5. With subscripts and superscripts:\n\\[\nx_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)\n\\]",
+          "timestamp": "2025-11-18T15:14:04.328730",
+          "success": true,
+          "attempts": 1
+        },
+        "links_and_references": {
+          "prompt": "Create content with links:\n\nSee [this equation](https://example.com): $E = mc^2$\n\nReference to equation (1): $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nMore links:\n- [Wikipedia](https://wikipedia.org) has info on $\\pi$\n- [MathWorld](https://mathworld.wolfram.com) explains $e^{i\\pi} + 1 = 0$\n\nInline reference: As shown in equation $x = y + z$, we can see...",
+          "prompt_name": "links_and_references",
+          "response": "Here’s a concise summary incorporating your requested references and equations:\n\n1. See [this equation](https://example.com): \\(E = mc^2\\), which links mass and energy in relativity.\n\n2. Reference to equation (1):\n\\[\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\n3. More links:\n   - [Wikipedia](https://wikipedia.org) has info on \\(\\pi\\), covering its definition and properties.\n   - [MathWorld](https://mathworld.wolfram.com) explains Euler’s identity \\(e^{i\\pi} + 1 = 0\\), demonstrating a deep relationship among fundamental constants.\n\n4. Inline reference: As shown in equation \\(x = y + z\\), we can see how additive relationships can simplify certain derivations.",
+          "timestamp": "2025-11-18T15:14:09.529621",
+          "success": true,
+          "attempts": 1
+        },
+        "nested_structures": {
+          "prompt": "Create nested structures:\n\n1. First level\n   - Second level with $x = 1$\n   - Another second level\n     - Third level with $$y = x^2$$\n2. Back to first level\n\n> Quote level 1\n> > Quote level 2 with $z = x + y$\n> > > Quote level 3\n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "prompt_name": "nested_structures",
+          "response": "1. First level  \n   - Second level with \\(x = 1\\)  \n   - Another second level  \n     - Third level with  \n       \\[\n       y = x^2\n       \\]\n\n2. Back to first level\n\n> Quote level 1  \n> > Quote level 2 with \\(z = x + y\\)  \n> > > Quote level 3\n\n**Bold with *italic* and `code` with $math$ all together.**",
+          "timestamp": "2025-11-18T15:14:14.928000",
+          "success": true,
+          "attempts": 1
+        }
+      },
+      "metadata": {
+        "collection_timestamp": "2025-11-18T15:13:04.049722",
+        "total_prompts": 13,
+        "successful_responses": 13,
+        "failed_responses": 0
+      }
+    },
+    "openai/gpt-5.1-codex-mini": {
+      "model_name": "GPT-5.1-Codex-Mini",
+      "model_id": "openai/gpt-5.1-codex-mini",
+      "provider": "OpenAI",
+      "responses": {
+        "complex_math_display": {
+          "prompt": "Solve this step by step:\n\nGiven the quadratic equation: $$ax^2 + bx + c = 0$$\n\nShow that the solutions are:\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nThen explain why when $b^2 - 4ac < 0$, the solutions are complex numbers.\n\nAlso show the integral:\n$$\\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAnd the matrix equation:\n$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} e \\\\ f \\end{pmatrix}$$",
+          "prompt_name": "complex_math_display",
+          "response": "Let’s solve each part carefully and completely.\n\n---\n\n### 1. Solving the quadratic equation \\( ax^2 + bx + c = 0 \\)\n\nWe start with the quadratic equation:\n\\[\nax^2 + bx + c = 0,\n\\]\nwith \\( a \\neq 0 \\). The standard method is to complete the square.\n\n1. Divide both sides by",
+          "timestamp": "2025-11-18T15:14:23.997353",
+          "success": true,
+          "attempts": 1
+        },
+        "inline_math_mixed": {
+          "prompt": "Explain the following concepts:\n\nThe Pythagorean theorem states that $a^2 + b^2 = c^2$ where $c$ is the hypotenuse.\n\nEinstein's mass-energy equivalence is $E = mc^2$.\n\nThe derivative of $f(x) = x^2$ is $f'(x) = 2x$.\n\nThe limit as $x$ approaches infinity of $\\frac{1}{x}$ is $0$.\n\nWhen $\\alpha = 0.05$, we reject the null hypothesis if $p < \\alpha$.\n\nThe sum $\\sum_{i=1}^{n} x_i$ represents the total of all values.",
+          "prompt_name": "inline_math_mixed",
+          "response": "Certainly! Let’s explain each concept in turn.\n\n1. **Pythagorean Theorem**: This theorem applies to right-angled triangles. It states that if you label the two legs (sides forming the right angle) as \\(a\\) and \\(b\\), and the hypotenuse (the side opposite the right angle) as \\(c\\), then the square of the hypotenuse equals the sum of the squares of the legs:  \n   \\[\n   a^2 + b^2 = c^2.\n   \\]\n   This relationship lets you compute the length of one side if you know the other two.\n\n2. **Einstein’s Mass–Energy Equivalence**: The equation \\(E = mc^2\\) expresses that mass \\(m\\) and energy \\(E\\) are equivalent, with \\(c\\) denoting the speed of light in a vacuum. Because \\(c\\) is a very large number (~\\(3 \\times 10^8\\) meters/second), a small amount of mass corresponds to a huge amount of energy. This principle underlies nuclear reactions, where tiny mass differences release large energy.\n\n3. **Derivative of \\(f(x) = x^2\\)**: In calculus, the derivative \\(f'(x)\\) measures the instantaneous rate of change of the function. For \\(f(x) = x^2\\), applying the power rule gives:\n   \\[\n   f'(x) = 2x.\n   \\]\n   So at any value of \\(x\\), the slope of the tangent line to the curve \\(y = x^2\\) is \\(2x\\); it grows linearly with \\(x\\).\n\n4. **Limit of \\(\\frac{1}{x}\\) as \\(x \\to \\infty\\)**: The limit \n   \\[\n   \\lim_{x \\to \\infty} \\frac{1}{x} = 0\n   \\]\n   means that as \\(x\\) grows without bound, the value of \\(1/x\\) gets closer and closer to 0. This expresses how reciprocal functions decay to zero at infinity.\n\n5. **Hypothesis Testing with \\(\\alpha = 0.05\\)**: In statistical hypothesis testing, \\(\\alpha\\) is the significance level, the threshold probability for rejecting the null hypothesis when it is actually true (Type I error). When \\(\\alpha = 0.05\\), we reject the null hypothesis if the \\(p\\)-value is less than 0.05. A smaller \\(p\\)-value suggests stronger evidence against the null hypothesis.\n\n6. **Summation Notation \\(\\sum_{i=1}^{n} x_i\\)**: This notation represents adding up all the values \\(x_1, x_2, \\ldots, x_n\\). It’s shorthand for:\n   \\[\n   x_1 + x_2 + x_3 + \\cdots + x_n,\n   \\]\n   which yields the total sum of the \\(n\\) values.\n\nLet me know if you’d like examples or a deeper dive into any of these!",
+          "timestamp": "2025-11-18T15:14:31.207968",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_lists": {
+          "prompt": "Create a markdown list with:\n\n1. First item with **bold** and *italic* text\n2. Second item with inline math: $E = mc^2$\n3. Third item with a code block:\n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:\n   $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n5. Fifth item with a [link](https://example.com)\n6. Sixth item with `inline code` and more text\n\nAlso create an unordered list:\n- Item A with **bold**\n- Item B with *italic*\n- Item C with $x = y + z$\n- Item D with `code`",
+          "prompt_name": "markdown_lists",
+          "response": "1. **First item** with *italic* text.\n2. Second item with inline math: $E = mc^2$.\n3. Third item with a code block:\n   ```python\n   def hello():\n       print(\"world\")\n   ```\n4. Fourth item with display math:\n   $$\n   \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\n   $$\n5. Fifth item with a [link](https://example.com).\n6. Sixth item with `inline code` and more explanatory text.\n\n- **Item A** with bold.\n- *Item B* with italic.\n- Item C with $x = y + z$.\n- Item D with `code`.",
+          "timestamp": "2025-11-18T15:14:34.176262",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_headers": {
+          "prompt": "Create a document with headers:\n\n# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "prompt_name": "markdown_headers",
+          "response": "# Main Title\n\n## Section 1\n\nThis section contains an equation: $y = mx + b$\n\n### Subsection 1.1\n\nMore content here with **bold** and *italic*.\n\n## Section 2\n\nAnother equation: $$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n### Subsection 2.1\n\nFinal content.",
+          "timestamp": "2025-11-18T15:14:37.443330",
+          "success": true,
+          "attempts": 1
+        },
+        "markdown_tables": {
+          "prompt": "Create a markdown table:\n\n| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | $A = \\pi r^2$ | $25\\pi$ |\n| Volume | $V = \\frac{4}{3}\\pi r^3$ | $\\frac{500\\pi}{3}$ |\n| Surface Area | $S = 4\\pi r^2$ | $100\\pi$ |\n\nAlso include a table with display math:\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |",
+          "prompt_name": "markdown_tables",
+          "response": "| Variable | Formula | Value |\n|----------|---------|-------|\n| Area | \\(A = \\pi r^2\\) | \\(25\\pi\\) |\n| Volume | \\(V = \\frac{4}{3}\\pi r^3\\) | \\(\\frac{500\\pi}{3}\\) |\n| Surface Area | \\(S = 4\\pi r^2\\) | \\(100\\pi\\) |\n\n| Equation | Description |\n|----------|-------------|\n| $$E = mc^2$$ | Mass-energy equivalence |\n| $$F = ma$$ | Newton's second law |",
+          "timestamp": "2025-11-18T15:14:40.313882",
+          "success": true,
+          "attempts": 1
+        },
+        "edge_cases_dollar_signs": {
+          "prompt": "Render these correctly:\n\n- Dollar signs in text: The price is $50\n- Math with dollars: $x = \\$50 + y$\n- Multiple dollars: The cost is $100, $200, or $300\n- Code with math: `const price = $50`\n- Display math: $$\\sum_{i=1}^{n} \\$x_i$$\n- Text with dollar: I have $5 in my pocket\n- Mixed: Price $p$ where $p = \\$50 + tax$",
+          "prompt_name": "edge_cases_dollar_signs",
+          "response": "- Dollar signs in text: The price is \\$50  \n- Math with dollars: $x = \\$50 + y$  \n- Multiple dollars: The cost is \\$100, \\$200, or \\$300  \n- Code with math: `const price = $50`  \n- Display math: $$\\sum_{i=1}^{n} \\$x_i$$  \n- Text with dollar: I have \\$5 in my pocket  \n- Mixed: Price $p$ where $p = \\$50 + tax$",
+          "timestamp": "2025-11-18T15:14:44.488431",
+          "success": true,
+          "attempts": 1
+        },
+        "code_blocks_preservation": {
+          "prompt": "Show code examples in different languages:\n\nPython:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\n\nJavaScript:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\n\nLaTeX in code (should NOT be rendered as math):\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\n\nMath-like code (should NOT be rendered as math):\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\n\nCode with dollar signs:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```",
+          "prompt_name": "code_blocks_preservation",
+          "response": "Here are the code snippets you provided, categorized by language/context:\n\n1. **Python**:\n```python\ndef calculate(x):\n    return x ** 2 + 1\n```\nThis function squares its input and adds one.\n\n2. **JavaScript**:\n```javascript\nfunction calculate(x) {\n    return x ** 2 + 1;\n}\n```\nThe JavaScript equivalent performs the same operation.\n\n3. **LaTeX (treated as code, not rendered)**:\n```latex\n\\documentclass{article}\n\\begin{document}\n$E = mc^2$\n\\end{document}\n```\nThis is a minimal LaTeX document, with the math expression kept as literal code.\n\n4. **Math-like code (kept as code)**:\n```python\n# This looks like math but is code\nresult = a * b + c / d\nformula = \"E = mc^2\"\n```\nAlthough the content resembles math expressions, it’s still plain code.\n\n5. **Code involving dollar signs**:\n```bash\necho \"Price: $50\"\nexport PRICE=$100\n```\nThese Bash commands include literal dollar signs, either inside a string or as part of an environment variable assignment.",
+          "timestamp": "2025-11-18T15:14:50.848287",
+          "success": true,
+          "attempts": 1
+        },
+        "mixed_content_complex": {
+          "prompt": "Create a comprehensive response with:\n\n# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states: $a^2 + b^2 = c^2$\n\nIn matrix form:\n$$\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2$$\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\n## List\n\n1. First: $x = 1$\n2. Second: $y = 2$\n3. Third: $z = x + y = 3$\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| $x$ | $1$ |\n| $y$ | $2$ |\n| $z$ | $3$ |\n\n**Note:** This only works in Euclidean space.",
+          "prompt_name": "mixed_content_complex",
+          "response": "# Title\n\n## Introduction\n\nThe **Pythagorean theorem** states: \\(a^2 + b^2 = c^2\\)\n\nIn matrix form:\n\\[\n\\begin{pmatrix} a \\\\ b \\end{pmatrix}^T \\begin{pmatrix} a \\\\ b \\end{pmatrix} = c^2\n\\]\n\nThis formulation emphasizes that the square of the length of a vector \\((a, b)\\) equals the dot product of the vector with itself, yielding \\(c^2\\), the square of the hypotenuse in a right triangle.\n\n## Code Example\n\n```python\nimport math\n\ndef pythagorean(a, b):\n    return math.sqrt(a**2 + b**2)\n```\n\nThis function calculates the hypotenuse length \\(c\\) given legs \\(a\\) and \\(b\\), using the Pythagorean theorem directly and returning the square root of the sum of the squares.\n\n## List\n\n1. First: \\(x = 1\\)\n2. Second: \\(y = 2\\)\n3. Third: \\(z = x + y = 3\\)\n\nThe sequence demonstrates assigning values sequentially and verifying how values build upon previous ones.\n\n## Table\n\n| Variable | Value |\n|----------|-------|\n| \\(x\\) | \\(1\\) |\n| \\(y\\) | \\(2\\) |\n| \\(z\\) | \\(3\\) |\n\nThis table summarizes the variables introduced in the list and their corresponding values for quick reference.\n\n**Note:** This only works in Euclidean space.\n\nIn non-Euclidean geometries (such as spherical or hyperbolic spaces), the Pythagorean relation is modified, so the presented version applies specifically where the geometry has flat, right-angle properties.",
+          "timestamp": "2025-11-18T15:14:55.697479",
+          "success": true,
+          "attempts": 1
+        },
+        "blockquotes_and_special": {
+          "prompt": "Create content with blockquotes:\n\n> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nAlso include:\n\n- Horizontal rule below:\n\n---\n\nAnd more content with **bold**, *italic*, and `code`.\n\n> Nested quote with $x = y + z$",
+          "prompt_name": "blockquotes_and_special",
+          "response": "> This is a quote with math: $E = mc^2$\n> \n> And display math:\n> $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n> \n> > Nested quote with $x = y + z$\n>\n> Feel free to explore how these mathematical expressions relate to the concepts discussed above.\n\n---\n\nIn addition, here is some content styled with **bold**, *italic*, and `code` to highlight different elements of the explanation. Let me know if you’d like more details or further elaboration on any of these components!",
+          "timestamp": "2025-11-18T15:14:58.859295",
+          "success": true,
+          "attempts": 1
+        },
+        "unicode_and_special_chars": {
+          "prompt": "Use various mathematical symbols:\n\nGreek letters: $\\alpha, \\beta, \\gamma, \\pi, \\theta, \\lambda$\n\nOperators: $\\sum, \\prod, \\int, \\partial$\n\nRelations: $\\leq, \\geq, \\neq, \\approx, \\equiv$\n\nSet theory: $\\in, \\subset, \\cup, \\cap, \\emptyset$\n\nSpecial: $\\infty, \\nabla, \\Delta, \\forall, \\exists$\n\nDisplay versions:\n$$\\sum_{i=1}^{n} x_i, \\quad \\prod_{j=1}^{m} y_j, \\quad \\int_a^b f(x) dx$$",
+          "prompt_name": "unicode_and_special_chars",
+          "response": "Sure! Here’s a response that incorporates all of the requested symbols and expressions:\n\nWe begin by defining a sequence of values using Greek-letter parameters such as $\\alpha, \\beta, \\gamma$ to encode weights: for each $i$, let $x_i = \\alpha i^2 + \\beta i + \\gamma$. We then form a sum and product:\n\n$$\\sum_{i=1}^{n} x_i = \\sum_{i=1}^{n} (\\alpha i^2 + \\beta i + \\gamma), \\quad \\prod_{j=1}^{m} y_j = \\prod_{j=1}^{m} (\\pi j + \\theta).$$\n\nNext, consider a function $f(x)$ that is integrated over $[a,b]$:\n\n$$\\int_a^b f(x)\\, dx$$\n\nThis integral may satisfy bounds such as $\\leq$ or $\\geq$ certain values, and we might note that a derivative $\\partial f/\\partial x$ exists almost everywhere. In our context, $\\lambda$ could denote an eigenvalue associated with an operator, while $\\nabla$ and $\\Delta$ denote the gradient and Laplacian, respectively. Within set theory, suppose $A \\subset B$ and $A \\cup B = B$ while $A \\cap B = A$; if $C = \\emptyset$, then $C \\subset A$ and $C \\in \\mathcal{P}(B)$. We also use relations such as $\\neq$, $\\approx$, and $\\equiv$ to compare expressions, and note special logic symbols like $\\forall$ and $\\exists$ to articulate quantification. Finally, we acknowledge limits extending to $\\infty$, giving a complete picture of the requested mathematical notation set.",
+          "timestamp": "2025-11-18T15:15:02.699560",
+          "success": true,
+          "attempts": 1
+        },
+        "fractions_and_complex_expressions": {
+          "prompt": "Show complex mathematical expressions:\n\nSimple fraction: $\\frac{1}{2}$\n\nNested fraction: $\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}$\n\nDisplay fraction:\n$$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nComplex expression:\n$$\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0$$\n\nWith subscripts and superscripts:\n$$x_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)$$",
+          "prompt_name": "fractions_and_complex_expressions",
+          "response": "Here are the requested complex mathematical expressions rendered fully in LaTeX:\n\n**Simple fraction:**  \n\\[\n\\frac{1}{2}\n\\]\n\n**Nested fraction:**  \n\\[\n\\frac{a + \\frac{b}{c}}{d + \\frac{e}{f}}\n\\]\n\n**Display fraction (Quadratic formula):**  \n\\[\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n\\]\n\n**Complex expression (Laplace’s equation in two variables):**  \n\\[\n\\frac{\\partial^2 f}{\\partial x^2} + \\frac{\\partial^2 f}{\\partial y^2} = 0\n\\]\n\n**With subscripts and superscripts (Example update rule):**  \n\\[\nx_{i,j}^{n+1} = x_{i,j}^n + \\Delta t \\cdot f(x_{i,j}^n)\n\\]\n\nLet me know if you would like further explanations or manipulations of these expressions!",
+          "timestamp": "2025-11-18T15:15:06.160461",
+          "success": true,
+          "attempts": 1
+        },
+        "links_and_references": {
+          "prompt": "Create content with links:\n\nSee [this equation](https://example.com): $E = mc^2$\n\nReference to equation (1): $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nMore links:\n- [Wikipedia](https://wikipedia.org) has info on $\\pi$\n- [MathWorld](https://mathworld.wolfram.com) explains $e^{i\\pi} + 1 = 0$\n\nInline reference: As shown in equation $x = y + z$, we can see...",
+          "prompt_name": "links_and_references",
+          "response": "Here’s the content incorporating your requested links and references:\n\n1. See [this equation](https://example.com): \\(E = mc^2\\), which is a famous relation from Einstein’s theory of relativity relating energy \\(E\\), mass \\(m\\), and the speed of light \\(c\\).\n\n2. Reference to equation (1): \n   \\[\n   x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n   \\]\n   is the quadratic formula, providing the solutions to \\(ax^2 + bx + c = 0\\).\n\n3. More links:\n   - [Wikipedia](https://wikipedia.org) has extensive information on \\(\\pi\\), the ratio of a circle’s circumference to its diameter.\n   - [MathWorld](https://mathworld.wolfram.com) explains Euler’s identity \\(e^{i\\pi} + 1 = 0\\), which links the five fundamental constants in a single elegant equation.\n\n4. Inline reference: As shown in equation \\(x = y + z\\), we can see how the sum of two quantities \\(y\\) and \\(z\\) determines \\(x\\).\n\nLet me know if you’d like this content formatted differently or expanded further!",
+          "timestamp": "2025-11-18T15:15:09.697516",
+          "success": true,
+          "attempts": 1
+        },
+        "nested_structures": {
+          "prompt": "Create nested structures:\n\n1. First level\n   - Second level with $x = 1$\n   - Another second level\n     - Third level with $$y = x^2$$\n2. Back to first level\n\n> Quote level 1\n> > Quote level 2 with $z = x + y$\n> > > Quote level 3\n\n**Bold** with *italic* and `code` with $math$ all together.",
+          "prompt_name": "nested_structures",
+          "response": "Here’s the nested structure you requested, along with the quoted block and the combination of bold, italic, code, and math:\n\n1. First level\n   - Second level with \\(x = 1\\)\n   - Another second level\n     - Third level with \\(\\[y = x^2\\]\\)\n2. Back to first level\n\n> Quote level 1\n> > Quote level 2 with \\(z = x + y\\)\n> > > Quote level 3\n\n**Bold** with *italic* and `code` with \\(math\\) all together.",
+          "timestamp": "2025-11-18T15:15:13.574335",
+          "success": true,
+          "attempts": 1
+        }
+      },
+      "metadata": {
+        "collection_timestamp": "2025-11-18T15:14:15.971194",
         "total_prompts": 13,
         "successful_responses": 13,
         "failed_responses": 0

@@ -1,0 +1,195 @@
+{
+  "analysis_metadata": {
+    "timestamp": "2025-11-18T15:25:06.685488",
+    "source_file": "data/model_responses/model_responses_20251112_121017.json",
+    "collection_metadata": {
+      "last_updated": "2025-11-18T15:15:13.622426",
+      "total_models": 56,
+      "collection_stats": {
+        "total_requests": 52,
+        "successful": 52,
+        "failed": 0,
+        "skipped": 0,
+        "errors": []
+      },
+      "script_version": "1.0",
+      "timestamp": "2025-11-12T15:24:05.286929"
+    },
+    "total_models_analyzed": 4,
+    "script_version": "1.0"
+  },
+  "analyses": {
+    "openai/gpt-5.1": {
+      "model_id": "openai/gpt-5.1",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "lists": true,
+        "tables": true,
+        "horizontal_rules": true,
+        "blockquotes": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true
+      },
+      "issues": [
+        "escaped_dollar_signs",
+        "html_in_math"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 16,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python",
+          "tex"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5.1-chat": {
+      "model_id": "openai/gpt-5.1-chat",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "lists": true,
+        "links": true,
+        "headers": true,
+        "tables": true,
+        "blockquotes": true,
+        "horizontal_rules": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 8,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "markdown",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5.1-codex": {
+      "model_id": "openai/gpt-5.1-codex",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "bold": true,
+        "headers": true,
+        "horizontal_rules": true,
+        "lists": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    },
+    "openai/gpt-5.1-codex-mini": {
+      "model_id": "openai/gpt-5.1-codex-mini",
+      "successful_responses": 13,
+      "delimiters": {
+        "display": [
+          "bracket",
+          "double-dollar"
+        ],
+        "inline": [
+          "paren",
+          "single-dollar"
+        ]
+      },
+      "markdown_elements": {
+        "headers": true,
+        "lists": true,
+        "horizontal_rules": true,
+        "bold": true,
+        "italic": true,
+        "code_blocks": true,
+        "inline_code": true,
+        "links": true,
+        "tables": true,
+        "blockquotes": true
+      },
+      "issues": [
+        "escaped_dollar_signs"
+      ],
+      "code_block_analysis": {
+        "total_blocks": 7,
+        "languages_found": [
+          "bash",
+          "javascript",
+          "latex",
+          "python"
+        ],
+        "contains_math_like_content": true,
+        "contains_dollar_signs": true,
+        "contains_latex_commands": true
+      },
+      "needs_manual_review": true
+    }
+  }
+}

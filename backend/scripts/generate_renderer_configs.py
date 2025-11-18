@@ -338,7 +338,13 @@ def main():
         sys.exit(1)
 
     # Create output directory if needed
-    output_path = Path(args.output)
+    # Resolve relative paths from project root (two levels up from script location)
+    if not Path(args.output).is_absolute():
+        script_dir = Path(__file__).parent
+        project_root = script_dir.parent.parent
+        output_path = project_root / args.output
+    else:
+        output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write configurations
