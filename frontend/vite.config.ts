@@ -44,22 +44,25 @@ export default defineConfig({
   build: {
     // Target modern browsers for smaller bundles
     target: 'esnext',
-    // Minify with esbuild (faster than terser)
+    // Minify with esbuild (faster than terser, produces smaller bundles)
     minify: 'esbuild',
     // Enable source maps for production debugging (optional, increases bundle size)
     sourcemap: false,
+    // Enable CSS code splitting and minification
+    cssCodeSplit: true,
+    cssMinify: true,
     // Optimize chunk splitting
     rollupOptions: {
       output: {
-        // Ensure JS files have content hashes
+        // Ensure JS files have content hashes for better caching
         entryFileNames: 'assets/[name].[hash].js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash].[ext]',
-        // Manual chunk splitting for better caching
+        // Manual chunk splitting for better caching and parallel loading
         manualChunks: (id) => {
           // Split node_modules into separate chunks
           if (id.includes('node_modules')) {
-            // Vendor chunks
+            // Vendor chunks - split large dependencies
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'vendor-react';
             }
@@ -72,6 +75,13 @@ export default defineConfig({
             // Other vendor dependencies
             return 'vendor';
           }
+          // Split large application files
+          if (id.includes('/src/App.tsx')) {
+            return 'app-main';
+          }
+          if (id.includes('/src/components/LatexRenderer.tsx')) {
+            return 'latex-renderer';
+          }
         },
       },
     },
@@ -83,6 +93,10 @@ export default defineConfig({
     // 2. scripts/check-bundle-size.js (CI/CD)
     // 3. Runtime monitoring via utils/performance.ts
     chunkSizeWarningLimit: 500,
+    // Report compressed size (gzip) for better visibility
+    reportCompressedSize: true,
+    // Reduce chunk size warnings threshold for better optimization awareness
+    assetsInlineLimit: 4096, // Inline assets smaller than 4KB
   },
   test: {
     globals: true,

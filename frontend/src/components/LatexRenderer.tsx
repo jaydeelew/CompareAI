@@ -27,14 +27,12 @@
  * 10. Restore code blocks and final cleanup
  */
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import katex from 'katex';
 import { getModelConfig } from '../config/modelRendererRegistry';
 import { extractCodeBlocks, restoreCodeBlocks } from '../utils/codeBlockPreservation';
+import { loadPrism, getPrism, isPrismLoaded } from '../utils/prismLoader';
 import type { ModelRendererConfig } from '../types/rendererConfig';
-
-// Prism is loaded globally via CDN in index.html
-declare const Prism: any;
 
 interface LatexRendererProps {
     children: string;
@@ -2702,16 +2700,67 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
     const contentRef = useRef<HTMLDivElement>(null);
     const processedContent = useMemo(() => renderLatex(children), [children, modelId]);
+    const [prismLoaded, setPrismLoaded] = useState(false);
 
-    // Apply Prism highlighting after content is rendered
+    // Extract languages from code blocks in the content
+    const detectedLanguages = useMemo(() => {
+        const languages = new Set<string>();
+        const codeBlockRegex = /```(\w+)?/g;
+        let match;
+        while ((match = codeBlockRegex.exec(children)) !== null) {
+            if (match[1]) {
+                const lang = match[1].toLowerCase();
+                // Map aliases to Prism language names
+                const languageMap: Record<string, string> = {
+                    'js': 'javascript',
+                    'ts': 'typescript',
+                    'py': 'python',
+                    'rb': 'ruby',
+                    'sh': 'bash',
+                    'yml': 'yaml',
+                    'html': 'markup',
+                    'xml': 'markup',
+                    'c++': 'cpp',
+                    'cs': 'csharp',
+                };
+                languages.add(languageMap[lang] || lang);
+            }
+        }
+        return Array.from(languages);
+    }, [children]);
+
+    // Load Prism.js dynamically when code blocks are detected
     useEffect(() => {
-        // Wait for Prism to be fully loaded and DOM to be ready
+        if (detectedLanguages.length === 0) {
+            return; // No code blocks, no need to load Prism
+        }
+
+        if (isPrismLoaded()) {
+            setPrismLoaded(true);
+            return;
+        }
+
+        // Load Prism with required languages
+        loadPrism({
+            languages: detectedLanguages,
+            onLoad: () => {
+                setPrismLoaded(true);
+            },
+            onError: (error) => {
+                console.warn('Failed to load Prism.js:', error);
+            },
+        });
+    }, [detectedLanguages]);
+
+    // Apply Prism highlighting after content is rendered and Prism is loaded
+    useEffect(() => {
+        if (!prismLoaded || !contentRef.current) return;
+
         const highlightCode = () => {
             if (!contentRef.current) return;
 
-            // Check if Prism is available and properly initialized
-            if (typeof Prism === 'undefined' || !Prism.highlightAllUnder || !Prism.languages) {
-                console.warn('Prism.js not ready, skipping syntax highlighting');
+            const Prism = getPrism();
+            if (!Prism || !Prism.highlightAllUnder || !Prism.languages) {
                 return;
             }
 
@@ -2726,14 +2775,10 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             }
         };
 
-        // Try immediately, then retry if needed
-        highlightCode();
-
-        // Retry after a delay if Prism might still be loading
-        const timer = setTimeout(highlightCode, 200);
-
+        // Small delay to ensure DOM is ready
+        const timer = setTimeout(highlightCode, 100);
         return () => clearTimeout(timer);
-    }, [children]);
+    }, [children, prismLoaded]);
 
     return (
         <div
