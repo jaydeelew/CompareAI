@@ -111,7 +111,7 @@ const looksMathematical = (content: string): boolean => {
     }
 
     // Variables with exponents
-    if (/[a-z]\^[0-9{]/.test(content) || /[a-z][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content)) {
+    if (/[a-z0-9]\^[0-9{]/.test(content) || /[a-z0-9][²³⁴⁵⁶⁷⁸⁹⁰¹]/.test(content)) {
         return true;
     }
 
@@ -551,7 +551,16 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Don't convert if content has markdown formatting (asterisks, underscores, backticks)
             if (content.includes('*') || content.includes('_') || content.includes('`')) return _match;
 
-            const trimmed = content.trim();
+            let trimmed = content.trim();
+
+            // Convert Unicode superscripts to LaTeX format before wrapping
+            const supMap: { [key: string]: string } = {
+                '²': '^{2}', '³': '^{3}', '⁴': '^{4}', '⁵': '^{5}', '⁶': '^{6}',
+                '⁷': '^{7}', '⁸': '^{8}', '⁹': '^{9}', '⁰': '^{0}', '¹': '^{1}'
+            };
+            for (const [unicode, latex] of Object.entries(supMap)) {
+                trimmed = trimmed.replace(new RegExp(`([a-zA-Z0-9])${unicode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), `$1${latex}`);
+            }
 
             // Don't convert if this contains LaTeX commands that were already processed
             if (content.includes('\\cdot') || content.includes('\\pm') || content.includes('\\sqrt')) {
@@ -1371,7 +1380,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // Handle Unicode superscripts
         // CRITICAL: Only process if not already inside KaTeX HTML or inline code blocks to prevent duplication
-        let superscriptRegex = /([a-zA-Z])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g;
+        let superscriptRegex = /([a-zA-Z0-9])([²³⁴⁵⁶⁷⁸⁹⁰¹])/g;
         let superscriptMatch;
         const superscriptReplacements: Array<{ start: number, end: number, replacement: string }> = [];
 
@@ -1426,7 +1435,7 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             return safeRenderKatex(`${base}^{${exp}}`, false, config.katexOptions);
         });
 
-        rendered = rendered.replace(/([a-zA-Z])\^(\d+|[a-zA-Z])/g, (_match, base, exp) => {
+        rendered = rendered.replace(/([a-zA-Z0-9])\^(\d+|[a-zA-Z])/g, (_match, base, exp) => {
             return safeRenderKatex(`${base}^{${exp}}`, false, config.katexOptions);
         });
 
@@ -2535,9 +2544,12 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
             // Final cleanup - only unescape markdown characters, not LaTeX commands
             // Don't remove backslashes that are part of LaTeX commands
             processed = processed.replace(/\\([`*_#+\-.!|])/g, '$1');
-            // Note: DO NOT remove \( and \) here as they should have been processed as math delimiters
-            // If they're still present, it means they weren't recognized as math and should remain as-is
-            // or be handled by the implicit math detection in earlier stages
+
+            // Remove orphaned \( and \) delimiters that weren't processed as math
+            // These can occur if the content inside wasn't recognized as math or if the pattern didn't match
+            // We'll remove the delimiters but keep the content
+            // Match \( followed by any content (non-greedy) followed by \)
+            processed = processed.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, '$1');
 
             // Final aggressive cleanup: Remove ANY remaining MDPH or internal placeholders
             // This catches placeholders that might have escaped earlier stages
