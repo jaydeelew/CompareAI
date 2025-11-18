@@ -251,6 +251,34 @@ MODELS_BY_PROVIDER = {
     ],
     "OpenAI": [
         {
+            "id": "openai/gpt-5.1",
+            "name": "GPT-5.1",
+            "description": "GPT-5.1 is the latest frontier-grade model in the GPT-5 series, offering stronger general-purpose reasoning, improved instruction adherence, and more advanced capabilities",
+            "category": "Language",
+            "provider": "OpenAI",
+        },
+        {
+            "id": "openai/gpt-5.1-chat",
+            "name": "GPT-5.1 Chat",
+            "description": "GPT-5.1 Chat (AKA Instant) is the fast, lightweight member of the 5.1 family, optimized for low-latency chat while retaining strong general intelligence",
+            "category": "Language",
+            "provider": "OpenAI",
+        },
+        {
+            "id": "openai/gpt-5.1-codex",
+            "name": "GPT-5.1-Codex",
+            "description": "GPT-5.1-Codex is a specialized version of GPT-5.1 optimized for software engineering and coding workflows, designed for both interactive development and complex programming tasks",
+            "category": "Code",
+            "provider": "OpenAI",
+        },
+        {
+            "id": "openai/gpt-5.1-codex-mini",
+            "name": "GPT-5.1-Codex-Mini",
+            "description": "GPT-5.1-Codex-Mini is a smaller and faster version of GPT-5.1-Codex, optimized for efficient code generation and programming assistance",
+            "category": "Code",
+            "provider": "OpenAI",
+        },
+        {
             "id": "openai/gpt-5",
             "name": "GPT-5",
             "description": "OpenAI's most advanced model with enhanced coding and problem-solving abilities, representing a significant leap from GPT-4",
