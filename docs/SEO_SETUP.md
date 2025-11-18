@@ -140,6 +140,13 @@ Use these tools to verify your meta tags:
 - **Twitter Card Validator**: https://cards-dev.twitter.com/validator
 - **LinkedIn Post Inspector**: https://www.linkedin.com/post-inspector/
 
+**Note**: Facebook requires explicit `og:image` properties. The following meta tags are included to meet Facebook's requirements:
+- `og:image` - Image URL (required)
+- `og:image:width` - Image width in pixels (recommended)
+- `og:image:height` - Image height in pixels (recommended)
+- `og:image:type` - MIME type (e.g., "image/png") (recommended)
+- `og:image:alt` - Alt text for accessibility (recommended)
+
 ### 2. Test Structured Data
 - **Google Rich Results Test**: https://search.google.com/test/rich-results
 - **Schema.org Validator**: https://validator.schema.org/
@@ -235,6 +242,14 @@ When you add new public pages, update `frontend/public/sitemap.xml`:
 - Clear browser cache
 - Check HTML source (not just React DevTools)
 - Verify meta tags are in `index.html`, not just React components
+
+### Facebook Sharing Debugger - "Inferred Property" Warning
+If Facebook Debugger reports that `og:image` should be explicitly provided:
+- ✅ Ensure `og:image` meta tag is present with absolute URL
+- ✅ Add `og:image:width` and `og:image:height` properties (in pixels)
+- ✅ Add `og:image:type` property (MIME type, e.g., "image/png")
+- ✅ Add `og:image:alt` property for accessibility
+- After making changes, use Facebook's "Scrape Again" button to refresh the cache
 
 ## Resources
 
