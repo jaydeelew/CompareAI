@@ -69,6 +69,69 @@ curl https://compareintel.com/sitemap.xml
 curl https://compareintel.com/ | grep -i "og:title\|twitter:card\|description"
 ```
 
+## Requesting Recrawls After Making Changes
+
+After making SEO changes (like fixing meta descriptions, updating content, etc.), you should request a recrawl to ensure search engines pick up the changes quickly.
+
+### Google Search Console - Request Recrawl
+
+1. **Go to**: https://search.google.com/search-console
+2. **Select your property**: `https://compareintel.com`
+3. **Use URL Inspection Tool**:
+   - Click on the search bar at the top (or go to "URL Inspection" in the left menu)
+   - Enter the URL you want to recrawl (e.g., `https://compareintel.com/`)
+   - Press Enter
+   - Wait for Google to analyze the URL
+   - Click the **"Request Indexing"** button
+   - You'll see a confirmation message
+4. **Resubmit Sitemap** (for site-wide updates):
+   - Go to "Sitemaps" in the left menu
+   - Find your sitemap (`https://compareintel.com/sitemap.xml`)
+   - Click the three dots (⋮) next to it
+   - Select "Resubmit sitemap"
+   - Or simply click "Submit" again with the same URL
+
+**Note**: Google typically processes indexing requests within a few hours to a few days. You can check the status in the URL Inspection tool.
+
+### Bing Webmaster Tools - Request Recrawl
+
+1. **Go to**: https://www.bing.com/webmasters
+2. **Select your site**: `https://compareintel.com`
+3. **Use URL Inspection Tool**:
+   - Click on "URL Inspection" in the left menu (or use the search bar at the top)
+   - Enter the URL you want to recrawl (e.g., `https://compareintel.com/`)
+   - Click "Inspect" or press Enter
+   - Wait for Bing to analyze the URL
+   - Click the **"Request Crawl"** button
+   - You'll see a confirmation message
+4. **Resubmit Sitemap** (for site-wide updates):
+   - Go to "Sitemaps" in the left menu
+   - Find your sitemap (`https://compareintel.com/sitemap.xml`)
+   - Click "Submit" again (or delete and resubmit if needed)
+
+**Note**: Bing typically processes crawl requests within a few hours. You can check crawl status in the "Crawl" section.
+
+### When to Request Recrawls
+
+Request a recrawl when you:
+- ✅ Fix meta description issues (like length problems)
+- ✅ Update important content on key pages
+- ✅ Fix SEO errors reported by search engines
+- ✅ Add new pages or sections
+- ✅ Update structured data (JSON-LD)
+- ✅ Fix broken links or redirects
+
+**Don't request recrawls for**:
+- ❌ Minor text changes
+- ❌ Styling/CSS updates
+- ❌ JavaScript functionality changes (unless they affect SEO)
+
+### Bulk Recrawl Options
+
+For multiple pages or site-wide changes:
+- **Google**: Resubmit your sitemap (Google will prioritize recently updated URLs)
+- **Bing**: Resubmit your sitemap + use the "Fetch as Bingbot" feature for important pages
+
 ## Testing SEO Implementation
 
 ### 1. Test Meta Tags
