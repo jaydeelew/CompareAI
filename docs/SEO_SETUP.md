@@ -7,7 +7,7 @@ This guide covers the SEO implementation for CompareIntel and the steps needed t
 ### 1. Meta Tags (`frontend/index.html`)
 - ✅ Primary meta tags (title, description, keywords)
 - ✅ Open Graph tags for Facebook/LinkedIn sharing
-- ✅ Twitter Card tags for Twitter sharing
+- ✅ X Card tags (formerly Twitter Card) for X/Twitter sharing
 - ✅ Canonical URL
 - ✅ Structured data (JSON-LD) for search engines
 
@@ -137,15 +137,10 @@ For multiple pages or site-wide changes:
 ### 1. Test Meta Tags
 Use these tools to verify your meta tags:
 - **Facebook Debugger**: https://developers.facebook.com/tools/debug/
-- **Twitter Card Validator**: https://cards-dev.twitter.com/validator
+- **X Card Validator** (formerly Twitter Card Validator): 
+  - Legacy URL (may still work): https://cards-dev.twitter.com/validator
+  - Note: Log in with your X account to access the Card Validator tool through the X Developer portal
 - **LinkedIn Post Inspector**: https://www.linkedin.com/post-inspector/
-
-**Note**: Facebook requires explicit `og:image` properties. The following meta tags are included to meet Facebook's requirements:
-- `og:image` - Image URL (required)
-- `og:image:width` - Image width in pixels (recommended)
-- `og:image:height` - Image height in pixels (recommended)
-- `og:image:type` - MIME type (e.g., "image/png") (recommended)
-- `og:image:alt` - Alt text for accessibility (recommended)
 
 ### 2. Test Structured Data
 - **Google Rich Results Test**: https://search.google.com/test/rich-results
@@ -242,22 +237,6 @@ When you add new public pages, update `frontend/public/sitemap.xml`:
 - Clear browser cache
 - Check HTML source (not just React DevTools)
 - Verify meta tags are in `index.html`, not just React components
-
-### Facebook Sharing Debugger - "Inferred Property" Warning
-If Facebook Debugger reports that `og:image` should be explicitly provided:
-- ✅ Ensure `og:image` meta tag is present with absolute URL
-- ✅ Add `og:image:width` and `og:image:height` properties (in pixels)
-- ✅ Add `og:image:type` property (MIME type, e.g., "image/png")
-- ✅ Add `og:image:alt` property for accessibility
-- After making changes, use Facebook's "Scrape Again" button to refresh the cache
-
-### Facebook Sharing Debugger - "Missing Properties: fb:app_id"
-If Facebook Debugger reports missing `fb:app_id`:
-- **Note**: `fb:app_id` is deprecated and not required for basic sharing functionality
-- The warning can be safely ignored, but to suppress it:
-  - Option 1: Use Facebook's default App ID (already added): `966242223397117`
-  - Option 2: Create your own Facebook App at https://developers.facebook.com/ and use your App ID
-- The meta tag is included in `index.html` using Facebook's default App ID to suppress the warning
 
 ## Resources
 
