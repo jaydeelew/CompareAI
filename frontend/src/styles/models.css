@@ -971,6 +971,22 @@
   animation: gradientHeadFade 2s ease-in-out infinite;
 }
 
+/* Turquoise gradient stops for right arrow */
+.arrow-gradient-tail-turquoise {
+  stop-color: #40e0d0;
+  animation: gradientTailFade 2s ease-in-out infinite;
+}
+
+.arrow-gradient-mid-turquoise {
+  stop-color: #40e0d0;
+  animation: gradientMidFade 2s ease-in-out infinite;
+}
+
+.arrow-gradient-head-turquoise {
+  stop-color: #40e0d0;
+  animation: gradientHeadFade 2s ease-in-out infinite;
+}
+
 /* Arrow animations - arrows converge to center and fade as circle expands */
 .arrow-left {
   animation: slideFromLeft 2s ease-in-out infinite;
@@ -982,10 +998,257 @@
   transform-origin: center;
 }
 
-/* Circle expands and fades when arrows meet */
-.impact-circle {
-  animation: expandFade 2s ease-in-out infinite;
-  transform-origin: center;
+/* Spark effect flowing from meeting point */
+.spark-effect {
+  transform-origin: 100px 40px;
+}
+
+.spark-particle {
+  transform-origin: 100px 40px;
+}
+
+/* 12 spark particles flowing outward in circular formation */
+.spark-particle:nth-child(1) {
+  animation: sparkFlow1 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(2) {
+  animation: sparkFlow2 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(3) {
+  animation: sparkFlow3 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(4) {
+  animation: sparkFlow4 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(5) {
+  animation: sparkFlow5 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(6) {
+  animation: sparkFlow6 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(7) {
+  animation: sparkFlow7 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(8) {
+  animation: sparkFlow8 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(9) {
+  animation: sparkFlow9 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(10) {
+  animation: sparkFlow10 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(11) {
+  animation: sparkFlow11 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spark-particle:nth-child(12) {
+  animation: sparkFlow12 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+
+/* Spark flow animations - 12 particles expanding in circular formation to larger diameter */
+/* Each particle maintains its position on the circle as it expands outward */
+@keyframes sparkFlow1 {
+  /* 0° - Up */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(0, -3px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(0, -5px) scale(1); opacity: 1; }
+  55% { transform: translate(0, -8px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(0, -12px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(0, -16px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(0, -20px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(0, -25px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(0, -30px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(0, -33px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(0, -35px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(0, -35px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow2 {
+  /* 30° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(1.5px, -2.6px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(2.5px, -4.3px) scale(1); opacity: 1; }
+  55% { transform: translate(4px, -6.9px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(6px, -10.4px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(8px, -13.9px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(10px, -17.3px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(12.5px, -21.7px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(15px, -26px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(16.5px, -28.6px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(17.5px, -30.3px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(17.5px, -30.3px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow3 {
+  /* 60° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(2.6px, -1.5px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(4.3px, -2.5px) scale(1); opacity: 1; }
+  55% { transform: translate(6.9px, -4px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(10.4px, -6px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(13.9px, -8px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(17.3px, -10px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(21.7px, -12.5px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(26px, -15px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(28.6px, -16.5px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(30.3px, -17.5px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(30.3px, -17.5px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow4 {
+  /* 90° - Right */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(3px, 0) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(5px, 0) scale(1); opacity: 1; }
+  55% { transform: translate(8px, 0) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(12px, 0) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(16px, 0) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(20px, 0) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(25px, 0) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(30px, 0) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(33px, 0) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(35px, 0) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(35px, 0) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow5 {
+  /* 120° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(2.6px, 1.5px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(4.3px, 2.5px) scale(1); opacity: 1; }
+  55% { transform: translate(6.9px, 4px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(10.4px, 6px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(13.9px, 8px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(17.3px, 10px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(21.7px, 12.5px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(26px, 15px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(28.6px, 16.5px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(30.3px, 17.5px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(30.3px, 17.5px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow6 {
+  /* 150° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(1.5px, 2.6px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(2.5px, 4.3px) scale(1); opacity: 1; }
+  55% { transform: translate(4px, 6.9px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(6px, 10.4px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(8px, 13.9px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(10px, 17.3px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(12.5px, 21.7px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(15px, 26px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(16.5px, 28.6px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(17.5px, 30.3px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(17.5px, 30.3px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow7 {
+  /* 180° - Down */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(0, 3px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(0, 5px) scale(1); opacity: 1; }
+  55% { transform: translate(0, 8px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(0, 12px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(0, 16px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(0, 20px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(0, 25px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(0, 30px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(0, 33px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(0, 35px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(0, 35px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow8 {
+  /* 210° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(-1.5px, 2.6px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(-2.5px, 4.3px) scale(1); opacity: 1; }
+  55% { transform: translate(-4px, 6.9px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(-6px, 10.4px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(-8px, 13.9px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(-10px, 17.3px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(-12.5px, 21.7px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(-15px, 26px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(-16.5px, 28.6px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(-17.5px, 30.3px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(-17.5px, 30.3px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow9 {
+  /* 240° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(-2.6px, 1.5px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(-4.3px, 2.5px) scale(1); opacity: 1; }
+  55% { transform: translate(-6.9px, 4px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(-10.4px, 6px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(-13.9px, 8px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(-17.3px, 10px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(-21.7px, 12.5px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(-26px, 15px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(-28.6px, 16.5px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(-30.3px, 17.5px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(-30.3px, 17.5px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow10 {
+  /* 270° - Left */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(-3px, 0) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(-5px, 0) scale(1); opacity: 1; }
+  55% { transform: translate(-8px, 0) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(-12px, 0) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(-16px, 0) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(-20px, 0) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(-25px, 0) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(-30px, 0) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(-33px, 0) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(-35px, 0) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(-35px, 0) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow11 {
+  /* 300° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(-2.6px, -1.5px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(-4.3px, -2.5px) scale(1); opacity: 1; }
+  55% { transform: translate(-6.9px, -4px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(-10.4px, -6px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(-13.9px, -8px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(-17.3px, -10px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(-21.7px, -12.5px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(-26px, -15px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(-28.6px, -16.5px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(-30.3px, -17.5px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(-30.3px, -17.5px) scale(0.3); opacity: 0; }
+}
+
+@keyframes sparkFlow12 {
+  /* 330° */
+  0%, 45% { transform: translate(0, 0) scale(0); opacity: 0; }
+  48% { transform: translate(-1.5px, -2.6px) scale(0.4); opacity: 0.4; }
+  50% { transform: translate(-2.5px, -4.3px) scale(1); opacity: 1; }
+  55% { transform: translate(-4px, -6.9px) scale(0.95); opacity: 0.9; }
+  60% { transform: translate(-6px, -10.4px) scale(0.85); opacity: 0.75; }
+  65% { transform: translate(-8px, -13.9px) scale(0.7); opacity: 0.6; }
+  70% { transform: translate(-10px, -17.3px) scale(0.6); opacity: 0.4; }
+  75% { transform: translate(-12.5px, -21.7px) scale(0.5); opacity: 0.25; }
+  80% { transform: translate(-15px, -26px) scale(0.4); opacity: 0.15; }
+  85% { transform: translate(-16.5px, -28.6px) scale(0.35); opacity: 0.08; }
+  90% { transform: translate(-17.5px, -30.3px) scale(0.3); opacity: 0.04; }
+  100% { transform: translate(-17.5px, -30.3px) scale(0.3); opacity: 0; }
 }
 
 @keyframes slideFromLeft {
@@ -1098,28 +1361,6 @@
   }
 }
 
-@keyframes expandFade {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  35% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  65% {
-    transform: scale(3);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(3);
-    opacity: 0;
-  }
-}
 
 /* Cancel Button */
 .cancel-button {

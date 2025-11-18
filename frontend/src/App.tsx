@@ -4178,57 +4178,35 @@ function AppContent() {
                   <p>Processing {selectedModels.length === 1 ? 'response from 1 AI model' : `responses from ${selectedModels.length} AI models`}...</p>
                   <div className="comparison-animation">
                     <svg width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        {/* Progressive gradient for left arrow - fades from tail to head */}
-                        <linearGradient id="leftArrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" className="arrow-gradient-tail" />
-                          <stop offset="50%" className="arrow-gradient-mid" />
-                          <stop offset="100%" className="arrow-gradient-head" />
-                        </linearGradient>
-                        {/* Progressive gradient for right arrow - fades from tail to head */}
-                        <linearGradient id="rightArrowGradient" x1="100%" y1="0%" x2="0%" y2="0%">
-                          <stop offset="0%" className="arrow-gradient-tail" />
-                          <stop offset="50%" className="arrow-gradient-mid" />
-                          <stop offset="100%" className="arrow-gradient-head" />
-                        </linearGradient>
-                      </defs>
-
-                      {/* Left arrow - rectangular shaft with triangular head */}
+                      {/* Left arrow - single path combining shaft and head */}
                       <g className="arrow-left">
-                        {/* Rectangular shaft */}
-                        <rect
-                          x="5" y="34" width="85" height="12"
-                          fill="url(#leftArrowGradient)"
-                        />
-                        {/* Triangular arrowhead - wider than shaft */}
-                        <polygon
-                          points="90,28 90,52 99.5,40"
-                          fill="url(#leftArrowGradient)"
+                        <path
+                          d="M 5 34 L 90 34 L 90 28 L 99.5 40 L 90 52 L 90 46 L 5 46 Z"
+                          fill="#3b82f6"
                         />
                       </g>
-                      {/* Right arrow - rectangular shaft with triangular head */}
+                      {/* Right arrow - single path combining shaft and head */}
                       <g className="arrow-right">
-                        {/* Rectangular shaft */}
-                        <rect
-                          x="110" y="34" width="85" height="12"
-                          fill="url(#rightArrowGradient)"
-                        />
-                        {/* Triangular arrowhead - wider than shaft */}
-                        <polygon
-                          points="110,28 110,52 100.5,40"
-                          fill="url(#rightArrowGradient)"
+                        <path
+                          d="M 195 34 L 110 34 L 110 28 L 100.5 40 L 110 52 L 110 46 L 195 46 Z"
+                          fill="#87CEEB"
                         />
                       </g>
-                      {/* Expanding circle at meeting point */}
-                      <circle
-                        className="impact-circle"
-                        cx="100"
-                        cy="40"
-                        r="12"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        fill="none"
-                      />
+                      {/* Spark effect flowing from meeting point - 12 particles in circular formation */}
+                      <g className="spark-effect">
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                        <circle className="spark-particle" cx="100" cy="40" r="2" fill="currentColor" />
+                      </g>
                     </svg>
                   </div>
                   <button
