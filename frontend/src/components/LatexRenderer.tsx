@@ -513,13 +513,14 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
 
         // FIRST: Handle d/dx(...) and d/dx[...] patterns before general conversion
         // Replace d/dx with the fraction, keep the argument as-is (will be processed later)
+        // Use a placeholder format that won't be interpreted as markdown (avoid double underscores)
         converted = converted.replace(/\bd\/d([a-zA-Z])\(([^)]+)\)/g, (_match, variable, expression) => {
-            // Don't wrap in \(...\), just replace d/dx with the placeholder
-            return `__DERIVATIVE_${variable}__(${expression})`;
+            // Use a placeholder format that won't be interpreted as markdown bold/italic
+            return `⟨⟨DERIVATIVE_${variable}⟩⟩(${expression})`;
         });
 
         converted = converted.replace(/\bd\/d([a-zA-Z])\[([^\]]+)\]/g, (_match, variable, expression) => {
-            return `__DERIVATIVE_${variable}__[${expression}]`;
+            return `⟨⟨DERIVATIVE_${variable}⟩⟩[${expression}]`;
         });
 
         // Handle content in parentheses with spaces: ( math content )
@@ -1369,9 +1370,81 @@ const LatexRenderer: React.FC<LatexRendererProps> = ({ children, className = '',
         });
 
         // Convert derivative placeholders from Stage 3 to actual fractions
-        rendered = rendered.replace(/__DERIVATIVE_([a-zA-Z])__/g, (_match, variable) => {
-            return safeRenderKatex(`\\frac{d}{d${variable}}`, false, config.katexOptions);
-        });
+        // Handle ⟨⟨DERIVATIVE_x⟩⟩(...) and ⟨⟨DERIVATIVE_x⟩⟩[...] patterns with nested parentheses/brackets
+        const processDerivativePlaceholders = (text: string): string => {
+            let result = text;
+            const derivativeRegex = /⟨⟨DERIVATIVE_([a-zA-Z])⟩⟩/g;
+            let match;
+            const replacements: Array<{ start: number, end: number, replacement: string }> = [];
+
+            // Find all derivative placeholders and process them
+            while ((match = derivativeRegex.exec(result)) !== null) {
+                const placeholderStart = match.index;
+                const placeholderEnd = placeholderStart + match[0].length;
+                const variable = match[1];
+
+                // Check if followed by parentheses or brackets
+                const afterPlaceholder = result.substring(placeholderEnd);
+
+                // Try to match parentheses with nested support
+                if (afterPlaceholder.startsWith('(')) {
+                    let depth = 0;
+                    let i = 0;
+                    for (i = 0; i < afterPlaceholder.length; i++) {
+                        if (afterPlaceholder[i] === '(') depth++;
+                        if (afterPlaceholder[i] === ')') {
+                            depth--;
+                            if (depth === 0) {
+                                const expression = afterPlaceholder.substring(1, i);
+                                replacements.push({
+                                    start: placeholderStart,
+                                    end: placeholderEnd + i + 1,
+                                    replacement: safeRenderKatex(`\\frac{d}{d${variable}}(${expression})`, false, config.katexOptions)
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+                // Try to match brackets with nested support
+                else if (afterPlaceholder.startsWith('[')) {
+                    let depth = 0;
+                    let i = 0;
+                    for (i = 0; i < afterPlaceholder.length; i++) {
+                        if (afterPlaceholder[i] === '[') depth++;
+                        if (afterPlaceholder[i] === ']') {
+                            depth--;
+                            if (depth === 0) {
+                                const expression = afterPlaceholder.substring(1, i);
+                                replacements.push({
+                                    start: placeholderStart,
+                                    end: placeholderEnd + i + 1,
+                                    replacement: safeRenderKatex(`\\frac{d}{d${variable}}[${expression}]`, false, config.katexOptions)
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+                // Standalone placeholder without parentheses/brackets
+                else {
+                    replacements.push({
+                        start: placeholderStart,
+                        end: placeholderEnd,
+                        replacement: safeRenderKatex(`\\frac{d}{d${variable}}`, false, config.katexOptions)
+                    });
+                }
+            }
+
+            // Apply replacements from right to left to maintain positions
+            replacements.reverse().forEach(({ start, end, replacement }) => {
+                result = result.substring(0, start) + replacement + result.substring(end);
+            });
+
+            return result;
+        };
+
+        rendered = processDerivativePlaceholders(rendered);
 
         // Handle standalone d/dx (for any remaining cases not caught by Stage 3)
         rendered = rendered.replace(/\bd\/d([a-zA-Z])\b/g, (_match, variable) => {

@@ -911,7 +911,7 @@
 /* Modern Loading Section */
 .loading-section {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 2rem 1rem;
   background: var(--bg-primary);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
@@ -919,7 +919,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -929,14 +929,104 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .loading-section p {
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: var(--text-secondary);
   font-weight: 500;
   margin: 0;
+}
+
+/* Comparison Animation */
+.comparison-animation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.comparison-animation svg {
+  color: var(--primary-color);
+}
+
+/* Arrow animations - arrows converge to center */
+.arrow-left {
+  animation: slideFromLeft 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.arrow-right {
+  animation: slideFromRight 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Circle expands and fades when arrows meet */
+.impact-circle {
+  animation: expandFade 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes slideFromLeft {
+  0% {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  40% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes slideFromRight {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  40% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+}
+
+@keyframes expandFade {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 /* Cancel Button */
@@ -1005,63 +1095,6 @@
   margin: 0 auto 1.5rem;
 }
 
-.modern-spinner {
-  width: 80px;
-  height: 80px;
-  position: relative;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* First rotating ring */
-.modern-spinner::before {
-  content: '';
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border: 3px solid transparent;
-  border-top: 3px solid var(--primary-color);
-  border-right: 3px solid var(--primary-color);
-  border-radius: 50%;
-  animation: rotateClockwise 2s linear infinite;
-}
-
-/* Second rotating ring - intersecting */
-.modern-spinner::after {
-  content: '';
-  position: absolute;
-  width: 40px;
-  height: 40px;
-  border: 3px solid transparent;
-  border-bottom: 3px solid var(--accent-color);
-  border-left: 3px solid var(--accent-color);
-  border-radius: 50%;
-  animation: rotateCounterClockwise 1.5s linear infinite;
-}
-
-/* Clockwise rotation for outer ring */
-@keyframes rotateClockwise {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Counter-clockwise rotation for inner ring */
-@keyframes rotateCounterClockwise {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(-360deg);
-  }
-}
 
 /* Models Count Indicator - Hybrid approach with CSS classes */
 .models-count-indicator {

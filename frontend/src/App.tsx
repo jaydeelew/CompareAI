@@ -4175,17 +4175,62 @@ function AppContent() {
             {isLoading && (
               <div className="loading-section">
                 <div className="loading-content">
-                  <div className="modern-spinner"></div>
+                  <div className="comparison-animation">
+                    <svg width="140" height="80" viewBox="0 0 140 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Left arrow */}
+                      <g className="arrow-left">
+                        <path 
+                          d="M10 40 L70 40" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          strokeLinecap="round"
+                        />
+                        <path 
+                          d="M70 40 L62 32 M70 40 L62 48" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                      {/* Right arrow */}
+                      <g className="arrow-right">
+                        <path 
+                          d="M130 40 L70 40" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          strokeLinecap="round"
+                        />
+                        <path 
+                          d="M70 40 L78 32 M70 40 L78 48" 
+                          stroke="currentColor" 
+                          strokeWidth="3" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                      {/* Expanding circle at meeting point */}
+                      <circle 
+                        className="impact-circle"
+                        cx="70" 
+                        cy="40" 
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        fill="none"
+                      />
+                    </svg>
+                  </div>
+                  <button
+                    onClick={handleCancel}
+                    className="cancel-button"
+                    aria-label="Stop comparison"
+                  >
+                    <span className="cancel-x">✕</span>
+                    <span className="cancel-text">Cancel</span>
+                  </button>
                   <p>Processing {selectedModels.length === 1 ? 'response from 1 AI model' : `responses from ${selectedModels.length} AI models`}...</p>
                 </div>
-                <button
-                  onClick={handleCancel}
-                  className="cancel-button"
-                  aria-label="Stop comparison"
-                >
-                  <span className="cancel-x">✕</span>
-                  <span className="cancel-text">Cancel</span>
-                </button>
               </div>
             )}
 
