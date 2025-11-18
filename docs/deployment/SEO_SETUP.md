@@ -5,7 +5,8 @@ This guide covers the SEO implementation for CompareIntel and the steps needed t
 ## What Has Been Implemented
 
 ### 1. Meta Tags (`frontend/index.html`)
-- ✅ Primary meta tags (title, description, keywords)
+- ✅ Primary meta tags (title, description)
+- ⚠️ Meta keywords tag (deprecated - not used by Google/Bing, but harmless to keep)
 - ✅ Open Graph tags for Facebook/LinkedIn sharing
 - ✅ X Card tags (formerly Twitter Card) for X/Twitter sharing
 - ✅ Canonical URL
@@ -131,6 +132,75 @@ Request a recrawl when you:
 For multiple pages or site-wide changes:
 - **Google**: Resubmit your sitemap (Google will prioritize recently updated URLs)
 - **Bing**: Resubmit your sitemap + use the "Fetch as Bingbot" feature for important pages
+
+## Keywords & SEO Best Practices
+
+### Important: Meta Keywords Tag is Deprecated
+
+⚠️ **The `<meta name="keywords">` tag is NOT used by Google or Bing** and has been deprecated since 2009. While it's harmless to keep (and you currently have one in `index.html`), search engines ignore it completely.
+
+### Where Keywords SHOULD Go (Modern SEO)
+
+For effective SEO, place keywords naturally in these locations (in order of importance):
+
+1. **Title Tag** (`<title>`) - ✅ Already optimized
+   - Your current title: "CompareIntel - Compare 50+ AI Models Side-by-Side"
+   - Contains key terms: "Compare", "AI Models", "Side-by-Side"
+
+2. **Meta Description** - ✅ Already optimized
+   - Your current description includes: "AI models", "GPT-4", "Claude", "Gemini"
+   - Keep it under 160 characters for best display
+
+3. **H1/H2 Headings** - ✅ Already optimized
+   - Your homepage has: "Compare AI Models Side by Side" (H2)
+   - Consider adding an H1 tag with primary keywords
+
+4. **Page Content** - ✅ Already optimized
+   - Keywords naturally appear in your hero section and descriptions
+   - Ensure keywords appear in the first 100-200 words of visible content
+
+5. **Structured Data (JSON-LD)** - ✅ Already optimized
+   - Your structured data includes: "AI models", "GPT-4", "Claude", "Gemini", "Llama"
+   - This helps search engines understand your content
+
+6. **Alt Text for Images** - ⚠️ Verify
+   - Ensure all images have descriptive alt text with relevant keywords
+   - Example: "CompareIntel AI model comparison interface"
+
+7. **URL Structure** - ✅ Already optimized
+   - Your domain `compareintel.com` contains the brand keyword
+   - Use descriptive URLs for subpages (e.g., `/compare-ai-models`)
+
+### Keyword Research Tips
+
+1. **Primary Keywords** (already in use):
+   - "AI model comparison"
+   - "Compare AI models"
+   - "GPT-4 vs Claude"
+   - "AI testing tool"
+
+2. **Long-tail Keywords** to consider:
+   - "compare multiple AI models side by side"
+   - "test AI models simultaneously"
+   - "AI model comparison tool"
+   - "best AI model for [use case]"
+
+3. **Tools for Keyword Research**:
+   - Google Keyword Planner (free with Google Ads account)
+   - Google Search Console (shows what people search to find you)
+   - Ubersuggest / Ahrefs (paid tools)
+   - AnswerThePublic (free tier available)
+
+### Content Optimization Checklist
+
+- ✅ Title tag includes primary keywords
+- ✅ Meta description includes keywords naturally
+- ✅ Headings (H1, H2) include keywords
+- ✅ Keywords appear in first paragraph of content
+- ✅ Keywords used naturally throughout content (not keyword stuffing)
+- ✅ Internal links use keyword-rich anchor text
+- ✅ Images have descriptive alt text with keywords
+- ✅ Structured data includes relevant keywords
 
 ## Testing SEO Implementation
 
