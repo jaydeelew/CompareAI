@@ -50,7 +50,8 @@
 
 .hero-title-second-line {
   display: inline;
-  margin-left: 0.25em; /* Add space between words on desktop */
+  margin-left: 0.25em;
+  /* Add space between words on desktop */
 }
 
 .hero-content {
@@ -217,14 +218,14 @@
     line-height: 1.5;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-                visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
     z-index: 1000;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25),
-                0 2px 8px rgba(0, 0, 0, 0.15),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 2px 8px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.15);
     margin-bottom: 10px;
   }
@@ -325,17 +326,23 @@
   font-size: 1.1rem;
   font-family: inherit;
   line-height: 1.6;
-  resize: none; /* Disable manual resize for auto-expand behavior */
+  resize: none;
+  /* Disable manual resize for auto-expand behavior */
   transition: height 0.2s ease-out, all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   background: white;
   backdrop-filter: blur(20px);
   color: var(--text-primary);
-  min-height: 40px; /* Fixed height to match actions area */
+  min-height: 40px;
+  /* Fixed height to match actions area */
   font-weight: 500;
-  overflow-y: auto; /* Standard scrolling behavior */
-  overflow-x: auto; /* Standard horizontal scrolling if needed */
-  vertical-align: top; /* Ensure text starts at top */
-  box-sizing: border-box; /* Ensure padding is included in height calculation */
+  overflow-y: auto;
+  /* Standard scrolling behavior */
+  overflow-x: auto;
+  /* Standard horizontal scrolling if needed */
+  vertical-align: top;
+  /* Ensure text starts at top */
+  box-sizing: border-box;
+  /* Ensure padding is included in height calculation */
   /* Text handling uses browser defaults for standard form behavior */
 }
 
@@ -353,9 +360,12 @@
 .textarea-actions-area {
   position: relative;
   width: 100%;
-  min-height: 40px; /* Match textarea height */
-  height: 40px; /* Fixed height to match textarea */
-  padding: 0.375rem 0.75rem 0.375rem 1.25rem; /* Right padding: 12px (reduced from 20px), Left padding: 20px - chevron will be at 27px (20px + 7px offset) */
+  min-height: 40px;
+  /* Match textarea height */
+  height: 40px;
+  /* Fixed height to match textarea */
+  padding: 0.375rem 0.75rem 0.375rem 1.25rem;
+  /* Right padding: 12px (reduced from 20px), Left padding: 20px - chevron will be at 27px (20px + 7px offset) */
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-top: none;
   border-radius: 0 0 1.5rem 1.5rem;
@@ -388,12 +398,10 @@
 }
 
 /* Apply focus shadows - remove all inset shadows to prevent visible line */
-.textarea-container:has(.hero-input-textarea:focus) .hero-input-textarea {
-}
+.textarea-container:has(.hero-input-textarea:focus) .hero-input-textarea {}
 
 /* Actions area: remove all inset shadows to prevent visible line */
-.textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {
-}
+.textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {}
 
 
 .hero-input-textarea::placeholder {
@@ -418,7 +426,7 @@
 }
 
 /* Ensure usage preview content fits within container and doesn't cause expansion */
-.usage-preview-container > div {
+.usage-preview-container>div {
   margin-top: 0 !important;
   line-height: 1.2;
   font-size: 0.825rem;
@@ -430,7 +438,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   z-index: 1000;
   pointer-events: auto;
   visibility: visible;
@@ -760,35 +768,44 @@
        Chevron position = actions area left padding (1rem = 16px) + button offset (7px) = 23px */
     padding: 0.5rem 1rem 0.5rem 1.4375rem;
     font-size: 1rem;
-    line-height: 1.25; /* Reduced line-height (20px) fits better in 40px height with 8px padding top/bottom */
-    min-height: 40px; /* Fixed height to match actions area */
+    line-height: 1.25;
+    /* Reduced line-height (20px) fits better in 40px height with 8px padding top/bottom */
+    min-height: 40px;
+    /* Fixed height to match actions area */
     border-radius: 1.25rem;
   }
 
   /* Ensure seamless connection between textarea and actions area on mobile */
   .textarea-container:has(.textarea-actions-area) .hero-input-textarea {
     border-bottom: none !important;
-    margin-bottom: -1px; /* Overlap slightly to eliminate any visible line */
-    height: 40px !important; /* Fixed height on mobile - prevent auto-expand */
-    max-height: 40px !important; /* Prevent height increase */
+    margin-bottom: -1px;
+    /* Overlap slightly to eliminate any visible line */
+    height: 40px !important;
+    /* Fixed height on mobile - prevent auto-expand */
+    max-height: 40px !important;
+    /* Prevent height increase */
     /* Left padding: 1.4375rem (23px) to align with chevron icon
        Calculation: actions area left padding (1rem = 16px) + button offset (32px - 18px) / 2 = 7px = 23px total */
     padding: 0.5rem 1rem 0.5rem 1.4375rem !important;
-    line-height: 1.25 !important; /* Reduced line-height for better vertical centering */
+    line-height: 1.25 !important;
+    /* Reduced line-height for better vertical centering */
   }
 
   .textarea-actions-area {
-    min-height: 40px; /* Match textarea height */
-    height: 40px; /* Fixed height to match textarea */
+    min-height: 40px;
+    /* Match textarea height */
+    height: 40px;
+    /* Fixed height to match textarea */
     /* Left padding: 1rem (16px) - chevron will be at 23px (16px + 7px offset) */
     /* Right padding: 0.75rem (12px) - reduced to move buttons more to the right */
     padding: 0.5rem 0.75rem 0.5rem 1rem;
     border-top: none !important;
-    margin-top: -1px; /* Overlap slightly to eliminate any visible line */
+    margin-top: -1px;
+    /* Overlap slightly to eliminate any visible line */
   }
 
   .textarea-actions {
-    gap: 10px;
+    gap: 6px;
   }
 
   .textarea-icon-button {
@@ -1112,15 +1129,15 @@
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.5;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25),
-              0 2px 8px rgba(0, 0, 0, 0.15),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.15);
   pointer-events: none;
 }
@@ -1161,11 +1178,11 @@
   border-radius: 12px;
   padding: 12px 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25),
-              0 2px 8px rgba(0, 0, 0, 0.15),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.15);
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tooltip-content strong {
@@ -1315,4 +1332,3 @@
     min-width: unset;
   }
 }
-

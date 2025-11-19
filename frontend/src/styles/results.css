@@ -2250,7 +2250,6 @@ button.nav-button-primary {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  margin-right: 0.25rem;
   color: #d1d5db;
   box-sizing: border-box;
   z-index: 101;
