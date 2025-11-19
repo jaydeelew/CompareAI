@@ -110,15 +110,12 @@ export const UserMenu: React.FC = () => {
     return (
         <div className="user-menu" ref={menuRef}>
             <button
-                className="user-menu-trigger"
+                className="user-avatar"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-expanded={isOpen}
                 aria-haspopup="true"
             >
-                <div className="user-avatar">
-                    {user.email.charAt(0).toUpperCase()}
-                </div>
-                <span className="user-menu-caret">▼</span>
+                {user.email.charAt(0).toUpperCase()}
             </button>
 
             {isOpen && (

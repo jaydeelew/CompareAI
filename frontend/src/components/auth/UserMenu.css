@@ -2,29 +2,7 @@
 
 .user-menu {
     position: relative;
-}
-
-.user-menu-trigger {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: background-color 0.2s ease;
-    height: 40px;
-    outline: none;
-}
-
-.user-menu-trigger:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-.user-menu-trigger:focus,
-.user-menu-trigger:focus-visible {
-    outline: none;
+    margin-left: 0.5rem;
 }
 
 .user-avatar {
@@ -38,17 +16,19 @@
     justify-content: center;
     font-weight: 600;
     font-size: 1rem;
+    border: none;
+    cursor: pointer;
     outline: none;
-}
-
-.user-menu-caret {
-    font-size: 0.7rem;
-    color: #666;
     transition: transform 0.2s ease;
 }
 
-.user-menu-trigger[aria-expanded="true"] .user-menu-caret {
-    transform: rotate(180deg);
+.user-avatar:hover {
+    transform: scale(1.05);
+}
+
+.user-avatar:focus,
+.user-avatar:focus-visible {
+    outline: none;
 }
 
 .user-menu-dropdown {
