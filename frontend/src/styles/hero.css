@@ -397,11 +397,6 @@
   background: white;
 }
 
-/* Apply focus shadows - remove all inset shadows to prevent visible line */
-.textarea-container:has(.hero-input-textarea:focus) .hero-input-textarea {}
-
-/* Actions area: remove all inset shadows to prevent visible line */
-.textarea-container:has(.hero-input-textarea:focus) .textarea-actions-area {}
 
 
 .hero-input-textarea::placeholder {
