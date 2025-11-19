@@ -135,7 +135,7 @@
   border: none;
   cursor: pointer;
   transition: all var(--transition-base);
-  margin-right: 0.125rem;
+  margin-right: -0.25rem;
   padding: 0;
   flex-shrink: 0;
   outline: none;
