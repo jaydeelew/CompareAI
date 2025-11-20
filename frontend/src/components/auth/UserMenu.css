@@ -518,7 +518,7 @@
                 0 0 0 1px rgba(255, 255, 255, 0.5) inset,
                 0 0 100px rgba(102, 126, 234, 0.1);
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 .upgrade-modal::before {
@@ -685,21 +685,6 @@
     padding-bottom: 1.25rem;
     border-bottom: 2px solid rgba(226, 232, 240, 0.6);
     position: relative;
-}
-
-.tier-header::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 40px;
-    height: 2px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-    border-radius: 2px;
-}
-
-.tier-pro .tier-header::after {
-    background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
 }
 
 .tier-name {
