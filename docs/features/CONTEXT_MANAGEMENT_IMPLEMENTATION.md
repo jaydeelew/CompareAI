@@ -141,7 +141,7 @@ The UserMenu displays usage statistics:
 - **ChatGPT:** Soft encouragement around 15-20 messages, no hard limit (unlimited subscription)
 - **Claude:** Warnings around 10-15 messages, context window indicators
 - **Perplexity:** Separate "follow-up search" tracking from initial searches
-- **CompareAI:** Extended mode at 6+ messages (equivalent to ~2x token capacity), progressive warnings at 6, 10, 14, 20, 24 messages
+- **CompareIntel:** Extended mode at 6+ messages (equivalent to ~2x token capacity), progressive warnings at 6, 10, 14, 20, 24 messages
 
 ---
 

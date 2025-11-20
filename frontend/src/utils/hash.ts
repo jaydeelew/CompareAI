@@ -1,5 +1,5 @@
 /**
- * Hashing utilities for CompareAI frontend.
+ * Hashing utilities for CompareIntel frontend.
  * 
  * Provides functions for creating secure hashes from strings,
  * primarily used for browser fingerprinting and data integrity.

@@ -1,7 +1,7 @@
 /**
  * API Client Module
  * 
- * Centralized API client for CompareAI frontend.
+ * Centralized API client for CompareIntel frontend.
  * 
  * @example
  * ```typescript

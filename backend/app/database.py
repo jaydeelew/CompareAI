@@ -1,5 +1,5 @@
 """
-Database configuration and session management for CompareAI.
+Database configuration and session management for CompareIntel.
 
 This module sets up SQLAlchemy with PostgreSQL support and provides
 database session management for the FastAPI application.

@@ -1,6 +1,6 @@
 # Bundle Optimization Guide
 
-This document describes the bundle optimization setup for the CompareAI frontend.
+This document describes the bundle optimization setup for the CompareIntel frontend.
 
 ## Overview
 
@@ -179,5 +179,5 @@ Potential future optimizations:
 ---
 
 **Last Updated**: January 2025  
-**Maintained By**: CompareAI Team
+**Maintained By**: CompareIntel Team
 

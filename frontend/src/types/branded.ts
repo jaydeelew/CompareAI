@@ -1,5 +1,5 @@
 /**
- * Branded types for CompareAI
+ * Branded types for CompareIntel
  * 
  * Branded types provide type safety by preventing accidental mixing
  * of different ID types. For example, a UserId cannot be accidentally

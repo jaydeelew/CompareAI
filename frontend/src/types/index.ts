@@ -1,5 +1,5 @@
 /**
- * Type definitions for CompareAI frontend
+ * Type definitions for CompareIntel frontend
  * 
  * This module re-exports all type definitions for convenient importing.
  * Import types from this module for consistency across the application.

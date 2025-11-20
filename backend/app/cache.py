@@ -1,5 +1,5 @@
 """
-Caching utilities for CompareAI backend.
+Caching utilities for CompareIntel backend.
 
 This module provides a simple in-memory cache for frequently accessed,
 rarely-changing data like AppSettings and model lists.

@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 # Add the backend directory to the path so we can import app modules
-sys.path.insert(0, '/home/dan_wsl/jaydeelew/CompareAI/backend')
+sys.path.insert(0, '/home/dan_wsl/jaydeelew/CompareIntel/backend')
 
 from app.model_runner import MODELS_BY_PROVIDER, call_openrouter, OPENROUTER_MODELS
 from app.config import settings

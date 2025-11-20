@@ -1,6 +1,6 @@
 # Environment Setup Guide
 
-This guide explains how to configure environment variables for CompareAI, covering both backend and frontend setup.
+This guide explains how to configure environment variables for CompareIntel, covering both backend and frontend setup.
 
 **Quick Start:** Copy the example files and fill in your values:
 ```bash

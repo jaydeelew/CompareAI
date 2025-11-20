@@ -1,6 +1,6 @@
 # E2E Tests
 
-This directory contains end-to-end tests for CompareAI using Playwright.
+This directory contains end-to-end tests for CompareIntel using Playwright.
 
 **📚 For comprehensive E2E testing documentation, see: [Frontend Testing Guide](../../docs/testing/FRONTEND_TESTING.md#e2e-testing-with-playwright)**
 

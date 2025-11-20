@@ -3,7 +3,7 @@
 **Date:** November 9, 2025  
 **Status:** Active Reference
 
-This guide provides examples and best practices for using the newly extracted components in CompareAI.
+This guide provides examples and best practices for using the newly extracted components in CompareIntel.
 
 ---
 

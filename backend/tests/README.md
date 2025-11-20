@@ -1,6 +1,6 @@
 # Backend Tests
 
-This directory contains the test suite for the CompareAI backend.
+This directory contains the test suite for the CompareIntel backend.
 
 **📚 For comprehensive testing documentation, see: [Backend Testing Guide](../../docs/testing/BACKEND_TESTING.md)**
 

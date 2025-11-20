@@ -1,10 +1,10 @@
 # Authentication & Authorization
 
-Complete guide to CompareAI's authentication and authorization system.
+Complete guide to CompareIntel's authentication and authorization system.
 
 ## Overview
 
-CompareAI uses JWT (JSON Web Tokens) for stateless authentication. The system supports:
+CompareIntel uses JWT (JSON Web Tokens) for stateless authentication. The system supports:
 - User registration and email verification
 - Password-based authentication
 - Token refresh mechanism
@@ -229,7 +229,7 @@ async def admin(current_user: User = Depends(get_current_admin_user)):
 
 ## Anonymous Users
 
-Anonymous (unregistered) users can use CompareAI with limitations:
+Anonymous (unregistered) users can use CompareIntel with limitations:
 
 ### Rate Limiting
 

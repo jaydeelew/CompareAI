@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script to create the first admin user for CompareAI.
+Setup script to create the first admin user for CompareIntel.
 
 This script helps you create your first super admin user after running
 the database migration. It's safer than manually updating the database.
@@ -25,7 +25,7 @@ from app.auth import get_password_hash, validate_password_strength
 
 def create_admin_user():
     """Create the first admin user interactively."""
-    print("CompareAI Admin User Setup")
+    print("CompareIntel Admin User Setup")
     print("=" * 40)
     print("This script will help you create your first super admin user.")
     print()

@@ -71,7 +71,7 @@ export function useConversationHistory({
   // Load conversation history from localStorage (anonymous users)
   const loadHistoryFromLocalStorage = useCallback((): ConversationSummary[] => {
     try {
-      const historyJson = localStorage.getItem('compareai_conversation_history');
+      const historyJson = localStorage.getItem('compareintel_conversation_history');
       if (!historyJson) return [];
       const history = JSON.parse(historyJson) as ConversationSummary[];
       // Sort by created_at descending (most recent first)
@@ -114,7 +114,7 @@ export function useConversationHistory({
           if (modelsMatch) {
             // Load the conversation to check its first user message
             try {
-              const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
+              const storedData = localStorage.getItem(`compareintel_conversation_${conv.id}`);
               if (storedData) {
                 const parsed = JSON.parse(storedData) as { messages?: any[]; input_data?: string };
                 // Check if the first user message in stored data matches our inputData
@@ -192,7 +192,7 @@ export function useConversationHistory({
       const limited = sorted.slice(0, 2);
 
       // Store summary list (save maximum 2 in localStorage)
-      localStorage.setItem('compareai_conversation_history', JSON.stringify(limited));
+      localStorage.setItem('compareintel_conversation_history', JSON.stringify(limited));
 
       // Store full conversation data with ID as key
       // Format: messages with role and model_id for proper reconstruction
@@ -226,10 +226,10 @@ export function useConversationHistory({
 
       // Get existing conversation data to preserve created_at if updating
       const existingData = isUpdate && existingConversation
-        ? JSON.parse(localStorage.getItem(`compareai_conversation_${conversationId}`) || '{}')
+        ? JSON.parse(localStorage.getItem(`compareintel_conversation_${conversationId}`) || '{}')
         : null;
 
-      localStorage.setItem(`compareai_conversation_${conversationId}`, JSON.stringify({
+      localStorage.setItem(`compareintel_conversation_${conversationId}`, JSON.stringify({
         input_data: inputData, // Always keep first query as input_data
         models_used: modelsUsed,
         created_at: existingData?.created_at || conversationSummary.created_at,
@@ -242,9 +242,9 @@ export function useConversationHistory({
       const keysToDelete: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
-          // Extract the conversation ID from the key (format: compareai_conversation_{id})
-          const convId = key.replace('compareai_conversation_', '');
+        if (key && key.startsWith('compareintel_conversation_') && key !== 'compareintel_conversation_history') {
+          // Extract the conversation ID from the key (format: compareintel_conversation_{id})
+          const convId = key.replace('compareintel_conversation_', '');
           if (!limitedIds.has(createConversationId(convId))) {
             keysToDelete.push(key);
           }
@@ -337,12 +337,12 @@ export function useConversationHistory({
       // Delete from localStorage
       try {
         // Remove the conversation data
-        localStorage.removeItem(`compareai_conversation_${summary.id}`);
+        localStorage.removeItem(`compareintel_conversation_${summary.id}`);
 
         // Update history list
         const history = loadHistoryFromLocalStorage();
         const updatedHistory = history.filter(conv => conv.id !== summary.id);
-        localStorage.setItem('compareai_conversation_history', JSON.stringify(updatedHistory));
+        localStorage.setItem('compareintel_conversation_history', JSON.stringify(updatedHistory));
 
         // Immediately update state to remove the deleted conversation from UI
         setConversationHistory(updatedHistory);
@@ -378,7 +378,7 @@ export function useConversationHistory({
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = useCallback((conversationId: string): ModelConversation[] => {
     try {
-      const conversationJson = localStorage.getItem(`compareai_conversation_${conversationId}`);
+      const conversationJson = localStorage.getItem(`compareintel_conversation_${conversationId}`);
       if (!conversationJson) {
         console.error('Conversation not found in localStorage:', conversationId);
         return [];

@@ -1,10 +1,10 @@
 # Performance Monitoring Guide
 
-This document describes the performance monitoring infrastructure implemented in CompareAI, including Web Vitals tracking, performance markers, and performance budgets.
+This document describes the performance monitoring infrastructure implemented in CompareIntel, including Web Vitals tracking, performance markers, and performance budgets.
 
 ## Overview
 
-CompareAI includes comprehensive performance monitoring to track:
+CompareIntel includes comprehensive performance monitoring to track:
 - **Core Web Vitals** (LCP, FID, CLS, FCP, TTFB, INP)
 - **Custom performance markers** for API requests and key operations
 - **Performance budgets** to prevent bundle size regressions

@@ -1,5 +1,5 @@
 """
-Custom types for CompareAI backend.
+Custom types for CompareIntel backend.
 
 This module defines TypedDict types for structured dictionaries and
 custom type aliases for database models and common data structures.

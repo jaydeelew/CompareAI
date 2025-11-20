@@ -1,10 +1,10 @@
 # Database Schema
 
-Complete database schema documentation for CompareAI.
+Complete database schema documentation for CompareIntel.
 
 ## Overview
 
-CompareAI uses SQLAlchemy ORM with support for:
+CompareIntel uses SQLAlchemy ORM with support for:
 - **SQLite** (development)
 - **PostgreSQL** (production)
 
@@ -292,7 +292,7 @@ Global application settings (single row table).
 
 ## Database Migrations
 
-CompareAI uses Alembic for database migrations.
+CompareIntel uses Alembic for database migrations.
 
 ### Running Migrations
 

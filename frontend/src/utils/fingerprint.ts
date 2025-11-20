@@ -1,5 +1,5 @@
 /**
- * Browser fingerprinting utilities for CompareAI frontend.
+ * Browser fingerprinting utilities for CompareIntel frontend.
  * 
  * Provides functions for generating unique browser fingerprints
  * for usage tracking and anti-abuse measures.

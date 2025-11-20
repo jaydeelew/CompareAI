@@ -1,5 +1,5 @@
 /**
- * API request and response types for CompareAI
+ * API request and response types for CompareIntel
  * 
  * These types define the structure of API requests and responses
  * used throughout the application.

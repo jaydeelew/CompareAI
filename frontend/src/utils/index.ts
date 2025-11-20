@@ -1,5 +1,5 @@
 /**
- * Utility functions for CompareAI frontend.
+ * Utility functions for CompareIntel frontend.
  * 
  * This module re-exports all utility functions for convenient importing.
  * Import from here to get all utilities, or import from individual modules

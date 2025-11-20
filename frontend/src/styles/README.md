@@ -1,6 +1,6 @@
 # CSS Modular Structure
 
-This directory contains the modular CSS architecture for the CompareAI frontend, following 2025 best practices.
+This directory contains the modular CSS architecture for the CompareIntel frontend, following 2025 best practices.
 
 ## File Structure
 

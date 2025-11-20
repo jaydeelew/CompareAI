@@ -1,5 +1,5 @@
 /**
- * Configuration types for CompareAI
+ * Configuration types for CompareIntel
  * 
  * These types define the structure of configuration constants and settings
  * used throughout the application.

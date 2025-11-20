@@ -1,4 +1,4 @@
 """
-API routers for CompareAI.
+API routers for CompareIntel.
 """
 

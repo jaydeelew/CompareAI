@@ -111,7 +111,7 @@ async def lifespan(app: FastAPI):
     # Add any cleanup tasks here
 
 
-app = FastAPI(title="CompareAI API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="CompareIntel API", version="1.0.0", lifespan=lifespan)
 
 
 # Add CORS middleware BEFORE including routers
@@ -272,7 +272,7 @@ class CompareResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "CompareAI API is running"}
+    return {"message": "CompareIntel API is running"}
 
 
 @app.get("/health")

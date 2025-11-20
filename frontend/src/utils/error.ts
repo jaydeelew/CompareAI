@@ -1,5 +1,5 @@
 /**
- * Error handling utilities for CompareAI frontend.
+ * Error handling utilities for CompareIntel frontend.
  * 
  * Provides functions for displaying user-friendly error messages
  * and handling errors in the UI.

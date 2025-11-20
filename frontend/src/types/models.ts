@@ -1,5 +1,5 @@
 /**
- * Model-related types for CompareAI
+ * Model-related types for CompareIntel
  * 
  * These types define the structure of AI models and their organization
  * throughout the application.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CompareAI Production Deployment Script
+# CompareIntel Production Deployment Script
 # This script handles database migrations, dependency checks, and deployment
 
 set -e  # Exit on any error
@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_DIR="/home/ubuntu/CompareAI"
+PROJECT_DIR="/home/ubuntu/CompareIntel"
 BACKUP_DIR="/home/ubuntu/backups"
-LOG_FILE="/home/ubuntu/compareai-deploy.log"
+LOG_FILE="/home/ubuntu/compareintel-deploy.log"
 
 # Function to log messages
 log() {
@@ -59,7 +59,7 @@ backup_database() {
         return 0
     fi
     
-    BACKUP_FILE="$BACKUP_DIR/compareai-backup-$(date +%Y%m%d-%H%M%S).db"
+    BACKUP_FILE="$BACKUP_DIR/compareintel-backup-$(date +%Y%m%d-%H%M%S).db"
     cp "$DB_FILE" "$BACKUP_FILE"
     
     if [ $? -eq 0 ]; then
@@ -200,7 +200,7 @@ pull_latest_code() {
     
     # Check if we're in a git repository
     if [ ! -d ".git" ]; then
-        log_error "Not in a git repository. Please ensure you're in the CompareAI project directory."
+        log_error "Not in a git repository. Please ensure you're in the CompareIntel project directory."
         exit 1
     fi
     
@@ -312,7 +312,7 @@ rollback_deployment() {
     docker compose -f docker-compose.ssl.yml down
     
     # Restore database from backup
-    LATEST_BACKUP=$(ls -t "$BACKUP_DIR"/compareai-backup-*.db 2>/dev/null | head -1)
+    LATEST_BACKUP=$(ls -t "$BACKUP_DIR"/compareintel-backup-*.db 2>/dev/null | head -1)
     if [ -n "$LATEST_BACKUP" ]; then
         DB_FILE=$(find "$PROJECT_DIR" -name "*.db" -type f | head -1)
         if [ -n "$DB_FILE" ]; then
@@ -329,7 +329,7 @@ rollback_deployment() {
 
 # Main deployment function
 main() {
-    log "Starting CompareAI Production Deployment..."
+    log "Starting CompareIntel Production Deployment..."
     echo "=========================================="
     
     # Parse command line arguments

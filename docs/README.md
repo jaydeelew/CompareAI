@@ -1,6 +1,6 @@
-# CompareAI Documentation
+# CompareIntel Documentation
 
-Welcome to the CompareAI documentation! This directory contains comprehensive documentation for developers, contributors, and users.
+Welcome to the CompareIntel documentation! This directory contains comprehensive documentation for developers, contributors, and users.
 
 ## 📚 Documentation Structure
 

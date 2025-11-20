@@ -1,10 +1,10 @@
 # Cookie-Based Authentication Implementation
 
-This document describes the migration from localStorage-based token storage to HTTP-only cookie-based authentication for CompareAI.
+This document describes the migration from localStorage-based token storage to HTTP-only cookie-based authentication for CompareIntel.
 
 ## Overview
 
-CompareAI now uses **HTTP-only cookies** for storing JWT authentication tokens instead of localStorage. This provides significant security improvements, particularly against XSS (Cross-Site Scripting) attacks.
+CompareIntel now uses **HTTP-only cookies** for storing JWT authentication tokens instead of localStorage. This provides significant security improvements, particularly against XSS (Cross-Site Scripting) attacks.
 
 ## Security Benefits
 

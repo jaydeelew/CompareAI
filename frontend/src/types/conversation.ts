@@ -1,5 +1,5 @@
 /**
- * Conversation-related types for CompareAI
+ * Conversation-related types for CompareIntel
  * 
  * These types define the structure of conversations, messages, and
  * conversation history throughout the application.

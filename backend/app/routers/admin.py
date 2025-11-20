@@ -1,5 +1,5 @@
 """
-Admin management endpoints for CompareAI.
+Admin management endpoints for CompareIntel.
 
 This module provides comprehensive user management functionality including
 user CRUD operations, role management, and audit logging.

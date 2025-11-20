@@ -1,6 +1,6 @@
 # Frontend Tests
 
-This directory contains unit and integration tests for the CompareAI frontend.
+This directory contains unit and integration tests for the CompareIntel frontend.
 
 **📚 For comprehensive testing documentation, see: [Frontend Testing Guide](../../../docs/testing/FRONTEND_TESTING.md)**
 

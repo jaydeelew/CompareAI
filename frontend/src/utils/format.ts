@@ -1,5 +1,5 @@
 /**
- * Formatting utilities for CompareAI frontend.
+ * Formatting utilities for CompareIntel frontend.
  * 
  * Provides functions for formatting text, numbers, dates, and other data
  * for display in the UI.

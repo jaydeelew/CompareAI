@@ -1,5 +1,5 @@
 /**
- * Base API Client for CompareAI
+ * Base API Client for CompareIntel
  * 
  * Provides a centralized, type-safe API client with:
  * - Automatic token injection

@@ -8,7 +8,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - compareai-network
+      - compareintel-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U compareintel"]
       interval: 5s
@@ -34,7 +34,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - compareai-network
+      - compareintel-network
 
   frontend:
     build: 
@@ -51,7 +51,7 @@ services:
     depends_on:
       - backend
     networks:
-      - compareai-network
+      - compareintel-network
 
   nginx:
     image: nginx:1.25
@@ -63,8 +63,8 @@ services:
     depends_on:
       - backend
     networks:
-      - compareai-network
+      - compareintel-network
 
 networks:
-  compareai-network:
+  compareintel-network:
     driver: bridge

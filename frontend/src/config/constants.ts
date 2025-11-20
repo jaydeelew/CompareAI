@@ -1,5 +1,5 @@
 /**
- * Centralized configuration constants for CompareAI frontend.
+ * Centralized configuration constants for CompareIntel frontend.
  * 
  * This module consolidates all configuration constants to avoid duplication
  * and provides a single source of truth for frontend settings.

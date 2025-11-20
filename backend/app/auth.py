@@ -1,5 +1,5 @@
 """
-Authentication utilities for CompareAI.
+Authentication utilities for CompareIntel.
 
 This module provides password hashing, JWT token generation/validation,
 and token generation for email verification and password resets.

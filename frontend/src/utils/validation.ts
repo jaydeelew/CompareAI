@@ -1,5 +1,5 @@
 /**
- * Validation utilities for CompareAI frontend.
+ * Validation utilities for CompareIntel frontend.
  * 
  * Provides functions for validating user input, sanitizing data,
  * and checking constraints.

@@ -1,6 +1,6 @@
-# CompareAI API Documentation
+# CompareIntel API Documentation
 
-Complete API reference for CompareAI endpoints, including request/response schemas, authentication, and error handling.
+Complete API reference for CompareIntel endpoints, including request/response schemas, authentication, and error handling.
 
 ## Base URL
 
@@ -9,7 +9,7 @@ Complete API reference for CompareAI endpoints, including request/response schem
 
 ## Authentication
 
-CompareAI uses JWT (JSON Web Tokens) for authentication. Most endpoints require authentication, except for:
+CompareIntel uses JWT (JSON Web Tokens) for authentication. Most endpoints require authentication, except for:
 - `/api/auth/*` endpoints (registration, login)
 - `/api/models` (public model list)
 - `/api/anonymous-mock-mode-status` (development only)

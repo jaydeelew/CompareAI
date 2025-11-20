@@ -507,22 +507,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             const localStorageKeys: string[] = [];
 
             // Clear usage data
-            localStorage.removeItem('compareai_usage');
-            localStorageKeys.push('compareai_usage');
+            localStorage.removeItem('compareintel_usage');
+            localStorageKeys.push('compareintel_usage');
 
-            localStorage.removeItem('compareai_extended_usage');
-            localStorageKeys.push('compareai_extended_usage');
+            localStorage.removeItem('compareintel_extended_usage');
+            localStorageKeys.push('compareintel_extended_usage');
 
             // Clear conversation history
-            localStorage.removeItem('compareai_conversation_history');
-            localStorageKeys.push('compareai_conversation_history');
+            localStorage.removeItem('compareintel_conversation_history');
+            localStorageKeys.push('compareintel_conversation_history');
 
             // Clear all individual conversation data
             // Iterate through all localStorage keys and remove conversation entries
             const keysToRemove: string[] = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && key.startsWith('compareai_conversation_')) {
+                if (key && key.startsWith('compareintel_conversation_')) {
                     keysToRemove.push(key);
                 }
             }

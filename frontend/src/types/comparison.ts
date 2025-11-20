@@ -1,5 +1,5 @@
 /**
- * Comparison-related types for CompareAI
+ * Comparison-related types for CompareIntel
  * 
  * These types define the structure of comparison requests, responses,
  * and metadata throughout the application.

@@ -1,4 +1,4 @@
-# CompareAI
+# CompareIntel
 
 Compare responses from 50+ AI models side-by-side. Production-ready platform with authentication, tiered subscriptions, and comprehensive LaTeX/Markdown rendering.
 
@@ -32,8 +32,8 @@ Compare responses from 50+ AI models side-by-side. Production-ready platform wit
 ### Setup
 
 ```bash
-git clone https://github.com/jaydeelew/CompareAI.git
-cd CompareAI
+git clone https://github.com/jaydeelew/CompareIntel.git
+cd CompareIntel
 
 # Configure backend environment
 cd backend

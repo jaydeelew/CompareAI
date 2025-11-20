@@ -1,6 +1,6 @@
 # Modern Tooling Setup Guide
 
-This document describes the modern development tooling configured for CompareAI as part of Phase 1, Week 1, Task 3.
+This document describes the modern development tooling configured for CompareIntel as part of Phase 1, Week 1, Task 3.
 
 ## Overview
 

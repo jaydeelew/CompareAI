@@ -1,5 +1,5 @@
 /**
- * User and authentication types for CompareAI
+ * User and authentication types for CompareIntel
  * 
  * These types define the structure of users, authentication credentials,
  * and user-related data throughout the application.

@@ -57,13 +57,13 @@ export function useRateLimitStatus({
         
         // Update localStorage to match backend
         const today = new Date().toDateString();
-        localStorage.setItem('compareai_usage', JSON.stringify({
+        localStorage.setItem('compareintel_usage', JSON.stringify({
           count: latestCount,
           date: today
         }));
         
         if (latestExtendedCount !== undefined) {
-          localStorage.setItem('compareai_extended_usage', JSON.stringify({
+          localStorage.setItem('compareintel_extended_usage', JSON.stringify({
             count: latestExtendedCount,
             date: today
           }));
@@ -89,8 +89,8 @@ export function useRateLimitStatus({
       setExtendedUsageCount(0);
     } else {
       // Only load from localStorage for anonymous users
-      const savedUsage = localStorage.getItem('compareai_usage');
-      const savedExtendedUsage = localStorage.getItem('compareai_extended_usage');
+      const savedUsage = localStorage.getItem('compareintel_usage');
+      const savedExtendedUsage = localStorage.getItem('compareintel_extended_usage');
 
       if (savedUsage) {
         try {
@@ -101,7 +101,7 @@ export function useRateLimitStatus({
           } else {
             // Reset count if it's a new day
             setUsageCount(0);
-            localStorage.removeItem('compareai_usage');
+            localStorage.removeItem('compareintel_usage');
           }
         } catch (e) {
           console.error('Failed to parse usage count:', e);
@@ -118,7 +118,7 @@ export function useRateLimitStatus({
           } else {
             // Reset count if it's a new day
             setExtendedUsageCount(0);
-            localStorage.removeItem('compareai_extended_usage');
+            localStorage.removeItem('compareintel_extended_usage');
           }
         } catch (e) {
           console.error('Failed to parse extended usage count:', e);

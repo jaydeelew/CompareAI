@@ -166,7 +166,7 @@ function AppContent() {
   const [submissionCount, setSubmissionCount] = useState<number>(() => {
     // Load submission count from localStorage
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('compareai_submission_count');
+      const stored = localStorage.getItem('compareintel_submission_count');
       if (stored) {
         const data = JSON.parse(stored);
         const today = new Date().toDateString();
@@ -1096,7 +1096,7 @@ function AppContent() {
           // Anonymous user: clear localStorage and reset UI state
           // Reset usage counts and submission count
           setSubmissionCount(0);
-          localStorage.removeItem('compareai_submission_count');
+          localStorage.removeItem('compareintel_submission_count');
           setUsageCount(0);
           setExtendedUsageCount(0);
           setShowUsageBanner(false);
@@ -1105,16 +1105,16 @@ function AppContent() {
             window.clearTimeout(usageBannerTimeoutRef.current);
             usageBannerTimeoutRef.current = null;
           }
-          localStorage.removeItem('compareai_usage');
-          localStorage.removeItem('compareai_extended_usage');
+          localStorage.removeItem('compareintel_usage');
+          localStorage.removeItem('compareintel_extended_usage');
 
           // Clear all conversation history from localStorage
-          localStorage.removeItem('compareai_conversation_history');
+          localStorage.removeItem('compareintel_conversation_history');
           // Clear all individual conversation data
           const keysToRemove: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith('compareai_conversation_')) {
+            if (key && key.startsWith('compareintel_conversation_')) {
               keysToRemove.push(key);
             }
           }
@@ -1218,7 +1218,7 @@ function AppContent() {
   // Load full conversation from localStorage (anonymous users)
   const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
     try {
-      const stored = localStorage.getItem(`compareai_conversation_${id}`);
+      const stored = localStorage.getItem(`compareintel_conversation_${id}`);
       if (stored) {
         const parsed = JSON.parse(stored);
         return parsed;
@@ -2144,14 +2144,14 @@ function AppContent() {
 
             // Update localStorage to match backend
             const today = new Date().toDateString();
-            localStorage.setItem('compareai_usage', JSON.stringify({
+            localStorage.setItem('compareintel_usage', JSON.stringify({
               count: usageCount,
               date: today
             }));
 
             // Update extended usage in localStorage if synced from backend
             if (extendedCount !== undefined) {
-              localStorage.setItem('compareai_extended_usage', JSON.stringify({
+              localStorage.setItem('compareintel_extended_usage', JSON.stringify({
                 count: extendedCount,
                 date: today
               }));
@@ -2164,7 +2164,7 @@ function AppContent() {
               // Fallback to localStorage if backend is unavailable
               console.error('Failed to sync usage count from backend, using localStorage:', error);
             }
-            const savedUsage = localStorage.getItem('compareai_usage');
+            const savedUsage = localStorage.getItem('compareintel_usage');
             const today = new Date().toDateString();
 
             if (savedUsage) {
@@ -2186,7 +2186,7 @@ function AppContent() {
           console.error('Failed to sync usage count with backend:', error);
         }
         // Fallback to localStorage
-        const savedUsage = localStorage.getItem('compareai_usage');
+        const savedUsage = localStorage.getItem('compareintel_usage');
         const today = new Date().toDateString();
 
         if (savedUsage) {
@@ -2199,7 +2199,7 @@ function AppContent() {
         }
 
         // Initialize Extended usage from localStorage
-        const savedExtendedUsage = localStorage.getItem('compareai_extended_usage');
+        const savedExtendedUsage = localStorage.getItem('compareintel_extended_usage');
         if (savedExtendedUsage) {
           const extendedUsage = JSON.parse(savedExtendedUsage);
           if (extendedUsage.date === today) {
@@ -2370,7 +2370,7 @@ function AppContent() {
           currentExtendedUsage = latestExtendedCount;
           setExtendedUsageCount(latestExtendedCount);
           const today = new Date().toDateString();
-          localStorage.setItem('compareai_extended_usage', JSON.stringify({
+          localStorage.setItem('compareintel_extended_usage', JSON.stringify({
             count: latestExtendedCount,
             date: today
           }));
@@ -2848,7 +2848,7 @@ function AppContent() {
         setUsageCount(latestCount);
         // Also update localStorage immediately so it's in sync
         const today = new Date().toDateString();
-        localStorage.setItem('compareai_usage', JSON.stringify({
+        localStorage.setItem('compareintel_usage', JSON.stringify({
           count: latestCount,
           date: today
         }));
@@ -2906,7 +2906,7 @@ function AppContent() {
             // Always update state to keep it in sync - this ensures renderUsagePreview shows correct values
             setExtendedUsageCount(latestExtendedCount);
             const today = new Date().toDateString();
-            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
               count: latestExtendedCount,
               date: today
             }));
@@ -3669,7 +3669,7 @@ function AppContent() {
 
             // Save to localStorage
             const today = new Date().toDateString();
-            localStorage.setItem('compareai_submission_count', JSON.stringify({
+            localStorage.setItem('compareintel_submission_count', JSON.stringify({
               count: newSubmissionCount,
               date: today
             }));
@@ -3702,14 +3702,14 @@ function AppContent() {
 
           // Update localStorage to match backend
           const today = new Date().toDateString();
-          localStorage.setItem('compareai_usage', JSON.stringify({
+          localStorage.setItem('compareintel_usage', JSON.stringify({
             count: newCount,
             date: today
           }));
 
           // Update extended usage in localStorage if synced from backend
           if (newExtendedCount !== undefined) {
-            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
               count: newExtendedCount,
               date: today
             }));
@@ -3733,7 +3733,7 @@ function AppContent() {
 
             // Save to localStorage
             const today = new Date().toDateString();
-            localStorage.setItem('compareai_submission_count', JSON.stringify({
+            localStorage.setItem('compareintel_submission_count', JSON.stringify({
               count: newSubmissionCount,
               date: today
             }));
@@ -3767,14 +3767,14 @@ function AppContent() {
           }
 
           const today = new Date().toDateString();
-          localStorage.setItem('compareai_usage', JSON.stringify({
+          localStorage.setItem('compareintel_usage', JSON.stringify({
             count: newUsageCount,
             date: today
           }));
 
           // Store Extended usage separately (1 per request, not per model)
           if (shouldUseExtendedTier) {
-            localStorage.setItem('compareai_extended_usage', JSON.stringify({
+            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
               count: extendedUsageCount + 1,
               date: today
             }));

@@ -15,7 +15,7 @@ services:
     env_file:
       - ./backend/.env
     networks:
-      - compareai-network
+      - compareintel-network
 
   frontend:
     build: 
@@ -32,7 +32,7 @@ services:
     depends_on:
       - backend
     networks:
-      - compareai-network
+      - compareintel-network
 
   nginx:
     image: nginx:1.25
@@ -45,8 +45,8 @@ services:
     depends_on:
       - backend
     networks:
-      - compareai-network
+      - compareintel-network
 
 networks:
-  compareai-network:
+  compareintel-network:
     driver: bridge

@@ -1,10 +1,10 @@
 # Image & Asset Optimization
 
-This document describes the image and asset optimization features implemented in CompareAI.
+This document describes the image and asset optimization features implemented in CompareIntel.
 
 ## Overview
 
-CompareAI implements comprehensive image optimization to improve performance, reduce bandwidth usage, and enhance user experience. The optimization includes:
+CompareIntel implements comprehensive image optimization to improve performance, reduce bandwidth usage, and enhance user experience. The optimization includes:
 
 - **Modern image formats** (WebP, AVIF) with fallbacks
 - **Lazy loading** for improved initial page load

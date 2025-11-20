@@ -1,5 +1,5 @@
 /**
- * Date and time utilities for CompareAI frontend.
+ * Date and time utilities for CompareIntel frontend.
  * 
  * Provides functions for parsing, formatting, and manipulating dates
  * used throughout the application.

@@ -1,5 +1,5 @@
 """
-SQLAlchemy models for CompareAI authentication and user management.
+SQLAlchemy models for CompareIntel authentication and user management.
 
 This module defines all database models including users, preferences,
 conversations, and usage tracking.

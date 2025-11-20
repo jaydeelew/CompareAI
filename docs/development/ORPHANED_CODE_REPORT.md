@@ -1,12 +1,12 @@
 # Orphaned Code Report
 
 **Generated:** $(date)  
-**Project:** CompareAI  
+**Project:** CompareIntel  
 **Scope:** Entire codebase analysis for orphaned/unused code
 
 ## Summary
 
-This report documents orphaned code found throughout the CompareAI project. Orphaned code includes:
+This report documents orphaned code found throughout the CompareIntel project. Orphaned code includes:
 - Unused files
 - Unused functions/classes
 - Placeholder/stub code that's never implemented

@@ -348,7 +348,7 @@ Monitor these to ensure streaming is working:
 
 For issues:
 
-1. Check logs: `docker logs compareai-backend`
+1. Check logs: `docker logs compareintel-backend`
 2. Test streaming: `python backend/test_streaming.py`
 3. Check network: `curl -N http://localhost:8000/compare-stream`
 4. Review frontend implementation: [Tab Streaming Solution](TAB_STREAMING_SOLUTION.md)

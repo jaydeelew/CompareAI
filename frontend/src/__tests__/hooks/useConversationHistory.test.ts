@@ -97,7 +97,7 @@ describe('useConversationHistory', () => {
         createMockConversationSummary({ id: createConversationId('1') }),
         createMockConversationSummary({ id: createConversationId('2') }),
       ];
-      localStorage.setItem('compareai_conversation_history', JSON.stringify(mockHistory));
+      localStorage.setItem('compareintel_conversation_history', JSON.stringify(mockHistory));
 
       const { result } = renderHook(() =>
         useConversationHistory({
@@ -123,7 +123,7 @@ describe('useConversationHistory', () => {
     });
 
     it('should handle invalid JSON gracefully', () => {
-      localStorage.setItem('compareai_conversation_history', 'invalid-json');
+      localStorage.setItem('compareintel_conversation_history', 'invalid-json');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const { result } = renderHook(() =>
@@ -153,7 +153,7 @@ describe('useConversationHistory', () => {
           created_at: newDate,
         }),
       ];
-      localStorage.setItem('compareai_conversation_history', JSON.stringify(mockHistory));
+      localStorage.setItem('compareintel_conversation_history', JSON.stringify(mockHistory));
 
       const { result } = renderHook(() =>
         useConversationHistory({
@@ -201,7 +201,7 @@ describe('useConversationHistory', () => {
       const savedHistory = result.current.loadHistoryFromLocalStorage();
       expect(savedHistory.length).toBe(1);
       expect(savedHistory[0].input_data).toBe('test input');
-      expect(localStorage.getItem(`compareai_conversation_${savedHistory[0].id}`)).toBeTruthy();
+      expect(localStorage.getItem(`compareintel_conversation_${savedHistory[0].id}`)).toBeTruthy();
     });
 
     it('should limit to 2 conversations for anonymous users', () => {
@@ -451,7 +451,7 @@ describe('useConversationHistory', () => {
 
       const updatedHistory = result.current.loadHistoryFromLocalStorage();
       expect(updatedHistory.length).toBe(0);
-      expect(localStorage.getItem(`compareai_conversation_${conversationId}`)).toBeNull();
+      expect(localStorage.getItem(`compareintel_conversation_${conversationId}`)).toBeNull();
     });
 
     it('should call onDeleteActiveConversation when deleting active conversation', async () => {
@@ -544,7 +544,7 @@ describe('useConversationHistory', () => {
       };
 
       localStorage.setItem(
-        `compareai_conversation_${conversationId}`,
+        `compareintel_conversation_${conversationId}`,
         JSON.stringify(conversationData)
       );
 
@@ -642,7 +642,7 @@ describe('useConversationHistory', () => {
       const mockHistory = [
         createMockConversationSummary({ id: createConversationId('1') }),
       ];
-      localStorage.setItem('compareai_conversation_history', JSON.stringify(mockHistory));
+      localStorage.setItem('compareintel_conversation_history', JSON.stringify(mockHistory));
 
       const { result } = renderHook(() =>
         useConversationHistory({

@@ -1,6 +1,6 @@
 # Backend Testing Guide
 
-This comprehensive guide covers all aspects of testing the CompareAI backend, including setup, running tests, writing new tests, and best practices.
+This comprehensive guide covers all aspects of testing the CompareIntel backend, including setup, running tests, writing new tests, and best practices.
 
 ## Table of Contents
 

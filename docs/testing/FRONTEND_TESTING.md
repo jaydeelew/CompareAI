@@ -1,6 +1,6 @@
 # Frontend Testing Guide
 
-This comprehensive guide covers all aspects of testing the CompareAI frontend, including unit tests, integration tests, E2E tests, setup, running tests, writing new tests, and best practices.
+This comprehensive guide covers all aspects of testing the CompareIntel frontend, including unit tests, integration tests, E2E tests, setup, running tests, writing new tests, and best practices.
 
 ## Table of Contents
 

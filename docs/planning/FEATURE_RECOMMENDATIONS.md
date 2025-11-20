@@ -1,4 +1,4 @@
-# CompareAI Feature Recommendations
+# CompareIntel Feature Recommendations
 
 **Date:** January 2025  
 **Purpose:** Enhancements and new features for users comparing AI models
@@ -7,7 +7,7 @@
 
 ## Current Features Overview
 
-CompareAI already includes a solid foundation:
+CompareIntel already includes a solid foundation:
 
 - ✅ Side-by-side comparison of 50+ AI models
 - ✅ Streaming responses with real-time updates
@@ -255,7 +255,7 @@ CompareAI already includes a solid foundation:
 - SDKs for popular languages (Python, JavaScript)
 - GraphQL option for flexible queries
 
-**User Story:** "I want to integrate CompareAI into my application workflow"
+**User Story:** "I want to integrate CompareIntel into my application workflow"
 
 ---
 
@@ -489,7 +489,7 @@ Track the following metrics to measure feature success:
 - These recommendations are based on common patterns in SaaS comparison tools and user feedback best practices
 - Prioritize features that align with your monetization strategy (e.g., Pro features)
 - Consider user tier limits (some features could be Pro/Pro+ exclusive)
-- Maintain the simplicity that makes CompareAI great - don't overcomplicate the UI
+- Maintain the simplicity that makes CompareIntel great - don't overcomplicate the UI
 
 ---
 

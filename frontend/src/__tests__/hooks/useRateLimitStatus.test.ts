@@ -129,7 +129,7 @@ describe('useRateLimitStatus', () => {
     it('should load usage count from localStorage', async () => {
       const today = new Date().toDateString();
       localStorage.setItem(
-        'compareai_usage',
+        'compareintel_usage',
         JSON.stringify({ count: 5, date: today })
       );
 
@@ -149,7 +149,7 @@ describe('useRateLimitStatus', () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       localStorage.setItem(
-        'compareai_usage',
+        'compareintel_usage',
         JSON.stringify({ count: 5, date: yesterday.toDateString() })
       );
 
@@ -165,13 +165,13 @@ describe('useRateLimitStatus', () => {
       });
 
       // Should remove old localStorage entry
-      expect(localStorage.getItem('compareai_usage')).toBeNull();
+      expect(localStorage.getItem('compareintel_usage')).toBeNull();
     });
 
     it('should load extended usage count from localStorage', async () => {
       const today = new Date().toDateString();
       localStorage.setItem(
-        'compareai_extended_usage',
+        'compareintel_extended_usage',
         JSON.stringify({ count: 2, date: today })
       );
 
@@ -191,7 +191,7 @@ describe('useRateLimitStatus', () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       localStorage.setItem(
-        'compareai_extended_usage',
+        'compareintel_extended_usage',
         JSON.stringify({ count: 3, date: yesterday.toDateString() })
       );
 
@@ -206,11 +206,11 @@ describe('useRateLimitStatus', () => {
         expect(result.current.extendedUsageCount).toBe(0);
       });
 
-      expect(localStorage.getItem('compareai_extended_usage')).toBeNull();
+      expect(localStorage.getItem('compareintel_extended_usage')).toBeNull();
     });
 
     it('should handle invalid localStorage data gracefully', async () => {
-      localStorage.setItem('compareai_usage', 'invalid-json');
+      localStorage.setItem('compareintel_usage', 'invalid-json');
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

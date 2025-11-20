@@ -1,6 +1,6 @@
 # Adding New Models Workflow
 
-This document describes the workflow for adding new AI models to CompareAI and ensuring they have proper renderer configurations.
+This document describes the workflow for adding new AI models to CompareIntel and ensuring they have proper renderer configurations.
 
 ## Overview
 

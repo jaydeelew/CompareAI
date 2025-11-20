@@ -1,5 +1,5 @@
 /**
- * Authentication Context for CompareAI
+ * Authentication Context for CompareIntel
  * Manages user authentication state, login, logout, and token refresh
  */
 

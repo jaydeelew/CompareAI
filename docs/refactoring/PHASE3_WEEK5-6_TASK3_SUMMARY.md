@@ -34,7 +34,7 @@ Key improvements:
 // Enhanced matching to check stored message content
 if (modelsMatch) {
   try {
-    const storedData = localStorage.getItem(`compareai_conversation_${conv.id}`);
+    const storedData = localStorage.getItem(`compareintel_conversation_${conv.id}`);
     const parsed = JSON.parse(storedData);
     const firstStoredUserMsg = parsed.messages?.find((m: any) => m.role === 'user');
     if (firstStoredUserMsg && firstStoredUserMsg.content === inputData) {
@@ -47,8 +47,8 @@ if (modelsMatch) {
 const keysToDelete: string[] = [];
 for (let i = 0; i < localStorage.length; i++) {
   const key = localStorage.key(i);
-  if (key && key.startsWith('compareai_conversation_') && key !== 'compareai_conversation_history') {
-    const convId = key.replace('compareai_conversation_', '');
+  if (key && key.startsWith('compareintel_conversation_') && key !== 'compareintel_conversation_history') {
+    const convId = key.replace('compareintel_conversation_', '');
     if (!limitedIds.has(createConversationId(convId))) {
       keysToDelete.push(key);
     }

@@ -1,5 +1,5 @@
 /**
- * Custom hooks for CompareAI
+ * Custom hooks for CompareIntel
  * 
  * This module re-exports all custom hooks for convenient importing.
  * Import hooks from this module for consistency across the application.
