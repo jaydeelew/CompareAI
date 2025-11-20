@@ -26,7 +26,7 @@ Phase 3 focuses on generating model-specific renderer configurations from Phase 
    - Code block preservation utilities: `frontend/src/utils/codeBlockPreservation.ts`
 
 3. **Backend Environment**
-   - Python 3.8+ with access to analysis data
+   - Python 3.9+ with access to analysis data (Python 3.11 recommended)
    - Understanding of analysis data structure
 
 ## Step 3.1: Build Configuration Generator Script

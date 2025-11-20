@@ -207,7 +207,7 @@ backend/
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+ (Python 3.11 recommended)
 - Access to OpenRouter API (via environment variables)
 - All dependencies from `backend/requirements.txt`
 

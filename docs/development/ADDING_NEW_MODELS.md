@@ -15,7 +15,7 @@ When new models are added to `backend/app/model_runner.py`, they need renderer c
 ## Prerequisites
 
 - New models added to `MODELS_BY_PROVIDER` in `backend/app/model_runner.py`
-- Python 3.8+ with all dependencies installed
+- Python 3.9+ with all dependencies installed (Python 3.11 recommended)
 - OpenRouter API key configured in environment variables
 - Access to the project repository
 
