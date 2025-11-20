@@ -397,7 +397,8 @@ async def compare(
             upgrade_message = f" Upgrade to Starter for {starter_model_limit} models or Pro for {pro_model_limit} models."
         elif tier_name in ["starter", "starter_plus"]:
             pro_model_limit = get_model_limit("pro")
-            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models."
+            pro_plus_model_limit = get_model_limit("pro_plus")
+            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models or Pro+ for {pro_plus_model_limit} models."
 
         raise HTTPException(
             status_code=400,
@@ -734,7 +735,8 @@ async def compare_stream(
             upgrade_message = f" Upgrade to Starter for {starter_model_limit} models or Pro for {pro_model_limit} models."
         elif tier_name in ["starter", "starter_plus"]:
             pro_model_limit = get_model_limit("pro")
-            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models."
+            pro_plus_model_limit = get_model_limit("pro_plus")
+            upgrade_message = f" Upgrade to Pro for {pro_model_limit} models or Pro+ for {pro_plus_model_limit} models."
 
         raise HTTPException(
             status_code=400,

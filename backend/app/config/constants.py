@@ -18,7 +18,7 @@ from ..types import TierConfigDict, TierLimitsDict
 # Subscription Tier Configuration
 # ============================================================================
 # MODEL-BASED PRICING: daily_limit = model responses per day (not comparisons)
-# model_limit = max models per comparison (tiered: 3/6/6/9/9)
+# model_limit = max models per comparison (tiered: 3/6/6/9/12)
 # overage_allowed = whether tier can purchase additional interactions beyond daily limit
 # overage_price = price per additional model response (TBD - pricing not yet finalized)
 # extended_overage_price = price per additional extended interaction (TBD - pricing not yet finalized)
@@ -54,7 +54,7 @@ SUBSCRIPTION_CONFIG: Dict[str, TierConfigDict] = {
     },  # Pricing TBD
     "pro_plus": {
         "daily_limit": 400,
-        "model_limit": 9,
+        "model_limit": 12,
         "overage_allowed": True,
         "overage_price": None,
         "extended_overage_price": None,

@@ -2416,7 +2416,8 @@ function AppContent() {
         const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
         const upgradeMsg = tierName === 'Anonymous' ? ' Sign up for a free account to get 3 models.' :
           tierName === 'free' ? ' Upgrade to Starter for 6 models or Pro for 9 models.' :
-            (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models.' : '';
+            (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models or Pro+ for 12 models.' :
+            tierName === 'pro' ? ' Upgrade to Pro+ for 12 models.' : '';
         setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
         return;
       }

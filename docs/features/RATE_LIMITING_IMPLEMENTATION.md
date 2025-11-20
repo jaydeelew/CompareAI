@@ -4,7 +4,7 @@
 
 This document describes the **multi-layer anti-abuse system** implemented to prevent users from exceeding daily limits. The system uses **model-based pricing** where each AI model response counts individually toward the daily limit.
 
-**Updated October 22, 2025:** Switched from comparison-based to model-based rate limiting. Model limits are tiered: Free (3), Starter/Starter Plus (6), Pro/Pro Plus (9).
+**Updated October 22, 2025:** Switched from comparison-based to model-based rate limiting. Model limits are tiered: Free (3), Starter/Starter Plus (6), Pro (9), Pro Plus (12).
 
 ## Architecture
 
@@ -36,13 +36,13 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
    ```python
    # MODEL-BASED PRICING: daily_limit = model responses per day
-   # model_limit = max models per comparison (tiered: 3/6/6/9/9)
+   # model_limit = max models per comparison (tiered: 3/6/6/9/12)
    SUBSCRIPTION_CONFIG = {
        "free": {"daily_limit": 20, "model_limit": 3, "overage_allowed": False},
        "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True},
        "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True},
        "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True},
-       "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True}
+       "pro_plus": {"daily_limit": 400, "model_limit": 12, "overage_allowed": True}
    }
    # Anonymous (unregistered) users: 10 model responses/day, max 3 models per comparison
    ```
@@ -59,7 +59,7 @@ This document describes the **multi-layer anti-abuse system** implemented to pre
 
 3. **Updated `/api/compare` Endpoint (Model-Based)** - Located in `backend/app/routers/api.py`
 
-   - Enforces tier-specific model limits per comparison (Free: 3, Starter/Starter Plus: 6, Pro/Pro Plus: 9)
+   - Enforces tier-specific model limits per comparison (Free: 3, Starter/Starter Plus: 6, Pro: 9, Pro Plus: 12)
    - Calculates model responses needed for the request
    - Checks if user has enough model responses remaining
    - Returns 429 error if limit would be exceeded
@@ -309,7 +309,7 @@ curl "http://localhost:8000/api/rate-limit-status"
    - Starter: 6 models per comparison, 50 responses/day
    - Starter Plus: 6 models per comparison, 100 responses/day
    - Pro: 9 models per comparison, 200 responses/day
-   - Pro Plus: 9 models per comparison, 400 responses/day
+   - Pro Plus: 12 models per comparison, 400 responses/day
 
 4. **Better Cost Alignment:** 
    - Our cost: $0.0166 per model response
@@ -323,8 +323,8 @@ curl "http://localhost:8000/api/rate-limit-status"
 - **Free Registered User:** 6 comparisons × 3 models = 18 responses (within 20/day limit, max 3 models/comparison)
 - **Efficient Starter User:** 8 comparisons × 6 models = 48 responses (within 50/day limit, max 6 models/comparison)
 - **Power Pro User:** 22 comparisons × 9 models = 198 responses (within 200/day limit, max 9 models/comparison)
-- **Pro Plus User:** 44 comparisons × 9 models = 396 responses (within 400/day limit, max 9 models/comparison)
-- **Variable User:** Mix of 1-9 models per comparison based on tier and task complexity
+- **Pro Plus User:** 33 comparisons × 12 models = 396 responses (within 400/day limit, max 12 models/comparison)
+- **Variable User:** Mix of 1-12 models per comparison based on tier and task complexity
 
 ## Security Considerations
 
@@ -409,7 +409,7 @@ SUBSCRIPTION_CONFIG: Dict[str, TierConfigDict] = {
     },
     "pro_plus": {
         "daily_limit": 400,
-        "model_limit": 9,
+        "model_limit": 12,
         "overage_allowed": True,
         "overage_price": None,
         "extended_overage_price": None,
@@ -558,7 +558,7 @@ No manual migration needed - the database schema is automatically managed by SQL
 
 **Current Implementation Status:**
 - ✅ Model-based rate limiting (each model response counts individually)
-- ✅ Tiered model limits (3/6/6/9/9 models per comparison)
+- ✅ Tiered model limits (3/6/6/9/12 models per comparison)
 - ✅ Extended tier limiting (separate daily limits for Extended mode)
 - ✅ SHA-256 hashed browser fingerprints
 - ✅ All subscription tiers (free, starter, starter_plus, pro, pro_plus)

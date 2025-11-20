@@ -424,7 +424,7 @@ export const UserMenu: React.FC = () => {
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>
-                                        <span className="feature-text">Compare up to <strong>9 models</strong> simultaneously (3x more)</span>
+                                        <span className="feature-text">Compare up to <strong>12 models</strong> simultaneously (4x more)</span>
                                     </div>
                                     <div className="feature-item">
                                         <span className="feature-icon">✓</span>

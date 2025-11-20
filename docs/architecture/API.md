@@ -964,7 +964,7 @@ Rate limits are enforced per subscription tier:
 | Starter | 50 | 6 |
 | Starter+ | 100 | 6 |
 | Pro | 200 | 9 |
-| Pro+ | 400 | 9 |
+| Pro+ | 400 | 12 |
 
 **Note:** Usage is tracked by individual model responses, not comparisons. Each model in a comparison counts as one response toward the daily limit.
 

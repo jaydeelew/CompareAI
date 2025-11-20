@@ -45,7 +45,7 @@ export const MODEL_LIMITS = {
   starter: 6,
   starter_plus: 6,
   pro: 9,
-  pro_plus: 9,
+  pro_plus: 12,
 } as const;
 
 // ============================================================================

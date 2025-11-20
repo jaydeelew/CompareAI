@@ -108,7 +108,8 @@ See [DEV_WORKFLOW.md](DEV_WORKFLOW.md) for detailed deployment workflows.
 - Anonymous: 3 models max
 - Free: 3 models max
 - Starter/Starter+: 6 models max
-- Pro/Pro+: 9 models max
+- Pro: 9 models max
+- Pro+: 12 models max
 
 **Support & Features:**
 
@@ -182,7 +183,7 @@ SUBSCRIPTION_CONFIG = {
     "starter": {"daily_limit": 50, "model_limit": 6, "overage_allowed": True},
     "starter_plus": {"daily_limit": 100, "model_limit": 6, "overage_allowed": True},
     "pro": {"daily_limit": 200, "model_limit": 9, "overage_allowed": True},
-    "pro_plus": {"daily_limit": 400, "model_limit": 9, "overage_allowed": True}
+    "pro_plus": {"daily_limit": 400, "model_limit": 12, "overage_allowed": True}
 }
 # Anonymous (unregistered): 10 model responses/day, 3 models max
 ```

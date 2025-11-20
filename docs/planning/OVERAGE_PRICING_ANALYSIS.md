@@ -15,11 +15,11 @@
 | **Starter**              | 50                    | 6                     | 48 hours         | 10                  | TBD           | ⏳ Pricing TBD        |
 | **Starter+**             | 100                   | 6                     | 48 hours         | 20                  | TBD           | ⏳ Pricing TBD        |
 | **Pro**                  | 200                   | 9                     | 24 hours         | 40                  | TBD           | ⏳ Pricing TBD        |
-| **Pro+**                 | 400                   | 9                     | 24 hours         | 80                  | TBD           | ⏳ Pricing TBD        |
+| **Pro+**                 | 400                   | 12                    | 24 hours         | 80                  | TBD           | ⏳ Pricing TBD        |
 
 **Key Changes:**
 - ✅ **Model-based limits:** Users are limited by individual model responses, not comparisons
-- ✅ **Tiered model access:** Higher tiers can compare more models simultaneously (3/6/6/9/9)
+- ✅ **Tiered model access:** Higher tiers can compare more models simultaneously (3/6/6/9/12)
 - ✅ **Registration incentive:** Registered free users get 2x the capacity of unregistered users
 - ✅ **Fair pricing:** Users pay for what they actually use
 - ✅ **Clear upgrade path:** More models + more daily capacity at each tier
@@ -92,10 +92,10 @@ The model-based approach:
 - Support: 24-hour priority email response, 40 conversations saved
 
 **Pro+ Tier (Pricing TBD):**
-- 400 model responses/day with 9 models max = ~44 comparisons with 9 models average  
+- 400 model responses/day with 12 models max = ~33 comparisons with 12 models average  
 - Monthly cost to us: 400 × 30 × $0.0166 = $199.20/month
 - Requires pricing to achieve target margins
-- Benefit: 3x model capacity (3 → 9) + 20x daily responses (20 → 400)
+- Benefit: 4x model capacity (3 → 12) + 20x daily responses (20 → 400)
 - Support: 24-hour priority email response, 80 conversations saved
 
 ---
@@ -111,6 +111,9 @@ The model-based approach:
 - Pro overage: $0.25 per comparison (covers up to 9 models)
   - 1 model used: 1500% markup ($0.25 vs $0.0166 cost)
   - 9 models used: 68% markup ($0.25 vs $0.149 cost)
+- Pro+ overage: $0.25 per comparison (covers up to 12 models)
+  - 1 model used: 1500% markup ($0.25 vs $0.0166 cost)
+  - 12 models used: 40% markup ($0.25 vs $0.199 cost)
 
 **New Model (Model-Based):**
 - Every model response: $0.05 per model
@@ -136,7 +139,7 @@ The model-based approach:
 Users can optimize their usage:
 - Quick test with 1 model: 1 model response used
 - Compare 3 top choices: 3 model responses used
-- Comprehensive analysis with 9 models: 9 model responses used
+- Comprehensive analysis with 9-12 models: 9-12 model responses used (depending on tier)
 - Natural scaling based on task complexity
 
 ### 4. **Simplified Tier Differentiation**
@@ -144,7 +147,7 @@ Users can optimize their usage:
 | Feature                  | Free | Starter | Pro  |
 | ------------------------ | ---- | ------- | ---- |
 | Daily model responses    | 30   | 150     | 450  |
-| Models per comparison    | 9    | 9       | 9    |
+| Models per comparison    | 9    | 9       | 12   |
 | Overage allowed          | ❌   | ✅      | ✅   |
 | Overage price            | N/A  | TBD     | TBD  |
 
@@ -158,7 +161,7 @@ All tiers have the same **capabilities**, just different **capacity**.
 
 - [x] Update `SUBSCRIPTION_CONFIG` in `backend/app/rate_limiting.py`
   - Change `daily_limit` from comparisons to model responses (30/150/450)
-  - Set `model_limit` to 9 for all tiers
+  - Set `model_limit` to 9 for Pro tier, 12 for Pro+ tier
   - Update overage configuration (pricing TBD)
 
 - [x] Update rate limiting logic
@@ -184,8 +187,7 @@ All tiers have the same **capabilities**, just different **capacity**.
   - Revise upgrade modal messaging
 
 - [x] Update limit enforcement
-  - Remove tier-specific model limit validation
-  - Enforce uniform 9-model maximum
+  - Enforce tier-specific model limits (3/6/6/9/12)
   - Update error messages
 
 - [x] Update pricing displays
@@ -358,7 +360,7 @@ For existing users during transition:
 **Key Messages:**
 1. ✅ "More flexibility - use models efficiently to get more comparisons"
 2. ✅ "Fairer pricing - pay only for what you use"
-3. ✅ "All tiers now support up to 9 models per comparison"
+3. ✅ "Pro+ tier supports up to 12 models per comparison"
 4. ✅ "Same capacity for typical usage patterns"
 5. ✅ "More transparency in billing"
 
@@ -407,7 +409,7 @@ For existing users during transition:
 | Aspect                  | Old (Comparison)      | New (Model-Based)     |
 | ----------------------- | --------------------- | --------------------- |
 | Primary limit           | Comparisons per day   | Model responses/day   |
-| Models per comparison   | 3/6/9 (tier-based)    | 9 (all tiers)         |
+| Models per comparison   | 3/6/9 (tier-based)    | 3/6/6/9/12 (tier-based) |
 | Overage pricing         | Per comparison        | Per model response    |
 | Cost fairness           | Variable (68-1500%)   | Consistent (200%)     |
 | User experience         | Complex (2 limits)    | Simple (1 limit)      |
