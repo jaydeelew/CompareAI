@@ -15,7 +15,6 @@ export default tseslint.config(
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
-      reactHooks.configs.recommended,
       prettier,
     ],
     languageOptions: {
@@ -28,6 +27,7 @@ export default tseslint.config(
       },
     },
     plugins: {
+      'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
       import: importPlugin,
     },
@@ -42,6 +42,7 @@ export default tseslint.config(
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
       'import/order': [
