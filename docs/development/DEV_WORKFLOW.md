@@ -1,4 +1,4 @@
-# CompareAI Development Workflow
+# CompareIntel Development Workflow
 
 **Important:** SSL certificates must be set up on your AWS EC2 server where `compareintel.com` points, not on your local development machine.
 
@@ -148,12 +148,12 @@ docker compose -f docker-compose.prod.yml down
 
 ```bash
 # SSH into your EC2 instance
-ssh -i CompareAI.pem ubuntu@44.212.141.149
+ssh -i CompareIntel.pem ubuntu@44.212.141.149
 
 # ONE-TIME: Set up SSL certificates for both domains
 ./setup-compareintel-ssl.sh
 
-cd CompareAI
+cd CompareIntel
 
 # Pull latest changes
 git pull origin master
