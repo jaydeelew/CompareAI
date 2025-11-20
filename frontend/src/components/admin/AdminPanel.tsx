@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Eye, EyeClosed } from 'lucide-react';
 import { useAuth, useAuthHeaders } from '../../contexts/AuthContext';
 import './AdminPanel.css';
 
@@ -896,19 +895,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
                     onClick={() => setActiveTab('users')}
                 >
-                    👥 Users
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Users
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'logs' ? 'active' : ''}`}
                     onClick={() => setActiveTab('logs')}
                 >
-                    📋 Action Logs
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
+                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                    </svg>
+                    Action Logs
                 </button>
                 <button
                     className={`admin-tab ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => setActiveTab('analytics')}
                 >
-                    📊 Visitor Analytics
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 3v18h18M7 16l4-4 4 4 6-6"/>
+                        <path d="M7 10h.01M11 7h.01M15 4h.01"/>
+                    </svg>
+                    Visitor Analytics
                 </button>
             </div>
 
@@ -922,7 +934,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             onClick={() => fetchActionLogs(logsPage, selectedActionType || undefined)}
                             disabled={logsLoading}
                         >
-                            🔄 Refresh
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                <path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                <path d="M8 16H3v5"/>
+                            </svg>
+                            Refresh
                         </button>
                     </div>
 
@@ -974,6 +991,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 }}
                                 disabled={logsLoading}
                             >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
                                 Search
                             </button>
                         </div>
@@ -1094,7 +1115,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             onClick={fetchVisitorAnalytics}
                             disabled={analyticsLoading}
                         >
-                            {analyticsLoading ? '⏳ Loading...' : '🔄 Refresh'}
+                            {analyticsLoading ? (
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                                    </svg>
+                                    Loading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                        <path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                        <path d="M8 16H3v5"/>
+                                    </svg>
+                                    Refresh
+                                </>
+                            )}
                         </button>
                     </div>
 
@@ -1284,7 +1321,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         title="Zero out all anonymous user daily/extended usage and clear comparison history"
                                         style={{ minWidth: '220px' }}
                                     >
-                                        🔄 {historyCleared ? 'History Cleared' : 'Anonymous Zero Usage'}
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                            <path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                            <path d="M8 16H3v5"/>
+                                        </svg>
+                                        {historyCleared ? 'History Cleared' : 'Anonymous Zero Usage'}
                                     </button>
                                     <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', color: '#666', textAlign: 'center', minHeight: '2.5rem' }}>
                                         {historyCleared ? 'Usage counts and history have been cleared' : 'Usage counts and history will be cleared'}
@@ -1305,6 +1347,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             className="create-user-btn"
                             onClick={() => setShowCreateModal(true)}
                         >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14M12 5v14"/>
+                            </svg>
                             Create User
                         </button>
                     </div>
@@ -1350,6 +1395,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 className="search-btn"
                                 onClick={handleManualSearch}
                             >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="m21 21-4.35-4.35"/>
+                                </svg>
                                 Search
                             </button>
                         </div>
@@ -1407,7 +1456,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                             </td>
                                             <td>
                                                 <span className={`verified-badge ${userRow.is_verified ? 'verified' : 'unverified'}`}>
-                                                    {userRow.is_verified ? '✓' : '✗'}
+                                                    {userRow.is_verified ? (
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="20 6 9 17 4 12"/>
+                                                        </svg>
+                                                    ) : (
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                                        </svg>
+                                                    )}
                                                 </span>
                                             </td>
                                             <td>
@@ -1463,7 +1521,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                             className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
                                                             title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}${import.meta.env.DEV ? ' (Dev Mode)' : ''}`}
                                                         >
-                                                            🎭 {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/>
+                                                                <path d="M13.024 21.204a2 2 0 0 1-2.048 0L8.218 19.7a2 2 0 0 1-1.073-1.07l-1.498-2.759a2 2 0 0 1 0-2.083l1.497-2.758a2 2 0 0 1 1.074-1.07l2.758-1.498a2 2 0 0 1 2.083 0l2.757 1.498a2 2 0 0 1 1.074 1.07l1.498 2.758a2 2 0 0 1 0 2.083l-1.498 2.758a2 2 0 0 1-1.073 1.07l-2.758 1.498Z"/>
+                                                            </svg>
+                                                            {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
                                                         </button>
                                                     )}
                                                     <button
@@ -1514,12 +1576,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <div className="modal-overlay" onClick={handleDeleteCancel}>
                     <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>⚠️ Confirm Delete</h2>
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }}>
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                                    <path d="M12 9v4M12 17h.01"/>
+                                </svg>
+                                Confirm Delete
+                            </h2>
                             <button
                                 className="modal-close-btn"
                                 onClick={handleDeleteCancel}
+                                aria-label="Close"
                             >
-                                ×
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
                             </button>
                         </div>
 
@@ -1560,12 +1632,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <div className="modal-overlay" onClick={handleSelfDeleteCancel}>
                     <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>🚫 Cannot Delete Self</h2>
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }}>
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                                Cannot Delete Self
+                            </h2>
                             <button
                                 className="modal-close-btn"
                                 onClick={handleSelfDeleteCancel}
+                                aria-label="Close"
                             >
-                                ×
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
                             </button>
                         </div>
 
@@ -1599,12 +1682,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <div className="modal-overlay" onClick={handleTierChangeCancel}>
                     <div className="modal-content tier-change-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>⚠️ Confirm Tier Change</h2>
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }}>
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                                    <path d="M12 9v4M12 17h.01"/>
+                                </svg>
+                                Confirm Tier Change
+                            </h2>
                             <button
                                 className="modal-close-btn"
                                 onClick={handleTierChangeCancel}
+                                aria-label="Close"
                             >
-                                ×
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
                             </button>
                         </div>
 
@@ -1630,7 +1723,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 </div>
                             </div>
                             <p className="tier-change-note">
-                                <strong>⚠️ Warning:</strong> This will immediately change the user's subscription tier and may affect their access limits, features, and billing. This action will be logged in the admin audit trail.
+                                <strong>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.25rem' }}>
+                                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                                        <path d="M12 9v4M12 17h.01"/>
+                                    </svg>
+                                    Warning:
+                                </strong> This will immediately change the user's subscription tier and may affect their access limits, features, and billing. This action will be logged in the admin audit trail.
                             </p>
                         </div>
 
@@ -1669,8 +1768,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     setShowCreateModal(false);
                                     setShowPassword(false);
                                 }}
+                                aria-label="Close"
                             >
-                                ×
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
                             </button>
                         </div>
 
@@ -1705,7 +1808,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         onClick={() => setShowPassword(!showPassword)}
                                         aria-label={showPassword ? "Hide password" : "Show password"}
                                     >
-                                        {showPassword ? <EyeClosed size={18} /> : <Eye size={18} />}
+                                        {showPassword ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                                                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                                                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                                                <line x1="2" y1="2" x2="22" y2="22"/>
+                                            </svg>
+                                        ) : (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                        )}
                                     </button>
                                 </div>
                                 <small className="form-hint">
