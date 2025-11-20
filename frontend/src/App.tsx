@@ -1848,11 +1848,15 @@ function AppContent() {
   // Track mouse position over models section with throttling for better performance
   useEffect(() => {
     let rafId: number | null = null;
+    let scrollRafId: number | null = null;
     let lastShowState = false;
     let lastMouseY = 0;
     let lastMouseX = 0;
+    let keepVisibleTimeout: number | null = null;
+    let isKeepingVisible = false;
+    let previousIsOver = false;
 
-    const checkCardVisibility = (mouseY: number, mouseX: number) => {
+    const checkCardVisibility = (mouseY: number, mouseX: number, fromScroll: boolean = false) => {
       if (!modelsSectionRef.current) return;
 
       const rect = modelsSectionRef.current.getBoundingClientRect();
@@ -1861,12 +1865,135 @@ function AppContent() {
       const isOver = mouseY >= rect.top && mouseY <= rect.bottom &&
         mouseX >= rect.left && mouseX <= rect.right;
 
-      // Show card only if:
-      // 1. Mouse is over the section
-      // 2. At least one model is selected
-      // 3. Models section is not collapsed
-      // 4. Not in follow-up mode
-      const shouldShow = isOver && selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode;
+      // Detect transition from "over section" to "not over section"
+      const justLeftSection = previousIsOver && !isOver;
+      if (!fromScroll) {
+        previousIsOver = isOver;
+      }
+
+      // Check if card is positioned below the models section
+      // Card is at 80% of viewport height (top: 80%), so card center is at 80% of viewport
+      const cardCenterY = window.innerHeight * 0.8;
+      const cardHeight = 150; // Approximate height of the card
+      const cardTop = cardCenterY - cardHeight / 2;
+      const isCardBelowSection = cardTop > rect.bottom;
+
+      // Check if page is scrolled near the bottom
+      // Consider "near bottom" if we're within 500px of the bottom or if scroll position
+      // is close to the maximum scroll (accounting for viewport height)
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const viewportHeight = window.innerHeight;
+      const distanceFromBottom = scrollHeight - (scrollTop + viewportHeight);
+      // More lenient: within 500px of bottom, at least 80% scrolled, or in bottom 30% of page
+      const scrollPercentage = (scrollTop + viewportHeight) / scrollHeight;
+      const isNearBottom = distanceFromBottom < 500 || scrollPercentage >= 0.8 || (scrollTop + viewportHeight) >= scrollHeight - 200 || scrollPercentage >= 0.7;
+
+      // Check if models section is visible (any part of it is in the viewport)
+      const isSectionVisible = rect.top < viewportHeight && rect.bottom > 0;
+      // When scrolled near bottom, if section is visible, consider it "lowest visible"
+      // This is a simple check: if section is visible when near bottom, show the card
+      const isSectionLowestVisible = isSectionVisible;
+
+      // Check if mouse is near the card (within 250px horizontally and vertically)
+      const cardCenterX = window.innerWidth / 2;
+      const distanceToCard = Math.sqrt(
+        Math.pow(mouseX - cardCenterX, 2) + Math.pow(mouseY - cardCenterY, 2)
+      );
+      const isNearCard = distanceToCard < 250;
+
+      // Base conditions for showing card
+      const baseConditionsMet = selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode;
+
+      // Check if any result cards have their top visible in the viewport
+      // Don't show card if the top of any result card appears (card should not appear over results)
+      const resultCards = document.querySelectorAll('.result-card.conversation-card');
+      const resultCardsTopVisible = resultCards.length > 0 && Array.from(resultCards).some((card) => {
+        const cardRect = card.getBoundingClientRect();
+        // Check if the top of the card is visible (top is in viewport)
+        return cardRect.top >= 0 && cardRect.top < viewportHeight;
+      });
+
+      // Check if cursor is in the left or right margins (between screen edge and section borders)
+      // Hide card when cursor is in these margin areas
+      const viewportWidth = window.innerWidth;
+      const isInLeftMargin = mouseX >= 0 && mouseX < rect.left;
+      const isInRightMargin = mouseX > rect.right && mouseX <= viewportWidth;
+      const isInSideMargins = isInLeftMargin || isInRightMargin;
+
+      // Priority 1: Auto-show when scrolled near bottom and section is visible/lowest visible
+      // This takes priority over mouse hover to ensure card is always visible in this case
+      // BUT don't show if result cards top is visible OR cursor is in side margins
+      const autoShowCondition = baseConditionsMet && isNearBottom && isSectionVisible && isSectionLowestVisible && !resultCardsTopVisible && !isInSideMargins;
+      
+      // Priority 2: Normal hover case - mouse is over section
+      // Don't show if result cards top is visible OR cursor is in side margins
+      const hoverCondition = isOver && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins;
+      
+      // Priority 3: Keep visible when mouse leaves section and card is below
+      // Don't show if result cards top is visible OR cursor is in side margins
+      const keepVisibleCondition = !isOver && isCardBelowSection && baseConditionsMet && 
+        (justLeftSection || isKeepingVisible) && !resultCardsTopVisible && !isInSideMargins;
+
+      let shouldShow = false;
+      
+      if (autoShowCondition) {
+        // Auto-show case: page is scrolled near bottom, section is visible/lowest visible
+        // Show card regardless of mouse position or whether card is "below" section
+        shouldShow = true;
+        isKeepingVisible = true;
+        
+        // Clear any existing timeout
+        if (keepVisibleTimeout) {
+          window.clearTimeout(keepVisibleTimeout);
+          keepVisibleTimeout = null;
+        }
+      } else if (hoverCondition) {
+        // Normal case: mouse is over section
+        shouldShow = true;
+        // If we were keeping it visible, stop that since we're back in normal mode
+        if (isKeepingVisible) {
+          isKeepingVisible = false;
+        }
+        // Clear any timeout since we're back in normal mode
+        if (keepVisibleTimeout) {
+          window.clearTimeout(keepVisibleTimeout);
+          keepVisibleTimeout = null;
+        }
+      } else if (keepVisibleCondition) {
+        // Edge case: mouse is outside section and card is below section
+        // Show card if we're keeping it visible (from mouse leaving)
+        shouldShow = true;
+        isKeepingVisible = true;
+        
+        // Clear any existing timeout - we'll keep it visible as long as card is below section
+        if (keepVisibleTimeout) {
+          window.clearTimeout(keepVisibleTimeout);
+          keepVisibleTimeout = null;
+        }
+      } else {
+        // Not showing - check if we should stop keeping visible
+        if (isKeepingVisible) {
+          // Only stop if we're not in auto-show condition and card is no longer below section
+          // Also stop if result cards top is now visible OR cursor is in side margins
+          if (resultCardsTopVisible || isInSideMargins || (!autoShowCondition && (!isCardBelowSection || !baseConditionsMet))) {
+            isKeepingVisible = false;
+            if (keepVisibleTimeout) {
+              window.clearTimeout(keepVisibleTimeout);
+              keepVisibleTimeout = null;
+            }
+            shouldShow = false;
+          } else if (autoShowCondition) {
+            // Still in auto-show condition, keep showing
+            shouldShow = true;
+          } else {
+            // Transition state - keep showing for now if card is still below
+            shouldShow = isCardBelowSection && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins;
+          }
+        } else {
+          shouldShow = false;
+        }
+      }
 
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
@@ -1905,14 +2032,35 @@ function AppContent() {
       }
     };
 
+    const handleScroll = () => {
+      // Check card visibility on scroll to handle auto-show when near bottom
+      if (scrollRafId) return;
+
+      scrollRafId = window.requestAnimationFrame(() => {
+        scrollRafId = null;
+        checkCardVisibility(lastMouseY, lastMouseX, true);
+      });
+    };
+
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Initial check on mount and when dependencies change
+    checkCardVisibility(lastMouseY, lastMouseX);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('scroll', handleScroll);
       if (rafId) {
         window.cancelAnimationFrame(rafId);
+      }
+      if (scrollRafId) {
+        window.cancelAnimationFrame(scrollRafId);
+      }
+      if (keepVisibleTimeout) {
+        window.clearTimeout(keepVisibleTimeout);
       }
     };
   }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
