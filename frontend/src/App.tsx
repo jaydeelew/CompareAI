@@ -1895,13 +1895,6 @@ function AppContent() {
       // This is a simple check: if section is visible when near bottom, show the card
       const isSectionLowestVisible = isSectionVisible;
 
-      // Check if mouse is near the card (within 250px horizontally and vertically)
-      const cardCenterX = window.innerWidth / 2;
-      const distanceToCard = Math.sqrt(
-        Math.pow(mouseX - cardCenterX, 2) + Math.pow(mouseY - cardCenterY, 2)
-      );
-      const isNearCard = distanceToCard < 250;
-
       // Base conditions for showing card
       const baseConditionsMet = selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode;
 
