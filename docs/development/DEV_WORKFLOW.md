@@ -1,4 +1,4 @@
-# CompareIntel Development Workflow
+# CompareAI Development Workflow
 
 **Important:** SSL certificates must be set up on your AWS EC2 server where `compareintel.com` points, not on your local development machine.
 
@@ -21,12 +21,10 @@
 
 ```bash
 # Terminal 1 - Backend
-cd backend
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+lsof -ti:8000 && echo "Backend already running!" || (cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000)
 
 # Terminal 2 - Frontend
-cd frontend
-npm run dev
+lsof -ti:5173 && echo "Frontend already running!" || (cd frontend && npm run dev)
 
 # Check if running:
 Backend: Visit http://localhost:8000/docs (should show API documentation)
@@ -150,12 +148,12 @@ docker compose -f docker-compose.prod.yml down
 
 ```bash
 # SSH into your EC2 instance
-ssh -i CompareIntel.pem ubuntu@44.212.141.149
+ssh -i CompareAI.pem ubuntu@44.212.141.149
 
 # ONE-TIME: Set up SSL certificates for both domains
 ./setup-compareintel-ssl.sh
 
-cd CompareIntel
+cd CompareAI
 
 # Pull latest changes
 git pull origin master
