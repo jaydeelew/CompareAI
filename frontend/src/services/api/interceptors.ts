@@ -15,7 +15,10 @@ import { ApiError, NetworkError, TimeoutError } from './errors';
 import type { ApiErrorResponse } from '../../types/api';
 
 /**
- * Default request interceptor: Add authentication token
+ * Default request interceptor: Ensure credentials are included for cookie-based auth
+ * 
+ * Note: With HTTP-only cookies, tokens are automatically sent by the browser.
+ * We just need to ensure credentials: 'include' is set for cross-origin requests.
  */
 export const authInterceptor: RequestInterceptor = async (url, config) => {
   // Skip if auth is disabled for this request
@@ -23,17 +26,14 @@ export const authInterceptor: RequestInterceptor = async (url, config) => {
     return [url, config];
   }
 
-  // Get token from config if provided, otherwise try to get from localStorage
-  const getToken = (config as any).getToken;
-  const token = getToken ? getToken() : localStorage.getItem('access_token');
+  // Ensure credentials are included for cookie-based authentication
+  // Cookies are automatically sent by the browser, no need to manually add Authorization header
+  const enhancedConfig = {
+    ...config,
+    credentials: 'include' as RequestCredentials,
+  };
 
-  if (token) {
-    const headers = new Headers(config.headers);
-    headers.set('Authorization', `Bearer ${token}`);
-    return [url, { ...config, headers }];
-  }
-
-  return [url, config];
+  return [url, enhancedConfig];
 };
 
 /**

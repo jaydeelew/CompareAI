@@ -672,7 +672,8 @@ export function createApiClient(config?: Partial<ApiClientConfig>): ApiClient {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    getToken: () => localStorage.getItem('access_token'),
+    // Note: getToken removed - authentication now uses HTTP-only cookies
+    // Cookies are automatically sent by the browser, no need to manually add tokens
     ...config,
   });
 }

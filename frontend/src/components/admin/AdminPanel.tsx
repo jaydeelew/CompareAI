@@ -129,12 +129,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const fetchStats = useCallback(async () => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/stats', {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -158,12 +156,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const fetchAppSettings = useCallback(async () => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/settings', {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -188,9 +184,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         try {
             setLogsLoading(true);
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -202,7 +195,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             }
 
             const response = await fetch(`/api/admin/action-logs?${params}`, {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -235,12 +229,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         try {
             setAnalyticsLoading(true);
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/analytics/visitors', {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -272,9 +264,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const fetchUsersInitial = useCallback(async (page = 1) => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -282,7 +271,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             });
 
             const response = await fetch(`/api/admin/users?${params}`, {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -329,9 +319,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const handleManualSearch = async () => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const params = new URLSearchParams({
                 page: '1',
@@ -343,7 +330,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             if (selectedTier) params.append('tier', selectedTier);
 
             const response = await fetch(`/api/admin/users?${params}`, {
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -368,13 +356,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const toggleUserActive = async (userId: number) => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch(`/api/admin/users/${userId}/toggle-active`, {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -398,13 +384,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const sendVerification = async (userId: number) => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch(`/api/admin/users/${userId}/send-verification`, {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -430,13 +414,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const resetUsage = async (userId: number) => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch(`/api/admin/users/${userId}/reset-usage`, {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -466,13 +448,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const toggleAnonymousMockMode = async () => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/settings/toggle-anonymous-mock-mode', {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -506,13 +486,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const zeroAnonymousUsage = async () => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/settings/zero-anonymous-usage', {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -564,13 +542,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const toggleMockMode = async (userId: number) => {
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch(`/api/admin/users/${userId}/toggle-mock-mode`, {
                 method: 'POST',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -619,9 +595,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch(`/api/admin/users/${tierChangeData.userId}/change-tier`, {
                 method: 'POST',
@@ -629,6 +602,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     ...headers,
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({ subscription_tier: tierChangeData.newTier })
             });
 
@@ -665,9 +639,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         e.preventDefault();
         try {
             const headers = getAuthHeaders();
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
 
             const response = await fetch('/api/admin/users', {
                 method: 'POST',
@@ -675,6 +646,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     ...headers,
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(createUserData)
             });
 
@@ -731,15 +703,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         try {
             const headers = getAuthHeaders();
 
-            if (!headers.Authorization) {
-                throw new Error('No authentication token available');
-            }
-
             const deleteUrl = `/api/admin/users/${userToDelete.id}`;
 
             const response = await fetch(deleteUrl, {
                 method: 'DELETE',
-                headers
+                headers,
+                credentials: 'include'
             });
 
             if (!response.ok) {

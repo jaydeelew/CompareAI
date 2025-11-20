@@ -19,32 +19,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Get tokens from localStorage
-    const getAccessToken = () => localStorage.getItem('access_token');
-    const getRefreshToken = () => localStorage.getItem('refresh_token');
-
-    // Save tokens to localStorage
-    const saveTokens = (accessToken: string, refreshToken: string) => {
-        localStorage.setItem('access_token', accessToken);
-        localStorage.setItem('refresh_token', refreshToken);
-    };
-
-    // Clear tokens from localStorage
-    const clearTokens = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-    };
+    // Note: Tokens are now stored in HTTP-only cookies set by the backend
+    // We no longer need to manage tokens in localStorage
+    // Cookies are automatically sent with requests, so we don't need to read them
 
     // Fetch current user from API
-    const fetchCurrentUser = useCallback(async (accessToken: string): Promise<User | null> => {
+    // Cookies are automatically sent with the request, no need to include Authorization header
+    const fetchCurrentUser = useCallback(async (): Promise<User | null> => {
         try {
             const response = await fetch(`${API_BASE_URL}/auth/me`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
+                credentials: 'include', // Important: Include cookies in request
             });
 
             if (!response.ok) {
+                // 401 (Unauthorized) is expected when user is not authenticated - handle silently
+                if (response.status === 401) {
+                    return null;
+                }
                 throw new Error('Failed to fetch user');
             }
 
@@ -59,45 +50,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
     }, []);
 
-    // Refresh access token using refresh token
+    // Refresh access token using refresh token from cookies
     const refreshToken = useCallback(async () => {
-        const refreshTokenValue = getRefreshToken();
-
-        if (!refreshTokenValue) {
-            setUser(null);
-            setIsLoading(false);
-            return;
-        }
-
         try {
             const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
                 method: 'POST',
+                credentials: 'include', // Important: Include cookies (refresh token) in request
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ refresh_token: refreshTokenValue }),
             });
 
             if (!response.ok) {
+                // 401 (Unauthorized) is expected when user is not authenticated (e.g., after logout)
+                // Only throw/error for unexpected failures
+                if (response.status === 401) {
+                    setUser(null);
+                    setIsLoading(false);
+                    return;
+                }
                 throw new Error('Token refresh failed');
             }
 
-            // Refresh endpoint returns TokenResponse (tokens only, no user)
-            const data = await response.json() as { access_token: string; refresh_token: string; token_type: string };
-            saveTokens(data.access_token, data.refresh_token);
-            
-            // Fetch user data after refreshing token (refresh endpoint doesn't return user)
-            const userData = await fetchCurrentUser(data.access_token);
+            // Tokens are now set in cookies by the backend, no need to save them
+            // Fetch user data after refreshing token
+            const userData = await fetchCurrentUser();
             if (userData) {
                 setUser(userData);
             } else {
-                // If we can't fetch user, clear tokens
-                clearTokens();
+                // If we can't fetch user, user is not authenticated
                 setUser(null);
             }
         } catch (error) {
+            // Only log unexpected errors (network errors, 500s, etc.)
+            // 401s are handled above and are expected when not authenticated
             console.error('Error refreshing token:', error);
-            clearTokens();
             setUser(null);
         } finally {
             setIsLoading(false);
@@ -111,6 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
+                credentials: 'include', // Important: Include cookies in request/response
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -141,17 +129,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 throw new Error(errorMessage);
             }
 
+            // Tokens are now set in HTTP-only cookies by the backend
+            // No need to save them to localStorage
             const data: AuthResponse = await response.json();
-            saveTokens(data.access_token, data.refresh_token);
 
             // Fetch user data - don't fail login if this fails
             try {
-                const userData = await fetchCurrentUser(data.access_token);
+                const userData = await fetchCurrentUser();
                 if (userData) {
                     setUser(userData);
                 } else {
                     // Retry in background without blocking
-                    fetchCurrentUser(data.access_token).then(userData => {
+                    fetchCurrentUser().then(userData => {
                         if (userData) {
                             setUser(userData);
                         }
@@ -162,7 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             } catch (userFetchError) {
                 // User fetch failed, but login is still successful
                 // Retry in background without blocking
-                fetchCurrentUser(data.access_token).then(userData => {
+                fetchCurrentUser().then(userData => {
                     if (userData) {
                         setUser(userData);
                     }
@@ -185,6 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
+                credentials: 'include', // Important: Include cookies in request/response
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -200,8 +190,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 throw new Error(error.detail || 'Registration failed');
             }
 
+            // Tokens are now set in HTTP-only cookies by the backend
             const responseData: AuthResponse = await response.json();
-            saveTokens(responseData.access_token, responseData.refresh_token);
             setUser(responseData.user);
             setIsLoading(false);
         } catch (error) {
@@ -212,11 +202,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     // Logout function
-    const logout = () => {
-        clearTokens();
+    const logout = async () => {
+        try {
+            // Call logout endpoint to clear cookies on server
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include', // Important: Include cookies in request
+            });
+        } catch (error) {
+            console.error('Error during logout:', error);
+            // Continue with logout even if request fails
+        }
+        
         setUser(null);
-        setIsLoading(false); // Set loading to false after logout
-        // Refresh the webpage after logout
+        setIsLoading(false);
+        // Refresh the webpage after logout to ensure clean state
         window.location.reload();
     };
 
@@ -226,17 +226,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     // Refresh user data from server
-    const refreshUser = async () => {
-        const accessToken = getAccessToken();
-        if (!accessToken) {
-            return;
-        }
-
-        const userData = await fetchCurrentUser(accessToken);
+    const refreshUser = useCallback(async () => {
+        const userData = await fetchCurrentUser();
         if (userData) {
             setUser(userData);
         }
-    };
+    }, [fetchCurrentUser]);
 
     // Initialize auth state on mount (only once)
     useEffect(() => {
@@ -245,19 +240,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const initAuth = async () => {
             console.log('[Auth] Initializing auth state...');
             const initStartTime = Date.now();
-            const accessToken = getAccessToken();
 
-            if (!accessToken) {
-                console.log('[Auth] No access token found, user is not authenticated');
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-                return;
-            }
-
-            console.log('[Auth] Access token found, attempting to fetch user data...');
-            // Try to fetch user with current access token
-            const userData = await fetchCurrentUser(accessToken);
+            console.log('[Auth] Attempting to fetch user data...');
+            // Try to fetch user (cookies are automatically sent)
+            const userData = await fetchCurrentUser();
 
             if (!isMounted) return;
 
@@ -322,12 +308,13 @@ export const useAuth = (): AuthContextType => {
 };
 
 // Helper hook to get auth headers for API calls
+// Note: With cookie-based auth, tokens are automatically sent with requests
+// This hook is kept for backward compatibility but no longer adds Authorization header
 export const useAuthHeaders = () => {
     const getHeaders = useCallback(() => {
-        const token = localStorage.getItem('access_token');
         return {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
+            // Tokens are now in HTTP-only cookies, automatically sent by browser
         };
     }, []);
 

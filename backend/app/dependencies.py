@@ -5,36 +5,49 @@ This module provides dependency functions for protecting routes
 and checking user permissions.
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional, Callable
 from .database import get_db
 from .models import User
 from .auth import verify_token
+from .utils.cookies import get_token_from_cookies
 
 # HTTP Bearer token security scheme
 security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
 ) -> Optional[User]:
     """
     Get current authenticated user from JWT token.
     Returns None if not authenticated (for optional authentication).
 
+    Checks cookies first (preferred), then falls back to Authorization header
+    for backward compatibility.
+
     Args:
-        credentials: HTTP Bearer token credentials
+        request: FastAPI Request object
+        credentials: HTTP Bearer token credentials (fallback)
         db: Database session
 
     Returns:
         User: Current user if authenticated, None otherwise
     """
-    if credentials is None:
+    # Try to get token from cookies first (preferred method)
+    token = get_token_from_cookies(request)
+    
+    # Fallback to Authorization header for backward compatibility
+    if not token and credentials:
+        token = credentials.credentials
+    
+    if not token:
         return None
 
-    token = credentials.credentials
     payload = verify_token(token, token_type="access")
 
     if payload is None:
@@ -60,14 +73,20 @@ def get_current_user(
 
 
 def get_current_user_required(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
 ) -> User:
     """
     Get current authenticated user from JWT token (required).
     Raises exception if not authenticated.
 
+    Checks cookies first (preferred), then falls back to Authorization header
+    for backward compatibility.
+
     Args:
-        credentials: HTTP Bearer token credentials
+        request: FastAPI Request object
+        credentials: HTTP Bearer token credentials (fallback)
         db: Database session
 
     Returns:
@@ -76,10 +95,16 @@ def get_current_user_required(
     Raises:
         HTTPException: If authentication fails
     """
-    if credentials is None:
+    # Try to get token from cookies first (preferred method)
+    token = get_token_from_cookies(request)
+    
+    # Fallback to Authorization header for backward compatibility
+    if not token and credentials:
+        token = credentials.credentials
+    
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
-    token = credentials.credentials
     payload = verify_token(token, token_type="access")
 
     if payload is None:

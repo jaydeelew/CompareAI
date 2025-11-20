@@ -5,7 +5,8 @@ This module handles all authentication-related endpoints including
 user registration, login, email verification, and password resets.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Dict, Optional
@@ -36,6 +37,7 @@ from ..auth import (
 )
 from ..dependencies import get_current_user_required, get_current_verified_user, get_current_user
 from ..email_service import send_verification_email, send_password_reset_email
+from ..utils.cookies import set_auth_cookies, clear_auth_cookies, get_refresh_token_from_cookies
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -218,7 +220,12 @@ async def register(user_data: UserRegister, background_tasks: BackgroundTasks, d
             "created_at": new_user.created_at.isoformat() if new_user.created_at else None,
         }
 
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user_dict}
+        # Create response with cookies
+        response = JSONResponse(
+            content={"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user_dict}
+        )
+        set_auth_cookies(response, access_token, refresh_token)
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -293,7 +300,13 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
         total_duration = time.time() - start_time
         print(f"[LOGIN] Login successful, total time: {total_duration:.3f}s")
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        
+        # Create response with cookies
+        response = JSONResponse(
+            content={"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        )
+        set_auth_cookies(response, access_token, refresh_token)
+        return response
     except HTTPException:
         total_duration = time.time() - start_time
         print(f"[LOGIN] Login failed (HTTPException), total time: {total_duration:.3f}s")
@@ -307,14 +320,26 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
+async def refresh_token(
+    request: Request,
+    token_data: Optional[RefreshTokenRequest] = None,
+    db: Session = Depends(get_db)
+):
     """
     Refresh access token using refresh token.
 
-    - Validates refresh token
-    - Returns new access token and refresh token
+    - Validates refresh token from cookies (preferred) or request body (backward compatibility)
+    - Returns new access token and refresh token in cookies
     """
-    payload = verify_token(token_data.refresh_token, token_type="refresh")
+    # Try to get refresh token from cookies first, fallback to request body
+    refresh_token_value = get_refresh_token_from_cookies(request)
+    if not refresh_token_value and token_data:
+        refresh_token_value = token_data.refresh_token
+    
+    if not refresh_token_value:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token required")
+
+    payload = verify_token(refresh_token_value, token_type="refresh")
 
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -331,7 +356,12 @@ async def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(g
     access_token = create_access_token(data={"sub": str(user.id)})
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
-    return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
+    # Create response with cookies
+    response = JSONResponse(
+        content={"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
+    )
+    set_auth_cookies(response, access_token, new_refresh_token)
+    return response
 
 
 @router.post("/verify-email", status_code=status.HTTP_200_OK)
@@ -516,11 +546,12 @@ async def delete_account(current_user: User = Depends(get_current_verified_user)
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(current_user: User = Depends(get_current_user_required)):
+async def logout(response: Response, current_user: User = Depends(get_current_user_required)):
     """
-    Logout user (client should delete tokens).
+    Logout user by clearing authentication cookies.
 
-    Note: With JWT, logout is primarily client-side.
+    Note: With JWT, logout is primarily client-side cookie clearing.
     For additional security, implement token blacklisting with Redis.
     """
+    clear_auth_cookies(response)
     return {"message": "Logged out successfully"}
