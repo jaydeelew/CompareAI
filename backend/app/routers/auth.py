@@ -13,8 +13,11 @@ from typing import Dict, Optional
 from collections import defaultdict
 import os
 import httpx
+import logging
 from ..database import get_db
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 from ..models import User, UserPreference
 from ..schemas import (
     UserRegister,
@@ -108,10 +111,12 @@ async def verify_recaptcha(token: Optional[str]) -> bool:
     """
     # If reCAPTCHA is not configured, skip verification (for development)
     if not settings.recaptcha_secret_key:
+        logger.debug("reCAPTCHA secret key not configured, skipping verification")
         return True
     
     # If token is not provided and reCAPTCHA is configured, fail
     if not token:
+        logger.warning("reCAPTCHA verification failed: token not provided (reCAPTCHA is configured)")
         return False
     
     try:
@@ -126,6 +131,12 @@ async def verify_recaptcha(token: Optional[str]) -> bool:
             result = response.json()
             
             if not result.get("success", False):
+                error_codes = result.get("error-codes", [])
+                logger.warning(
+                    f"reCAPTCHA verification failed: success=false, "
+                    f"error_codes={error_codes}, "
+                    f"token_preview={token[:20] if token else 'None'}..."
+                )
                 return False
             
             score = result.get("score", 0.0)
@@ -133,10 +144,21 @@ async def verify_recaptcha(token: Optional[str]) -> bool:
             # Score >= 0.5 is typically considered human
             # You can adjust this threshold based on your needs
             if score < 0.5:
+                logger.warning(
+                    f"reCAPTCHA verification failed: score too low (score={score}, threshold=0.5)"
+                )
                 return False
             
+            logger.debug(f"reCAPTCHA verification passed: score={score}")
             return True
+    except httpx.TimeoutException as e:
+        logger.error(f"reCAPTCHA verification timeout: {e}")
+        return False
+    except httpx.RequestError as e:
+        logger.error(f"reCAPTCHA verification request error: {e}")
+        return False
     except Exception as e:
+        logger.error(f"reCAPTCHA verification unexpected error: {e}", exc_info=True)
         # Fail closed - if verification fails, reject registration
         return False
 
