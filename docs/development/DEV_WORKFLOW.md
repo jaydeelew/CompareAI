@@ -21,7 +21,7 @@
 
 ```bash
 # Terminal 1 - Backend
-lsof -ti:8000 && echo "Backend already running!" || (cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000)
+lsof -ti:8000 && echo "Backend already running!" || (cd backend && python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000)l
 
 # Terminal 2 - Frontend
 lsof -ti:5173 && echo "Frontend already running!" || (cd frontend && npm run dev)
