@@ -6,6 +6,7 @@ import { Eye, EyeClosed } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 
 import { useAuth } from '../../contexts/AuthContext'
+import { validateEmail } from '../../utils/validation'
 import './AuthForms.css'
 
 // Declare grecaptcha type for TypeScript
@@ -20,18 +21,28 @@ declare global {
 
 interface RegisterFormProps {
   onSuccess?: () => void
-  onSwitchToLogin?: () => void
+  onSwitchToLogin?: (email?: string) => void
+  initialEmail?: string
 }
 
-export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
+export const RegisterForm: React.FC<RegisterFormProps> = ({
+  onSuccess,
+  onSwitchToLogin,
+  initialEmail = '',
+}) => {
   const { register } = useAuth()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Update email when initialEmail prop changes (including when it's reset to empty)
+  useEffect(() => {
+    setEmail(initialEmail)
+  }, [initialEmail])
 
   // Load reCAPTCHA script with site key on component mount
   useEffect(() => {
@@ -384,7 +395,15 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         </p>
         <p>
           Already have an account?{' '}
-          <button type="button" className="auth-link-btn" onClick={onSwitchToLogin}>
+          <button
+            type="button"
+            className="auth-link-btn"
+            onClick={() => {
+              // Transfer email to login form if it's valid
+              const emailToTransfer = validateEmail(email) ? email : undefined
+              onSwitchToLogin?.(emailToTransfer)
+            }}
+          >
             Sign in
           </button>
         </p>
