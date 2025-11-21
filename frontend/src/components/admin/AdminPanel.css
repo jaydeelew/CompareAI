@@ -744,12 +744,6 @@ button:hover {
   color: white;
 }
 
-.mock-mode-btn svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
 .mock-mode-btn.zero-usage-btn {
   background: linear-gradient(135deg, #6b7280, #4b5563);
   color: white;
