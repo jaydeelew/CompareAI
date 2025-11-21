@@ -32,6 +32,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: prod
+      args:
+        - VITE_API_URL=/api
+        - VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY:-}
     ports:
       - "80:80"
       - "443:443"
