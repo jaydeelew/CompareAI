@@ -1335,8 +1335,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <thead>
                       <tr>
                         <th>Date</th>
-                        <th>Unique Visitors</th>
-                        <th>Comparisons</th>
+                        <th className="number-header">Unique Visitors</th>
+                        <th className="number-header">Comparisons</th>
                       </tr>
                     </thead>
                     <tbody>
