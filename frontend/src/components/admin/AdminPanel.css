@@ -14,7 +14,13 @@ button:hover {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 2rem;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    sans-serif;
 }
 
 /* Header Section */
@@ -26,7 +32,7 @@ button:hover {
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-color);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .admin-header::before {
@@ -36,7 +42,12 @@ button:hover {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary-color), var(--accent-color), var(--success-color));
+  background: linear-gradient(
+    90deg,
+    var(--primary-color),
+    var(--accent-color),
+    var(--success-color)
+  );
 }
 
 .admin-header-content {
@@ -46,11 +57,13 @@ button:hover {
   max-width: 1200px;
   margin: 0 auto;
   position: relative;
+  padding-left: 60px;
+  padding-right: 120px;
 }
 
 .back-button {
   position: absolute;
-  left: -50px;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,6 +78,7 @@ button:hover {
   font-weight: bold;
   transform: rotate(180deg);
   outline: none;
+  flex-shrink: 0;
 }
 
 .back-button:hover {
@@ -222,7 +236,6 @@ button:hover {
   gap: 0.75rem;
 }
 
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -376,7 +389,6 @@ button:hover {
   align-items: center;
   gap: 0.75rem;
 }
-
 
 .create-user-btn {
   background: linear-gradient(135deg, var(--success-color), #059669);
@@ -834,17 +846,41 @@ button:hover {
   }
 
   .admin-header {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1rem;
+    overflow: visible;
   }
 
   .admin-header-content {
-    flex-direction: column;
-    gap: 1.5rem;
+    flex-direction: row;
+    gap: 1rem;
     text-align: center;
+    padding-left: 50px;
+    padding-right: 100px;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .back-button {
+    position: absolute;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    font-size: 2.5rem;
+  }
+
+  .admin-title-section {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
   }
 
   .admin-title-section h1 {
     font-size: 2rem;
+  }
+
+  .sign-out-button {
+    position: absolute;
+    right: 0;
   }
 
   .stats-grid {
@@ -892,9 +928,45 @@ button:hover {
   }
 }
 
+/* Extra small screens - ensure back button is always visible */
+@media (max-width: 480px) {
+  .admin-header {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .admin-header-content {
+    padding-left: 45px;
+    padding-right: 90px;
+  }
+
+  .back-button {
+    width: 35px;
+    height: 35px;
+    font-size: 2rem;
+  }
+
+  .admin-title-section h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-title-section p {
+    font-size: 0.9rem;
+  }
+
+  .sign-out-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
 /* Loading States */
 .loading-skeleton {
-  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-secondary) 50%,
+    var(--bg-tertiary) 75%
+  );
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
 }
@@ -1056,8 +1128,8 @@ button:hover {
   font-size: 0.875rem;
 }
 
-.form-group input[type="email"],
-.form-group input[type="password"],
+.form-group input[type='email'],
+.form-group input[type='password'],
 .form-group select {
   width: 100%;
   padding: 0.875rem 1rem;
@@ -1099,7 +1171,9 @@ button:hover {
   font-size: 1rem;
   background: var(--bg-primary);
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .password-input-wrapper input:focus {
@@ -1122,7 +1196,9 @@ button:hover {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   outline: none !important;
   font-size: 1.5rem;
   line-height: 1;
@@ -1165,7 +1241,7 @@ button:hover {
   margin-bottom: 0;
 }
 
-.checkbox-group input[type="checkbox"] {
+.checkbox-group input[type='checkbox'] {
   width: 18px;
   height: 18px;
   cursor: pointer;
@@ -1498,7 +1574,6 @@ button:hover {
   align-items: center;
   gap: 0.75rem;
 }
-
 
 .refresh-logs-btn {
   background: linear-gradient(135deg, var(--accent-color), #0284c7);
@@ -2262,5 +2337,10 @@ button:hover {
 
 /* Smooth Transitions */
 * {
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
