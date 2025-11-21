@@ -701,6 +701,10 @@ button:hover {
 .reset-usage-btn,
 .mock-mode-btn,
 .delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.5rem 0.875rem;
   border: none;
   border-radius: var(--radius-md);
@@ -782,6 +786,15 @@ button:hover {
 .delete-btn:active {
   outline: none !important;
   box-shadow: var(--shadow-md) !important;
+}
+
+.toggle-btn svg,
+.verify-btn svg,
+.reset-usage-btn svg,
+.mock-mode-btn svg,
+.delete-btn svg {
+  flex-shrink: 0;
+  display: block;
 }
 
 /* Pagination */
