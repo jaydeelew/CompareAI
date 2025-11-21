@@ -1,33 +1,47 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+
 // Import all CSS modules directly (better for Vite than CSS @import)
-import './styles/variables.css';
-import './styles/base.css';
-import './styles/animations.css';
-import './styles/banners.css';
-import './styles/components.css';
-import './styles/navigation.css';
-import './styles/layout.css';
-import './styles/responsive.css';
-import './styles/hero.css';
-import './styles/models.css';
-import './styles/results.css';
-import './App.css';
+import './styles/variables.css'
+import './styles/base.css'
+import './styles/animations.css'
+import './styles/banners.css'
+import './styles/components.css'
+import './styles/navigation.css'
+import './styles/layout.css'
+import './styles/responsive.css'
+import './styles/hero.css'
+import './styles/models.css'
+import './styles/results.css'
+import './App.css'
 // Lazy load heavy components for code splitting
-const LatexRenderer = lazy(() => import('./components/LatexRenderer'));
-const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthModal, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth';
-import { Footer } from './components';
-import { TermsOfService } from './components/TermsOfService';
-import { Navigation, Hero, MockModeBanner } from './components/layout';
-import { DoneSelectingCard, ErrorBoundary, LoadingSpinner } from './components/shared';
-import { ComparisonForm } from './components/comparison';
+const LatexRenderer = lazy(() => import('./components/LatexRenderer'))
+const AdminPanel = lazy(() => import('./components/admin/AdminPanel'))
+import { Footer } from './components'
+import { AuthModal, VerifyEmail, VerificationBanner, ResetPassword } from './components/auth'
+import { ComparisonForm } from './components/comparison'
+import { Navigation, Hero, MockModeBanner } from './components/layout'
+import { DoneSelectingCard, ErrorBoundary, LoadingSpinner } from './components/shared'
+import { TermsOfService } from './components/TermsOfService'
+import { ANONYMOUS_DAILY_LIMIT, getExtendedLimit, getDailyLimit } from './config/constants'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import {
-  ANONYMOUS_DAILY_LIMIT,
-  getExtendedLimit,
-  getDailyLimit,
-} from './config/constants';
+  useConversationHistory,
+  useBrowserFingerprint,
+  useRateLimitStatus,
+  useModelSelection,
+  useModelComparison,
+} from './hooks'
+import { apiClient } from './services/api/client'
+import { ApiError } from './services/api/errors'
+import {
+  getAnonymousMockModeStatus,
+  getRateLimitStatus,
+  resetRateLimit,
+  compareStream,
+} from './services/compareService'
+import { getConversation } from './services/conversationService'
+import { getAvailableModels } from './services/modelsService'
 import type {
   CompareResponse,
   ConversationMessage,
@@ -38,8 +52,8 @@ import type {
   ConversationRound,
   ResultTab,
   ActiveResultTabs,
-} from './types';
-import { RESULT_TAB, createModelId, createConversationId, createMessageId } from './types';
+} from './types'
+import { RESULT_TAB, createModelId, createConversationId, createMessageId } from './types'
 import {
   generateBrowserFingerprint,
   showNotification,
@@ -47,62 +61,49 @@ import {
   formatTime,
   formatNumber,
   formatConversationMessage,
-} from './utils';
-import { isErrorMessage } from './utils/error';
-import {
-  getAnonymousMockModeStatus,
-  getRateLimitStatus,
-  resetRateLimit,
-  compareStream,
-} from './services/compareService';
-import {
-  getConversation,
-} from './services/conversationService';
-import { getAvailableModels } from './services/modelsService';
-import { ApiError } from './services/api/errors';
-import { apiClient } from './services/api/client';
-import {
-  useConversationHistory,
-  useBrowserFingerprint,
-  useRateLimitStatus,
-  useModelSelection,
-  useModelComparison,
-} from './hooks';
+} from './utils'
+import { isErrorMessage } from './utils/error'
 
 function AppContent() {
-  const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { isAuthenticated, user, refreshUser, isLoading: authLoading } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   // Determine current view from route
-  const currentView = location.pathname === '/admin' ? 'admin' : 'main';
+  const currentView = location.pathname === '/admin' ? 'admin' : 'main'
 
   // Route protection: redirect non-admin users away from /admin
   useEffect(() => {
     if (location.pathname === '/admin' && !authLoading) {
       if (!isAuthenticated || !user?.is_admin) {
-        navigate('/', { replace: true });
+        navigate('/', { replace: true })
       }
     }
-  }, [location.pathname, isAuthenticated, user?.is_admin, authLoading, navigate]);
+  }, [location.pathname, isAuthenticated, user?.is_admin, authLoading, navigate])
 
   // Custom hooks for state management
-  const browserFingerprintHook = useBrowserFingerprint();
-  const { browserFingerprint, setBrowserFingerprint } = browserFingerprintHook;
+  const browserFingerprintHook = useBrowserFingerprint()
+  const { browserFingerprint, setBrowserFingerprint } = browserFingerprintHook
 
-  const rateLimitHook = useRateLimitStatus({ isAuthenticated, browserFingerprint });
-  const { usageCount, setUsageCount, extendedUsageCount, setExtendedUsageCount, fetchRateLimitStatus } = rateLimitHook;
+  const rateLimitHook = useRateLimitStatus({ isAuthenticated, browserFingerprint })
+  const {
+    usageCount,
+    setUsageCount,
+    extendedUsageCount,
+    setExtendedUsageCount,
+    fetchRateLimitStatus,
+  } = rateLimitHook
 
-  const modelSelectionHook = useModelSelection({ isAuthenticated, user });
+  const modelSelectionHook = useModelSelection({ isAuthenticated, user })
   const {
     selectedModels,
     setSelectedModels,
     originalSelectedModels,
     setOriginalSelectedModels,
     maxModelsLimit,
-  } = modelSelectionHook;
+  } = modelSelectionHook
 
-  const comparisonHook = useModelComparison();
+  const comparisonHook = useModelComparison()
   const {
     input,
     setInput,
@@ -141,64 +142,73 @@ function AppContent() {
     lastSyncTimeRef,
     getFirstUserMessage,
     // getConversationsWithMessages, // Available from hook if needed
-  } = comparisonHook;
+  } = comparisonHook
 
   // State not covered by hooks (declare before callbacks that use them)
-  const selectedModelsGridRef = useRef<HTMLDivElement>(null);
-  const scrolledToTopRef = useRef<Set<string>>(new Set()); // Track which model cards have been scrolled to top
-  const shouldScrollToTopAfterFormattingRef = useRef<boolean>(false); // Track if we should scroll to top after all models format (initial comparison only)
-  const isPageScrollingRef = useRef<boolean>(false); // Track if user is scrolling the page
-  const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({});
-  const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
-  const [, setUserMessageTimestamp] = useState<string>('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false);
-  const modelsSectionRef = useRef<HTMLDivElement>(null);
-  const [isAnimatingButton, setIsAnimatingButton] = useState(false);
-  const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false);
-  const animationTimeoutRef = useRef<number | null>(null);
-  const [isModelsHidden, setIsModelsHidden] = useState(false);
-  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
-  const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({});
-  const [showUsageBanner, setShowUsageBanner] = useState(false);
-  const usageBannerTimeoutRef = useRef<number | null>(null);
+  const selectedModelsGridRef = useRef<HTMLDivElement>(null)
+  const scrolledToTopRef = useRef<Set<string>>(new Set()) // Track which model cards have been scrolled to top
+  const shouldScrollToTopAfterFormattingRef = useRef<boolean>(false) // Track if we should scroll to top after all models format (initial comparison only)
+  const isPageScrollingRef = useRef<boolean>(false) // Track if user is scrolling the page
+  const [modelsByProvider, setModelsByProvider] = useState<ModelsByProvider>({})
+  const [isLoadingModels, setIsLoadingModels] = useState(true)
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set())
+  const [, setUserMessageTimestamp] = useState<string>('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [showDoneSelectingCard, setShowDoneSelectingCard] = useState(false)
+  const modelsSectionRef = useRef<HTMLDivElement>(null)
+  const [isAnimatingButton, setIsAnimatingButton] = useState(false)
+  const [isAnimatingTextarea, setIsAnimatingTextarea] = useState(false)
+  const animationTimeoutRef = useRef<number | null>(null)
+  const [isModelsHidden, setIsModelsHidden] = useState(false)
+  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false)
+  const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({})
+  const [showUsageBanner, setShowUsageBanner] = useState(false)
+  const usageBannerTimeoutRef = useRef<number | null>(null)
   const [submissionCount, setSubmissionCount] = useState<number>(() => {
     // Load submission count from localStorage
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('compareintel_submission_count');
+      const stored = localStorage.getItem('compareintel_submission_count')
       if (stored) {
-        const data = JSON.parse(stored);
-        const today = new Date().toDateString();
+        const data = JSON.parse(stored)
+        const today = new Date().toDateString()
         // Reset if it's a new day
         if (data.date === today) {
-          return data.count || 0;
+          return data.count || 0
         }
       }
     }
-    return 0;
-  });
+    return 0
+  })
 
   // Callback for when the active conversation is deleted
   const handleDeleteActiveConversation = useCallback(() => {
-    setIsFollowUpMode(false);
-    setInput('');
-    setConversations([]);
-    setResponse(null);
-    setClosedCards(new Set());
-    setError(null);
-    setSelectedModels([]);
-    setOriginalSelectedModels([]);
-    setIsModelsHidden(false);
-    setOpenDropdowns(new Set());
-    setModelErrors({});
-  }, [setIsFollowUpMode, setInput, setConversations, setResponse, setClosedCards, setError, setSelectedModels, setOriginalSelectedModels]);
+    setIsFollowUpMode(false)
+    setInput('')
+    setConversations([])
+    setResponse(null)
+    setClosedCards(new Set())
+    setError(null)
+    setSelectedModels([])
+    setOriginalSelectedModels([])
+    setIsModelsHidden(false)
+    setOpenDropdowns(new Set())
+    setModelErrors({})
+  }, [
+    setIsFollowUpMode,
+    setInput,
+    setConversations,
+    setResponse,
+    setClosedCards,
+    setError,
+    setSelectedModels,
+    setOriginalSelectedModels,
+  ])
 
   const conversationHistoryHook = useConversationHistory({
     isAuthenticated,
     user,
     onDeleteActiveConversation: handleDeleteActiveConversation,
-  });
+  })
   const {
     conversationHistory,
     setConversationHistory,
@@ -217,160 +227,160 @@ function AppContent() {
     loadHistoryFromLocalStorage,
     // Note: loadConversationFromAPI and loadConversationFromLocalStorage are defined locally below
     // as they return different types (raw conversation data vs ModelConversation[])
-  } = conversationHistoryHook;
+  } = conversationHistoryHook
   // Track wide layout to coordinate header control alignment with toggle
   const [isWideLayout, setIsWideLayout] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth > 1000; // match CSS breakpoint
-  });
+    if (typeof window === 'undefined') return false
+    return window.innerWidth > 1000 // match CSS breakpoint
+  })
 
   useEffect(() => {
-    const handleResize = () => setIsWideLayout(window.innerWidth > 1000);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    const handleResize = () => setIsWideLayout(window.innerWidth > 1000)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Auto-collapse metadata section when screen size triggers toggle layout (<= 1200px)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 1200) {
-        setIsMetadataCollapsed(true);
+        setIsMetadataCollapsed(true)
       } else {
-        setIsMetadataCollapsed(false);
+        setIsMetadataCollapsed(false)
       }
-    };
+    }
 
     // Set initial state
-    handleResize();
+    handleResize()
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // State for mobile tooltip visibility (capability tiles)
-  const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null);
+  const [visibleTooltip, setVisibleTooltip] = useState<string | null>(null)
 
   // Handle capability tile tap on mobile to show tooltip
   const handleCapabilityTileTap = (tileId: string) => {
     // Only show tooltip on mobile (screen width <= 768px)
     if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-      setVisibleTooltip(tileId);
+      setVisibleTooltip(tileId)
       // Hide tooltip after 2 seconds
       setTimeout(() => {
-        setVisibleTooltip(null);
-      }, 2000);
+        setVisibleTooltip(null)
+      }, 2000)
     }
-  };
+  }
 
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
-  const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login')
+  const [anonymousMockModeEnabled, setAnonymousMockModeEnabled] = useState(false)
 
-  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginEmail, setLoginEmail] = useState<string>('')
 
   // State to trigger verification from another tab
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null)
   // State to prevent new tab from verifying while checking for existing tabs
   // Initialize suppressVerification based on whether this is a new tab with a token
   const [suppressVerification, setSuppressVerification] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasTokenInUrl = urlParams.get('token') !== null;
-    const isNewTab = window.opener === null;
-    return hasTokenInUrl && isNewTab;
-  });
+    const urlParams = new URLSearchParams(window.location.search)
+    const hasTokenInUrl = urlParams.get('token') !== null
+    const isNewTab = window.opener === null
+    return hasTokenInUrl && isNewTab
+  })
 
   // State to track if we're in password reset mode
-  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
 
   // Check for password reset token on mount (for direct navigation or non-tab scenarios)
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const path = window.location.pathname;
-    const fullUrl = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const path = window.location.pathname
+    const fullUrl = window.location.href
 
     // Show password reset if URL contains reset-password and a token
     // This handles cases where user directly navigates to the URL (not from email link in new tab)
     if (token && (path.includes('reset-password') || fullUrl.includes('reset-password'))) {
-      setShowPasswordReset(true);
+      setShowPasswordReset(true)
     }
-  }, []);
+  }, [])
 
   // Handle password reset close
   const handlePasswordResetClose = (email?: string) => {
-    setShowPasswordReset(false);
+    setShowPasswordReset(false)
     // Clear the token from URL
-    const url = new URL(window.location.href);
-    url.searchParams.delete('token');
-    window.history.pushState({}, '', url);
+    const url = new URL(window.location.href)
+    url.searchParams.delete('token')
+    window.history.pushState({}, '', url)
     // Open login modal with the email if provided
     if (email) {
-      setLoginEmail(email);
+      setLoginEmail(email)
     }
-    setIsAuthModalOpen(true);
-    setAuthModalMode('login');
-  };
+    setIsAuthModalOpen(true)
+    setAuthModalMode('login')
+  }
 
   // Listen for verification messages from email and handle tab coordination
   useEffect(() => {
     // Check if BroadcastChannel is supported
     if (typeof BroadcastChannel === 'undefined') {
-      console.error('[App] BroadcastChannel is not supported in this browser!');
-      return;
+      console.error('[App] BroadcastChannel is not supported in this browser!')
+      return
     }
 
-    const channel = new BroadcastChannel('compareintel-verification');
-    let hasExistingTab = false;
+    const channel = new BroadcastChannel('compareintel-verification')
+    let hasExistingTab = false
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'verify-email' && event.data.token) {
         // An existing tab (this one) received a verification token from a new tab
         // Update URL without page reload and trigger verification
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('token', event.data.token);
-        window.history.pushState({}, '', newUrl);
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.set('token', event.data.token)
+        window.history.pushState({}, '', newUrl)
 
         // Set the token to trigger verification in VerifyEmail component
-        setVerificationToken(event.data.token);
+        setVerificationToken(event.data.token)
 
         // Focus this tab
-        window.focus();
+        window.focus()
       } else if (event.data.type === 'password-reset' && event.data.token) {
         // An existing tab (this one) received a password reset token from a new tab
         // Close the "Check Your Email" dialog if it's open
-        setIsAuthModalOpen(false);
+        setIsAuthModalOpen(false)
 
         // Update URL without page reload
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('token', event.data.token);
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.set('token', event.data.token)
         if (!newUrl.pathname.includes('reset-password')) {
-          newUrl.pathname = '/reset-password';
+          newUrl.pathname = '/reset-password'
         }
-        window.history.pushState({}, '', newUrl);
+        window.history.pushState({}, '', newUrl)
 
         // Show the password reset form
-        setShowPasswordReset(true);
+        setShowPasswordReset(true)
 
         // Focus this tab
-        window.focus();
+        window.focus()
       } else if (event.data.type === 'ping') {
         // Another tab is checking if we exist - always respond for both email verification and password reset
-        hasExistingTab = true;
-        channel.postMessage({ type: 'pong' });
+        hasExistingTab = true
+        channel.postMessage({ type: 'pong' })
       } else if (event.data.type === 'pong') {
         // An existing tab responded to our ping
-        hasExistingTab = true;
+        hasExistingTab = true
       }
-    };
+    }
 
-    channel.addEventListener('message', handleMessage);
+    channel.addEventListener('message', handleMessage)
 
     // Check if this is a verification page opened from email
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const path = window.location.pathname;
-    const fullUrl = window.location.href;
-    const isPasswordReset = path.includes('reset-password') || fullUrl.includes('reset-password');
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const path = window.location.pathname
+    const fullUrl = window.location.href
+    const isPasswordReset = path.includes('reset-password') || fullUrl.includes('reset-password')
 
     if (token && window.opener === null) {
       // This is a new tab opened from email with a token
@@ -379,7 +389,7 @@ function AppContent() {
       // Note: suppressVerification is already true from initial state
 
       // Ping to see if there's an existing CompareIntel tab
-      channel.postMessage({ type: 'ping' });
+      channel.postMessage({ type: 'ping' })
 
       // Wait a moment to see if any existing tab responds
       setTimeout(() => {
@@ -389,37 +399,37 @@ function AppContent() {
             // Send password reset token
             channel.postMessage({
               type: 'password-reset',
-              token: token
-            });
+              token: token,
+            })
           } else {
             // Send email verification token
             channel.postMessage({
               type: 'verify-email',
-              token: token
-            });
+              token: token,
+            })
           }
 
           // Give the existing tab time to process, then close this tab
           setTimeout(() => {
-            window.close();
-          }, 500);
+            window.close()
+          }, 500)
         } else {
           // No existing tab found - handle in this tab
           if (isPasswordReset) {
-            setShowPasswordReset(true);
-            setSuppressVerification(false);
+            setShowPasswordReset(true)
+            setSuppressVerification(false)
           } else {
-            setSuppressVerification(false);
+            setSuppressVerification(false)
           }
         }
-      }, 200);
+      }, 200)
     }
 
     return () => {
-      channel.removeEventListener('message', handleMessage);
-      channel.close();
-    };
-  }, []);
+      channel.removeEventListener('message', handleMessage)
+      channel.close()
+    }
+  }, [])
 
   // Fetch anonymous mock mode setting for anonymous users (development only)
   useEffect(() => {
@@ -429,62 +439,62 @@ function AppContent() {
       if (isAuthenticated || !import.meta.env.DEV || authLoading) {
         // Reset anonymous mock mode when authenticated or while loading
         if (isAuthenticated || authLoading) {
-          setAnonymousMockModeEnabled(false);
+          setAnonymousMockModeEnabled(false)
         }
-        return;
+        return
       }
 
       try {
-        const data = await getAnonymousMockModeStatus();
+        const data = await getAnonymousMockModeStatus()
         if (data.is_development && data.anonymous_mock_mode_enabled) {
-          setAnonymousMockModeEnabled(true);
+          setAnonymousMockModeEnabled(true)
         } else {
-          setAnonymousMockModeEnabled(false);
+          setAnonymousMockModeEnabled(false)
         }
       } catch {
         // Silently fail - this is a development-only feature
       }
-    };
+    }
 
-    fetchAnonymousMockModeSetting();
-  }, [isAuthenticated, authLoading]);
+    fetchAnonymousMockModeSetting()
+  }, [isAuthenticated, authLoading])
 
   // Screenshot handler for message area only
 
   // Helper to check if element is scrolled to bottom (within 50px threshold)
   const isScrolledToBottom = (element: HTMLElement): boolean => {
-    const threshold = 50; // px tolerance
-    return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
-  };
+    const threshold = 50 // px tolerance
+    return element.scrollHeight - element.scrollTop - element.clientHeight < threshold
+  }
 
   // Setup scroll listener for a model to detect user scrolling
   // Returns true if successful, false if element not found
   const setupScrollListener = (modelId: string): boolean => {
-    const safeId = getSafeId(modelId);
-    const expectedId = `conversation-content-${safeId}`;
+    const safeId = getSafeId(modelId)
+    const expectedId = `conversation-content-${safeId}`
 
-    const conversationContent = document.querySelector(`#${expectedId}`) as HTMLElement;
+    const conversationContent = document.querySelector(`#${expectedId}`) as HTMLElement
 
     if (!conversationContent) {
-      return false;
+      return false
     }
 
     // Remove existing listeners if any
-    const existingListeners = scrollListenersRef.current.get(modelId);
+    const existingListeners = scrollListenersRef.current.get(modelId)
     if (existingListeners) {
-      conversationContent.removeEventListener('scroll', existingListeners.scroll);
-      conversationContent.removeEventListener('wheel', existingListeners.wheel);
-      conversationContent.removeEventListener('touchstart', existingListeners.touchstart);
-      conversationContent.removeEventListener('mousedown', existingListeners.mousedown);
+      conversationContent.removeEventListener('scroll', existingListeners.scroll)
+      conversationContent.removeEventListener('wheel', existingListeners.wheel)
+      conversationContent.removeEventListener('touchstart', existingListeners.touchstart)
+      conversationContent.removeEventListener('mousedown', existingListeners.mousedown)
     }
 
     // Initialize last scroll position
-    lastScrollTopRef.current.set(modelId, conversationContent.scrollTop);
+    lastScrollTopRef.current.set(modelId, conversationContent.scrollTop)
 
     // Handle mouse wheel - immediate indication of user interaction
     const handleWheel = (e: WheelEvent) => {
-      const isAtTop = conversationContent.scrollTop === 0;
-      const isAtBottom = isScrolledToBottom(conversationContent);
+      const isAtTop = conversationContent.scrollTop === 0
+      const isAtBottom = isScrolledToBottom(conversationContent)
 
       // If at top and scrolling up, or at bottom and scrolling down, manually scroll the window
       if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
@@ -492,83 +502,83 @@ function AppContent() {
         window.scrollBy({
           top: e.deltaY * 0.5, // Scale down the scroll amount slightly for smoother UX
           left: 0,
-          behavior: 'auto'
-        });
+          behavior: 'auto',
+        })
         // Continue to let the event propagate naturally as well
-        return;
+        return
       }
 
       // IMMEDIATELY pause auto-scroll when user scrolls
-      autoScrollPausedRef.current.add(modelId);
+      autoScrollPausedRef.current.add(modelId)
 
-      userInteractingRef.current.add(modelId);
+      userInteractingRef.current.add(modelId)
 
       // Check scroll position after wheel event to potentially resume
       setTimeout(() => {
         if (isScrolledToBottom(conversationContent)) {
           // User scrolled to bottom - resume auto-scroll
-          autoScrollPausedRef.current.delete(modelId);
+          autoScrollPausedRef.current.delete(modelId)
         }
         // If not at bottom, keep it paused (already set above)
-        userInteractingRef.current.delete(modelId);
-      }, 75);
-    };
+        userInteractingRef.current.delete(modelId)
+      }, 75)
+    }
 
     // Handle touch start - immediate indication of user interaction
     const handleTouchStart = () => {
       // IMMEDIATELY pause auto-scroll when user touches to scroll
-      autoScrollPausedRef.current.add(modelId);
+      autoScrollPausedRef.current.add(modelId)
 
-      userInteractingRef.current.add(modelId);
+      userInteractingRef.current.add(modelId)
 
       // Check scroll position after touch to potentially resume
       setTimeout(() => {
         if (isScrolledToBottom(conversationContent)) {
           // User scrolled to bottom - resume auto-scroll
-          autoScrollPausedRef.current.delete(modelId);
+          autoScrollPausedRef.current.delete(modelId)
         }
         // If not at bottom, keep it paused (already set above)
-        userInteractingRef.current.delete(modelId);
-      }, 75);
-    };
+        userInteractingRef.current.delete(modelId)
+      }, 75)
+    }
 
     // Handle mousedown on scrollbar - user is clicking/dragging scrollbar
     const handleMouseDown = () => {
       // IMMEDIATELY pause auto-scroll when user clicks scrollbar
-      autoScrollPausedRef.current.add(modelId);
+      autoScrollPausedRef.current.add(modelId)
 
-      userInteractingRef.current.add(modelId);
+      userInteractingRef.current.add(modelId)
 
       // Check scroll position after mousedown to potentially resume
       setTimeout(() => {
         if (isScrolledToBottom(conversationContent)) {
           // User scrolled to bottom - resume auto-scroll
-          autoScrollPausedRef.current.delete(modelId);
+          autoScrollPausedRef.current.delete(modelId)
         }
-        userInteractingRef.current.delete(modelId);
-      }, 75);
-    };
+        userInteractingRef.current.delete(modelId)
+      }, 75)
+    }
 
     // Handle scroll event - detect if scrolling upward (user interaction)
     const handleScroll = () => {
-      const lastScrollTop = lastScrollTopRef.current.get(modelId) || 0;
-      const currentScrollTop = conversationContent.scrollTop;
+      const lastScrollTop = lastScrollTopRef.current.get(modelId) || 0
+      const currentScrollTop = conversationContent.scrollTop
 
       // If scrolling up (position decreased), it's likely user interaction
       if (currentScrollTop < lastScrollTop) {
         // User scrolled up - pause auto-scroll
-        autoScrollPausedRef.current.add(modelId);
+        autoScrollPausedRef.current.add(modelId)
       } else if (isScrolledToBottom(conversationContent)) {
         // Scrolled to bottom - resume auto-scroll
-        autoScrollPausedRef.current.delete(modelId);
+        autoScrollPausedRef.current.delete(modelId)
       }
 
       // Update last scroll position
-      lastScrollTopRef.current.set(modelId, currentScrollTop);
+      lastScrollTopRef.current.set(modelId, currentScrollTop)
 
       // If scroll lock is enabled, sync this scroll to all other cards
       if (!isScrollLockedRef.current) {
-        return;
+        return
       }
 
       // If we're already in a sync operation, check if this is a new user scroll
@@ -577,135 +587,140 @@ function AppContent() {
         // If a different element is trying to scroll, check if it's user-initiated
         if (syncingFromElementRef.current !== conversationContent) {
           // Check if enough time has passed since the last sync to allow new user scrolling
-          const timeSinceLastSync = Date.now() - lastSyncTimeRef.current;
+          const timeSinceLastSync = Date.now() - lastSyncTimeRef.current
           if (timeSinceLastSync < 100) {
             // Very recent sync - likely programmatic, skip it
-            return;
+            return
           } else {
             // Enough time has passed, this is likely a new user scroll on a different pane
-            syncingFromElementRef.current = null;
+            syncingFromElementRef.current = null
           }
         }
       }
 
       // Mark this element as the one initiating the sync
-      syncingFromElementRef.current = conversationContent;
-      lastSyncTimeRef.current = Date.now();
+      syncingFromElementRef.current = conversationContent
+      lastSyncTimeRef.current = Date.now()
 
       // Get all conversation content elements
-      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
+      const allConversations = document.querySelectorAll('[id^="conversation-content-"]')
 
       // Store the scroll position as a percentage to account for different content heights
-      const scrollHeight = conversationContent.scrollHeight - conversationContent.clientHeight;
-      const scrollPercentage = scrollHeight > 0 ? conversationContent.scrollTop / scrollHeight : 0;
+      const scrollHeight = conversationContent.scrollHeight - conversationContent.clientHeight
+      const scrollPercentage = scrollHeight > 0 ? conversationContent.scrollTop / scrollHeight : 0
 
       // Sync all other cards
-      allConversations.forEach((element) => {
-        const el = element as HTMLElement;
+      allConversations.forEach(element => {
+        const el = element as HTMLElement
         // Don't sync to the element that triggered this scroll
         if (el !== conversationContent) {
-          const targetScrollHeight = el.scrollHeight - el.clientHeight;
+          const targetScrollHeight = el.scrollHeight - el.clientHeight
           if (targetScrollHeight > 0) {
-            const targetScrollTop = scrollPercentage * targetScrollHeight;
-            el.scrollTop = targetScrollTop;
+            const targetScrollTop = scrollPercentage * targetScrollHeight
+            el.scrollTop = targetScrollTop
           }
         }
-      });
+      })
 
       // Reset the flag after a delay to allow all programmatic scroll events to complete
       setTimeout(() => {
-        syncingFromElementRef.current = null;
-      }, 300);
-    };
+        syncingFromElementRef.current = null
+      }, 300)
+    }
 
     // Add all listeners
-    conversationContent.addEventListener('wheel', handleWheel, { passive: true });
-    conversationContent.addEventListener('touchstart', handleTouchStart, { passive: true });
-    conversationContent.addEventListener('mousedown', handleMouseDown, { passive: true });
-    conversationContent.addEventListener('scroll', handleScroll, { passive: true });
+    conversationContent.addEventListener('wheel', handleWheel, { passive: true })
+    conversationContent.addEventListener('touchstart', handleTouchStart, { passive: true })
+    conversationContent.addEventListener('mousedown', handleMouseDown, { passive: true })
+    conversationContent.addEventListener('scroll', handleScroll, { passive: true })
 
     scrollListenersRef.current.set(modelId, {
       scroll: handleScroll,
       wheel: handleWheel,
       touchstart: handleTouchStart,
-      mousedown: handleMouseDown
-    });
+      mousedown: handleMouseDown,
+    })
 
-    return true;
-  };
+    return true
+  }
 
   // Cleanup scroll listener for a model
   const cleanupScrollListener = (modelId: string) => {
-    const safeId = getSafeId(modelId);
-    const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
-    const listeners = scrollListenersRef.current.get(modelId);
+    const safeId = getSafeId(modelId)
+    const conversationContent = document.querySelector(
+      `#conversation-content-${safeId}`
+    ) as HTMLElement
+    const listeners = scrollListenersRef.current.get(modelId)
 
     if (conversationContent && listeners) {
-      conversationContent.removeEventListener('scroll', listeners.scroll);
-      conversationContent.removeEventListener('wheel', listeners.wheel);
-      conversationContent.removeEventListener('touchstart', listeners.touchstart);
-      conversationContent.removeEventListener('mousedown', listeners.mousedown);
+      conversationContent.removeEventListener('scroll', listeners.scroll)
+      conversationContent.removeEventListener('wheel', listeners.wheel)
+      conversationContent.removeEventListener('touchstart', listeners.touchstart)
+      conversationContent.removeEventListener('mousedown', listeners.mousedown)
     }
-    scrollListenersRef.current.delete(modelId);
-    userInteractingRef.current.delete(modelId);
-    lastScrollTopRef.current.delete(modelId);
-  };
+    scrollListenersRef.current.delete(modelId)
+    userInteractingRef.current.delete(modelId)
+    lastScrollTopRef.current.delete(modelId)
+  }
 
   const handleScreenshot = async (modelId: string) => {
-    const safeId = getSafeId(modelId);
-    const content = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement | null;
+    const safeId = getSafeId(modelId)
+    const content = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement | null
     if (!content) {
-      showNotification('Screenshot target not found.', 'error');
-      return;
+      showNotification('Screenshot target not found.', 'error')
+      return
     }
 
     // Check if formatted tab is active, if not temporarily switch to it for copying
     // Use type assertion to handle string indexing into ActiveResultTabs
-    const currentTab = (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED;
-    const needsTabSwitch = currentTab !== RESULT_TAB.FORMATTED;
+    const currentTab =
+      (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED
+    const needsTabSwitch = currentTab !== RESULT_TAB.FORMATTED
 
     if (needsTabSwitch) {
       // Temporarily switch to formatted tab to render formatted content
-      switchResultTab(modelId, RESULT_TAB.FORMATTED);
+      switchResultTab(modelId, RESULT_TAB.FORMATTED)
       // Wait for DOM to update and formatted content to render
       await new Promise<void>(resolve => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             // Additional delay to ensure LatexRenderer has rendered
-            setTimeout(resolve, 100);
-          });
-        });
-      });
+            setTimeout(resolve, 100)
+          })
+        })
+      })
     }
 
     // Show immediate feedback and store notification controller to update it when done
-    const copyingNotification = showNotification('Copying screenshot...', 'success');
+    const copyingNotification = showNotification('Copying screenshot...', 'success')
     // Clear auto-remove timeout so notification stays until we update it
-    copyingNotification.clearAutoRemove();
+    copyingNotification.clearAutoRemove()
     // Set timer icon for the copying notification
-    copyingNotification.setIcon('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
+    copyingNotification.setIcon(
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+    )
 
     // Store original styles that we'll modify
-    const prevOverflow = content.style.overflow;
-    const prevMaxHeight = content.style.maxHeight;
+    const prevOverflow = content.style.overflow
+    const prevMaxHeight = content.style.maxHeight
 
     // Expand to show all content
-    content.style.overflow = 'visible';
-    content.style.maxHeight = 'none';
+    content.style.overflow = 'visible'
+    content.style.maxHeight = 'none'
 
     try {
       // Start importing the library and waiting for repaint in parallel for faster processing
       const [htmlToImage] = await Promise.all([
-        import("html-to-image"),
+        import('html-to-image'),
         // Use requestAnimationFrame for better timing - ensures browser has painted
         new Promise<void>(resolve => {
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => resolve());
-          });
-        })
-      ]);
+            requestAnimationFrame(() => resolve())
+          })
+        }),
+      ])
 
-      const toBlob = htmlToImage.toBlob;
+      const toBlob = htmlToImage.toBlob
 
       // Use html-to-image which typically preserves colors better
       const blob = await toBlob(content, {
@@ -716,73 +731,73 @@ function AppContent() {
           // Ensure the element is fully visible
           overflow: 'visible',
           maxHeight: 'none',
-        }
-      });
+        },
+      })
 
       if (blob && navigator.clipboard && window.ClipboardItem) {
         try {
           // Try to write to clipboard with retry logic
-          let copySuccess = false;
-          let lastError: Error | null = null;
+          let copySuccess = false
+          let lastError: Error | null = null
 
           // Attempt clipboard write with up to 2 retries
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
-              await navigator.clipboard.write([
-                new window.ClipboardItem({ 'image/png': blob })
-              ]);
-              copySuccess = true;
-              break;
+              await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
+              copySuccess = true
+              break
             } catch (err) {
-              lastError = err instanceof Error ? err : new Error(String(err));
-              console.error(`Clipboard copy attempt ${attempt + 1} failed:`, lastError);
+              lastError = err instanceof Error ? err : new Error(String(err))
+              console.error(`Clipboard copy attempt ${attempt + 1} failed:`, lastError)
 
               // If it's a permission error or security error, don't retry
-              if (lastError.name === 'NotAllowedError' ||
+              if (
+                lastError.name === 'NotAllowedError' ||
                 lastError.name === 'SecurityError' ||
                 lastError.message.includes('permission') ||
-                lastError.message.includes('denied')) {
-                break;
+                lastError.message.includes('denied')
+              ) {
+                break
               }
 
               // Wait a bit before retrying (only if not the last attempt)
               if (attempt < 2) {
-                await new Promise(resolve => setTimeout(resolve, 200));
+                await new Promise(resolve => setTimeout(resolve, 200))
               }
             }
           }
 
           if (copySuccess) {
             // Update notification in place for seamless transition
-            copyingNotification.update('Screenshot copied to clipboard!', 'success');
+            copyingNotification.update('Screenshot copied to clipboard!', 'success')
           } else {
             // Show specific error message
             const errorMsg = lastError
               ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
-              : 'Clipboard copy failed. Image downloaded instead.';
-            copyingNotification.update(errorMsg, 'error');
-            console.error('Clipboard copy failed after retries:', lastError);
+              : 'Clipboard copy failed. Image downloaded instead.'
+            copyingNotification.update(errorMsg, 'error')
+            console.error('Clipboard copy failed after retries:', lastError)
 
             // Fallback: download the image
-            const link = document.createElement('a');
-            link.download = `model_${safeId}_messages.png`;
-            link.href = URL.createObjectURL(blob);
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const link = document.createElement('a')
+            link.download = `model_${safeId}_messages.png`
+            link.href = URL.createObjectURL(blob)
+            link.click()
+            URL.revokeObjectURL(link.href)
           }
         } catch (err) {
           // Catch any unexpected errors during the retry logic
-          const error = err instanceof Error ? err : new Error(String(err));
-          const errorMsg = `Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`;
-          copyingNotification.update(errorMsg, 'error');
-          console.error('Unexpected error during clipboard copy:', error);
+          const error = err instanceof Error ? err : new Error(String(err))
+          const errorMsg = `Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`
+          copyingNotification.update(errorMsg, 'error')
+          console.error('Unexpected error during clipboard copy:', error)
 
           // Fallback: download the image
-          const link = document.createElement('a');
-          link.download = `model_${safeId}_messages.png`;
-          link.href = URL.createObjectURL(blob);
-          link.click();
-          URL.revokeObjectURL(link.href);
+          const link = document.createElement('a')
+          link.download = `model_${safeId}_messages.png`
+          link.href = URL.createObjectURL(blob)
+          link.click()
+          URL.revokeObjectURL(link.href)
         }
       } else if (blob) {
         // Clipboard API not available
@@ -790,72 +805,76 @@ function AppContent() {
           ? 'Clipboard API not available'
           : !window.ClipboardItem
             ? 'ClipboardItem not supported'
-            : 'Unknown reason';
-        copyingNotification.update(`${reason}. Image downloaded.`, 'error');
-        console.warn('Clipboard not supported:', { clipboard: !!navigator.clipboard, ClipboardItem: !!window.ClipboardItem });
-        const link = document.createElement('a');
-        link.download = `model_${safeId}_messages.png`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-        URL.revokeObjectURL(link.href);
+            : 'Unknown reason'
+        copyingNotification.update(`${reason}. Image downloaded.`, 'error')
+        console.warn('Clipboard not supported:', {
+          clipboard: !!navigator.clipboard,
+          ClipboardItem: !!window.ClipboardItem,
+        })
+        const link = document.createElement('a')
+        link.download = `model_${safeId}_messages.png`
+        link.href = URL.createObjectURL(blob)
+        link.click()
+        URL.revokeObjectURL(link.href)
       } else {
-        copyingNotification.update('Could not create image blob.', 'error');
-        console.error('Failed to create image blob from content element');
+        copyingNotification.update('Could not create image blob.', 'error')
+        console.error('Failed to create image blob from content element')
       }
     } catch (err) {
-      copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error');
+      copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error')
     } finally {
       // Restore original styles
-      content.style.overflow = prevOverflow;
-      content.style.maxHeight = prevMaxHeight;
+      content.style.overflow = prevOverflow
+      content.style.maxHeight = prevMaxHeight
 
       // Restore original tab if we switched it
       if (needsTabSwitch) {
-        switchResultTab(modelId, currentTab);
+        switchResultTab(modelId, currentTab)
       }
     }
-  };
+  }
 
   const handleCopyResponse = async (modelId: string) => {
     // Find the conversation for this model
-    const conversation = conversations.find(conv => conv.modelId === modelId);
+    const conversation = conversations.find(conv => conv.modelId === modelId)
     if (!conversation) {
-      showNotification('Model response not found.', 'error');
-      return;
+      showNotification('Model response not found.', 'error')
+      return
     }
 
     if (conversation.messages.length === 0) {
-      showNotification('No messages to copy.', 'error');
-      return;
+      showNotification('No messages to copy.', 'error')
+      return
     }
 
     // Format the entire conversation history
     const formattedHistory = conversation.messages
-      .map((msg) => formatConversationMessage(msg.type, msg.content, msg.timestamp))
-      .join('\n\n---\n\n');
+      .map(msg => formatConversationMessage(msg.type, msg.content, msg.timestamp))
+      .join('\n\n---\n\n')
 
     try {
-      await navigator.clipboard.writeText(formattedHistory);
-      showNotification('Raw conversation copied to clipboard!', 'success');
+      await navigator.clipboard.writeText(formattedHistory)
+      showNotification('Raw conversation copied to clipboard!', 'success')
     } catch (err) {
-      showNotification('Failed to copy to clipboard.', 'error');
-      console.error('Copy failed:', err);
+      showNotification('Failed to copy to clipboard.', 'error')
+      console.error('Copy failed:', err)
     }
-  };
+  }
 
   const handleCopyMessage = async (modelId: string, messageId: string, messageContent: string) => {
-    const safeId = getSafeId(modelId);
-    const messageSafeId = getSafeId(messageId);
-    const messageContentId = `message-content-${safeId}-${messageSafeId}`;
-    const currentTab = (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED;
+    const safeId = getSafeId(modelId)
+    const messageSafeId = getSafeId(messageId)
+    const messageContentId = `message-content-${safeId}-${messageSafeId}`
+    const currentTab =
+      (activeResultTabs as unknown as Record<string, ResultTab>)[modelId] || RESULT_TAB.FORMATTED
 
     try {
       if (currentTab === RESULT_TAB.FORMATTED) {
         // Take a screenshot of the formatted message
-        const messageElement = document.querySelector(`#${messageContentId}`) as HTMLElement | null;
+        const messageElement = document.querySelector(`#${messageContentId}`) as HTMLElement | null
         if (!messageElement) {
-          showNotification('Message element not found.', 'error');
-          return;
+          showNotification('Message element not found.', 'error')
+          return
         }
 
         // Wait for DOM to be ready (in case LatexRenderer is still rendering)
@@ -863,40 +882,44 @@ function AppContent() {
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               // Additional delay to ensure LatexRenderer has rendered
-              setTimeout(resolve, 100);
-            });
-          });
-        });
+              setTimeout(resolve, 100)
+            })
+          })
+        })
 
         // Show immediate feedback
-        const copyingNotification = showNotification('Copying screenshot...', 'success');
-        copyingNotification.clearAutoRemove();
-        copyingNotification.setIcon('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
+        const copyingNotification = showNotification('Copying screenshot...', 'success')
+        copyingNotification.clearAutoRemove()
+        copyingNotification.setIcon(
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+        )
 
         // Store original styles that we'll modify
-        const prevOverflow = messageElement.style.overflow;
-        const prevMaxHeight = messageElement.style.maxHeight;
-        const prevPadding = messageElement.style.padding;
-        const prevMargin = messageElement.style.margin;
+        const prevOverflow = messageElement.style.overflow
+        const prevMaxHeight = messageElement.style.maxHeight
+        const prevPadding = messageElement.style.padding
+        const prevMargin = messageElement.style.margin
 
         // Expand to show all content
-        messageElement.style.overflow = 'visible';
-        messageElement.style.maxHeight = 'none';
-        messageElement.style.padding = messageElement.style.padding || getComputedStyle(messageElement).padding;
-        messageElement.style.margin = messageElement.style.margin || getComputedStyle(messageElement).margin;
+        messageElement.style.overflow = 'visible'
+        messageElement.style.maxHeight = 'none'
+        messageElement.style.padding =
+          messageElement.style.padding || getComputedStyle(messageElement).padding
+        messageElement.style.margin =
+          messageElement.style.margin || getComputedStyle(messageElement).margin
 
         try {
           // Start importing the library and waiting for repaint in parallel
           const [htmlToImage] = await Promise.all([
-            import("html-to-image"),
+            import('html-to-image'),
             new Promise<void>(resolve => {
               requestAnimationFrame(() => {
-                requestAnimationFrame(() => resolve());
-              });
-            })
-          ]);
+                requestAnimationFrame(() => resolve())
+              })
+            }),
+          ])
 
-          const toBlob = htmlToImage.toBlob;
+          const toBlob = htmlToImage.toBlob
 
           // Create screenshot of the message element
           const blob = await toBlob(messageElement, {
@@ -905,444 +928,475 @@ function AppContent() {
             style: {
               overflow: 'visible',
               maxHeight: 'none',
-            }
-          });
+            },
+          })
 
           if (blob && navigator.clipboard && window.ClipboardItem) {
             try {
               // Try to write to clipboard with retry logic
-              let copySuccess = false;
-              let lastError: Error | null = null;
+              let copySuccess = false
+              let lastError: Error | null = null
 
               for (let attempt = 0; attempt < 3; attempt++) {
                 try {
-                  await navigator.clipboard.write([
-                    new window.ClipboardItem({ 'image/png': blob })
-                  ]);
-                  copySuccess = true;
-                  break;
+                  await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
+                  copySuccess = true
+                  break
                 } catch (err) {
-                  lastError = err instanceof Error ? err : new Error(String(err));
+                  lastError = err instanceof Error ? err : new Error(String(err))
 
-                  if (lastError.name === 'NotAllowedError' ||
+                  if (
+                    lastError.name === 'NotAllowedError' ||
                     lastError.name === 'SecurityError' ||
                     lastError.message.includes('permission') ||
-                    lastError.message.includes('denied')) {
-                    break;
+                    lastError.message.includes('denied')
+                  ) {
+                    break
                   }
 
                   if (attempt < 2) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
+                    await new Promise(resolve => setTimeout(resolve, 200))
                   }
                 }
               }
 
               if (copySuccess) {
-                copyingNotification.update('Screenshot copied to clipboard!', 'success');
+                copyingNotification.update('Screenshot copied to clipboard!', 'success')
               } else {
                 const errorMsg = lastError
                   ? `Clipboard copy failed: ${lastError.message || lastError.name || 'Unknown error'}. Image downloaded instead.`
-                  : 'Clipboard copy failed. Image downloaded instead.';
-                copyingNotification.update(errorMsg, 'error');
+                  : 'Clipboard copy failed. Image downloaded instead.'
+                copyingNotification.update(errorMsg, 'error')
 
                 // Fallback: download the image
-                const link = document.createElement('a');
-                link.download = `message_${safeId}_${messageSafeId}.png`;
-                link.href = URL.createObjectURL(blob);
-                link.click();
-                URL.revokeObjectURL(link.href);
+                const link = document.createElement('a')
+                link.download = `message_${safeId}_${messageSafeId}.png`
+                link.href = URL.createObjectURL(blob)
+                link.click()
+                URL.revokeObjectURL(link.href)
               }
             } catch (err) {
-              const error = err instanceof Error ? err : new Error(String(err));
-              copyingNotification.update(`Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`, 'error');
+              const error = err instanceof Error ? err : new Error(String(err))
+              copyingNotification.update(
+                `Clipboard copy failed: ${error.message || error.name || 'Unknown error'}. Image downloaded instead.`,
+                'error'
+              )
 
               // Fallback: download the image
-              const link = document.createElement('a');
-              link.download = `message_${safeId}_${messageSafeId}.png`;
-              link.href = URL.createObjectURL(blob);
-              link.click();
-              URL.revokeObjectURL(link.href);
+              const link = document.createElement('a')
+              link.download = `message_${safeId}_${messageSafeId}.png`
+              link.href = URL.createObjectURL(blob)
+              link.click()
+              URL.revokeObjectURL(link.href)
             }
           } else if (blob) {
             const reason = !navigator.clipboard
               ? 'Clipboard API not available'
               : !window.ClipboardItem
                 ? 'ClipboardItem not supported'
-                : 'Unknown reason';
-            copyingNotification.update(`${reason}. Image downloaded.`, 'error');
-            const link = document.createElement('a');
-            link.download = `message_${safeId}_${messageSafeId}.png`;
-            link.href = URL.createObjectURL(blob);
-            link.click();
-            URL.revokeObjectURL(link.href);
+                : 'Unknown reason'
+            copyingNotification.update(`${reason}. Image downloaded.`, 'error')
+            const link = document.createElement('a')
+            link.download = `message_${safeId}_${messageSafeId}.png`
+            link.href = URL.createObjectURL(blob)
+            link.click()
+            URL.revokeObjectURL(link.href)
           } else {
-            copyingNotification.update('Could not create image blob.', 'error');
+            copyingNotification.update('Could not create image blob.', 'error')
           }
         } catch (err) {
-          copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error');
+          copyingNotification.update('Screenshot failed: ' + (err as Error).message, 'error')
         } finally {
           // Restore original styles
-          messageElement.style.overflow = prevOverflow;
-          messageElement.style.maxHeight = prevMaxHeight;
-          messageElement.style.padding = prevPadding;
-          messageElement.style.margin = prevMargin;
+          messageElement.style.overflow = prevOverflow
+          messageElement.style.maxHeight = prevMaxHeight
+          messageElement.style.padding = prevPadding
+          messageElement.style.margin = prevMargin
         }
       } else {
         // Raw mode: copy the raw content as text
-        await navigator.clipboard.writeText(messageContent);
-        showNotification('Message copied to clipboard!', 'success');
+        await navigator.clipboard.writeText(messageContent)
+        showNotification('Message copied to clipboard!', 'success')
       }
     } catch (err) {
-      showNotification('Failed to copy message.', 'error');
-      console.error('Copy failed:', err);
+      showNotification('Failed to copy message.', 'error')
+      console.error('Copy failed:', err)
     }
-  };
+  }
 
   // Keep ref in sync with state
   useEffect(() => {
-    isScrollLockedRef.current = isScrollLocked;
+    isScrollLockedRef.current = isScrollLocked
 
     // When scroll lock is enabled, align all cards to the first card's scroll position
     if (isScrollLocked && conversations.length > 0) {
-      const allConversations = document.querySelectorAll('[id^="conversation-content-"]');
+      const allConversations = document.querySelectorAll('[id^="conversation-content-"]')
       if (allConversations.length > 0) {
-        const firstCard = allConversations[0] as HTMLElement;
+        const firstCard = allConversations[0] as HTMLElement
 
         // Mark the first card as the sync source
-        syncingFromElementRef.current = firstCard;
+        syncingFromElementRef.current = firstCard
 
-        const firstScrollHeight = firstCard.scrollHeight - firstCard.clientHeight;
-        const scrollPercentage = firstScrollHeight > 0 ? firstCard.scrollTop / firstScrollHeight : 0;
+        const firstScrollHeight = firstCard.scrollHeight - firstCard.clientHeight
+        const scrollPercentage = firstScrollHeight > 0 ? firstCard.scrollTop / firstScrollHeight : 0
 
         // Sync all other cards to the first card's scroll percentage
         allConversations.forEach((element, index) => {
           if (index > 0) {
-            const el = element as HTMLElement;
-            const targetScrollHeight = el.scrollHeight - el.clientHeight;
+            const el = element as HTMLElement
+            const targetScrollHeight = el.scrollHeight - el.clientHeight
             if (targetScrollHeight > 0) {
-              const targetScrollTop = scrollPercentage * targetScrollHeight;
-              el.scrollTop = targetScrollTop;
+              const targetScrollTop = scrollPercentage * targetScrollHeight
+              el.scrollTop = targetScrollTop
             }
           }
-        });
+        })
 
         // Reset after alignment is complete
         setTimeout(() => {
-          syncingFromElementRef.current = null;
-        }, 100);
+          syncingFromElementRef.current = null
+        }, 100)
       }
     }
-  }, [isScrollLocked, conversations]);
+  }, [isScrollLocked, conversations])
 
   // Setup scroll listeners when conversations are rendered
   useEffect(() => {
-    conversations.forEach((conversation) => {
+    conversations.forEach(conversation => {
       // Check if listener is already set up
       if (!scrollListenersRef.current.has(conversation.modelId)) {
-        const maxAttempts = 5;
-        let attempt = 0;
+        const maxAttempts = 5
+        let attempt = 0
 
         const trySetup = () => {
-          attempt++;
-          const success = setupScrollListener(conversation.modelId);
+          attempt++
+          const success = setupScrollListener(conversation.modelId)
           if (!success && attempt < maxAttempts) {
-            setTimeout(trySetup, 100 * attempt);
+            setTimeout(trySetup, 100 * attempt)
           }
-        };
+        }
 
         // Try immediately
-        trySetup();
+        trySetup()
       }
-    });
+    })
 
     // Clean up listeners for models that are no longer in conversations
-    const activeModelIds = new Set(conversations.map(c => c.modelId));
+    const activeModelIds = new Set(conversations.map(c => c.modelId))
     scrollListenersRef.current.forEach((_, modelId) => {
       if (!activeModelIds.has(createModelId(modelId))) {
-        cleanupScrollListener(modelId);
+        cleanupScrollListener(modelId)
       }
-    });
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations]);
+  }, [conversations])
 
   // Developer reset function - exposed to window for debugging
   const resetUsage = async () => {
     try {
       // Save currently displayed conversations to preserve them after reset
-      const currentDisplayedConversations = [...conversations];
-      const currentDisplayedComparisonId = currentVisibleComparisonId;
+      const currentDisplayedConversations = [...conversations]
+      const currentDisplayedComparisonId = currentVisibleComparisonId
 
       // Reset backend rate limits (dev only)
       try {
-        await resetRateLimit(browserFingerprint || undefined);
-        setError(null);
+        await resetRateLimit(browserFingerprint || undefined)
+        setError(null)
 
         if (isAuthenticated) {
           // Authenticated user: backend handles database cleanup
           // Clear history but preserve currently displayed results
-          setConversationHistory([]);
+          setConversationHistory([])
           // Restore the currently displayed conversations
-          setConversations(currentDisplayedConversations);
+          setConversations(currentDisplayedConversations)
           // Keep the current visible comparison ID if there's a visible comparison
           if (currentDisplayedConversations.length > 0 && currentDisplayedComparisonId) {
-            setCurrentVisibleComparisonId(currentDisplayedComparisonId);
+            setCurrentVisibleComparisonId(currentDisplayedComparisonId)
           } else {
-            setCurrentVisibleComparisonId(null);
+            setCurrentVisibleComparisonId(null)
           }
 
           // Refresh user data to show updated usage from backend
-          await refreshUser();
+          await refreshUser()
         } else {
           // Anonymous user: clear localStorage and reset UI state
           // Reset usage counts and submission count
-          setSubmissionCount(0);
-          localStorage.removeItem('compareintel_submission_count');
-          setUsageCount(0);
-          setExtendedUsageCount(0);
-          setShowUsageBanner(false);
+          setSubmissionCount(0)
+          localStorage.removeItem('compareintel_submission_count')
+          setUsageCount(0)
+          setExtendedUsageCount(0)
+          setShowUsageBanner(false)
           // Clear any existing timeout
           if (usageBannerTimeoutRef.current !== null) {
-            window.clearTimeout(usageBannerTimeoutRef.current);
-            usageBannerTimeoutRef.current = null;
+            window.clearTimeout(usageBannerTimeoutRef.current)
+            usageBannerTimeoutRef.current = null
           }
-          localStorage.removeItem('compareintel_usage');
-          localStorage.removeItem('compareintel_extended_usage');
+          localStorage.removeItem('compareintel_usage')
+          localStorage.removeItem('compareintel_extended_usage')
 
           // Clear all conversation history from localStorage
-          localStorage.removeItem('compareintel_conversation_history');
+          localStorage.removeItem('compareintel_conversation_history')
           // Clear all individual conversation data
-          const keysToRemove: string[] = [];
+          const keysToRemove: string[] = []
           for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
+            const key = localStorage.key(i)
             if (key && key.startsWith('compareintel_conversation_')) {
-              keysToRemove.push(key);
+              keysToRemove.push(key)
             }
           }
-          keysToRemove.forEach(key => localStorage.removeItem(key));
+          keysToRemove.forEach(key => localStorage.removeItem(key))
 
           // Clear history but preserve currently displayed results
-          setConversationHistory([]);
+          setConversationHistory([])
           // Restore the currently displayed conversations
-          setConversations(currentDisplayedConversations);
+          setConversations(currentDisplayedConversations)
           // Keep the current visible comparison ID if there's a visible comparison
           if (currentDisplayedConversations.length > 0 && currentDisplayedComparisonId) {
-            setCurrentVisibleComparisonId(currentDisplayedComparisonId);
+            setCurrentVisibleComparisonId(currentDisplayedComparisonId)
           } else {
-            setCurrentVisibleComparisonId(null);
+            setCurrentVisibleComparisonId(null)
           }
 
           // Fetch updated rate limit status from backend to sync usage counts
-          await fetchRateLimitStatus();
+          await fetchRateLimitStatus()
         }
       } catch (error) {
         if (error instanceof ApiError) {
-          console.error(`Failed to reset: ${error.message}`);
+          console.error(`Failed to reset: ${error.message}`)
         } else {
-          console.error('Reset error:', error);
-          console.error('Failed to reset rate limits. Make sure the backend is running.');
+          console.error('Reset error:', error)
+          console.error('Failed to reset rate limits. Make sure the backend is running.')
         }
       }
     } catch (error) {
-      console.error('Unexpected error in resetUsage:', error);
+      console.error('Unexpected error in resetUsage:', error)
     }
-  };
+  }
 
   // Expose resetUsage to window for debugging (prevents TypeScript unused variable error)
   if (typeof window !== 'undefined') {
-    (window as any).resetUsage = resetUsage;
+    ;(window as Record<string, unknown>).resetUsage = resetUsage
   }
 
   // Sync extendedUsageCount with user data when user changes
   useEffect(() => {
     if (isAuthenticated && user) {
-      setExtendedUsageCount(user.daily_extended_usage || 0);
+      setExtendedUsageCount(user.daily_extended_usage || 0)
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user])
 
   // Automatically disable extended mode when limits are reached
   useEffect(() => {
-    if (!isExtendedMode) return; // Only check if extended mode is on
+    if (!isExtendedMode) return // Only check if extended mode is on
 
-    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const regularLimit = getDailyLimit(userTier);
-    const extendedLimit = getExtendedLimit(userTier);
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous'
+    const regularLimit = getDailyLimit(userTier)
+    const extendedLimit = getExtendedLimit(userTier)
 
     // Calculate current usage
-    const currentRegularUsage = isAuthenticated && user
-      ? user.daily_usage_count
-      : usageCount;
-    const currentExtendedUsage = isAuthenticated && user
-      ? user.daily_extended_usage
-      : extendedUsageCount;
+    const currentRegularUsage = isAuthenticated && user ? user.daily_usage_count : usageCount
+    const currentExtendedUsage =
+      isAuthenticated && user ? user.daily_extended_usage : extendedUsageCount
 
-    const regularRemaining = regularLimit - currentRegularUsage;
-    const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit;
-    const hasNoRemainingRegularResponses = regularRemaining <= 0;
+    const regularRemaining = regularLimit - currentRegularUsage
+    const hasReachedExtendedLimit = currentExtendedUsage >= extendedLimit
+    const hasNoRemainingRegularResponses = regularRemaining <= 0
 
     // Auto-disable if limits reached
     if (hasNoRemainingRegularResponses || hasReachedExtendedLimit) {
-      setIsExtendedMode(false);
+      setIsExtendedMode(false)
     }
-  }, [isExtendedMode, isAuthenticated, user, usageCount, extendedUsageCount]);
+  }, [isExtendedMode, isAuthenticated, user, usageCount, extendedUsageCount])
 
   // Tier recommendation function
   const getExtendedRecommendation = (inputText: string): boolean => {
-    if (!inputText.trim()) return false;
+    if (!inputText.trim()) return false
 
-    const text = inputText.toLowerCase();
-    const length = inputText.length;
+    const text = inputText.toLowerCase()
+    const length = inputText.length
 
     const extendedKeywords = [
-      'detailed', 'comprehensive', 'thorough', 'complete', 'full analysis', 'deep dive',
-      'explain in detail', 'comprehensive analysis', 'thorough explanation', 'complete guide',
-      'step by step', 'tutorial', 'guide', 'documentation', 'research', 'analysis',
-      'compare and contrast', 'pros and cons', 'advantages and disadvantages',
-      'code review', 'debug', 'optimize', 'refactor', 'architecture', 'design pattern'
-    ];
+      'detailed',
+      'comprehensive',
+      'thorough',
+      'complete',
+      'full analysis',
+      'deep dive',
+      'explain in detail',
+      'comprehensive analysis',
+      'thorough explanation',
+      'complete guide',
+      'step by step',
+      'tutorial',
+      'guide',
+      'documentation',
+      'research',
+      'analysis',
+      'compare and contrast',
+      'pros and cons',
+      'advantages and disadvantages',
+      'code review',
+      'debug',
+      'optimize',
+      'refactor',
+      'architecture',
+      'design pattern',
+    ]
 
-    const hasExtendedKeywords = extendedKeywords.some(keyword => text.includes(keyword));
+    const hasExtendedKeywords = extendedKeywords.some(keyword => text.includes(keyword))
 
-    return length > 3000 || hasExtendedKeywords;
-  };
+    return length > 3000 || hasExtendedKeywords
+  }
 
   // Get all models in a flat array for compatibility
-  const allModels = Object.values(modelsByProvider).flat();
+  const allModels = Object.values(modelsByProvider).flat()
 
   // Note: The following functions are now provided by the useConversationHistory hook above:
   // - loadHistoryFromLocalStorage
-  // - saveConversationToLocalStorage  
+  // - saveConversationToLocalStorage
   // - loadHistoryFromAPI
   // - deleteConversation
   // These functions have been migrated to the hook and are destructured from conversationHistoryHook
 
   // Load full conversation from localStorage (anonymous users)
-  const loadConversationFromLocalStorage = (id: string): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
+  const loadConversationFromLocalStorage = (
+    id: string
+  ): { input_data: string; models_used: string[]; messages: StoredMessage[] } | null => {
     try {
-      const stored = localStorage.getItem(`compareintel_conversation_${id}`);
+      const stored = localStorage.getItem(`compareintel_conversation_${id}`)
       if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed;
+        const parsed = JSON.parse(stored)
+        return parsed
       } else {
-        console.warn('No conversation found in localStorage for id:', id);
+        console.warn('No conversation found in localStorage for id:', id)
       }
     } catch (e) {
-      console.error('Failed to load conversation from localStorage:', e, { id });
+      console.error('Failed to load conversation from localStorage:', e, { id })
     }
-    return null;
-  };
+    return null
+  }
 
   // Load full conversation from API (authenticated users)
-  const loadConversationFromAPI = async (id: number): Promise<{ input_data: string; models_used: string[]; messages: StoredMessage[] } | null> => {
-    if (!isAuthenticated) return null;
+  const loadConversationFromAPI = async (
+    id: number
+  ): Promise<{ input_data: string; models_used: string[]; messages: StoredMessage[] } | null> => {
+    if (!isAuthenticated) return null
 
     try {
-      const conversationId = createConversationId(id);
+      const conversationId = createConversationId(id)
       // Clear cache for this specific conversation to ensure we get the latest data
-      apiClient.deleteCache(`GET:/conversations/${id}`);
-      const data = await getConversation(conversationId);
+      apiClient.deleteCache(`GET:/conversations/${id}`)
+      const data = await getConversation(conversationId)
       return {
         input_data: data.input_data,
         models_used: data.models_used,
-        messages: data.messages.map((msg) => {
+        messages: data.messages.map(msg => {
           const storedMessage: StoredMessage = {
             role: msg.role,
             content: msg.content,
             created_at: msg.created_at,
-          };
+          }
           if (msg.model_id !== null && msg.model_id !== undefined) {
-            storedMessage.model_id = createModelId(msg.model_id);
+            storedMessage.model_id = createModelId(msg.model_id)
           }
           if (msg.id !== undefined && msg.id !== null) {
-            storedMessage.id = createMessageId(String(msg.id));
+            storedMessage.id = createMessageId(String(msg.id))
           }
-          return storedMessage;
+          return storedMessage
         }),
-      };
+      }
     } catch (error) {
       if (error instanceof ApiError) {
-        console.error('Failed to load conversation:', error.message);
+        console.error('Failed to load conversation:', error.message)
       } else {
-        console.error('Failed to load conversation from API:', error);
+        console.error('Failed to load conversation from API:', error)
       }
     }
-    return null;
-  };
+    return null
+  }
 
   // Load a conversation from history
   const loadConversation = async (summary: ConversationSummary) => {
-    setIsLoadingHistory(true);
+    setIsLoadingHistory(true)
     try {
-      let conversationData: { input_data: string; models_used: string[]; messages: StoredMessage[] } | null = null;
+      let conversationData: {
+        input_data: string
+        models_used: string[]
+        messages: StoredMessage[]
+      } | null = null
 
       if (isAuthenticated && typeof summary.id === 'number') {
-        conversationData = await loadConversationFromAPI(summary.id);
+        conversationData = await loadConversationFromAPI(summary.id)
       } else if (!isAuthenticated && typeof summary.id === 'string') {
-        conversationData = loadConversationFromLocalStorage(summary.id);
+        conversationData = loadConversationFromLocalStorage(summary.id)
       }
 
       if (!conversationData) {
-        console.error('Failed to load conversation data', { summary, isAuthenticated });
-        return;
+        console.error('Failed to load conversation data', { summary, isAuthenticated })
+        return
       }
 
       // Store models_used in a local variable to satisfy TypeScript null checks in callbacks
-      const modelsUsed = conversationData.models_used;
+      const modelsUsed = conversationData.models_used
 
       // Group messages by model_id
-      const messagesByModel: { [key: string]: ConversationMessage[] } = {};
+      const messagesByModel: { [key: string]: ConversationMessage[] } = {}
 
       // Initialize empty arrays for all models
       modelsUsed.forEach((modelId: string) => {
-        messagesByModel[modelId] = [];
-      });
+        messagesByModel[modelId] = []
+      })
 
       // Process messages in strict alternating order: user, then assistant responses for each model
       // Messages are saved grouped by model conversation, so we need to reconstruct the round-based structure
 
       // Sort all messages by timestamp to ensure proper chronological order
-      const sortedMessages = [...conversationData.messages].sort((a, b) =>
-        new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-      );
+      const sortedMessages = [...conversationData.messages].sort(
+        (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+      )
 
       // Group messages into conversation rounds (user message + all assistant responses)
       // User messages should already be deduplicated when saved, so we can process in order
-      const rounds: ConversationRound[] = [];
-      let currentRound: ConversationRound | null = null;
+      const rounds: ConversationRound[] = []
+      let currentRound: ConversationRound | null = null
 
       sortedMessages.forEach((msg: StoredMessage) => {
         if (msg.role === 'user') {
           // If we have a current round, save it
           if (currentRound && currentRound.user) {
-            rounds.push(currentRound);
+            rounds.push(currentRound)
           }
           // Start a new round - user messages should be deduplicated already when saved
-          currentRound = { user: msg, assistants: [] };
+          currentRound = { user: msg, assistants: [] }
         } else if (msg.role === 'assistant' && msg.model_id) {
           // Add assistant message to current round
           if (currentRound) {
             // Check for duplicate assistant messages (same model, content, and timestamp within 1 second)
             // Compare model IDs as strings to ensure proper matching
-            const isDuplicate = currentRound.assistants.some(asm =>
-              asm.model_id && msg.model_id &&
-              String(asm.model_id) === String(msg.model_id) &&
-              asm.content === msg.content &&
-              Math.abs(new Date(asm.created_at).getTime() - new Date(msg.created_at).getTime()) < 1000
-            );
+            const isDuplicate = currentRound.assistants.some(
+              asm =>
+                asm.model_id &&
+                msg.model_id &&
+                String(asm.model_id) === String(msg.model_id) &&
+                asm.content === msg.content &&
+                Math.abs(new Date(asm.created_at).getTime() - new Date(msg.created_at).getTime()) <
+                  1000
+            )
 
             if (!isDuplicate) {
-              currentRound.assistants.push(msg);
+              currentRound.assistants.push(msg)
             }
           } else {
             // Edge case: assistant without preceding user message
             // This shouldn't happen, but handle it gracefully
-            console.warn('Assistant message without preceding user message:', msg);
+            console.warn('Assistant message without preceding user message:', msg)
           }
         }
-      });
+      })
 
       // Don't forget the last round
       if (currentRound) {
-        rounds.push(currentRound);
+        rounds.push(currentRound)
       }
 
       // Now reconstruct messages for each model based on rounds
@@ -1350,109 +1404,118 @@ function AppContent() {
         // Add user message to all models
         modelsUsed.forEach((modelId: string) => {
           messagesByModel[modelId].push({
-            id: round.user.id ? (typeof round.user.id === 'string' ? createMessageId(round.user.id) : createMessageId(String(round.user.id))) : createMessageId(`${Date.now()}-user-${Math.random()}`),
+            id: round.user.id
+              ? typeof round.user.id === 'string'
+                ? createMessageId(round.user.id)
+                : createMessageId(String(round.user.id))
+              : createMessageId(`${Date.now()}-user-${Math.random()}`),
             type: 'user' as const,
             content: round.user.content,
             timestamp: round.user.created_at || new Date().toISOString(),
-          });
+          })
 
           // Add assistant message for this specific model if it exists in this round
           // Compare model IDs as strings to ensure proper matching
           const modelAssistant = round.assistants.find(asm => {
-            if (!asm.model_id) return false;
+            if (!asm.model_id) return false
             // Convert both to strings for comparison to handle type differences
-            return String(asm.model_id) === String(modelId);
-          });
+            return String(asm.model_id) === String(modelId)
+          })
           if (modelAssistant) {
             messagesByModel[modelId].push({
-              id: modelAssistant.id ? (typeof modelAssistant.id === 'string' ? createMessageId(modelAssistant.id) : createMessageId(String(modelAssistant.id))) : createMessageId(`${Date.now()}-${Math.random()}`),
+              id: modelAssistant.id
+                ? typeof modelAssistant.id === 'string'
+                  ? createMessageId(modelAssistant.id)
+                  : createMessageId(String(modelAssistant.id))
+                : createMessageId(`${Date.now()}-${Math.random()}`),
               type: 'assistant' as const,
               content: modelAssistant.content,
               timestamp: modelAssistant.created_at || new Date().toISOString(),
-            });
+            })
           }
-        });
-      });
+        })
+      })
 
       // Convert to ModelConversation format
       const loadedConversations: ModelConversation[] = modelsUsed.map((modelId: string) => ({
         modelId: createModelId(modelId),
         messages: messagesByModel[modelId] || [],
-      }));
+      }))
 
       // Set state
-      setConversations(loadedConversations);
+      setConversations(loadedConversations)
       // Set selected models - only the models from this conversation, clear all others
-      setSelectedModels([...modelsUsed]);
+      setSelectedModels([...modelsUsed])
       // Set original selected models to match the loaded conversation
       // This ensures that only models from THIS conversation show the red border when deselected
-      setOriginalSelectedModels([...modelsUsed]);
+      setOriginalSelectedModels([...modelsUsed])
 
       // Use the first user message as the input reference, but clear textarea for new follow-up
       // The conversation will be referenced by this first query in history
-      setInput(''); // Clear textarea so user can type a new follow-up
-      setIsFollowUpMode(loadedConversations.some(conv => conv.messages.length > 0));
-      setClosedCards(new Set()); // Ensure all result cards are open/visible
-      setResponse(null); // Clear any previous response state
-      setShowHistoryDropdown(false);
-      setIsModelsHidden(true); // Collapse the models section when selecting from history
-      collapseAllDropdowns(); // Collapse all provider dropdowns when selecting from history
+      setInput('') // Clear textarea so user can type a new follow-up
+      setIsFollowUpMode(loadedConversations.some(conv => conv.messages.length > 0))
+      setClosedCards(new Set()) // Ensure all result cards are open/visible
+      setResponse(null) // Clear any previous response state
+      setShowHistoryDropdown(false)
+      setIsModelsHidden(true) // Collapse the models section when selecting from history
+      collapseAllDropdowns() // Collapse all provider dropdowns when selecting from history
 
       // Scroll to results section and reset all conversation cards to top
       // Use requestAnimationFrame to ensure DOM is rendered before scrolling
       requestAnimationFrame(() => {
         setTimeout(() => {
-          const resultsSection = document.querySelector('.results-section');
+          const resultsSection = document.querySelector('.results-section')
           if (resultsSection) {
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
           }
 
           // Scroll all conversation content divs to the top
           modelsUsed.forEach((modelId: string) => {
-            const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
-            const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+            const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-')
+            const conversationContent = document.querySelector(
+              `#conversation-content-${safeId}`
+            ) as HTMLElement
             if (conversationContent) {
-              conversationContent.scrollTop = 0;
+              conversationContent.scrollTop = 0
             }
-          });
-        }, 200); // Delay to ensure DOM is fully rendered
-      });
+          })
+        }, 200) // Delay to ensure DOM is fully rendered
+      })
 
       // Track this conversation as currently visible so it shows as active in history dropdown
-      setCurrentVisibleComparisonId(String(summary.id));
-
+      setCurrentVisibleComparisonId(String(summary.id))
     } catch (e) {
-      console.error('Failed to load conversation:', e);
+      console.error('Failed to load conversation:', e)
     } finally {
-      setIsLoadingHistory(false);
+      setIsLoadingHistory(false)
     }
-  };
+  }
 
   // Load history on mount
   useEffect(() => {
     // Clear currently visible comparison ID on mount/login/logout (page refresh or auth change)
     // This ensures saved comparisons appear in history after refresh/login
-    setCurrentVisibleComparisonId(null);
+    setCurrentVisibleComparisonId(null)
 
     if (isAuthenticated) {
-      loadHistoryFromAPI();
+      loadHistoryFromAPI()
     } else {
-      const history = loadHistoryFromLocalStorage();
-      setConversationHistory(history);
+      const history = loadHistoryFromLocalStorage()
+      setConversationHistory(history)
     }
-  }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
+  }, [isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage])
 
   // Refresh history when dropdown is opened for authenticated users
   useEffect(() => {
     if (showHistoryDropdown) {
       if (isAuthenticated) {
-        loadHistoryFromAPI();
+        loadHistoryFromAPI()
       } else {
-        const history = loadHistoryFromLocalStorage();
-        setConversationHistory(history);
+        const history = loadHistoryFromLocalStorage()
+        setConversationHistory(history)
       }
     }
-  }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage]);
+  }, [showHistoryDropdown, isAuthenticated, loadHistoryFromAPI, loadHistoryFromLocalStorage])
 
   // Track currently visible comparison ID for authenticated users after history loads
   // This ensures the visible comparison is highlighted in the history dropdown
@@ -1461,14 +1524,14 @@ function AppContent() {
   useEffect(() => {
     // Skip auto-matching if we just reset the screen (conversations empty and no current ID)
     if (conversations.length === 0 && !currentVisibleComparisonId) {
-      return;
+      return
     }
 
     if (isAuthenticated && conversationHistory.length > 0 && conversations.length > 0) {
       const firstUserMessage = conversations
         .flatMap(conv => conv.messages)
         .filter(msg => msg.type === 'user')
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0]
 
       if (firstUserMessage && firstUserMessage.content) {
         // First, check if the currentVisibleComparisonId is still valid and matches the loaded conversations
@@ -1476,176 +1539,200 @@ function AppContent() {
         if (currentVisibleComparisonId) {
           const currentConversation = conversationHistory.find(
             summary => String(summary.id) === currentVisibleComparisonId
-          );
+          )
 
           if (currentConversation) {
-            const currentModelsMatch = JSON.stringify([...currentConversation.models_used].sort()) === JSON.stringify([...selectedModels].sort());
-            const currentInputMatches = currentConversation.input_data === firstUserMessage.content;
+            const currentModelsMatch =
+              JSON.stringify([...currentConversation.models_used].sort()) ===
+              JSON.stringify([...selectedModels].sort())
+            const currentInputMatches = currentConversation.input_data === firstUserMessage.content
 
             // If the current ID still matches, keep it (don't search for a different match)
             if (currentModelsMatch && currentInputMatches) {
-              return;
+              return
             }
           }
         }
 
         // Only if currentVisibleComparisonId doesn't match or doesn't exist, try to find a new match
         const matchingConversation = conversationHistory.find(summary => {
-          const modelsMatch = JSON.stringify([...summary.models_used].sort()) === JSON.stringify([...selectedModels].sort());
-          const inputMatches = summary.input_data === firstUserMessage.content;
-          return modelsMatch && inputMatches;
-        });
+          const modelsMatch =
+            JSON.stringify([...summary.models_used].sort()) ===
+            JSON.stringify([...selectedModels].sort())
+          const inputMatches = summary.input_data === firstUserMessage.content
+          return modelsMatch && inputMatches
+        })
 
         if (matchingConversation) {
-          const matchingId = String(matchingConversation.id);
+          const matchingId = String(matchingConversation.id)
           // Only update if it's different or not set - this ensures we always track the current visible comparison
           if (currentVisibleComparisonId !== matchingId) {
-            setCurrentVisibleComparisonId(matchingId);
+            setCurrentVisibleComparisonId(matchingId)
           }
         }
       }
     }
-  }, [isAuthenticated, conversationHistory, conversations, selectedModels, currentVisibleComparisonId]);
+  }, [
+    isAuthenticated,
+    conversationHistory,
+    conversations,
+    selectedModels,
+    currentVisibleComparisonId,
+  ])
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (showHistoryDropdown && !target.closest('.history-toggle-button') && !target.closest('.history-inline-list')) {
-        setShowHistoryDropdown(false);
+      const target = event.target as HTMLElement
+      if (
+        showHistoryDropdown &&
+        !target.closest('.history-toggle-button') &&
+        !target.closest('.history-inline-list')
+      ) {
+        setShowHistoryDropdown(false)
       }
-    };
+    }
 
     if (showHistoryDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside)
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
     }
-  }, [showHistoryDropdown]);
+  }, [showHistoryDropdown])
 
   // Helper function to create a conversation message
-  const createMessage = (type: 'user' | 'assistant', content: string, customTimestamp?: string): ConversationMessage => ({
+  const createMessage = (
+    type: 'user' | 'assistant',
+    content: string,
+    customTimestamp?: string
+  ): ConversationMessage => ({
     id: createMessageId(`${Date.now()}-${Math.random().toString(36).substr(2, 9)}`),
     type,
     content,
-    timestamp: customTimestamp || new Date().toISOString()
-  });
+    timestamp: customTimestamp || new Date().toISOString(),
+  })
 
   // Helper function to switch tabs for a specific conversation
   const switchResultTab = (modelId: string, tab: ResultTab) => {
     setActiveResultTabs((prev: ActiveResultTabs) => ({
       ...prev,
-      [modelId]: tab
-    }));
-  };
+      [modelId]: tab,
+    }))
+  }
 
   // Scroll to loading section when loading starts
   useEffect(() => {
     if (isLoading) {
       // Small delay to ensure the loading section is rendered
       setTimeout(() => {
-        const loadingSection = document.querySelector('.loading-section');
+        const loadingSection = document.querySelector('.loading-section')
         if (loadingSection) {
           loadingSection.scrollIntoView({
             behavior: 'smooth',
-            block: 'center'
-          });
+            block: 'center',
+          })
         }
-      }, 100);
+      }, 100)
     }
-  }, [isLoading]);
+  }, [isLoading])
 
   // Clear verification-related errors when user becomes verified
   useEffect(() => {
     if (user?.is_verified && error?.includes('verify your email')) {
-      setError(null);
+      setError(null)
     }
-  }, [user?.is_verified, error]);
+  }, [user?.is_verified, error])
 
   // Scroll individual model result cards to top when they finish formatting (initial comparison only)
   useEffect(() => {
-    if (isFollowUpMode) return; // Only for initial comparison, not follow-ups
+    if (isFollowUpMode) return // Only for initial comparison, not follow-ups
 
     // Check each model's tab state
     Object.entries(activeResultTabs).forEach(([modelId, tab]) => {
       // If this model is on FORMATTED tab and we haven't scrolled it yet
       // Also verify that a conversation exists for this model
-      if (tab === RESULT_TAB.FORMATTED &&
+      if (
+        tab === RESULT_TAB.FORMATTED &&
         !scrolledToTopRef.current.has(modelId) &&
-        conversations.some(conv => conv.modelId === modelId)) {
+        conversations.some(conv => conv.modelId === modelId)
+      ) {
         // Mark as scrolled to avoid duplicate scrolling
-        scrolledToTopRef.current.add(modelId);
+        scrolledToTopRef.current.add(modelId)
 
         // Wait for LatexRenderer to finish rendering, then scroll this card's conversation content to top
         setTimeout(() => {
-          const safeId = getSafeId(modelId);
-          const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+          const safeId = getSafeId(modelId)
+          const conversationContent = document.querySelector(
+            `#conversation-content-${safeId}`
+          ) as HTMLElement
           if (conversationContent) {
-            conversationContent.scrollTop = 0;
+            conversationContent.scrollTop = 0
           }
-        }, 200); // Delay to allow LatexRenderer to finish rendering
+        }, 200) // Delay to allow LatexRenderer to finish rendering
       }
-    });
-  }, [activeResultTabs, isFollowUpMode, conversations]);
+    })
+  }, [activeResultTabs, isFollowUpMode, conversations])
 
   // Scroll to results section when results are loaded (only once per comparison)
   useEffect(() => {
     if (response && !isFollowUpMode && !hasScrolledToResultsRef.current) {
       // Mark that we've scrolled for this comparison
-      hasScrolledToResultsRef.current = true;
+      hasScrolledToResultsRef.current = true
 
       // Longer delay to ensure the results section is fully rendered
       setTimeout(() => {
-        const resultsSection = document.querySelector('.results-section');
+        const resultsSection = document.querySelector('.results-section')
         if (resultsSection) {
           // Scroll to the results section header specifically
           resultsSection.scrollIntoView({
             behavior: 'smooth',
-            block: 'start'
-          });
+            block: 'start',
+          })
         }
-      }, 300);
+      }, 300)
     }
-  }, [response, isFollowUpMode]);
+  }, [response, isFollowUpMode])
 
   // Scroll all conversation cards to top after formatting is applied (initial comparison only)
   useEffect(() => {
     // Only for initial comparison, not follow-ups
-    if (isFollowUpMode || !shouldScrollToTopAfterFormattingRef.current) return;
+    if (isFollowUpMode || !shouldScrollToTopAfterFormattingRef.current) return
 
     // Check if all selected models are formatted
     const allModelsFormatted = selectedModels.every(modelId => {
-      const modelIdFormatted = createModelId(modelId);
-      const tab = activeResultTabs[modelIdFormatted];
-      return tab === RESULT_TAB.FORMATTED;
-    });
+      const modelIdFormatted = createModelId(modelId)
+      const tab = activeResultTabs[modelIdFormatted]
+      return tab === RESULT_TAB.FORMATTED
+    })
 
     // Also check that conversations exist for all models
     const allConversationsExist = selectedModels.every(modelId => {
-      const modelIdFormatted = createModelId(modelId);
-      return conversations.some(conv => conv.modelId === modelIdFormatted);
-    });
+      const modelIdFormatted = createModelId(modelId)
+      return conversations.some(conv => conv.modelId === modelIdFormatted)
+    })
 
     if (allModelsFormatted && allConversationsExist) {
       // Reset the flag to prevent duplicate scrolling
-      shouldScrollToTopAfterFormattingRef.current = false;
+      shouldScrollToTopAfterFormattingRef.current = false
 
       // Wait for LatexRenderer to finish rendering, then scroll all conversation cards to top
       setTimeout(() => {
         selectedModels.forEach(modelId => {
-          const safeId = createModelId(modelId).replace(/[^a-zA-Z0-9_-]/g, '-');
-          const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+          const safeId = createModelId(modelId).replace(/[^a-zA-Z0-9_-]/g, '-')
+          const conversationContent = document.querySelector(
+            `#conversation-content-${safeId}`
+          ) as HTMLElement
           if (conversationContent) {
             conversationContent.scrollTo({
               top: 0,
-              behavior: 'smooth'
-            });
+              behavior: 'smooth',
+            })
           }
-        });
-      }, 300); // Delay to allow LatexRenderer to finish rendering
+        })
+      }, 300) // Delay to allow LatexRenderer to finish rendering
     }
-  }, [activeResultTabs, isFollowUpMode, conversations, selectedModels]);
+  }, [activeResultTabs, isFollowUpMode, conversations, selectedModels])
 
   // Note: Scroll handling moved to handleFollowUp function for better control
 
@@ -1654,34 +1741,34 @@ function AppContent() {
     if (conversations.length > 0 && isFollowUpMode && !followUpJustActivatedRef.current) {
       // Scroll to results section after follow-up is submitted
       setTimeout(() => {
-        const resultsSection = document.querySelector('.results-section');
+        const resultsSection = document.querySelector('.results-section')
         if (resultsSection) {
           resultsSection.scrollIntoView({
             behavior: 'smooth',
-            block: 'start'
-          });
+            block: 'start',
+          })
         }
-      }, 400);
+      }, 400)
     }
-  }, [conversations, isFollowUpMode]);
+  }, [conversations, isFollowUpMode])
 
   // Immediately hide card when all models are deselected
   useEffect(() => {
     if (selectedModels.length === 0) {
-      setShowDoneSelectingCard(false);
+      setShowDoneSelectingCard(false)
     }
-  }, [selectedModels.length]);
+  }, [selectedModels.length])
 
   // Trigger card visibility check when models are selected (especially for mobile)
   useEffect(() => {
     if (selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode) {
       // Simply show the card when models are selected and section is visible and not in follow-up mode
-      setShowDoneSelectingCard(true);
+      setShowDoneSelectingCard(true)
     } else if (isFollowUpMode || selectedModels.length === 0) {
       // Hide the card when entering follow-up mode or when no models are selected
-      setShowDoneSelectingCard(false);
+      setShowDoneSelectingCard(false)
     }
-  }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
+  }, [selectedModels.length, isModelsHidden, isFollowUpMode])
 
   // Refresh usage count when models are selected to ensure renderUsagePreview shows accurate remaining count
   useEffect(() => {
@@ -1691,470 +1778,510 @@ function AppContent() {
       const timeoutId = setTimeout(() => {
         if (!isAuthenticated && browserFingerprint) {
           // For anonymous users, refresh rate limit status (which updates usageCount)
-          fetchRateLimitStatus();
+          fetchRateLimitStatus()
         } else if (isAuthenticated) {
           // For authenticated users, refresh user data (which updates user.daily_usage_count)
-          refreshUser();
+          refreshUser()
         }
-      }, 300); // Wait 300ms after last model selection change
+      }, 300) // Wait 300ms after last model selection change
 
-      return () => clearTimeout(timeoutId);
+      return () => clearTimeout(timeoutId)
     }
-  }, [selectedModels.length, isLoading, browserFingerprint, isAuthenticated, fetchRateLimitStatus, refreshUser]);
+  }, [
+    selectedModels.length,
+    isLoading,
+    browserFingerprint,
+    isAuthenticated,
+    fetchRateLimitStatus,
+    refreshUser,
+  ])
 
   // Detect page-level scrolling to prevent card auto-scroll from interfering
   useEffect(() => {
-    let lastPageScrollTop = window.scrollY || document.documentElement.scrollTop;
-    let scrollTimeout: number | null = null;
+    let lastPageScrollTop = window.scrollY || document.documentElement.scrollTop
+    let scrollTimeout: number | null = null
 
     const handlePageScroll = () => {
-      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+      const currentScrollTop = window.scrollY || document.documentElement.scrollTop
 
       // Only mark as page scrolling if there's actual scroll movement
       // This prevents false positives from programmatic scrolls
       if (Math.abs(currentScrollTop - lastPageScrollTop) > 1) {
-        isPageScrollingRef.current = true;
+        isPageScrollingRef.current = true
 
         // Clear any existing timeout
         if (scrollTimeout !== null) {
-          clearTimeout(scrollTimeout);
+          clearTimeout(scrollTimeout)
         }
 
         // Reset flag after scrolling stops (150ms of no scroll activity)
         scrollTimeout = window.setTimeout(() => {
-          isPageScrollingRef.current = false;
-          scrollTimeout = null;
-        }, 150);
+          isPageScrollingRef.current = false
+          scrollTimeout = null
+        }, 150)
       }
 
-      lastPageScrollTop = currentScrollTop;
-    };
+      lastPageScrollTop = currentScrollTop
+    }
 
     // Use passive listener for better performance
-    window.addEventListener('scroll', handlePageScroll, { passive: true });
-    window.addEventListener('wheel', handlePageScroll, { passive: true });
-    window.addEventListener('touchmove', handlePageScroll, { passive: true });
+    window.addEventListener('scroll', handlePageScroll, { passive: true })
+    window.addEventListener('wheel', handlePageScroll, { passive: true })
+    window.addEventListener('touchmove', handlePageScroll, { passive: true })
 
     return () => {
-      window.removeEventListener('scroll', handlePageScroll);
-      window.removeEventListener('wheel', handlePageScroll);
-      window.removeEventListener('touchmove', handlePageScroll);
+      window.removeEventListener('scroll', handlePageScroll)
+      window.removeEventListener('wheel', handlePageScroll)
+      window.removeEventListener('touchmove', handlePageScroll)
       if (scrollTimeout !== null) {
-        clearTimeout(scrollTimeout);
+        clearTimeout(scrollTimeout)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Cleanup scroll listeners on unmount
   useEffect(() => {
     // Capture ref values at mount time
-    const scrollListeners = scrollListenersRef.current;
-    const userInteracting = userInteractingRef.current;
-    const lastScrollTop = lastScrollTopRef.current;
+    const scrollListeners = scrollListenersRef.current
+    const userInteracting = userInteractingRef.current
+    const lastScrollTop = lastScrollTopRef.current
 
     return () => {
       // Clean up all scroll listeners when component unmounts
       scrollListeners.forEach((_listener, modelId) => {
-        const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
-        const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
-        const listenerSet = scrollListeners.get(modelId);
+        const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-')
+        const conversationContent = document.querySelector(
+          `#conversation-content-${safeId}`
+        ) as HTMLElement
+        const listenerSet = scrollListeners.get(modelId)
 
         if (conversationContent && listenerSet) {
-          conversationContent.removeEventListener('scroll', listenerSet.scroll);
-          conversationContent.removeEventListener('wheel', listenerSet.wheel);
-          conversationContent.removeEventListener('touchstart', listenerSet.touchstart);
-          conversationContent.removeEventListener('mousedown', listenerSet.mousedown);
+          conversationContent.removeEventListener('scroll', listenerSet.scroll)
+          conversationContent.removeEventListener('wheel', listenerSet.wheel)
+          conversationContent.removeEventListener('touchstart', listenerSet.touchstart)
+          conversationContent.removeEventListener('mousedown', listenerSet.mousedown)
         }
-      });
-      scrollListeners.clear();
-      userInteracting.clear();
-      lastScrollTop.clear();
-    };
-  }, []);
+      })
+      scrollListeners.clear()
+      userInteracting.clear()
+      lastScrollTop.clear()
+    }
+  }, [])
 
   // Cleanup usage banner timeout on unmount
   useEffect(() => {
     return () => {
       if (usageBannerTimeoutRef.current !== null) {
-        window.clearTimeout(usageBannerTimeoutRef.current);
-        usageBannerTimeoutRef.current = null;
+        window.clearTimeout(usageBannerTimeoutRef.current)
+        usageBannerTimeoutRef.current = null
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Check if limit is reached on mount and show banner permanently for anonymous users
   useEffect(() => {
     if (!authLoading && !isAuthenticated && usageCount >= ANONYMOUS_DAILY_LIMIT) {
-      setShowUsageBanner(true);
+      setShowUsageBanner(true)
     }
-  }, [authLoading, isAuthenticated, usageCount]);
+  }, [authLoading, isAuthenticated, usageCount])
 
   // Align "You" sections across all model cards after each round completes
   useEffect(() => {
-    if (conversations.length === 0) return;
+    if (conversations.length === 0) return
 
     // Get the current round number
-    const firstConversation = conversations[0];
-    const currentRound = firstConversation?.messages.filter(m => m.type === 'user').length || 0;
+    const firstConversation = conversations[0]
+    const currentRound = firstConversation?.messages.filter(m => m.type === 'user').length || 0
 
     // Check if this round has already been aligned
-    if (currentRound <= lastAlignedRoundRef.current) return;
+    if (currentRound <= lastAlignedRoundRef.current) return
 
     // Check if all models have completed this round
     const allModelsComplete = conversations.every(conv => {
-      const userMessages = conv.messages.filter(m => m.type === 'user').length;
-      const aiMessages = conv.messages.filter(m => m.type === 'assistant').length;
-      return userMessages === currentRound && aiMessages === currentRound;
-    });
+      const userMessages = conv.messages.filter(m => m.type === 'user').length
+      const aiMessages = conv.messages.filter(m => m.type === 'assistant').length
+      return userMessages === currentRound && aiMessages === currentRound
+    })
 
-    if (!allModelsComplete) return;
+    if (!allModelsComplete) return
 
     // Wait for DOM to settle, then align scroll positions
     setTimeout(() => {
-      const cards = document.querySelectorAll('.result-card.conversation-card');
-      if (cards.length === 0) return;
+      const cards = document.querySelectorAll('.result-card.conversation-card')
+      if (cards.length === 0) return
 
       // Find the maximum offsetTop for the latest "You" section across all cards
-      let maxOffsetTop = 0;
-      const scrollData: { element: HTMLElement; targetOffsetTop: number }[] = [];
+      let maxOffsetTop = 0
+      const scrollData: { element: HTMLElement; targetOffsetTop: number }[] = []
 
-      cards.forEach((card) => {
-        const conversationContent = card.querySelector('.conversation-content') as HTMLElement;
-        if (!conversationContent) return;
+      cards.forEach(card => {
+        const conversationContent = card.querySelector('.conversation-content') as HTMLElement
+        if (!conversationContent) return
 
-        const userMessages = conversationContent.querySelectorAll('.conversation-message.user');
-        if (userMessages.length === 0) return;
+        const userMessages = conversationContent.querySelectorAll('.conversation-message.user')
+        if (userMessages.length === 0) return
 
-        const lastUserMessage = userMessages[userMessages.length - 1] as HTMLElement;
-        const offsetTop = lastUserMessage.offsetTop;
+        const lastUserMessage = userMessages[userMessages.length - 1] as HTMLElement
+        const offsetTop = lastUserMessage.offsetTop
 
-        maxOffsetTop = Math.max(maxOffsetTop, offsetTop);
-        scrollData.push({ element: conversationContent, targetOffsetTop: offsetTop });
-      });
+        maxOffsetTop = Math.max(maxOffsetTop, offsetTop)
+        scrollData.push({ element: conversationContent, targetOffsetTop: offsetTop })
+      })
 
       // Scroll all cards to align the "You" section at the same position
       scrollData.forEach(({ element }) => {
         element.scrollTo({
           top: maxOffsetTop,
-          behavior: 'smooth'
-        });
-      });
+          behavior: 'smooth',
+        })
+      })
 
       // Mark this round as aligned
-      lastAlignedRoundRef.current = currentRound;
-    }, 500); // Wait for content to settle
-  }, [conversations]);
+      lastAlignedRoundRef.current = currentRound
+    }, 500) // Wait for content to settle
+  }, [conversations])
 
   // Track mouse position over models section with throttling for better performance
   useEffect(() => {
-    let rafId: number | null = null;
-    let scrollRafId: number | null = null;
-    let lastShowState = false;
-    let lastMouseY = 0;
-    let lastMouseX = 0;
-    let keepVisibleTimeout: number | null = null;
-    let isKeepingVisible = false;
-    let previousIsOver = false;
+    let rafId: number | null = null
+    let scrollRafId: number | null = null
+    let lastShowState = false
+    let lastMouseY = 0
+    let lastMouseX = 0
+    let keepVisibleTimeout: number | null = null
+    let isKeepingVisible = false
+    let previousIsOver = false
 
     const checkCardVisibility = (mouseY: number, mouseX: number, fromScroll: boolean = false) => {
-      if (!modelsSectionRef.current) return;
+      if (!modelsSectionRef.current) return
 
-      const rect = modelsSectionRef.current.getBoundingClientRect();
+      const rect = modelsSectionRef.current.getBoundingClientRect()
 
       // Check if mouse is over the section
-      const isOver = mouseY >= rect.top && mouseY <= rect.bottom &&
-        mouseX >= rect.left && mouseX <= rect.right;
+      const isOver =
+        mouseY >= rect.top && mouseY <= rect.bottom && mouseX >= rect.left && mouseX <= rect.right
 
       // Detect transition from "over section" to "not over section"
-      const justLeftSection = previousIsOver && !isOver;
+      const justLeftSection = previousIsOver && !isOver
       if (!fromScroll) {
-        previousIsOver = isOver;
+        previousIsOver = isOver
       }
 
       // Check if card is positioned below the models section
       // Card is at 80% of viewport height (top: 80%), so card center is at 80% of viewport
-      const cardCenterY = window.innerHeight * 0.8;
-      const cardHeight = 150; // Approximate height of the card
-      const cardTop = cardCenterY - cardHeight / 2;
-      const isCardBelowSection = cardTop > rect.bottom;
+      const cardCenterY = window.innerHeight * 0.8
+      const cardHeight = 150 // Approximate height of the card
+      const cardTop = cardCenterY - cardHeight / 2
+      const isCardBelowSection = cardTop > rect.bottom
 
       // Check if page is scrolled near the bottom
       // Consider "near bottom" if we're within 500px of the bottom or if scroll position
       // is close to the maximum scroll (accounting for viewport height)
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const viewportHeight = window.innerHeight;
-      const distanceFromBottom = scrollHeight - (scrollTop + viewportHeight);
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollHeight = document.documentElement.scrollHeight
+      const viewportHeight = window.innerHeight
+      const distanceFromBottom = scrollHeight - (scrollTop + viewportHeight)
       // More lenient: within 500px of bottom, at least 80% scrolled, or in bottom 30% of page
-      const scrollPercentage = (scrollTop + viewportHeight) / scrollHeight;
-      const isNearBottom = distanceFromBottom < 500 || scrollPercentage >= 0.8 || (scrollTop + viewportHeight) >= scrollHeight - 200 || scrollPercentage >= 0.7;
+      const scrollPercentage = (scrollTop + viewportHeight) / scrollHeight
+      const isNearBottom =
+        distanceFromBottom < 500 ||
+        scrollPercentage >= 0.8 ||
+        scrollTop + viewportHeight >= scrollHeight - 200 ||
+        scrollPercentage >= 0.7
 
       // Check if models section is visible (any part of it is in the viewport)
-      const isSectionVisible = rect.top < viewportHeight && rect.bottom > 0;
+      const isSectionVisible = rect.top < viewportHeight && rect.bottom > 0
       // When scrolled near bottom, if section is visible, consider it "lowest visible"
       // This is a simple check: if section is visible when near bottom, show the card
-      const isSectionLowestVisible = isSectionVisible;
+      const isSectionLowestVisible = isSectionVisible
 
       // Base conditions for showing card
-      const baseConditionsMet = selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode;
+      const baseConditionsMet = selectedModels.length > 0 && !isModelsHidden && !isFollowUpMode
 
       // Check if any result cards have their top visible in the viewport
       // Don't show card if the top of any result card appears (card should not appear over results)
-      const resultCards = document.querySelectorAll('.result-card.conversation-card');
-      const resultCardsTopVisible = resultCards.length > 0 && Array.from(resultCards).some((card) => {
-        const cardRect = card.getBoundingClientRect();
-        // Check if the top of the card is visible (top is in viewport)
-        return cardRect.top >= 0 && cardRect.top < viewportHeight;
-      });
+      const resultCards = document.querySelectorAll('.result-card.conversation-card')
+      const resultCardsTopVisible =
+        resultCards.length > 0 &&
+        Array.from(resultCards).some(card => {
+          const cardRect = card.getBoundingClientRect()
+          // Check if the top of the card is visible (top is in viewport)
+          return cardRect.top >= 0 && cardRect.top < viewportHeight
+        })
 
       // Check if cursor is in the left or right margins (between screen edge and section borders)
       // Hide card when cursor is in these margin areas
-      const viewportWidth = window.innerWidth;
-      const isInLeftMargin = mouseX >= 0 && mouseX < rect.left;
-      const isInRightMargin = mouseX > rect.right && mouseX <= viewportWidth;
-      const isInSideMargins = isInLeftMargin || isInRightMargin;
+      const viewportWidth = window.innerWidth
+      const isInLeftMargin = mouseX >= 0 && mouseX < rect.left
+      const isInRightMargin = mouseX > rect.right && mouseX <= viewportWidth
+      const isInSideMargins = isInLeftMargin || isInRightMargin
 
       // Priority 1: Auto-show when scrolled near bottom and section is visible/lowest visible
       // This takes priority over mouse hover to ensure card is always visible in this case
       // BUT don't show if result cards top is visible OR cursor is in side margins
-      const autoShowCondition = baseConditionsMet && isNearBottom && isSectionVisible && isSectionLowestVisible && !resultCardsTopVisible && !isInSideMargins;
-      
+      const autoShowCondition =
+        baseConditionsMet &&
+        isNearBottom &&
+        isSectionVisible &&
+        isSectionLowestVisible &&
+        !resultCardsTopVisible &&
+        !isInSideMargins
+
       // Priority 2: Normal hover case - mouse is over section
       // Don't show if result cards top is visible OR cursor is in side margins
-      const hoverCondition = isOver && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins;
-      
+      const hoverCondition =
+        isOver && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins
+
       // Priority 3: Keep visible when mouse leaves section and card is below
       // Don't show if result cards top is visible OR cursor is in side margins
-      const keepVisibleCondition = !isOver && isCardBelowSection && baseConditionsMet && 
-        (justLeftSection || isKeepingVisible) && !resultCardsTopVisible && !isInSideMargins;
+      const keepVisibleCondition =
+        !isOver &&
+        isCardBelowSection &&
+        baseConditionsMet &&
+        (justLeftSection || isKeepingVisible) &&
+        !resultCardsTopVisible &&
+        !isInSideMargins
 
-      let shouldShow = false;
-      
+      let shouldShow = false
+
       if (autoShowCondition) {
         // Auto-show case: page is scrolled near bottom, section is visible/lowest visible
         // Show card regardless of mouse position or whether card is "below" section
-        shouldShow = true;
-        isKeepingVisible = true;
-        
+        shouldShow = true
+        isKeepingVisible = true
+
         // Clear any existing timeout
         if (keepVisibleTimeout) {
-          window.clearTimeout(keepVisibleTimeout);
-          keepVisibleTimeout = null;
+          window.clearTimeout(keepVisibleTimeout)
+          keepVisibleTimeout = null
         }
       } else if (hoverCondition) {
         // Normal case: mouse is over section
-        shouldShow = true;
+        shouldShow = true
         // If we were keeping it visible, stop that since we're back in normal mode
         if (isKeepingVisible) {
-          isKeepingVisible = false;
+          isKeepingVisible = false
         }
         // Clear any timeout since we're back in normal mode
         if (keepVisibleTimeout) {
-          window.clearTimeout(keepVisibleTimeout);
-          keepVisibleTimeout = null;
+          window.clearTimeout(keepVisibleTimeout)
+          keepVisibleTimeout = null
         }
       } else if (keepVisibleCondition) {
         // Edge case: mouse is outside section and card is below section
         // Show card if we're keeping it visible (from mouse leaving)
-        shouldShow = true;
-        isKeepingVisible = true;
-        
+        shouldShow = true
+        isKeepingVisible = true
+
         // Clear any existing timeout - we'll keep it visible as long as card is below section
         if (keepVisibleTimeout) {
-          window.clearTimeout(keepVisibleTimeout);
-          keepVisibleTimeout = null;
+          window.clearTimeout(keepVisibleTimeout)
+          keepVisibleTimeout = null
         }
       } else {
         // Not showing - check if we should stop keeping visible
         if (isKeepingVisible) {
           // Only stop if we're not in auto-show condition and card is no longer below section
           // Also stop if result cards top is now visible OR cursor is in side margins
-          if (resultCardsTopVisible || isInSideMargins || (!autoShowCondition && (!isCardBelowSection || !baseConditionsMet))) {
-            isKeepingVisible = false;
+          if (
+            resultCardsTopVisible ||
+            isInSideMargins ||
+            (!autoShowCondition && (!isCardBelowSection || !baseConditionsMet))
+          ) {
+            isKeepingVisible = false
             if (keepVisibleTimeout) {
-              window.clearTimeout(keepVisibleTimeout);
-              keepVisibleTimeout = null;
+              window.clearTimeout(keepVisibleTimeout)
+              keepVisibleTimeout = null
             }
-            shouldShow = false;
+            shouldShow = false
           } else if (autoShowCondition) {
             // Still in auto-show condition, keep showing
-            shouldShow = true;
+            shouldShow = true
           } else {
             // Transition state - keep showing for now if card is still below
-            shouldShow = isCardBelowSection && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins;
+            shouldShow =
+              isCardBelowSection && baseConditionsMet && !resultCardsTopVisible && !isInSideMargins
           }
         } else {
-          shouldShow = false;
+          shouldShow = false
         }
       }
 
       // Only update state if it changed to avoid unnecessary re-renders
       if (shouldShow !== lastShowState) {
-        lastShowState = shouldShow;
-        setShowDoneSelectingCard(shouldShow);
+        lastShowState = shouldShow
+        setShowDoneSelectingCard(shouldShow)
       }
-    };
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
-      lastMouseY = e.clientY;
-      lastMouseX = e.clientX;
+      lastMouseY = e.clientY
+      lastMouseX = e.clientX
 
       // Use requestAnimationFrame for smoother updates
-      if (rafId) return;
+      if (rafId) return
 
       rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        checkCardVisibility(lastMouseY, lastMouseX);
-      });
-    };
+        rafId = null
+        checkCardVisibility(lastMouseY, lastMouseX)
+      })
+    }
 
     const handleTouchMove = (e: TouchEvent) => {
       // Handle touch events for mobile devices
       if (e.touches.length > 0) {
-        const touch = e.touches[0];
-        lastMouseY = touch.clientY;
-        lastMouseX = touch.clientX;
+        const touch = e.touches[0]
+        lastMouseY = touch.clientY
+        lastMouseX = touch.clientX
 
         // Use requestAnimationFrame for smoother updates
-        if (rafId) return;
+        if (rafId) return
 
         rafId = window.requestAnimationFrame(() => {
-          rafId = null;
-          checkCardVisibility(lastMouseY, lastMouseX);
-        });
+          rafId = null
+          checkCardVisibility(lastMouseY, lastMouseX)
+        })
       }
-    };
+    }
 
     const handleScroll = () => {
       // Check card visibility on scroll to handle auto-show when near bottom
-      if (scrollRafId) return;
+      if (scrollRafId) return
 
       scrollRafId = window.requestAnimationFrame(() => {
-        scrollRafId = null;
-        checkCardVisibility(lastMouseY, lastMouseX, true);
-      });
-    };
+        scrollRafId = null
+        checkCardVisibility(lastMouseY, lastMouseX, true)
+      })
+    }
 
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('scroll', handleScroll, { passive: true })
 
     // Initial check on mount and when dependencies change
-    checkCardVisibility(lastMouseY, lastMouseX);
+    checkCardVisibility(lastMouseY, lastMouseX)
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('scroll', handleScroll)
       if (rafId) {
-        window.cancelAnimationFrame(rafId);
+        window.cancelAnimationFrame(rafId)
       }
       if (scrollRafId) {
-        window.cancelAnimationFrame(scrollRafId);
+        window.cancelAnimationFrame(scrollRafId)
       }
       if (keepVisibleTimeout) {
-        window.clearTimeout(keepVisibleTimeout);
+        window.clearTimeout(keepVisibleTimeout)
       }
-    };
-  }, [selectedModels.length, isModelsHidden, isFollowUpMode]);
+    }
+  }, [selectedModels.length, isModelsHidden, isFollowUpMode])
 
   // Hide Done Selecting?" card when switching modes
   useEffect(() => {
-    setShowDoneSelectingCard(false);
-  }, [isFollowUpMode]);
+    setShowDoneSelectingCard(false)
+  }, [isFollowUpMode])
 
   // Hide "Done Selecting?" card when models section is collapsed
   useEffect(() => {
     if (isModelsHidden) {
-      setShowDoneSelectingCard(false);
+      setShowDoneSelectingCard(false)
     }
-  }, [isModelsHidden]);
+  }, [isModelsHidden])
 
   // Handle scroll tracking to stop animations
   useEffect(() => {
     const handleScroll = () => {
       if (animationTimeoutRef.current !== null) {
-        window.clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
+        window.clearTimeout(animationTimeoutRef.current)
+        animationTimeoutRef.current = null
       }
-      setIsAnimatingButton(false);
-      setIsAnimatingTextarea(false);
+      setIsAnimatingButton(false)
+      setIsAnimatingTextarea(false)
 
       // Check if user is scrolling down to models section
       if (modelsSectionRef.current) {
-        const rect = modelsSectionRef.current.getBoundingClientRect();
+        const rect = modelsSectionRef.current.getBoundingClientRect()
         if (rect.top < window.innerHeight && rect.bottom > 0) {
           // User is scrolling to models section, stop animations
-          setIsAnimatingButton(false);
-          setIsAnimatingTextarea(false);
+          setIsAnimatingButton(false)
+          setIsAnimatingTextarea(false)
         }
       }
-    };
+    }
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // Handle input change to stop animations
   useEffect(() => {
     if (input.length > 0 && (isAnimatingButton || isAnimatingTextarea)) {
       if (animationTimeoutRef.current !== null) {
-        window.clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
+        window.clearTimeout(animationTimeoutRef.current)
+        animationTimeoutRef.current = null
       }
-      setIsAnimatingButton(false);
-      setIsAnimatingTextarea(false);
+      setIsAnimatingButton(false)
+      setIsAnimatingTextarea(false)
     }
-  }, [input, isAnimatingButton, isAnimatingTextarea]);
+  }, [input, isAnimatingButton, isAnimatingTextarea])
 
   // Clear textarea-related errors when user starts typing
   useEffect(() => {
-    if (input.trim().length > 0 && error && (
-      error === 'Please enter some text to compare' ||
-      error === 'Please enter a follow-up question or code'
-    )) {
-      setError(null);
+    if (
+      input.trim().length > 0 &&
+      error &&
+      (error === 'Please enter some text to compare' ||
+        error === 'Please enter a follow-up question or code')
+    ) {
+      setError(null)
     }
-  }, [input, error]);
+  }, [input, error])
 
   // Load usage data and fetch models on component mount
   useEffect(() => {
     // Generate browser fingerprint for anti-abuse tracking
     const initFingerprint = async () => {
-      const fingerprint = await generateBrowserFingerprint();
-      setBrowserFingerprint(fingerprint);
+      const fingerprint = await generateBrowserFingerprint()
+      setBrowserFingerprint(fingerprint)
 
       // Sync usage count with backend (only for anonymous users)
       try {
         if (isAuthenticated && user) {
           // For authenticated users, use the user object directly
-          setUsageCount(user.daily_usage_count);
+          setUsageCount(user.daily_usage_count)
         } else {
           try {
-            const data = await getRateLimitStatus(fingerprint);
+            const data = await getRateLimitStatus(fingerprint)
             // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
-            const usageCount = data.daily_usage || (data as any).fingerprint_usage || (data as any).ip_usage || 0;
-            setUsageCount(usageCount);
+            const usageCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0
+            setUsageCount(usageCount)
 
             // Sync extended usage from backend if available
-            const extendedCount = data.extended_usage || (data as any).daily_extended_usage;
+            const extendedCount = data.extended_usage || data.daily_extended_usage
             if (extendedCount !== undefined) {
-              setExtendedUsageCount(extendedCount);
+              setExtendedUsageCount(extendedCount)
             }
 
             // Update localStorage to match backend
-            const today = new Date().toDateString();
-            localStorage.setItem('compareintel_usage', JSON.stringify({
-              count: usageCount,
-              date: today
-            }));
+            const today = new Date().toDateString()
+            localStorage.setItem(
+              'compareintel_usage',
+              JSON.stringify({
+                count: usageCount,
+                date: today,
+              })
+            )
 
             // Update extended usage in localStorage if synced from backend
             if (extendedCount !== undefined) {
-              localStorage.setItem('compareintel_extended_usage', JSON.stringify({
-                count: extendedCount,
-                date: today
-              }));
+              localStorage.setItem(
+                'compareintel_extended_usage',
+                JSON.stringify({
+                  count: extendedCount,
+                  date: today,
+                })
+              )
             }
           } catch (error) {
             // Silently handle cancellation errors (expected when component unmounts)
@@ -2162,18 +2289,18 @@ function AppContent() {
               // Fallback to localStorage silently
             } else {
               // Fallback to localStorage if backend is unavailable
-              console.error('Failed to sync usage count from backend, using localStorage:', error);
+              console.error('Failed to sync usage count from backend, using localStorage:', error)
             }
-            const savedUsage = localStorage.getItem('compareintel_usage');
-            const today = new Date().toDateString();
+            const savedUsage = localStorage.getItem('compareintel_usage')
+            const today = new Date().toDateString()
 
             if (savedUsage) {
-              const usage = JSON.parse(savedUsage);
+              const usage = JSON.parse(savedUsage)
               if (usage.date === today) {
-                setUsageCount(usage.count || 0);
+                setUsageCount(usage.count || 0)
               } else {
                 // New day, reset usage
-                setUsageCount(0);
+                setUsageCount(0)
               }
             }
           }
@@ -2183,705 +2310,763 @@ function AppContent() {
         if (error instanceof Error && error.name === 'CancellationError') {
           // Fallback to localStorage silently
         } else {
-          console.error('Failed to sync usage count with backend:', error);
+          console.error('Failed to sync usage count with backend:', error)
         }
         // Fallback to localStorage
-        const savedUsage = localStorage.getItem('compareintel_usage');
-        const today = new Date().toDateString();
+        const savedUsage = localStorage.getItem('compareintel_usage')
+        const today = new Date().toDateString()
 
         if (savedUsage) {
-          const usage = JSON.parse(savedUsage);
+          const usage = JSON.parse(savedUsage)
           if (usage.date === today) {
-            setUsageCount(usage.count || 0);
+            setUsageCount(usage.count || 0)
           } else {
-            setUsageCount(0);
+            setUsageCount(0)
           }
         }
 
         // Initialize Extended usage from localStorage
-        const savedExtendedUsage = localStorage.getItem('compareintel_extended_usage');
+        const savedExtendedUsage = localStorage.getItem('compareintel_extended_usage')
         if (savedExtendedUsage) {
-          const extendedUsage = JSON.parse(savedExtendedUsage);
+          const extendedUsage = JSON.parse(savedExtendedUsage)
           if (extendedUsage.date === today) {
-            setExtendedUsageCount(extendedUsage.count || 0);
+            setExtendedUsageCount(extendedUsage.count || 0)
           } else {
-            setExtendedUsageCount(0);
+            setExtendedUsageCount(0)
           }
         }
       }
-    };
+    }
 
-    initFingerprint();
+    initFingerprint()
 
     const fetchModels = async () => {
       try {
-        const data = await getAvailableModels();
+        const data = await getAvailableModels()
 
         if (data.models_by_provider && Object.keys(data.models_by_provider).length > 0) {
-          setModelsByProvider(data.models_by_provider);
+          setModelsByProvider(data.models_by_provider)
         } else {
-          console.error('No models_by_provider data received');
-          setError('No model data received from server');
+          console.error('No models_by_provider data received')
+          setError('No model data received from server')
         }
       } catch (error) {
         // Silently handle cancellation errors (expected when component unmounts)
         if (error instanceof Error && error.name === 'CancellationError') {
-          return; // Don't show error for cancelled requests
+          return // Don't show error for cancelled requests
         }
         if (error instanceof ApiError) {
-          console.error('Failed to fetch models:', error.status, error.message);
-          setError(`Failed to fetch models: ${error.message}`);
+          console.error('Failed to fetch models:', error.status, error.message)
+          setError(`Failed to fetch models: ${error.message}`)
         } else {
-          console.error('Failed to fetch models:', error instanceof Error ? error.message : String(error));
-          setError(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(
+            'Failed to fetch models:',
+            error instanceof Error ? error.message : String(error)
+          )
+          setError(
+            `Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`
+          )
         }
       } finally {
-        setIsLoadingModels(false);
+        setIsLoadingModels(false)
       }
-    };
+    }
 
-    fetchModels();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Initializes on mount; auth changes handled separately
+    fetchModels()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- Initializes on mount; auth changes handled separately
 
   // Setup scroll chaining for selected models grid
   useEffect(() => {
-    const grid = selectedModelsGridRef.current;
-    if (!grid) return;
+    const grid = selectedModelsGridRef.current
+    if (!grid) return
 
     const handleWheel = (e: WheelEvent) => {
-      const isAtTop = grid.scrollTop === 0;
-      const isAtBottom = grid.scrollHeight - grid.scrollTop - grid.clientHeight < 1;
+      const isAtTop = grid.scrollTop === 0
+      const isAtBottom = grid.scrollHeight - grid.scrollTop - grid.clientHeight < 1
 
       // If at top and scrolling up, or at bottom and scrolling down, manually scroll the window
       if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
         // Prevent default to stop the grid from trying to scroll
-        e.preventDefault();
+        e.preventDefault()
         // Manually scroll the window to allow continuation of scrolling beyond grid boundaries
         window.scrollBy({
           top: e.deltaY * 0.5, // Scale down the scroll amount slightly for smoother UX
           left: 0,
-          behavior: 'auto'
-        });
-        return;
+          behavior: 'auto',
+        })
+        return
       }
-    };
+    }
 
-    grid.addEventListener('wheel', handleWheel, { passive: false });
+    grid.addEventListener('wheel', handleWheel, { passive: false })
 
     return () => {
-      grid.removeEventListener('wheel', handleWheel);
-    };
-  }, [selectedModels.length]); // Re-run when selected models change
+      grid.removeEventListener('wheel', handleWheel)
+    }
+  }, [selectedModels.length]) // Re-run when selected models change
 
   // Track previous authentication state to detect transitions
-  const prevIsAuthenticatedRef = useRef<boolean | null>(null);
+  const prevIsAuthenticatedRef = useRef<boolean | null>(null)
 
   // Handle authentication state changes (logout and sign-in from anonymous)
   useEffect(() => {
     // Only process transitions if we have a previous state (not initial mount)
     if (prevIsAuthenticatedRef.current === null) {
       // Initial mount - just record the current state and don't clear anything
-      prevIsAuthenticatedRef.current = isAuthenticated;
-      return;
+      prevIsAuthenticatedRef.current = isAuthenticated
+      return
     }
 
-    const wasAnonymous = prevIsAuthenticatedRef.current === false;
-    const isNowAuthenticated = isAuthenticated === true;
-    const wasAuthenticated = prevIsAuthenticatedRef.current === true;
-    const isNowAnonymous = isAuthenticated === false;
+    const wasAnonymous = prevIsAuthenticatedRef.current === false
+    const isNowAuthenticated = isAuthenticated === true
+    const wasAuthenticated = prevIsAuthenticatedRef.current === true
+    const isNowAnonymous = isAuthenticated === false
 
     // Clear all state when signing in from anonymous mode
     if (wasAnonymous && isNowAuthenticated) {
       // Clear all prompts, model choices, results, and related state
-      setInput('');
-      setResponse(null);
-      setError(null);
-      setIsLoading(false);
-      setConversations([]);
-      setProcessingTime(null);
-      setIsFollowUpMode(false);
-      setCurrentVisibleComparisonId(null);
-      setSelectedModels([]); // Clear model choices when signing in
-      setOriginalSelectedModels([]);
-      setClosedCards(new Set());
-      setActiveResultTabs({});
-      setIsExtendedMode(false);
-      setShowDoneSelectingCard(false);
-      setIsModelsHidden(false);
-      setIsScrollLocked(false);
-      setOpenDropdowns(new Set());
+      setInput('')
+      setResponse(null)
+      setError(null)
+      setIsLoading(false)
+      setConversations([])
+      setProcessingTime(null)
+      setIsFollowUpMode(false)
+      setCurrentVisibleComparisonId(null)
+      setSelectedModels([]) // Clear model choices when signing in
+      setOriginalSelectedModels([])
+      setClosedCards(new Set())
+      setActiveResultTabs({})
+      setIsExtendedMode(false)
+      setShowDoneSelectingCard(false)
+      setIsModelsHidden(false)
+      setIsScrollLocked(false)
+      setOpenDropdowns(new Set())
       // Clear any ongoing requests
       if (currentAbortController) {
-        currentAbortController.abort();
-        setCurrentAbortController(null);
+        currentAbortController.abort()
+        setCurrentAbortController(null)
       }
       // Clear scroll refs
-      hasScrolledToResultsRef.current = false;
-      shouldScrollToTopAfterFormattingRef.current = false;
+      hasScrolledToResultsRef.current = false
+      shouldScrollToTopAfterFormattingRef.current = false
     }
 
     // Reset page state when user logs out
     if (wasAuthenticated && isNowAnonymous) {
       // Reset all state to default
-      setInput('');
-      setResponse(null);
-      setError(null);
-      setIsLoading(false);
-      setConversations([]);
-      setProcessingTime(null);
-      setIsFollowUpMode(false);
+      setInput('')
+      setResponse(null)
+      setError(null)
+      setIsLoading(false)
+      setConversations([])
+      setProcessingTime(null)
+      setIsFollowUpMode(false)
       // Clear currently visible comparison ID on logout so saved comparisons appear in history
-      setCurrentVisibleComparisonId(null);
+      setCurrentVisibleComparisonId(null)
       // Don't reset selectedModels or usage count - let them keep their selections
     }
 
     // Update the ref to track current state for next render
-    prevIsAuthenticatedRef.current = isAuthenticated;
-  }, [isAuthenticated, currentAbortController]);
+    prevIsAuthenticatedRef.current = isAuthenticated
+  }, [isAuthenticated, currentAbortController])
 
   const toggleDropdown = (provider: string) => {
     setOpenDropdowns(prev => {
-      const newSet = new Set(prev);
+      const newSet = new Set(prev)
       if (newSet.has(provider)) {
-        newSet.delete(provider);
+        newSet.delete(provider)
       } else {
-        newSet.add(provider);
+        newSet.add(provider)
       }
-      return newSet;
-    });
-  };
+      return newSet
+    })
+  }
 
   // Helper function to check extended interaction limits
-  const checkExtendedInteractionLimit = async (): Promise<{ canProceed: boolean; errorMessage?: string }> => {
-    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const extendedLimit = getExtendedLimit(userTier);
+  const checkExtendedInteractionLimit = async (): Promise<{
+    canProceed: boolean
+    errorMessage?: string
+  }> => {
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous'
+    const extendedLimit = getExtendedLimit(userTier)
 
     // Get current extended usage
-    let currentExtendedUsage = isAuthenticated && user
-      ? user.daily_extended_usage
-      : extendedUsageCount;
+    let currentExtendedUsage =
+      isAuthenticated && user ? user.daily_extended_usage : extendedUsageCount
 
     // For anonymous users, try to sync from backend
     if (!isAuthenticated && browserFingerprint) {
       try {
-        const data = await getRateLimitStatus(browserFingerprint);
-        const latestExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+        const data = await getRateLimitStatus(browserFingerprint)
+        const latestExtendedCount = data.extended_usage || data.daily_extended_usage
         if (latestExtendedCount !== undefined) {
-          currentExtendedUsage = latestExtendedCount;
-          setExtendedUsageCount(latestExtendedCount);
-          const today = new Date().toDateString();
-          localStorage.setItem('compareintel_extended_usage', JSON.stringify({
-            count: latestExtendedCount,
-            date: today
-          }));
+          currentExtendedUsage = latestExtendedCount
+          setExtendedUsageCount(latestExtendedCount)
+          const today = new Date().toDateString()
+          localStorage.setItem(
+            'compareintel_extended_usage',
+            JSON.stringify({
+              count: latestExtendedCount,
+              date: today,
+            })
+          )
         }
       } catch (error) {
-        console.error('Failed to sync extended usage count:', error);
+        console.error('Failed to sync extended usage count:', error)
       }
     }
 
     // For authenticated users, refresh to get latest usage
     if (isAuthenticated) {
       try {
-        await refreshUser();
-        currentExtendedUsage = user?.daily_extended_usage || 0;
+        await refreshUser()
+        currentExtendedUsage = user?.daily_extended_usage || 0
       } catch (error) {
-        console.error('Failed to refresh user data:', error);
+        console.error('Failed to refresh user data:', error)
       }
     }
 
     // Check if the request would exceed the limit (1 extended interaction per request)
     if (currentExtendedUsage + 1 > extendedLimit) {
-      const remaining = extendedLimit - currentExtendedUsage;
-      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today. ${userTier === 'free' ? 'Upgrade to a paid tier for more Extended interactions.' : `Upgrade to a higher tier for more Extended interactions.`}`;
-      return { canProceed: false, errorMessage: errorMsg };
+      const remaining = extendedLimit - currentExtendedUsage
+      const errorMsg = `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today. ${userTier === 'free' ? 'Upgrade to a paid tier for more Extended interactions.' : `Upgrade to a higher tier for more Extended interactions.`}`
+      return { canProceed: false, errorMessage: errorMsg }
     }
 
-    return { canProceed: true };
-  };
+    return { canProceed: true }
+  }
 
   const collapseAllDropdowns = () => {
-    setOpenDropdowns(new Set());
-  };
+    setOpenDropdowns(new Set())
+  }
 
   const toggleAllForProvider = async (provider: string) => {
-    const providerModels = modelsByProvider[provider] || [];
+    const providerModels = modelsByProvider[provider] || []
     // Filter out unavailable models (where available === false)
-    const availableProviderModels = providerModels.filter(model => model.available !== false);
-    const providerModelIds = availableProviderModels.map(model => model.id);
+    const availableProviderModels = providerModels.filter(model => model.available !== false)
+    const providerModelIds = availableProviderModels.map(model => model.id)
 
     // Check if all provider models are currently selected
-    const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(String(id)));
+    const allProviderModelsSelected = providerModelIds.every(id =>
+      selectedModels.includes(String(id))
+    )
 
     if (allProviderModelsSelected) {
       // Deselecting - check if this would leave us with no models
-      const providerModelIdsStrings = providerModelIds.map(id => String(id));
-      const modelsAfterDeselect = selectedModels.filter(id => !providerModelIdsStrings.includes(id));
+      const providerModelIdsStrings = providerModelIds.map(id => String(id))
+      const modelsAfterDeselect = selectedModels.filter(id => !providerModelIdsStrings.includes(id))
 
       // In follow-up mode, show error if deselecting would leave zero models total
       if (isFollowUpMode && modelsAfterDeselect.length === 0) {
-        setError('Must have at least one model to process');
+        setError('Must have at least one model to process')
         setTimeout(() => {
-          setError(null);
-        }, 5000);
-        return;
+          setError(null)
+        }, 5000)
+        return
       }
     } else {
       // Check extended interaction limit if extended mode is on and we're selecting
       if (isExtendedMode && !allProviderModelsSelected && !isFollowUpMode) {
-        const check = await checkExtendedInteractionLimit();
+        const check = await checkExtendedInteractionLimit()
         if (!check.canProceed) {
-          setError(check.errorMessage!);
+          setError(check.errorMessage!)
           setTimeout(() => {
-            setError(null);
-          }, 10000);
-          return;
+            setError(null)
+          }, 10000)
+          return
         }
       }
     }
 
     // Track if we couldn't select all models for the provider
-    let couldNotSelectAll = false;
+    let couldNotSelectAll = false
 
     if (!allProviderModelsSelected && !isFollowUpMode) {
       // Calculate how many models we can actually add
-      const alreadySelectedFromProvider = providerModelIds.filter(id => selectedModels.includes(String(id))).length;
-      const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider);
-      const modelsToAdd = providerModelIds.slice(0, remainingSlots);
-      couldNotSelectAll = modelsToAdd.length < providerModelIds.length;
+      const alreadySelectedFromProvider = providerModelIds.filter(id =>
+        selectedModels.includes(String(id))
+      ).length
+      const remainingSlots = maxModelsLimit - (selectedModels.length - alreadySelectedFromProvider)
+      const modelsToAdd = providerModelIds.slice(0, remainingSlots)
+      couldNotSelectAll = modelsToAdd.length < providerModelIds.length
     }
 
     setSelectedModels(prev => {
-      const newSelection = new Set(prev);
+      const newSelection = new Set(prev)
 
       if (allProviderModelsSelected) {
         // Deselect all provider models
-        providerModelIds.forEach(id => newSelection.delete(id));
+        providerModelIds.forEach(id => newSelection.delete(id))
       } else {
         // In follow-up mode, only allow selecting models that were originally selected
         if (isFollowUpMode) {
-          const modelsToAdd = providerModelIds.filter(id =>
-            originalSelectedModels.includes(id) && !prev.includes(id)
-          );
-          modelsToAdd.forEach(id => newSelection.add(id));
+          const modelsToAdd = providerModelIds.filter(
+            id => originalSelectedModels.includes(id) && !prev.includes(id)
+          )
+          modelsToAdd.forEach(id => newSelection.add(id))
         } else {
           // Select all provider models, but respect the limit
           // Count how many models from this provider are already selected
-          const alreadySelectedFromProvider = providerModelIds.filter(id => prev.includes(id)).length;
+          const alreadySelectedFromProvider = providerModelIds.filter(id =>
+            prev.includes(id)
+          ).length
           // Calculate remaining slots excluding already selected models from this provider
-          const remainingSlots = maxModelsLimit - (prev.length - alreadySelectedFromProvider);
-          const modelsToAdd = providerModelIds.slice(0, remainingSlots);
+          const remainingSlots = maxModelsLimit - (prev.length - alreadySelectedFromProvider)
+          const modelsToAdd = providerModelIds.slice(0, remainingSlots)
 
-          modelsToAdd.forEach(id => newSelection.add(id));
+          modelsToAdd.forEach(id => newSelection.add(id))
         }
       }
 
-      return Array.from(newSelection);
-    });
+      return Array.from(newSelection)
+    })
 
     // Show warning if not all models could be selected due to tier limit
     if (couldNotSelectAll && !allProviderModelsSelected && !isFollowUpMode) {
-      const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
-      setError(`Your ${tierName} tier allows a maximum of ${maxModelsLimit} models per comparison. Not all models from ${provider} could be selected.`);
+      const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free'
+      setError(
+        `Your ${tierName} tier allows a maximum of ${maxModelsLimit} models per comparison. Not all models from ${provider} could be selected.`
+      )
       setTimeout(() => {
-        setError(null);
-      }, 10000);
-      return;
+        setError(null)
+      }, 10000)
+      return
     }
 
     // Clear any previous error when successfully adding models (only when selecting, not deselecting)
-    if (!allProviderModelsSelected && error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
-      setError(null);
+    if (
+      !allProviderModelsSelected &&
+      error &&
+      (error.includes('Maximum') ||
+        error.includes('Must have at least one model') ||
+        error.includes('Please select at least one model'))
+    ) {
+      setError(null)
     }
-  };
-
+  }
 
   const handleExtendedModeToggle = async () => {
     // If toggling ON, check if current model selection would exceed extended interaction limit
     if (!isExtendedMode && selectedModels.length > 0) {
-      const check = await checkExtendedInteractionLimit();
+      const check = await checkExtendedInteractionLimit()
       if (!check.canProceed) {
-        setError(check.errorMessage!);
+        setError(check.errorMessage!)
         setTimeout(() => {
-          setError(null);
-        }, 10000);
-        return;
+          setError(null)
+        }, 10000)
+        return
       }
     }
 
     // Toggle extended mode
-    setIsExtendedMode(!isExtendedMode);
-  };
+    setIsExtendedMode(!isExtendedMode)
+  }
 
   const handleModelToggle = async (modelId: string) => {
     if (selectedModels.includes(modelId)) {
       // Check if this is the last selected model - only prevent in follow-up mode
       if (selectedModels.length === 1 && isFollowUpMode) {
-        setError('Must have at least one model to process');
+        setError('Must have at least one model to process')
         // Clear the error after 5 seconds
         setTimeout(() => {
-          setError(null);
-        }, 5000);
-        return;
+          setError(null)
+        }, 5000)
+        return
       }
 
       // Allow deselection in both normal and follow-up mode
-      setSelectedModels(prev => prev.filter(id => id !== modelId));
+      setSelectedModels(prev => prev.filter(id => id !== modelId))
       // Clear any previous error when deselecting a model
       if (error && error.includes('Maximum')) {
-        setError(null);
+        setError(null)
       }
     } else {
       // In follow-up mode, only allow reselecting models that were originally selected
       if (isFollowUpMode) {
         if (originalSelectedModels.includes(modelId)) {
           // Allow reselection of previously selected model
-          setSelectedModels(prev => [...prev, modelId]);
+          setSelectedModels(prev => [...prev, modelId])
           // Clear any previous error when successfully adding a model
-          if (error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
-            setError(null);
+          if (
+            error &&
+            (error.includes('Maximum') ||
+              error.includes('Must have at least one model') ||
+              error.includes('Please select at least one model'))
+          ) {
+            setError(null)
           }
         } else {
           // Prevent adding new models during follow-up mode
-          setError('Cannot add new models during follow-up. Please start a new comparison to select different models.');
+          setError(
+            'Cannot add new models during follow-up. Please start a new comparison to select different models.'
+          )
           // Clear the error after 5 seconds
           setTimeout(() => {
-            setError(null);
-          }, 5000);
+            setError(null)
+          }, 5000)
         }
-        return;
+        return
       }
 
       // Check limit before adding (only in normal mode)
       if (selectedModels.length >= maxModelsLimit) {
-        const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free';
-        const upgradeMsg = tierName === 'Anonymous' ? ' Sign up for a free account to get 3 models.' :
-          tierName === 'free' ? ' Upgrade to Starter for 6 models or Pro for 9 models.' :
-            (tierName === 'starter' || tierName === 'starter_plus') ? ' Upgrade to Pro for 9 models or Pro+ for 12 models.' :
-            tierName === 'pro' ? ' Upgrade to Pro+ for 12 models.' : '';
-        setError(`Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`);
-        return;
+        const tierName = !isAuthenticated ? 'Anonymous' : user?.subscription_tier || 'free'
+        const upgradeMsg =
+          tierName === 'Anonymous'
+            ? ' Sign up for a free account to get 3 models.'
+            : tierName === 'free'
+              ? ' Upgrade to Starter for 6 models or Pro for 9 models.'
+              : tierName === 'starter' || tierName === 'starter_plus'
+                ? ' Upgrade to Pro for 9 models or Pro+ for 12 models.'
+                : tierName === 'pro'
+                  ? ' Upgrade to Pro+ for 12 models.'
+                  : ''
+        setError(
+          `Your ${tierName} tier allows maximum ${maxModelsLimit} models per comparison.${upgradeMsg}`
+        )
+        return
       }
 
       // Check extended interaction limit if extended mode is on
       if (isExtendedMode) {
-        const check = await checkExtendedInteractionLimit();
+        const check = await checkExtendedInteractionLimit()
         if (!check.canProceed) {
-          setError(check.errorMessage!);
+          setError(check.errorMessage!)
           setTimeout(() => {
-            setError(null);
-          }, 10000);
-          return;
+            setError(null)
+          }, 10000)
+          return
         }
       }
 
-      setSelectedModels(prev => [...prev, modelId]);
+      setSelectedModels(prev => [...prev, modelId])
       // Clear any previous error when successfully adding a model
-      if (error && (error.includes('Maximum') || error.includes('Must have at least one model') || error.includes('Please select at least one model'))) {
-        setError(null);
+      if (
+        error &&
+        (error.includes('Maximum') ||
+          error.includes('Must have at least one model') ||
+          error.includes('Please select at least one model'))
+      ) {
+        setError(null)
       }
     }
-  };
+  }
 
   const handleCancel = () => {
     if (currentAbortController) {
-      userCancelledRef.current = true;
-      currentAbortController.abort();
-      setCurrentAbortController(null);
-      setIsLoading(false);
+      userCancelledRef.current = true
+      currentAbortController.abort()
+      setCurrentAbortController(null)
+      setIsLoading(false)
       // Don't set error here - we'll handle it in the catch block
     }
-  };
+  }
 
   const closeResultCard = (modelId: string) => {
-    setClosedCards(prev => new Set(prev).add(modelId));
-  };
+    setClosedCards(prev => new Set(prev).add(modelId))
+  }
 
   const hideAllOtherModels = (currentModelId: string) => {
     // Get all model IDs from conversations, excluding the current one
     const otherModelIds = conversations
       .map(conv => conv.modelId)
-      .filter(id => id !== currentModelId);
+      .filter(id => id !== currentModelId)
 
     // Add all other model IDs to closedCards
     setClosedCards(prev => {
-      const newSet = new Set(prev);
-      otherModelIds.forEach(id => newSet.add(id));
-      return newSet;
-    });
-  };
+      const newSet = new Set(prev)
+      otherModelIds.forEach(id => newSet.add(id))
+      return newSet
+    })
+  }
 
   const showAllResults = () => {
-    setClosedCards(new Set());
-  };
+    setClosedCards(new Set())
+  }
 
   // Helper function to check if follow-up should be disabled based on model selection changes
   const isFollowUpDisabled = () => {
     if (originalSelectedModels.length === 0) {
-      return false; // No original comparison yet, so follow-up is not applicable
+      return false // No original comparison yet, so follow-up is not applicable
     }
 
     // Check if any new models have been added (models in selectedModels that weren't in originalSelectedModels)
-    const hasNewModels = selectedModels.some(model => !originalSelectedModels.includes(model));
+    const hasNewModels = selectedModels.some(model => !originalSelectedModels.includes(model))
 
     // If new models were added, disable follow-up
     // If only models were deselected (subset of original), allow follow-up
-    return hasNewModels;
-  };
+    return hasNewModels
+  }
 
   const handleFollowUp = () => {
-    followUpJustActivatedRef.current = true;
-    setIsFollowUpMode(true);
+    followUpJustActivatedRef.current = true
+    setIsFollowUpMode(true)
     // Only clear input if it's empty - preserve text if user has typed something
     if (!input.trim()) {
-      setInput('');
+      setInput('')
     }
-    setIsModelsHidden(true); // Collapse the models section when entering follow-up mode
+    setIsModelsHidden(true) // Collapse the models section when entering follow-up mode
 
     // Scroll to top of page smoothly
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
-    });
+      behavior: 'smooth',
+    })
 
     // Wait for state to update, then scroll to the input section
     setTimeout(() => {
-      const inputSection = document.querySelector('.input-section');
+      const inputSection = document.querySelector('.input-section')
       if (inputSection) {
         // Get the h2 heading inside the input section
-        const heading = inputSection.querySelector('h2');
+        const heading = inputSection.querySelector('h2')
         if (heading) {
           heading.scrollIntoView({
             behavior: 'smooth',
-            block: 'start'
-          });
+            block: 'start',
+          })
         } else {
           // Fallback to scrolling to the section itself
           inputSection.scrollIntoView({
             behavior: 'smooth',
-            block: 'start'
-          });
+            block: 'start',
+          })
         }
       }
       // Reset the flag after scrolling
-      followUpJustActivatedRef.current = false;
-    }, 250); // Increased delay to ensure DOM updates
+      followUpJustActivatedRef.current = false
+    }, 250) // Increased delay to ensure DOM updates
 
     // Focus the textarea after scroll completes
     setTimeout(() => {
       if (textareaRef.current) {
-        textareaRef.current.focus();
+        textareaRef.current.focus()
       }
-    }, 650); // Wait for scroll to complete
-  };
+    }, 650) // Wait for scroll to complete
+  }
 
   const handleContinueConversation = () => {
     if (!input.trim()) {
-      setError('Please enter a follow-up question or code');
-      return;
+      setError('Please enter a follow-up question or code')
+      return
     }
-    handleSubmit();
-  };
+    handleSubmit()
+  }
 
   const handleNewComparison = () => {
-    setIsFollowUpMode(false);
+    setIsFollowUpMode(false)
     // Only clear input if it's empty - preserve text if user has typed something
     if (!input.trim()) {
-      setInput('');
+      setInput('')
     }
-    setConversations([]);
-    setResponse(null);
-    setClosedCards(new Set());
-    setError(null);
-    setOriginalSelectedModels([]); // Reset original models for new comparison
-    setIsModelsHidden(false); // Show models section again for new comparison
+    setConversations([])
+    setResponse(null)
+    setClosedCards(new Set())
+    setError(null)
+    setOriginalSelectedModels([]) // Reset original models for new comparison
+    setIsModelsHidden(false) // Show models section again for new comparison
     // Clear currently visible comparison ID
-    setCurrentVisibleComparisonId(null);
-    setModelErrors({});
-  };
+    setCurrentVisibleComparisonId(null)
+    setModelErrors({})
+  }
 
   // Function to scroll all conversation content areas to the last user message
   const scrollConversationsToBottom = () => {
     // Use a small delay to ensure DOM has updated
     setTimeout(() => {
-      const conversationContents = document.querySelectorAll('.conversation-content');
-      conversationContents.forEach((content) => {
+      const conversationContents = document.querySelectorAll('.conversation-content')
+      conversationContents.forEach(content => {
         // Find all user messages in this conversation
-        const userMessages = content.querySelectorAll('.conversation-message.user');
+        const userMessages = content.querySelectorAll('.conversation-message.user')
         if (userMessages.length > 0) {
           // Get the last user message
-          const lastUserMessage = userMessages[userMessages.length - 1];
+          const lastUserMessage = userMessages[userMessages.length - 1]
 
           // Calculate the position of the last user message relative to the conversation content
-          const messageRect = lastUserMessage.getBoundingClientRect();
-          const containerRect = content.getBoundingClientRect();
-          const relativeTop = messageRect.top - containerRect.top + content.scrollTop;
+          const messageRect = lastUserMessage.getBoundingClientRect()
+          const containerRect = content.getBoundingClientRect()
+          const relativeTop = messageRect.top - containerRect.top + content.scrollTop
 
           // Scroll to position the last user message at the top of the conversation container
           content.scrollTo({
             top: relativeTop,
-            behavior: 'smooth'
-          });
+            behavior: 'smooth',
+          })
         } else {
           // Fallback to scrolling to bottom if no user message found
-          content.scrollTop = content.scrollHeight;
+          content.scrollTop = content.scrollHeight
         }
-      });
-    }, 100);
-  };
+      })
+    }, 100)
+  }
 
   // Handler for "Done Selecting" button click
   const handleDoneSelecting = () => {
     // Hide the card
-    setShowDoneSelectingCard(false);
+    setShowDoneSelectingCard(false)
 
     // Collapse all expanded model-provider dropdowns
-    collapseAllDropdowns();
+    collapseAllDropdowns()
 
     // Collapse the models section
-    setIsModelsHidden(true);
+    setIsModelsHidden(true)
 
     // Scroll to the very top
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
-    });
+      behavior: 'smooth',
+    })
 
     // Wait for scroll to complete, then focus
     window.setTimeout(() => {
       if (textareaRef.current) {
-        textareaRef.current.focus();
+        textareaRef.current.focus()
       }
-    }, 800); // Wait for scroll animation to complete
-  };
+    }, 800) // Wait for scroll animation to complete
+  }
 
   // Handler for submit button that provides helpful validation messages
   const handleSubmitClick = () => {
     // Clear animations when submitting
     if (animationTimeoutRef.current !== null) {
-      window.clearTimeout(animationTimeoutRef.current);
-      animationTimeoutRef.current = null;
+      window.clearTimeout(animationTimeoutRef.current)
+      animationTimeoutRef.current = null
     }
-    setIsAnimatingButton(false);
-    setIsAnimatingTextarea(false);
+    setIsAnimatingButton(false)
+    setIsAnimatingTextarea(false)
 
     // Check if user is logged in but not verified
     if (user && !user.is_verified) {
-      setError('Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.');
+      setError(
+        'Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.'
+      )
       // Scroll to the top to show the verification banner
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
 
     if (selectedModels.length === 0) {
-      setError('Please select at least one model below to compare responses');
+      setError('Please select at least one model below to compare responses')
       // Scroll to the models section to help the user
       window.setTimeout(() => {
-        const modelsSection = document.querySelector('.models-section');
+        const modelsSection = document.querySelector('.models-section')
         if (modelsSection) {
           modelsSection.scrollIntoView({
             behavior: 'smooth',
-            block: 'start'
-          });
+            block: 'start',
+          })
         }
-      }, 100);
-      return;
+      }, 100)
+      return
     }
 
     if (!input.trim()) {
-      setError('Please enter some text to compare');
-      return;
+      setError('Please enter some text to compare')
+      return
     }
 
-    handleSubmit();
-  };
+    handleSubmit()
+  }
 
   const handleSubmit = async () => {
     // Check if user is logged in but not verified
     if (user && !user.is_verified) {
-      setError('Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+      setError(
+        'Please verify your email address before making comparisons. Check your inbox for a verification link from CompareIntel.'
+      )
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
 
     // Check input length against tier limits
-    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0;
-    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
-    const shouldUseExtendedTier = isExtendedMode; // Only use extended mode if explicitly enabled by user
-    const tierLimit = shouldUseExtendedTier ? 15000 : 5000; // Extended: 15K chars, Standard: 5K chars
+    const messageCount = conversations.length > 0 ? conversations[0]?.messages.length || 0 : 0
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous'
+    const shouldUseExtendedTier = isExtendedMode // Only use extended mode if explicitly enabled by user
+    const tierLimit = shouldUseExtendedTier ? 15000 : 5000 // Extended: 15K chars, Standard: 5K chars
 
     if (input.length > tierLimit) {
-      const tierName = shouldUseExtendedTier ? 'Extended' : 'Standard';
+      const tierName = shouldUseExtendedTier ? 'Extended' : 'Standard'
       const upgradeMsg = shouldUseExtendedTier
         ? ' Your input has exceeded the Extended tier limit.'
-        : ' Enable Extended mode for up to 15,000 characters, or reduce your input.';
-      setError(`${tierName} tier limit exceeded. Maximum ${formatNumber(tierLimit)} characters allowed, but your input has ${formatNumber(input.length)} characters.${upgradeMsg}`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+        : ' Enable Extended mode for up to 15,000 characters, or reduce your input.'
+      setError(
+        `${tierName} tier limit exceeded. Maximum ${formatNumber(tierLimit)} characters allowed, but your input has ${formatNumber(input.length)} characters.${upgradeMsg}`
+      )
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
 
     // Hard limit: Prevent submissions with conversations that are too long
     // Industry best practice 2025: Enforce maximum context window to protect costs and maintain quality
     if (isFollowUpMode && conversations.length > 0) {
       if (messageCount >= 24) {
-        setError('This conversation has reached the maximum length (24 messages). Please start a new comparison to continue.');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+        setError(
+          'This conversation has reached the maximum length (24 messages). Please start a new comparison to continue.'
+        )
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
       }
     }
 
     // Check daily usage limit (model-based)
     // First, sync with backend to ensure we have the latest usage count
-    let currentUsageCount = usageCount;
+    let currentUsageCount = usageCount
 
     // For authenticated users, use the user object's daily_usage_count
     if (isAuthenticated && user) {
-      currentUsageCount = user.daily_usage_count;
+      currentUsageCount = user.daily_usage_count
     } else if (browserFingerprint) {
       // For anonymous users, sync from backend
       try {
-        const data = await getRateLimitStatus(browserFingerprint);
+        const data = await getRateLimitStatus(browserFingerprint)
         // Backend returns 'daily_usage' for authenticated, 'fingerprint_usage' or 'ip_usage' for anonymous
-        const latestCount = data.daily_usage || (data as any).fingerprint_usage || (data as any).ip_usage || 0;
-        currentUsageCount = latestCount;
+        const latestCount = data.daily_usage || data.fingerprint_usage || data.ip_usage || 0
+        currentUsageCount = latestCount
         // Always update state to keep it in sync - this ensures purple banner and renderUsagePreview show correct values
-        setUsageCount(latestCount);
+        setUsageCount(latestCount)
         // Also update localStorage immediately so it's in sync
-        const today = new Date().toDateString();
-        localStorage.setItem('compareintel_usage', JSON.stringify({
-          count: latestCount,
-          date: today
-        }));
+        const today = new Date().toDateString()
+        localStorage.setItem(
+          'compareintel_usage',
+          JSON.stringify({
+            count: latestCount,
+            date: today,
+          })
+        )
       } catch (error) {
         // Silently handle cancellation errors (expected when component unmounts)
         if (error instanceof Error && error.name === 'CancellationError') {
           // Continue with current state silently
         } else {
-          console.error('Failed to sync usage count before check:', error);
+          console.error('Failed to sync usage count before check:', error)
         }
         // Continue with current state if fetch fails
       }
     }
 
-    const modelsNeeded = selectedModels.length;
+    const modelsNeeded = selectedModels.length
 
     // Determine user tier and their regular limit (userTier already declared above)
-    const regularLimit = getDailyLimit(userTier);
+    const regularLimit = getDailyLimit(userTier)
 
     if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
-      setError(`You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+      setError(
+        `You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`
+      )
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
 
     // Check if this comparison would exceed the limit
     if (currentUsageCount + modelsNeeded > regularLimit) {
-      const remaining = regularLimit - currentUsageCount;
+      const remaining = regularLimit - currentUsageCount
       // State and localStorage are already updated above, so UI components will show correct values
-      setError(`You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+      setError(
+        `You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`
+      )
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
 
     // Check Extended tier limit if using Extended tier (only when user explicitly enables it)
@@ -2889,179 +3074,193 @@ function AppContent() {
     // Reuse messageCount, userTier, and shouldUseExtendedTier declared above
 
     if (shouldUseExtendedTier) {
-      const extendedLimit = getExtendedLimit(userTier);
+      const extendedLimit = getExtendedLimit(userTier)
 
       // Sync extended usage from backend before checking limit
-      let currentExtendedUsage = isAuthenticated && user
-        ? user.daily_extended_usage
-        : extendedUsageCount;
+      let currentExtendedUsage =
+        isAuthenticated && user ? user.daily_extended_usage : extendedUsageCount
 
       // For anonymous users, try to sync from backend
       if (!isAuthenticated && browserFingerprint) {
         try {
-          const data = await getRateLimitStatus(browserFingerprint);
-          const latestExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+          const data = await getRateLimitStatus(browserFingerprint)
+          const latestExtendedCount = data.extended_usage || data.daily_extended_usage
           if (latestExtendedCount !== undefined) {
-            currentExtendedUsage = latestExtendedCount;
+            currentExtendedUsage = latestExtendedCount
             // Always update state to keep it in sync - this ensures renderUsagePreview shows correct values
-            setExtendedUsageCount(latestExtendedCount);
-            const today = new Date().toDateString();
-            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
-              count: latestExtendedCount,
-              date: today
-            }));
+            setExtendedUsageCount(latestExtendedCount)
+            const today = new Date().toDateString()
+            localStorage.setItem(
+              'compareintel_extended_usage',
+              JSON.stringify({
+                count: latestExtendedCount,
+                date: today,
+              })
+            )
           }
         } catch (error) {
-          console.error('Failed to sync extended usage count before check:', error);
+          console.error('Failed to sync extended usage count before check:', error)
           // Continue with current state if fetch fails
         }
       }
 
       // Extended interactions needed = 1 per request (regardless of number of models)
-      const extendedInteractionsNeeded = 1;
+      const extendedInteractionsNeeded = 1
 
       if (currentExtendedUsage >= extendedLimit) {
-        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions.`);
-        return;
+        setError(`You've reached your daily Extended tier limit of ${extendedLimit} interactions.`)
+        return
       }
 
       // Check if this would exceed the Extended limit
       if (currentExtendedUsage + extendedInteractionsNeeded > extendedLimit) {
-        const remaining = extendedLimit - currentExtendedUsage;
+        const remaining = extendedLimit - currentExtendedUsage
         // State and localStorage are already updated above, so UI components will show correct values
-        setError(`You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison.`);
-        return;
+        setError(
+          `You have ${remaining} Extended interaction${remaining !== 1 ? 's' : ''} remaining today, but need ${extendedInteractionsNeeded} for this comparison.`
+        )
+        return
       }
     }
 
     if (!input.trim()) {
-      setError('Please enter some text to compare');
-      return;
+      setError('Please enter some text to compare')
+      return
     }
 
     if (selectedModels.length === 0) {
-      setError('Please select at least one model');
-      return;
+      setError('Please select at least one model')
+      return
     }
 
     // Store original selected models for follow-up comparison logic (only for new comparisons, not follow-ups)
     if (!isFollowUpMode) {
       // Clear the currently visible comparison ID so the previous one will appear in history
       // This allows the previously visible comparison to show in the dropdown when user starts a new one
-      setCurrentVisibleComparisonId(null);
+      setCurrentVisibleComparisonId(null)
 
-      setOriginalSelectedModels([...selectedModels]);
+      setOriginalSelectedModels([...selectedModels])
 
       // If there's an active conversation and we're starting a new one, save the previous one first
       // This ensures when user has A & B, runs C, then starts D, we save C and show B & C in history
       if (!isAuthenticated && conversations.length > 0) {
         // Use originalSelectedModels for the previous conversation, or fall back to current conversations' models
-        const previousModels = originalSelectedModels.length > 0
-          ? originalSelectedModels
-          : [...new Set(conversations.map(conv => conv.modelId))];
+        const previousModels =
+          originalSelectedModels.length > 0
+            ? originalSelectedModels
+            : [...new Set(conversations.map(conv => conv.modelId))]
 
-        const conversationsWithMessages = conversations.filter(conv =>
-          previousModels.includes(conv.modelId) && conv.messages.length > 0
-        );
+        const conversationsWithMessages = conversations.filter(
+          conv => previousModels.includes(conv.modelId) && conv.messages.length > 0
+        )
 
         // Only save if we have conversations with complete assistant messages
         const hasCompleteMessages = conversationsWithMessages.some(conv => {
-          const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
-          return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
-        });
+          const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant')
+          return (
+            assistantMessages.length > 0 &&
+            assistantMessages.some(msg => msg.content.trim().length > 0)
+          )
+        })
 
         if (hasCompleteMessages && conversationsWithMessages.length > 0) {
           // Get the FIRST user message from the conversation
           const allUserMessages = conversationsWithMessages
             .flatMap(conv => conv.messages)
             .filter(msg => msg.type === 'user')
-            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
-          const firstUserMessage = allUserMessages[0];
+          const firstUserMessage = allUserMessages[0]
 
           if (firstUserMessage) {
-            const inputData = firstUserMessage.content;
+            const inputData = firstUserMessage.content
             // Save the previous conversation before starting the new one
             // Use isUpdate=false since this is the first time saving this conversation
-            saveConversationToLocalStorage(inputData, previousModels, conversationsWithMessages, false);
+            saveConversationToLocalStorage(
+              inputData,
+              previousModels,
+              conversationsWithMessages,
+              false
+            )
           }
         }
       }
     }
 
-    setIsLoading(true);
-    setError(null);
-    setIsModelsHidden(true); // Hide models section after clicking Compare
-    setShowDoneSelectingCard(false); // Hide "Done Selecting" card after clicking Compare
+    setIsLoading(true)
+    setError(null)
+    setIsModelsHidden(true) // Hide models section after clicking Compare
+    setShowDoneSelectingCard(false) // Hide "Done Selecting" card after clicking Compare
 
     // Capture user timestamp when they actually submit
-    const userTimestamp = new Date().toISOString();
-    setUserMessageTimestamp(userTimestamp);
+    const userTimestamp = new Date().toISOString()
+    setUserMessageTimestamp(userTimestamp)
 
     // Original input functionality removed - not needed
 
-    setResponse(null); // Clear previous results
-    setClosedCards(new Set()); // Clear closed cards for new results
-    setProcessingTime(null);
-    userCancelledRef.current = false;
-    hasScrolledToResultsRef.current = false; // Reset scroll tracking for new comparison
-    scrolledToTopRef.current.clear(); // Reset per-card scroll tracking for new comparison
-    shouldScrollToTopAfterFormattingRef.current = false; // Reset scroll-to-top-after-formatting flag for new comparison
-    autoScrollPausedRef.current.clear(); // Clear auto-scroll pause ref
-    userInteractingRef.current.clear(); // Clear user interaction tracking
-    lastScrollTopRef.current.clear(); // Clear scroll position tracking
-    lastAlignedRoundRef.current = 0; // Reset round alignment tracking
-    setIsScrollLocked(false); // Reset scroll lock for new comparison
+    setResponse(null) // Clear previous results
+    setClosedCards(new Set()) // Clear closed cards for new results
+    setProcessingTime(null)
+    userCancelledRef.current = false
+    hasScrolledToResultsRef.current = false // Reset scroll tracking for new comparison
+    scrolledToTopRef.current.clear() // Reset per-card scroll tracking for new comparison
+    shouldScrollToTopAfterFormattingRef.current = false // Reset scroll-to-top-after-formatting flag for new comparison
+    autoScrollPausedRef.current.clear() // Clear auto-scroll pause ref
+    userInteractingRef.current.clear() // Clear user interaction tracking
+    lastScrollTopRef.current.clear() // Clear scroll position tracking
+    lastAlignedRoundRef.current = 0 // Reset round alignment tracking
+    setIsScrollLocked(false) // Reset scroll lock for new comparison
 
     // Clean up any existing scroll listeners from previous comparison
     scrollListenersRef.current.forEach((_listener, modelId) => {
-      cleanupScrollListener(modelId);
-    });
+      cleanupScrollListener(modelId)
+    })
 
-    const startTime = Date.now();
+    const startTime = Date.now()
 
     // Dynamic timeout based on request complexity
     // Models run concurrently, so timeout is based on slowest model + overhead, not sum
     // Extended mode requests need more time due to larger inputs (15K vs 5K chars, 8K vs 4K tokens)
     // Each model processes more tokens in extended mode, so the slowest model takes longer
-    const baseTimeout = 180000; // 3 minutes base (covers slowest model + network overhead)
-    const extendedModeBonus = isExtendedMode ? 120000 : 0; // Add 2 minutes for extended mode (3x larger inputs = slower processing)
+    const baseTimeout = 180000 // 3 minutes base (covers slowest model + network overhead)
+    const extendedModeBonus = isExtendedMode ? 120000 : 0 // Add 2 minutes for extended mode (3x larger inputs = slower processing)
     // Max timeout caps: higher for extended mode due to larger token processing
-    const maxTimeout = isExtendedMode ? 600000 : 480000; // 10 min extended / 8 min standard
-    const dynamicTimeout = Math.min(baseTimeout + extendedModeBonus, maxTimeout);
+    const maxTimeout = isExtendedMode ? 600000 : 480000 // 10 min extended / 8 min standard
+    const dynamicTimeout = Math.min(baseTimeout + extendedModeBonus, maxTimeout)
 
     // Declare streaming variables outside try block so they're accessible in catch block for timeout handling
-    const streamingResults: { [key: string]: string } = {};
-    const completedModels = new Set<string>(); // Track which models have finished
-    const localModelErrors: { [key: string]: boolean } = {}; // Track which models have errors (local during streaming)
-    const modelStartTimes: { [key: string]: string } = {}; // Track when each model starts
-    const modelCompletionTimes: { [key: string]: string } = {}; // Track when each model completes
-    let streamingMetadata: CompareResponse['metadata'] | null = null;
+    const streamingResults: { [key: string]: string } = {}
+    const completedModels = new Set<string>() // Track which models have finished
+    const localModelErrors: { [key: string]: boolean } = {} // Track which models have errors (local during streaming)
+    const modelStartTimes: { [key: string]: string } = {} // Track when each model starts
+    const modelCompletionTimes: { [key: string]: string } = {} // Track when each model completes
+    let streamingMetadata: CompareResponse['metadata'] | null = null
 
     try {
-      const controller = new AbortController();
-      setCurrentAbortController(controller);
+      const controller = new AbortController()
+      setCurrentAbortController(controller)
 
-      const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout);
+      const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout)
 
       // Prepare conversation history for the API
       // For follow-up mode, we send the complete conversation history (both user and assistant messages)
       // This matches how official AI chat interfaces work and provides proper context
-      const conversationHistory = isFollowUpMode && conversations.length > 0
-        ? (() => {
-          // Get the first conversation that has messages and is for a selected model
-          const selectedConversations = conversations.filter(conv =>
-            selectedModels.includes(conv.modelId) && conv.messages.length > 0
-          );
-          if (selectedConversations.length === 0) return [];
+      const conversationHistory =
+        isFollowUpMode && conversations.length > 0
+          ? (() => {
+              // Get the first conversation that has messages and is for a selected model
+              const selectedConversations = conversations.filter(
+                conv => selectedModels.includes(conv.modelId) && conv.messages.length > 0
+              )
+              if (selectedConversations.length === 0) return []
 
-          // Use the first selected conversation's messages
-          return selectedConversations[0].messages.map(msg => ({
-            role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          }));
-        })()
-        : [];
+              // Use the first selected conversation's messages
+              return selectedConversations[0].messages.map(msg => ({
+                role: msg.type === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+              }))
+            })()
+          : []
 
       // Determine tier: Extended if manually toggled OR if conversation exceeds 6 messages
       // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
@@ -3070,11 +3269,14 @@ function AppContent() {
 
       // Use streaming endpoint for faster perceived response time
       // Include conversation_id if available (for authenticated users) to ensure correct conversation matching
-      const conversationId = isAuthenticated && currentVisibleComparisonId
-        ? (typeof currentVisibleComparisonId === 'string' ? parseInt(currentVisibleComparisonId, 10) : currentVisibleComparisonId)
-        : null;
+      const conversationId =
+        isAuthenticated && currentVisibleComparisonId
+          ? typeof currentVisibleComparisonId === 'string'
+            ? parseInt(currentVisibleComparisonId, 10)
+            : currentVisibleComparisonId
+          : null
 
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       // Use service for streaming request
       const stream = await compareStream({
@@ -3083,30 +3285,30 @@ function AppContent() {
         conversation_history: conversationHistory,
         browser_fingerprint: browserFingerprint,
         tier: shouldUseExtendedTier ? 'extended' : 'standard',
-        conversation_id: conversationId || undefined  // Only include if not null
-      });
+        conversation_id: conversationId || undefined, // Only include if not null
+      })
 
       if (!stream) {
-        throw new Error('Failed to start streaming comparison');
+        throw new Error('Failed to start streaming comparison')
       }
 
       // Handle streaming response with Server-Sent Events
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
+      const reader = stream.getReader()
+      const decoder = new TextDecoder()
 
       // Streaming variables are declared outside try block for timeout handling
-      let lastUpdateTime = Date.now();
-      const UPDATE_THROTTLE_MS = 50; // Update UI every 50ms max for smooth streaming
+      let lastUpdateTime = Date.now()
+      const UPDATE_THROTTLE_MS = 50 // Update UI every 50ms max for smooth streaming
 
       // Clear previous model errors at start of new comparison
-      setModelErrors({});
+      setModelErrors({})
 
       // Set all selected models to 'raw' tab to show streaming content immediately
-      const rawTabs: ActiveResultTabs = {} as ActiveResultTabs;
+      const rawTabs: ActiveResultTabs = {} as ActiveResultTabs
       selectedModels.forEach(modelId => {
-        rawTabs[createModelId(modelId)] = RESULT_TAB.RAW;
-      });
-      setActiveResultTabs(rawTabs);
+        rawTabs[createModelId(modelId)] = RESULT_TAB.RAW
+      })
+      setActiveResultTabs(rawTabs)
 
       // Initialize empty conversations immediately so cards appear during streaming
       if (!isFollowUpMode) {
@@ -3114,118 +3316,119 @@ function AppContent() {
           modelId: createModelId(modelId),
           messages: [
             createMessage('user', input, userTimestamp), // Placeholder user timestamp, will be updated when model starts
-            createMessage('assistant', '', userTimestamp) // Placeholder AI timestamp, will be updated when model completes
-          ]
-        }));
-        setConversations(emptyConversations);
+            createMessage('assistant', '', userTimestamp), // Placeholder AI timestamp, will be updated when model completes
+          ],
+        }))
+        setConversations(emptyConversations)
       }
 
       // Track which models have had listeners set up (to avoid duplicates)
-      const listenersSetUp = new Set<string>();
+      const listenersSetUp = new Set<string>()
 
       if (reader) {
         try {
-          let buffer = '';
+          let buffer = ''
 
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await reader.read()
 
-            if (done) break;
+            if (done) break
 
             // Decode the chunk and add to buffer
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true })
 
             // Process complete SSE messages (separated by \n\n)
-            const messages = buffer.split('\n\n');
-            buffer = messages.pop() || ''; // Keep incomplete message in buffer
+            const messages = buffer.split('\n\n')
+            buffer = messages.pop() || '' // Keep incomplete message in buffer
 
-            let shouldUpdate = false;
+            let shouldUpdate = false
 
             for (const message of messages) {
-              if (!message.trim() || !message.startsWith('data: ')) continue;
+              if (!message.trim() || !message.startsWith('data: ')) continue
 
               try {
-                const jsonStr = message.replace(/^data: /, '');
-                const event = JSON.parse(jsonStr);
+                const jsonStr = message.replace(/^data: /, '')
+                const event = JSON.parse(jsonStr)
 
                 if (event.type === 'start') {
                   // Model starting - initialize empty result and track start time
                   if (!streamingResults[event.model]) {
-                    streamingResults[event.model] = '';
+                    streamingResults[event.model] = ''
                   }
                   // Record when this specific model started processing (when query was sent to OpenRouter)
-                  modelStartTimes[event.model] = new Date().toISOString();
-                  shouldUpdate = true;
+                  modelStartTimes[event.model] = new Date().toISOString()
+                  shouldUpdate = true
                 } else if (event.type === 'chunk') {
                   // Content chunk arrived - append to result
-                  streamingResults[event.model] = (streamingResults[event.model] || '') + event.content;
-                  shouldUpdate = true;
+                  streamingResults[event.model] =
+                    (streamingResults[event.model] || '') + event.content
+                  shouldUpdate = true
 
                   // Set up scroll listener on first chunk (DOM should be ready by now)
                   if (!listenersSetUp.has(event.model)) {
-                    listenersSetUp.add(event.model);
+                    listenersSetUp.add(event.model)
 
                     // Retry setup with increasing delays until successful
                     const trySetup = (attempt: number, maxAttempts: number) => {
-                      const delay = attempt * 50; // 50ms, 100ms, 150ms, 200ms
+                      const delay = attempt * 50 // 50ms, 100ms, 150ms, 200ms
                       requestAnimationFrame(() => {
                         setTimeout(() => {
-                          const success = setupScrollListener(event.model);
+                          const success = setupScrollListener(event.model)
                           if (!success && attempt < maxAttempts) {
-                            trySetup(attempt + 1, maxAttempts);
+                            trySetup(attempt + 1, maxAttempts)
                           }
-                        }, delay);
-                      });
-                    };
+                        }, delay)
+                      })
+                    }
 
                     // Try up to 4 times with increasing delays
-                    trySetup(1, 4);
+                    trySetup(1, 4)
                   }
                 } else if (event.type === 'done') {
                   // Model completed - track it and record completion time
-                  completedModels.add(event.model);
-                  modelCompletionTimes[event.model] = new Date().toISOString();
+                  completedModels.add(event.model)
+                  modelCompletionTimes[event.model] = new Date().toISOString()
                   // Store error flag from backend (both locally and in state)
                   // Set to false if not explicitly true, so we can distinguish "completed" from "still streaming"
-                  const hasError = event.error === true;
-                  localModelErrors[event.model] = hasError;
-                  setModelErrors(prev => ({ ...prev, [event.model]: hasError }));
-                  shouldUpdate = true;
+                  const hasError = event.error === true
+                  localModelErrors[event.model] = hasError
+                  setModelErrors(prev => ({ ...prev, [event.model]: hasError }))
+                  shouldUpdate = true
 
                   // Clean up pause state for this model (but keep scroll listeners for scroll lock feature)
-                  autoScrollPausedRef.current.delete(event.model);
+                  autoScrollPausedRef.current.delete(event.model)
 
                   // Switch completed successful models to formatted view immediately
                   // Don't wait for all models - successful models should be formatted even if others timeout
-                  const modelContent = streamingResults[event.model] || '';
-                  const isModelError = hasError || isErrorMessage(modelContent);
+                  const modelContent = streamingResults[event.model] || ''
+                  const isModelError = hasError || isErrorMessage(modelContent)
                   if (!isModelError) {
                     // Switch this successful model to formatted view
                     setActiveResultTabs(prev => ({
                       ...prev,
-                      [event.model]: RESULT_TAB.FORMATTED
-                    }));
+                      [event.model]: RESULT_TAB.FORMATTED,
+                    }))
                   }
 
                   // Also check if ALL models are done - if so, switch all to formatted view
                   if (completedModels.size === selectedModels.length) {
-                    const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+                    const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs
                     selectedModels.forEach(modelId => {
-                      formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED;
-                    });
-                    setActiveResultTabs(formattedTabs);
+                      formattedTabs[createModelId(modelId)] = RESULT_TAB.FORMATTED
+                    })
+                    setActiveResultTabs(formattedTabs)
 
                     // For initial comparison only, set flag to scroll to top after formatting is applied
                     if (!isFollowUpMode) {
-                      shouldScrollToTopAfterFormattingRef.current = true;
+                      shouldScrollToTopAfterFormattingRef.current = true
                     }
                   }
                 } else if (event.type === 'complete') {
                   // All models complete - save metadata
-                  streamingMetadata = event.metadata;
-                  const endTime = Date.now();
-                  setProcessingTime(endTime - startTime);
-                  shouldUpdate = true;
+                  streamingMetadata = event.metadata
+                  const endTime = Date.now()
+                  setProcessingTime(endTime - startTime)
+                  shouldUpdate = true
 
                   // Note: Conversation saving will happen after final state update
                   // For authenticated users: backend handles it, refresh history after a delay
@@ -3233,22 +3436,22 @@ function AppContent() {
                     // Refresh history from API after a short delay to allow backend to save
                     setTimeout(() => {
                       // Clear cache for conversations endpoint to force fresh data
-                      apiClient.deleteCache('GET:/conversations');
-                      loadHistoryFromAPI();
-                    }, 1000);
+                      apiClient.deleteCache('GET:/conversations')
+                      loadHistoryFromAPI()
+                    }, 1000)
                   }
                 } else if (event.type === 'error') {
-                  throw new Error(event.message || 'Streaming error occurred');
+                  throw new Error(event.message || 'Streaming error occurred')
                 }
               } catch (parseError) {
-                console.error('Error parsing SSE message:', parseError, message);
+                console.error('Error parsing SSE message:', parseError, message)
               }
             }
 
             // Throttled UI update - update at most every 50ms for smooth streaming
-            const now = Date.now();
-            if (shouldUpdate && (now - lastUpdateTime >= UPDATE_THROTTLE_MS)) {
-              lastUpdateTime = now;
+            const now = Date.now()
+            if (shouldUpdate && now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
+              lastUpdateTime = now
 
               // Use regular state update instead of flushSync to allow smooth scrolling
               // React 18 will batch these updates automatically for better performance
@@ -3261,17 +3464,17 @@ function AppContent() {
                   models_successful: 0, // Will be updated on complete
                   models_failed: 0,
                   timestamp: new Date().toISOString(),
-                  processing_time_ms: Date.now() - startTime
-                }
-              });
+                  processing_time_ms: Date.now() - startTime,
+                },
+              })
 
               // Update conversations to show streaming text in cards
               if (!isFollowUpMode) {
                 setConversations(prevConversations =>
                   prevConversations.map(conv => {
-                    const content = streamingResults[conv.modelId] || '';
-                    const startTime = modelStartTimes[conv.modelId];
-                    const completionTime = modelCompletionTimes[conv.modelId];
+                    const content = streamingResults[conv.modelId] || ''
+                    const startTime = modelStartTimes[conv.modelId]
+                    const completionTime = modelCompletionTimes[conv.modelId]
 
                     // Update both user and assistant message timestamps with individual model times
 
@@ -3280,70 +3483,75 @@ function AppContent() {
                       messages: conv.messages.map((msg, idx) => {
                         if (idx === 0 && msg.type === 'user') {
                           // Update user timestamp with model start time if available
-                          const newTimestamp = startTime || msg.timestamp;
+                          const newTimestamp = startTime || msg.timestamp
                           return {
                             ...msg,
-                            timestamp: newTimestamp
-                          };
+                            timestamp: newTimestamp,
+                          }
                         } else if (idx === 1 && msg.type === 'assistant') {
                           // Update assistant message content and timestamp
-                          const newTimestamp = completionTime || msg.timestamp;
+                          const newTimestamp = completionTime || msg.timestamp
                           return {
                             ...msg,
                             content,
-                            timestamp: newTimestamp
-                          };
+                            timestamp: newTimestamp,
+                          }
                         }
-                        return msg;
-                      })
-                    };
+                        return msg
+                      }),
+                    }
                   })
-                );
+                )
               } else {
                 // For follow-up mode, append streaming content to existing conversations
                 setConversations(prevConversations =>
                   prevConversations.map(conv => {
-                    const content = streamingResults[conv.modelId];
-                    if (content === undefined) return conv;
+                    const content = streamingResults[conv.modelId]
+                    if (content === undefined) return conv
 
                     // Check if we already added the new user message
                     // Look for the most recent user message that matches the current input
-                    const hasNewUserMessage = conv.messages.some((msg, idx) =>
-                      msg.type === 'user' &&
-                      msg.content === input &&
-                      idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
-                    );
+                    const hasNewUserMessage = conv.messages.some(
+                      (msg, idx) =>
+                        msg.type === 'user' &&
+                        msg.content === input &&
+                        idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
+                    )
 
                     if (!hasNewUserMessage) {
                       // Add user message and empty assistant message
-                      const startTime = modelStartTimes[conv.modelId];
-                      const completionTime = modelCompletionTimes[conv.modelId];
+                      const startTime = modelStartTimes[conv.modelId]
+                      const completionTime = modelCompletionTimes[conv.modelId]
                       return {
                         ...conv,
                         messages: [
                           ...conv.messages,
                           createMessage('user', input, startTime || userTimestamp), // Use model start time if available
-                          createMessage('assistant', content, completionTime || new Date().toISOString())
-                        ]
-                      };
+                          createMessage(
+                            'assistant',
+                            content,
+                            completionTime || new Date().toISOString()
+                          ),
+                        ],
+                      }
                     } else {
                       // Update the last assistant message with completion time if available
-                      const completionTime = modelCompletionTimes[conv.modelId];
+                      const completionTime = modelCompletionTimes[conv.modelId]
                       return {
                         ...conv,
                         messages: conv.messages.map((msg, idx) =>
                           idx === conv.messages.length - 1 && msg.type === 'assistant'
                             ? {
-                              ...msg,
-                              content,
-                              timestamp: completionTime || msg.timestamp
-                            }
+                                ...msg,
+                                content,
+                                timestamp: completionTime || msg.timestamp,
+                              }
                             : msg
-                        )
-                      };
+                        ),
+                      }
                     }
                   })
-                );
+                )
               }
 
               // Auto-scroll each conversation card to bottom as content streams in
@@ -3353,53 +3561,55 @@ function AppContent() {
               // Use requestAnimationFrame for smooth scrolling
               requestAnimationFrame(() => {
                 // Don't auto-scroll cards if user is actively scrolling the page
-                if (isPageScrollingRef.current) return;
+                if (isPageScrollingRef.current) return
 
                 Object.keys(streamingResults).forEach(modelId => {
                   // Skip auto-scrolling for completed models so users can scroll through them
-                  if (completedModels.has(modelId)) return;
+                  if (completedModels.has(modelId)) return
 
                   // Skip auto-scrolling if user has manually scrolled away from bottom
                   // Use REF for immediate check without state update delay
-                  if (autoScrollPausedRef.current.has(modelId)) return;
+                  if (autoScrollPausedRef.current.has(modelId)) return
 
-                  const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-');
-                  const conversationContent = document.querySelector(`#conversation-content-${safeId}`) as HTMLElement;
+                  const safeId = modelId.replace(/[^a-zA-Z0-9_-]/g, '-')
+                  const conversationContent = document.querySelector(
+                    `#conversation-content-${safeId}`
+                  ) as HTMLElement
                   if (conversationContent) {
                     // Use scrollTop assignment without triggering events that interfere with page scroll
-                    conversationContent.scrollTop = conversationContent.scrollHeight;
+                    conversationContent.scrollTop = conversationContent.scrollHeight
                   }
-                });
-              });
+                })
+              })
             }
           }
 
           // Final update to ensure all content is displayed
           // Mark incomplete models as failed if they have empty content
-          const finalModelErrors: { [key: string]: boolean } = { ...localModelErrors };
+          const finalModelErrors: { [key: string]: boolean } = { ...localModelErrors }
           selectedModels.forEach(modelId => {
-            const createdModelId = createModelId(modelId);
+            const createdModelId = createModelId(modelId)
             // If model hasn't completed and has empty content, mark as failed
             if (!completedModels.has(createdModelId)) {
-              const content = streamingResults[createdModelId] || '';
+              const content = streamingResults[createdModelId] || ''
               if (content.trim().length === 0) {
-                finalModelErrors[createdModelId] = true;
+                finalModelErrors[createdModelId] = true
               }
             }
-          });
-          setModelErrors(finalModelErrors);
+          })
+          setModelErrors(finalModelErrors)
 
           // Switch successful models to formatted view (even if some timed out)
-          const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+          const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs
           selectedModels.forEach(modelId => {
-            const createdModelId = createModelId(modelId);
-            const content = streamingResults[createdModelId] || '';
-            const hasError = finalModelErrors[createdModelId] === true || isErrorMessage(content);
+            const createdModelId = createModelId(modelId)
+            const content = streamingResults[createdModelId] || ''
+            const hasError = finalModelErrors[createdModelId] === true || isErrorMessage(content)
             if (!hasError && content.trim().length > 0) {
-              formattedTabs[createdModelId] = RESULT_TAB.FORMATTED;
+              formattedTabs[createdModelId] = RESULT_TAB.FORMATTED
             }
-          });
-          setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }));
+          })
+          setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }))
 
           setResponse({
             results: { ...streamingResults },
@@ -3407,71 +3617,78 @@ function AppContent() {
               input_length: input.length,
               models_requested: selectedModels.length,
               models_successful: Object.keys(streamingResults).filter(
-                modelId => !isErrorMessage(streamingResults[modelId]) && (streamingResults[modelId] || '').trim().length > 0
+                modelId =>
+                  !isErrorMessage(streamingResults[modelId]) &&
+                  (streamingResults[modelId] || '').trim().length > 0
               ).length,
               models_failed: Object.keys(streamingResults).filter(
-                modelId => isErrorMessage(streamingResults[modelId]) || (streamingResults[modelId] || '').trim().length === 0
+                modelId =>
+                  isErrorMessage(streamingResults[modelId]) ||
+                  (streamingResults[modelId] || '').trim().length === 0
               ).length,
               timestamp: new Date().toISOString(),
-              processing_time_ms: Date.now() - startTime
-            }
-          });
+              processing_time_ms: Date.now() - startTime,
+            },
+          })
 
           // Final conversations update with complete content
           if (!isFollowUpMode) {
             setConversations(prevConversations => {
               const updated = prevConversations.map(conv => {
-                const content = streamingResults[conv.modelId] || '';
-                const startTime = modelStartTimes[conv.modelId];
-                const completionTime = modelCompletionTimes[conv.modelId];
+                const content = streamingResults[conv.modelId] || ''
+                const startTime = modelStartTimes[conv.modelId]
+                const completionTime = modelCompletionTimes[conv.modelId]
 
                 return {
                   ...conv,
                   messages: conv.messages.map((msg, idx) => {
                     if (idx === 0 && msg.type === 'user') {
                       // Update user message timestamp with model start time
-                      return { ...msg, timestamp: startTime || msg.timestamp };
+                      return { ...msg, timestamp: startTime || msg.timestamp }
                     } else if (idx === 1 && msg.type === 'assistant') {
                       // Update assistant message timestamp with model completion time
                       return {
                         ...msg,
                         content,
-                        timestamp: completionTime || msg.timestamp
-                      };
+                        timestamp: completionTime || msg.timestamp,
+                      }
                     }
-                    return msg;
-                  })
-                };
-              });
+                    return msg
+                  }),
+                }
+              })
 
               // Don't save here - will save after stream completes (see below)
-              return updated;
-            });
+              return updated
+            })
           } else {
             // For follow-up mode, ensure messages are added and update with final content
             setConversations(prevConversations => {
               const updated = prevConversations.map(conv => {
-                const content = streamingResults[conv.modelId] || '';
-                const completionTime = modelCompletionTimes[conv.modelId];
+                const content = streamingResults[conv.modelId] || ''
+                const completionTime = modelCompletionTimes[conv.modelId]
 
                 // Check if we already added the new user message
-                const hasNewUserMessage = conv.messages.some((msg, idx) =>
-                  msg.type === 'user' &&
-                  msg.content === input &&
-                  idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
-                );
+                const hasNewUserMessage = conv.messages.some(
+                  (msg, idx) =>
+                    msg.type === 'user' && msg.content === input && idx >= conv.messages.length - 2 // Check last 2 messages (user + assistant)
+                )
 
                 if (!hasNewUserMessage) {
                   // Add user message and assistant message if they weren't added during streaming
-                  const startTime = modelStartTimes[conv.modelId];
+                  const startTime = modelStartTimes[conv.modelId]
                   return {
                     ...conv,
                     messages: [
                       ...conv.messages,
                       createMessage('user', input, startTime || userTimestamp),
-                      createMessage('assistant', content, completionTime || new Date().toISOString())
-                    ]
-                  };
+                      createMessage(
+                        'assistant',
+                        content,
+                        completionTime || new Date().toISOString()
+                      ),
+                    ],
+                  }
                 } else {
                   // Update the last assistant message with final content and timestamp
                   return {
@@ -3481,24 +3698,24 @@ function AppContent() {
                         return {
                           ...msg,
                           content: content || msg.content, // Ensure content is set
-                          timestamp: completionTime || msg.timestamp
-                        };
+                          timestamp: completionTime || msg.timestamp,
+                        }
                       }
-                      return msg;
-                    })
-                  };
+                      return msg
+                    }),
+                  }
                 }
-              });
+              })
 
               // Don't save here - will save after stream completes (see below)
-              return updated;
-            });
+              return updated
+            })
           }
 
           // Tab switching happens automatically when each model completes (see 'done' event handler above)
           // No need to switch here - it's already been done dynamically as models finished
         } finally {
-          reader.releaseLock();
+          reader.releaseLock()
 
           // Save conversation to history AFTER stream completes
           // For anonymous users: save to localStorage
@@ -3508,99 +3725,116 @@ function AppContent() {
             setTimeout(() => {
               // Get current conversations state (should be fully updated by now)
               setConversations(currentConversations => {
-                const conversationsWithMessages = currentConversations.filter(conv =>
-                  selectedModels.includes(conv.modelId) &&
-                  conv.messages.length > 0
-                );
+                const conversationsWithMessages = currentConversations.filter(
+                  conv => selectedModels.includes(conv.modelId) && conv.messages.length > 0
+                )
 
                 // Only save if we have conversations with complete assistant messages (not empty)
                 const hasCompleteMessages = conversationsWithMessages.some(conv => {
-                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
-                  return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
-                });
+                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant')
+                  return (
+                    assistantMessages.length > 0 &&
+                    assistantMessages.some(msg => msg.content.trim().length > 0)
+                  )
+                })
 
                 if (hasCompleteMessages && conversationsWithMessages.length > 0) {
                   // Get the FIRST user message from the conversation (not follow-ups)
                   const allUserMessages = conversationsWithMessages
                     .flatMap(conv => conv.messages)
                     .filter(msg => msg.type === 'user')
-                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                    .sort(
+                      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                    )
 
-                  const firstUserMessage = allUserMessages[0];
+                  const firstUserMessage = allUserMessages[0]
 
                   if (firstUserMessage) {
-                    const inputData = firstUserMessage.content;
+                    const inputData = firstUserMessage.content
                     // Always save the conversation - saveConversationToLocalStorage handles the 2-conversation limit
                     // by keeping only the 2 most recent conversations
-                    const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages);
+                    const savedId = saveConversationToLocalStorage(
+                      inputData,
+                      selectedModels,
+                      conversationsWithMessages
+                    )
                     // Set currentVisibleComparisonId to the saved comparison ID so it shows as active in the dropdown
                     // This allows users to see their saved comparison highlighted in the dropdown right after streaming completes
                     if (savedId) {
-                      setCurrentVisibleComparisonId(savedId);
+                      setCurrentVisibleComparisonId(savedId)
                     }
                   }
                 }
 
-                return currentConversations; // Return unchanged
-              });
-            }, 200);
+                return currentConversations // Return unchanged
+              })
+            }, 200)
           } else if (isAuthenticated && !isFollowUpMode) {
             // For registered users, reload history from API after stream completes
             // Backend already saved the conversation, we just need to refresh the list
             setTimeout(async () => {
               // Get the first user message to find the matching conversation
-              const firstUserMessage = getFirstUserMessage();
+              const firstUserMessage = getFirstUserMessage()
               if (firstUserMessage) {
-                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels);
+                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels)
               }
-            }, 1500); // Give backend more time to finish saving (background task
+            }, 1500) // Give backend more time to finish saving (background task
           } else if (!isAuthenticated && isFollowUpMode) {
             // Save follow-up updates after stream completes (anonymous users)
             setTimeout(() => {
               setConversations(currentConversations => {
-                const conversationsWithMessages = currentConversations.filter(conv =>
-                  selectedModels.includes(conv.modelId) &&
-                  conv.messages.length > 0
-                );
+                const conversationsWithMessages = currentConversations.filter(
+                  conv => selectedModels.includes(conv.modelId) && conv.messages.length > 0
+                )
 
                 // Only save if we have conversations with complete assistant messages (not empty)
                 const hasCompleteMessages = conversationsWithMessages.some(conv => {
-                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant');
-                  return assistantMessages.length > 0 && assistantMessages.some(msg => msg.content.trim().length > 0);
-                });
+                  const assistantMessages = conv.messages.filter(msg => msg.type === 'assistant')
+                  return (
+                    assistantMessages.length > 0 &&
+                    assistantMessages.some(msg => msg.content.trim().length > 0)
+                  )
+                })
 
                 if (hasCompleteMessages && conversationsWithMessages.length > 0) {
                   // Get the first user message (original query) to identify the conversation
                   const firstUserMessage = conversationsWithMessages
                     .flatMap(conv => conv.messages)
                     .filter(msg => msg.type === 'user')
-                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0];
+                    .sort(
+                      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                    )[0]
 
                   if (firstUserMessage) {
-                    const inputData = firstUserMessage.content;
+                    const inputData = firstUserMessage.content
                     // Update existing conversation (isUpdate = true)
-                    const savedId = saveConversationToLocalStorage(inputData, selectedModels, conversationsWithMessages, true);
+                    const savedId = saveConversationToLocalStorage(
+                      inputData,
+                      selectedModels,
+                      conversationsWithMessages,
+                      true
+                    )
                     // Set currentVisibleComparisonId to the saved comparison ID so it shows as active in the dropdown
                     // This allows users to see their saved comparison highlighted in the dropdown right after streaming completes
                     if (savedId) {
-                      setCurrentVisibleComparisonId(savedId);
+                      setCurrentVisibleComparisonId(savedId)
                     }
                   }
                 }
 
-                return currentConversations; // Return unchanged
-              });
-            }, 200);
+                return currentConversations // Return unchanged
+              })
+            }, 200)
           } else if (isAuthenticated && isFollowUpMode) {
             // For registered users, reload history from API after follow-up completes
             // Backend already saved the conversation update, we just need to refresh the list
             setTimeout(async () => {
               // Get the first user message to find the matching conversation
-              const firstUserMessage = getFirstUserMessage();
+              const firstUserMessage = getFirstUserMessage()
               if (firstUserMessage) {
-                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels);
+                await syncHistoryAfterComparison(firstUserMessage.content, selectedModels)
               }
-            }, 1500); // Give backend more time to finish saving (background task)
+            }, 1500) // Give backend more time to finish saving (background task)
           }
         }
       }
@@ -3614,25 +3848,25 @@ function AppContent() {
           models_successful: Object.keys(streamingResults).filter(
             modelId => !isErrorMessage(streamingResults[modelId])
           ).length,
-          models_failed: Object.keys(streamingResults).filter(
-            modelId => isErrorMessage(streamingResults[modelId])
+          models_failed: Object.keys(streamingResults).filter(modelId =>
+            isErrorMessage(streamingResults[modelId])
           ).length,
           timestamp: new Date().toISOString(),
-          processing_time_ms: Date.now() - startTime
-        }
-      };
+          processing_time_ms: Date.now() - startTime,
+        },
+      }
 
-      setResponse(filteredData);
+      setResponse(filteredData)
 
       // Clear input field only if at least one model succeeded
       // Keep input if all models failed so user can retry without retyping
       if (filteredData.metadata.models_successful > 0) {
-        setInput('');
+        setInput('')
 
         // Deselect Extended mode after successful Extended request
         // Only deselect if at least one model succeeded (request counted)
         if (isExtendedMode) {
-          setIsExtendedMode(false);
+          setIsExtendedMode(false)
         }
       }
 
@@ -3642,9 +3876,9 @@ function AppContent() {
         // Refresh user data if authenticated to update usage count
         if (isAuthenticated) {
           try {
-            await refreshUser();
+            await refreshUser()
           } catch (error) {
-            console.error('Failed to refresh user data:', error);
+            console.error('Failed to refresh user data:', error)
           }
         }
 
@@ -3653,66 +3887,79 @@ function AppContent() {
           // Clear cache to ensure we get fresh data after the comparison
           const cacheKey = browserFingerprint
             ? `GET:/rate-limit-status?fingerprint=${encodeURIComponent(browserFingerprint)}`
-            : 'GET:/rate-limit-status';
-          apiClient.deleteCache(cacheKey);
+            : 'GET:/rate-limit-status'
+          apiClient.deleteCache(cacheKey)
 
-          const data = await getRateLimitStatus(browserFingerprint);
+          const data = await getRateLimitStatus(browserFingerprint)
           // Backend returns 'fingerprint_usage' or 'daily_usage' for anonymous users
-          const newCount = (data as any).fingerprint_usage || data.daily_usage || 0;
-          setUsageCount(newCount);
+          const newCount = data.fingerprint_usage || data.daily_usage || 0
+          setUsageCount(newCount)
 
           // Track submission count and show banner for anonymous users
           if (!isAuthenticated) {
             // Increment submission count
-            const newSubmissionCount = submissionCount + 1;
-            setSubmissionCount(newSubmissionCount);
+            const newSubmissionCount = submissionCount + 1
+            setSubmissionCount(newSubmissionCount)
 
             // Save to localStorage
-            const today = new Date().toDateString();
-            localStorage.setItem('compareintel_submission_count', JSON.stringify({
-              count: newSubmissionCount,
-              date: today
-            }));
+            const today = new Date().toDateString()
+            localStorage.setItem(
+              'compareintel_submission_count',
+              JSON.stringify({
+                count: newSubmissionCount,
+                date: today,
+              })
+            )
 
             // Show banner on 5th, 7th, or 9th submission, or when limit is reached
             // If limit is reached, keep it visible permanently
             if (newCount >= ANONYMOUS_DAILY_LIMIT) {
-              setShowUsageBanner(true);
+              setShowUsageBanner(true)
               // Don't set timeout - keep it visible permanently when limit reached
-            } else if (newSubmissionCount === 5 || newSubmissionCount === 7 || newSubmissionCount === 9) {
+            } else if (
+              newSubmissionCount === 5 ||
+              newSubmissionCount === 7 ||
+              newSubmissionCount === 9
+            ) {
               // Clear any existing timeout
               if (usageBannerTimeoutRef.current !== null) {
-                window.clearTimeout(usageBannerTimeoutRef.current);
+                window.clearTimeout(usageBannerTimeoutRef.current)
               }
               // Show the banner
-              setShowUsageBanner(true);
+              setShowUsageBanner(true)
               // Hide it after 10 seconds (only if not at limit)
               usageBannerTimeoutRef.current = window.setTimeout(() => {
-                setShowUsageBanner(false);
-                usageBannerTimeoutRef.current = null;
-              }, 10000);
+                setShowUsageBanner(false)
+                usageBannerTimeoutRef.current = null
+              }, 10000)
             }
           }
 
           // Sync extended usage from backend if available
-          const newExtendedCount = data.extended_usage || (data as any).daily_extended_usage;
+          const newExtendedCount = data.extended_usage || data.daily_extended_usage
           if (newExtendedCount !== undefined) {
-            setExtendedUsageCount(newExtendedCount);
+            setExtendedUsageCount(newExtendedCount)
           }
 
           // Update localStorage to match backend
-          const today = new Date().toDateString();
-          localStorage.setItem('compareintel_usage', JSON.stringify({
-            count: newCount,
-            date: today
-          }));
+          const today = new Date().toDateString()
+          localStorage.setItem(
+            'compareintel_usage',
+            JSON.stringify({
+              count: newCount,
+              date: today,
+            })
+          )
 
           // Update extended usage in localStorage if synced from backend
           if (newExtendedCount !== undefined) {
-            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
-              count: newExtendedCount,
-              date: today
-            }));
+            localStorage.setItem(
+              'compareintel_extended_usage',
+              JSON.stringify({
+                count: newExtendedCount,
+                date: today,
+              })
+            )
           }
         } catch (error) {
           // Silently handle cancellation errors (expected when component unmounts)
@@ -3720,41 +3967,48 @@ function AppContent() {
             // Fallback to local increment silently
           } else {
             // Fallback to local increment if backend sync fails
-            console.error('Failed to sync usage count after comparison:', error);
+            console.error('Failed to sync usage count after comparison:', error)
           }
-          const newUsageCount = usageCount + selectedModels.length;
-          setUsageCount(newUsageCount);
+          const newUsageCount = usageCount + selectedModels.length
+          setUsageCount(newUsageCount)
 
           // Track submission count and show banner for anonymous users
           if (!isAuthenticated) {
             // Increment submission count
-            const newSubmissionCount = submissionCount + 1;
-            setSubmissionCount(newSubmissionCount);
+            const newSubmissionCount = submissionCount + 1
+            setSubmissionCount(newSubmissionCount)
 
             // Save to localStorage
-            const today = new Date().toDateString();
-            localStorage.setItem('compareintel_submission_count', JSON.stringify({
-              count: newSubmissionCount,
-              date: today
-            }));
+            const today = new Date().toDateString()
+            localStorage.setItem(
+              'compareintel_submission_count',
+              JSON.stringify({
+                count: newSubmissionCount,
+                date: today,
+              })
+            )
 
             // Show banner on 5th, 7th, or 9th submission, or when limit is reached
             // If limit is reached, keep it visible permanently
             if (newUsageCount >= ANONYMOUS_DAILY_LIMIT) {
-              setShowUsageBanner(true);
+              setShowUsageBanner(true)
               // Don't set timeout - keep it visible permanently when limit reached
-            } else if (newSubmissionCount === 5 || newSubmissionCount === 7 || newSubmissionCount === 9) {
+            } else if (
+              newSubmissionCount === 5 ||
+              newSubmissionCount === 7 ||
+              newSubmissionCount === 9
+            ) {
               // Clear any existing timeout
               if (usageBannerTimeoutRef.current !== null) {
-                window.clearTimeout(usageBannerTimeoutRef.current);
+                window.clearTimeout(usageBannerTimeoutRef.current)
               }
               // Show the banner
-              setShowUsageBanner(true);
+              setShowUsageBanner(true)
               // Hide it after 10 seconds (only if not at limit)
               usageBannerTimeoutRef.current = window.setTimeout(() => {
-                setShowUsageBanner(false);
-                usageBannerTimeoutRef.current = null;
-              }, 10000);
+                setShowUsageBanner(false)
+                usageBannerTimeoutRef.current = null
+              }, 10000)
             }
           }
 
@@ -3762,31 +4016,39 @@ function AppContent() {
 
           // Update Extended usage if using Extended tier (1 per request, not per model)
           if (shouldUseExtendedTier) {
-            const newExtendedUsageCount = extendedUsageCount + 1;
-            setExtendedUsageCount(newExtendedUsageCount);
+            const newExtendedUsageCount = extendedUsageCount + 1
+            setExtendedUsageCount(newExtendedUsageCount)
           }
 
-          const today = new Date().toDateString();
-          localStorage.setItem('compareintel_usage', JSON.stringify({
-            count: newUsageCount,
-            date: today
-          }));
+          const today = new Date().toDateString()
+          localStorage.setItem(
+            'compareintel_usage',
+            JSON.stringify({
+              count: newUsageCount,
+              date: today,
+            })
+          )
 
           // Store Extended usage separately (1 per request, not per model)
           if (shouldUseExtendedTier) {
-            localStorage.setItem('compareintel_extended_usage', JSON.stringify({
-              count: extendedUsageCount + 1,
-              date: today
-            }));
+            localStorage.setItem(
+              'compareintel_extended_usage',
+              JSON.stringify({
+                count: extendedUsageCount + 1,
+                date: today,
+              })
+            )
           }
         }
       } else {
         // All models failed - show a message but don't count it
-        setError('All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.');
+        setError(
+          'All models failed to respond. This comparison did not count towards your daily limit. Please try again in a moment.'
+        )
         // Clear the error after 8 seconds
         setTimeout(() => {
-          setError(null);
-        }, 8000);
+          setError(null)
+        }, 8000)
         // Note: Input is NOT cleared when all models fail - user can retry without retyping
       }
 
@@ -3797,141 +4059,147 @@ function AppContent() {
 
         // Scroll conversations to show the last user message
         setTimeout(() => {
-          scrollConversationsToBottom();
-        }, 600);
+          scrollConversationsToBottom()
+        }, 600)
       } else {
         // For initial comparison (non-follow-up), conversations were already initialized during streaming
         // with individual model timestamps. Don't reinitialize here as it would override them!
 
         // Scroll conversations to show the last user message for initial conversations too
         setTimeout(() => {
-          scrollConversationsToBottom();
-        }, 500);
+          scrollConversationsToBottom()
+        }, 500)
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         // Handle timeout: mark incomplete models as failed and format successful ones
-        const timeoutModelErrors: { [key: string]: boolean } = { ...localModelErrors };
+        const timeoutModelErrors: { [key: string]: boolean } = { ...localModelErrors }
         selectedModels.forEach(modelId => {
-          const createdModelId = createModelId(modelId);
+          const createdModelId = createModelId(modelId)
           // If model hasn't completed, it should be marked as failed (timeout = failure)
           // This handles cases where response was cut short with partial content
           if (!completedModels.has(createdModelId)) {
-            timeoutModelErrors[createdModelId] = true;
+            timeoutModelErrors[createdModelId] = true
           }
-        });
-        setModelErrors(timeoutModelErrors);
+        })
+        setModelErrors(timeoutModelErrors)
 
         // Switch successful models to formatted view even on timeout
-        const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs;
+        const formattedTabs: ActiveResultTabs = {} as ActiveResultTabs
         selectedModels.forEach(modelId => {
-          const createdModelId = createModelId(modelId);
-          const content = streamingResults[createdModelId] || '';
-          const hasError = timeoutModelErrors[createdModelId] === true || isErrorMessage(content);
+          const createdModelId = createModelId(modelId)
+          const content = streamingResults[createdModelId] || ''
+          const hasError = timeoutModelErrors[createdModelId] === true || isErrorMessage(content)
           if (!hasError && content.trim().length > 0) {
-            formattedTabs[createdModelId] = RESULT_TAB.FORMATTED;
+            formattedTabs[createdModelId] = RESULT_TAB.FORMATTED
           }
-        });
-        setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }));
+        })
+        setActiveResultTabs(prev => ({ ...prev, ...formattedTabs }))
 
         // Final state update for conversations with timeout handling
         if (!isFollowUpMode) {
           setConversations(prevConversations => {
             return prevConversations.map(conv => {
-              const content = streamingResults[conv.modelId] || '';
-              const startTime = modelStartTimes[conv.modelId];
-              const completionTime = modelCompletionTimes[conv.modelId];
+              const content = streamingResults[conv.modelId] || ''
+              const startTime = modelStartTimes[conv.modelId]
+              const completionTime = modelCompletionTimes[conv.modelId]
 
               return {
                 ...conv,
                 messages: conv.messages.map((msg, idx) => {
                   if (idx === 0 && msg.type === 'user') {
-                    return { ...msg, timestamp: startTime || msg.timestamp };
+                    return { ...msg, timestamp: startTime || msg.timestamp }
                   } else if (idx === 1 && msg.type === 'assistant') {
                     return {
                       ...msg,
                       content,
-                      timestamp: completionTime || msg.timestamp
-                    };
+                      timestamp: completionTime || msg.timestamp,
+                    }
                   }
-                  return msg;
-                })
-              };
-            });
-          });
+                  return msg
+                }),
+              }
+            })
+          })
         }
 
         if (userCancelledRef.current) {
-          const elapsedTime = Date.now() - startTime;
-          const elapsedSeconds = (elapsedTime / 1000).toFixed(1);
-          setError(`Comparison cancelled by user after ${elapsedSeconds} seconds`);
+          const elapsedTime = Date.now() - startTime
+          const elapsedSeconds = (elapsedTime / 1000).toFixed(1)
+          setError(`Comparison cancelled by user after ${elapsedSeconds} seconds`)
         } else {
-          const timeoutMinutes = Math.floor(dynamicTimeout / 60000);
-          const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000);
-          const modelText = selectedModels.length === 1 ? 'model' : 'models';
-          const suggestionText = selectedModels.length === 1
-            ? 'Please wait a moment and try again.'
-            : 'Try selecting fewer models, or wait a moment and try again.';
-          setError(`Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} ${modelText}). ${suggestionText}`);
+          const timeoutMinutes = Math.floor(dynamicTimeout / 60000)
+          const timeoutSeconds = Math.floor((dynamicTimeout % 60000) / 1000)
+          const modelText = selectedModels.length === 1 ? 'model' : 'models'
+          const suggestionText =
+            selectedModels.length === 1
+              ? 'Please wait a moment and try again.'
+              : 'Try selecting fewer models, or wait a moment and try again.'
+          setError(
+            `Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} ${modelText}). ${suggestionText}`
+          )
         }
       } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
-        setError('Unable to connect to the server. Please check if the backend is running.');
+        setError('Unable to connect to the server. Please check if the backend is running.')
       } else if (err instanceof Error) {
-        setError(err.message || 'An unexpected error occurred');
+        setError(err.message || 'An unexpected error occurred')
       } else {
-        setError('An unexpected error occurred');
+        setError('An unexpected error occurred')
       }
     } finally {
-      setCurrentAbortController(null);
-      userCancelledRef.current = false;
-      setIsLoading(false);
+      setCurrentAbortController(null)
+      userCancelledRef.current = false
+      setIsLoading(false)
     }
-  };
+  }
 
   // Helper function to render usage preview (used in both regular and follow-up modes)
   const renderUsagePreview = () => {
-    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous';
+    const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous'
 
-    const regularLimit = getDailyLimit(userTier);
-    const extendedLimit = getExtendedLimit(userTier);
+    const regularLimit = getDailyLimit(userTier)
+    const extendedLimit = getExtendedLimit(userTier)
 
     // Calculate current usage
-    const currentRegularUsage = isAuthenticated && user
-      ? user.daily_usage_count
-      : usageCount;
-    const currentExtendedUsage = isAuthenticated && user
-      ? user.daily_extended_usage
-      : extendedUsageCount;
+    const currentRegularUsage = isAuthenticated && user ? user.daily_usage_count : usageCount
+    const currentExtendedUsage =
+      isAuthenticated && user ? user.daily_extended_usage : extendedUsageCount
 
     // Extended mode is based on isExtendedMode flag
-    const isExtendedInteraction = isExtendedMode;
+    const isExtendedInteraction = isExtendedMode
 
     // Calculate what will be used
-    const regularToUse = selectedModels.length;
-    const extendedToUse = isExtendedInteraction ? 1 : 0; // Extended counts as 1 per request, not per model
+    const regularToUse = selectedModels.length
+    const extendedToUse = isExtendedInteraction ? 1 : 0 // Extended counts as 1 per request, not per model
 
     // Calculate remaining
-    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage);
-    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage);
+    const regularRemaining = Math.max(0, regularLimit - currentRegularUsage)
+    const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage)
 
     return (
-      <div className={isExtendedInteraction ? "usage-preview-extended" : ""} style={{
-        marginTop: '0.5rem',
-        fontSize: '0.825rem',
-        color: 'rgba(255, 255, 255, 0.85)'
-      }}>
-        <span className={isExtendedInteraction ? "usage-preview-item" : ""}>
-          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with <strong>{regularRemaining}</strong> remaining model response{regularRemaining !== 1 ? 's' : ''}
+      <div
+        className={isExtendedInteraction ? 'usage-preview-extended' : ''}
+        style={{
+          marginTop: '0.5rem',
+          fontSize: '0.825rem',
+          color: 'rgba(255, 255, 255, 0.85)',
+        }}
+      >
+        <span className={isExtendedInteraction ? 'usage-preview-item' : ''}>
+          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with{' '}
+          <strong>{regularRemaining}</strong> remaining model response
+          {regularRemaining !== 1 ? 's' : ''}
         </span>
         {isExtendedInteraction && (
           <span className="usage-preview-item">
             <span className="usage-preview-separator"> • </span>
-            <strong>{extendedToUse}</strong> extended use selected with <strong>{extendedRemaining}</strong> remaining
+            <strong>{extendedToUse}</strong> extended use selected with{' '}
+            <strong>{extendedRemaining}</strong> remaining
           </span>
         )}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <div className="app">
@@ -3947,22 +4215,36 @@ function AppContent() {
       )}
 
       {/* Usage tracking banner - Fixed at top, show on 5th/7th/9th submission or when limit reached */}
-      {!authLoading && !isAuthenticated && currentView === 'main' && (
-        (usageCount >= ANONYMOUS_DAILY_LIMIT || ((submissionCount === 5 || submissionCount === 7 || submissionCount === 9) && showUsageBanner && usageCount < ANONYMOUS_DAILY_LIMIT)) && (
-          <div className="usage-tracking-banner" style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '1rem',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
-          }}>
+      {!authLoading &&
+        !isAuthenticated &&
+        currentView === 'main' &&
+        (usageCount >= ANONYMOUS_DAILY_LIMIT ||
+          ((submissionCount === 5 || submissionCount === 7 || submissionCount === 9) &&
+            showUsageBanner &&
+            usageCount < ANONYMOUS_DAILY_LIMIT)) && (
+          <div
+            className="usage-tracking-banner"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '1rem',
+              textAlign: 'center',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+            }}
+          >
             <div className="usage-banner-content">
               {usageCount < ANONYMOUS_DAILY_LIMIT ? (
                 <>
-                  <div className="usage-banner-text-desktop" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  <div
+                    className="usage-banner-text-desktop"
+                    style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}
+                  >
                     {`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today • Sign up for 20 free per day`}
                   </div>
-                  <div className="usage-banner-text-mobile" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                  <div
+                    className="usage-banner-text-mobile"
+                    style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}
+                  >
                     <div>{`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today`}</div>
                     <div>Sign up for 20 free per day</div>
                   </div>
@@ -3974,33 +4256,32 @@ function AppContent() {
               )}
             </div>
           </div>
-        )
-      )}
+        )}
 
       {/* Admin Panel - Show if user is admin and in admin view */}
       {currentView === 'admin' && user?.is_admin ? (
-        <Suspense fallback={<LoadingSpinner size="large" modern={true} message="Loading admin panel..." />}>
+        <Suspense
+          fallback={<LoadingSpinner size="large" modern={true} message="Loading admin panel..." />}
+        >
           <AdminPanel onClose={() => navigate('/')} />
         </Suspense>
       ) : (
         <>
           {/* Done Selecting? Floating Card - Fixed position at screen center */}
-          {showDoneSelectingCard && (
-            <DoneSelectingCard onDone={handleDoneSelecting} />
-          )}
+          {showDoneSelectingCard && <DoneSelectingCard onDone={handleDoneSelecting} />}
 
           <Navigation
             isAuthenticated={isAuthenticated}
             isAdmin={user?.is_admin || false}
             currentView={currentView}
-            onViewChange={(view) => navigate(view === 'admin' ? '/admin' : '/')}
+            onViewChange={view => navigate(view === 'admin' ? '/admin' : '/')}
             onSignInClick={() => {
-              setAuthModalMode('login');
-              setIsAuthModalOpen(true);
+              setAuthModalMode('login')
+              setIsAuthModalOpen(true)
             }}
             onSignUpClick={() => {
-              setAuthModalMode('register');
-              setIsAuthModalOpen(true);
+              setAuthModalMode('register')
+              setIsAuthModalOpen(true)
             }}
           />
 
@@ -4008,21 +4289,20 @@ function AppContent() {
           {/* Only show VerifyEmail if we're NOT in password reset mode */}
           {!showPasswordReset && !authLoading && (
             <>
-              <VerifyEmail onClose={() => { }} externalToken={verificationToken} suppressVerification={suppressVerification} />
+              <VerifyEmail
+                onClose={() => {}}
+                externalToken={verificationToken}
+                suppressVerification={suppressVerification}
+              />
               <VerificationBanner />
             </>
           )}
 
           {/* Password reset modal */}
-          {showPasswordReset && (
-            <ResetPassword onClose={handlePasswordResetClose} />
-          )}
+          {showPasswordReset && <ResetPassword onClose={handlePasswordResetClose} />}
 
           <main className="app-main">
-            <Hero
-              visibleTooltip={visibleTooltip}
-              onCapabilityTileTap={handleCapabilityTileTap}
-            >
+            <Hero visibleTooltip={visibleTooltip} onCapabilityTileTap={handleCapabilityTileTap}>
               <ErrorBoundary>
                 <ComparisonForm
                   input={input}
@@ -4073,32 +4353,46 @@ function AppContent() {
                     // On wide layout, reserve space for the selected models column (and external toggle only when shown outside)
                     // Keep padding consistent whether collapsed or not when models are selected
                     // Force the padding-right value to ensure it overrides CSS media query
-                    ...(isWideLayout && selectedModels.length > 0 ? {
-                      paddingRight: 'calc(340px + 2rem + 2.5rem)',
-                    } : {}),
-                    ...(isWideLayout && selectedModels.length === 0 ? {
-                      paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0'
-                    } : {}),
+                    ...(isWideLayout && selectedModels.length > 0
+                      ? {
+                          paddingRight: 'calc(340px + 2rem + 2.5rem)',
+                        }
+                      : {}),
+                    ...(isWideLayout && selectedModels.length === 0
+                      ? {
+                          paddingRight: isModelsHidden ? 'calc(36px + 2rem)' : '0',
+                        }
+                      : {}),
                     // Always center items vertically
-                    alignItems: 'center'
+                    alignItems: 'center',
                   }}
                 >
                   <div className="models-header-title">
                     <h2 style={{ margin: 0 }}>
-                      {isFollowUpMode ? 'Selected Models (Follow-up Mode)' : 'Select Models to Compare'}
+                      {isFollowUpMode
+                        ? 'Selected Models (Follow-up Mode)'
+                        : 'Select Models to Compare'}
                     </h2>
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                       {isFollowUpMode
                         ? 'You can deselect models or reselect previously selected ones (minimum 1 model required)'
-                        : `Choose up to ${maxModelsLimit} models${!isAuthenticated ? ' (Anonymous Tier)' : user?.subscription_tier ? (() => {
-                          const parts = user.subscription_tier.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1));
-                          // Replace "Plus" with "+" when it appears after another word
-                          const formatted = parts.length > 1 && parts[1] === 'Plus'
-                            ? parts[0] + '+'
-                            : parts.join(' ');
-                          return ` (${formatted} Tier)`;
-                        })() : ''}`
-                      }
+                        : `Choose up to ${maxModelsLimit} models${
+                            !isAuthenticated
+                              ? ' (Anonymous Tier)'
+                              : user?.subscription_tier
+                                ? (() => {
+                                    const parts = user.subscription_tier
+                                      .split('_')
+                                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    // Replace "Plus" with "+" when it appears after another word
+                                    const formatted =
+                                      parts.length > 1 && parts[1] === 'Plus'
+                                        ? parts[0] + '+'
+                                        : parts.join(' ')
+                                    return ` (${formatted} Tier)`
+                                  })()
+                                : ''
+                          }`}
                     </p>
                   </div>
                   <div
@@ -4111,64 +4405,83 @@ function AppContent() {
                       position: isWideLayout ? 'absolute' : undefined,
                       top: isWideLayout ? '50%' : undefined,
                       right: isWideLayout ? '1rem' : undefined,
-                      transform: isWideLayout ? 'translateY(-50%)' : undefined
+                      transform: isWideLayout ? 'translateY(-50%)' : undefined,
                     }}
                   >
                     <div className="models-header-buttons">
                       <button
                         className="collapse-all-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          collapseAllDropdowns();
+                        onClick={e => {
+                          e.stopPropagation()
+                          collapseAllDropdowns()
                         }}
                         disabled={openDropdowns.size === 0}
-                        title={"Collapse all model providers"}
-                        aria-label={"Collapse all model providers"}
+                        title={'Collapse all model providers'}
+                        aria-label={'Collapse all model providers'}
                       >
                         {/* Double chevrons up icon (collapse all) */}
                         <svg
-                          viewBox="0 0 24 24" fill="none"
+                          viewBox="0 0 24 24"
+                          fill="none"
                           xmlns="http://www.w3.org/2000/svg"
                           aria-hidden="true"
                           preserveAspectRatio="xMidYMid meet"
                         >
                           <path
                             d="M7 13l5-5 5 5M7 18l5-5 5 5"
-                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                         </svg>
                       </button>
                       <button
                         className="clear-all-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedModels([]);
+                        onClick={e => {
+                          e.stopPropagation()
+                          setSelectedModels([])
                           // Clear comparison results if they exist
                           if (response || conversations.length > 0) {
-                            setConversations([]);
-                            setResponse(null);
+                            setConversations([])
+                            setResponse(null)
                           }
                           // Expand the models section
-                          setIsModelsHidden(false);
+                          setIsModelsHidden(false)
                         }}
                         disabled={selectedModels.length === 0 || isFollowUpMode}
-                        title={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
-                        aria-label={isFollowUpMode ? 'Cannot clear models during follow-up' : 'Clear all selections'}
+                        title={
+                          isFollowUpMode
+                            ? 'Cannot clear models during follow-up'
+                            : 'Clear all selections'
+                        }
+                        aria-label={
+                          isFollowUpMode
+                            ? 'Cannot clear models during follow-up'
+                            : 'Clear all selections'
+                        }
                       >
                         {/* Square with X icon (deselect all) */}
                         <svg
-                          viewBox="0 0 24 24" fill="none"
+                          viewBox="0 0 24 24"
+                          fill="none"
                           xmlns="http://www.w3.org/2000/svg"
                           aria-hidden="true"
                           preserveAspectRatio="xMidYMid meet"
                         >
                           <rect
-                            x="5" y="5" width="14" height="14"
-                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                            x="5"
+                            y="5"
+                            width="14"
+                            height="14"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                           <path
                             d="M9 9l6 6M15 9l-6 6"
-                            strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                         </svg>
                       </button>
@@ -4177,15 +4490,15 @@ function AppContent() {
                       <div
                         className={`models-count-indicator ${selectedModels.length > 0 ? 'has-selected' : 'empty'}`}
                         title="Total selections"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                       >
                         {selectedModels.length} of {maxModelsLimit} selected
                       </div>
                       <button
                         className="models-toggle-arrow"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsModelsHidden(!isModelsHidden);
+                        onClick={e => {
+                          e.stopPropagation()
+                          setIsModelsHidden(!isModelsHidden)
                         }}
                         style={{
                           padding: '0.5rem',
@@ -4202,7 +4515,7 @@ function AppContent() {
                           justifyContent: 'center',
                           width: '36px',
                           height: '36px',
-                          fontWeight: 'bold'
+                          fontWeight: 'bold',
                         }}
                         title={isModelsHidden ? 'Show model selection' : 'Hide model selection'}
                       >
@@ -4224,9 +4537,14 @@ function AppContent() {
                       <div className="models-selection-layout">
                         <div className="provider-dropdowns">
                           {Object.entries(modelsByProvider).map(([provider, models]) => {
-                            const hasSelectedModels = models.some(model => selectedModels.includes(model.id));
+                            const hasSelectedModels = models.some(model =>
+                              selectedModels.includes(model.id)
+                            )
                             return (
-                              <div key={provider} className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}>
+                              <div
+                                key={provider}
+                                className={`provider-dropdown ${hasSelectedModels ? 'has-selected-models' : ''}`}
+                              >
                                 <button
                                   className="provider-header"
                                   onClick={() => toggleDropdown(provider)}
@@ -4235,46 +4553,72 @@ function AppContent() {
                                   <div className="provider-left">
                                     <span className="provider-name">{provider}</span>
                                   </div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                  >
                                     {(() => {
-                                      const selectedCount = models.filter(model => selectedModels.includes(model.id)).length;
+                                      const selectedCount = models.filter(model =>
+                                        selectedModels.includes(model.id)
+                                      ).length
                                       return (
                                         <span
                                           className={`provider-count ${selectedCount > 0 ? 'has-selected' : 'empty'}`}
                                         >
                                           {selectedCount} of {models.length} selected
                                         </span>
-                                      );
+                                      )
                                     })()}
                                     {(() => {
-                                      const providerModels = modelsByProvider[provider] || [];
+                                      const providerModels = modelsByProvider[provider] || []
                                       // Filter out unavailable models (where available === false)
-                                      const availableProviderModels = providerModels.filter(model => model.available !== false);
-                                      const providerModelIds = availableProviderModels.map(model => model.id);
-                                      const allProviderModelsSelected = providerModelIds.every(id => selectedModels.includes(id)) && providerModelIds.length > 0;
-                                      const hasAnySelected = providerModelIds.some(id => selectedModels.includes(id));
-                                      const hasAnyOriginallySelected = providerModelIds.some(id => originalSelectedModels.includes(id));
-                                      const isDisabled = (selectedModels.length >= maxModelsLimit && !hasAnySelected) ||
-                                        (isFollowUpMode && !hasAnySelected && !hasAnyOriginallySelected);
+                                      const availableProviderModels = providerModels.filter(
+                                        model => model.available !== false
+                                      )
+                                      const providerModelIds = availableProviderModels.map(
+                                        model => model.id
+                                      )
+                                      const allProviderModelsSelected =
+                                        providerModelIds.every(id => selectedModels.includes(id)) &&
+                                        providerModelIds.length > 0
+                                      const hasAnySelected = providerModelIds.some(id =>
+                                        selectedModels.includes(id)
+                                      )
+                                      const hasAnyOriginallySelected = providerModelIds.some(id =>
+                                        originalSelectedModels.includes(id)
+                                      )
+                                      const isDisabled =
+                                        (selectedModels.length >= maxModelsLimit &&
+                                          !hasAnySelected) ||
+                                        (isFollowUpMode &&
+                                          !hasAnySelected &&
+                                          !hasAnyOriginallySelected)
 
                                       return (
                                         <div
                                           className={`provider-select-all ${isDisabled ? 'disabled' : ''} ${allProviderModelsSelected ? 'all-selected' : ''}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
+                                          onClick={e => {
+                                            e.stopPropagation()
                                             if (!isDisabled) {
-                                              toggleAllForProvider(provider);
+                                              toggleAllForProvider(provider)
                                             }
                                           }}
-                                          title={isDisabled ?
-                                            (isFollowUpMode ? 'Cannot add new models during follow-up' : `Cannot select more models (max ${maxModelsLimit} for your tier)`) :
-                                            allProviderModelsSelected ? `Deselect All` : `Select All`}
+                                          title={
+                                            isDisabled
+                                              ? isFollowUpMode
+                                                ? 'Cannot add new models during follow-up'
+                                                : `Cannot select more models (max ${maxModelsLimit} for your tier)`
+                                              : allProviderModelsSelected
+                                                ? `Deselect All`
+                                                : `Select All`
+                                          }
                                         >
                                           ✱
                                         </div>
-                                      );
+                                      )
                                     })()}
-                                    <span className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}>
+                                    <span
+                                      className={`dropdown-arrow ${openDropdowns.has(provider) ? 'open' : ''}`}
+                                    >
                                       ▼
                                     </span>
                                   </div>
@@ -4282,13 +4626,16 @@ function AppContent() {
 
                                 {openDropdowns.has(provider) && (
                                   <div className="provider-models">
-                                    {models.map((model) => {
-                                      const isSelected = selectedModels.includes(model.id);
-                                      const wasOriginallySelected = originalSelectedModels.includes(model.id);
-                                      const isUnavailable = model.available === false;
-                                      const isDisabled = isUnavailable ||
+                                    {models.map(model => {
+                                      const isSelected = selectedModels.includes(model.id)
+                                      const wasOriginallySelected = originalSelectedModels.includes(
+                                        model.id
+                                      )
+                                      const isUnavailable = model.available === false
+                                      const isDisabled =
+                                        isUnavailable ||
                                         (selectedModels.length >= maxModelsLimit && !isSelected) ||
-                                        (isFollowUpMode && !isSelected && !wasOriginallySelected);
+                                        (isFollowUpMode && !isSelected && !wasOriginallySelected)
                                       return (
                                         <label
                                           key={model.id}
@@ -4298,17 +4645,21 @@ function AppContent() {
                                             type="checkbox"
                                             checked={isSelected}
                                             disabled={isDisabled}
-                                            onChange={() => !isDisabled && handleModelToggle(model.id)}
+                                            onChange={() =>
+                                              !isDisabled && handleModelToggle(model.id)
+                                            }
                                             className={`model-checkbox ${isFollowUpMode && !isSelected && wasOriginallySelected ? 'follow-up-deselected' : ''}`}
                                           />
                                           <div className="model-info">
                                             <h4>
                                               {model.name}
-                                              {isFollowUpMode && !isSelected && !wasOriginallySelected && (
-                                                <span className="model-badge not-in-conversation">
-                                                  Not in conversation
-                                                </span>
-                                              )}
+                                              {isFollowUpMode &&
+                                                !isSelected &&
+                                                !wasOriginallySelected && (
+                                                  <span className="model-badge not-in-conversation">
+                                                    Not in conversation
+                                                  </span>
+                                                )}
                                               {isUnavailable && (
                                                 <span className="model-badge coming-soon">
                                                   Coming Soon
@@ -4318,25 +4669,22 @@ function AppContent() {
                                             <p>{model.description}</p>
                                           </div>
                                         </label>
-                                      );
+                                      )
                                     })}
                                   </div>
                                 )}
                               </div>
-                            );
+                            )
                           })}
                         </div>
 
                         {/* Selected Models Cards */}
                         {selectedModels.length > 0 && (
                           <div className="selected-models-section">
-                            <div
-                              ref={selectedModelsGridRef}
-                              className="selected-models-grid"
-                            >
-                              {selectedModels.map((modelId) => {
-                                const model = allModels.find(m => m.id === modelId);
-                                if (!model) return null;
+                            <div ref={selectedModelsGridRef} className="selected-models-grid">
+                              {selectedModels.map(modelId => {
+                                const model = allModels.find(m => m.id === modelId)
+                                if (!model) return null
 
                                 return (
                                   <div key={modelId} className="selected-model-card">
@@ -4350,9 +4698,11 @@ function AppContent() {
                                         ✕
                                       </button>
                                     </div>
-                                    <p className="selected-model-description">{model.description}</p>
+                                    <p className="selected-model-description">
+                                      {model.description}
+                                    </p>
                                   </div>
-                                );
+                                )
                               })}
                               {/* Spacer to push cards to bottom when they don't fill the space */}
                               <div className="selected-models-spacer"></div>
@@ -4369,9 +4719,21 @@ function AppContent() {
             {isLoading && (
               <div className="loading-section">
                 <div className="loading-content">
-                  <p>Processing {selectedModels.length === 1 ? 'response from 1 AI model' : `responses from ${selectedModels.length} AI models`}...</p>
+                  <p>
+                    Processing{' '}
+                    {selectedModels.length === 1
+                      ? 'response from 1 AI model'
+                      : `responses from ${selectedModels.length} AI models`}
+                    ...
+                  </p>
                   <div className="comparison-animation">
-                    <svg width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg
+                      width="200"
+                      height="80"
+                      viewBox="0 0 200 80"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
                       {/* Left arrow - single path combining shaft and head */}
                       <g className="arrow-left">
                         <path
@@ -4418,19 +4780,27 @@ function AppContent() {
             {(response || conversations.length > 0) && (
               <ErrorBoundary>
                 <section className="results-section">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '1.5rem',
+                    }}
+                  >
                     <h2 style={{ margin: 0 }}>Comparison Results</h2>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                       {/* Scroll Lock Toggle - Only show when multiple models are running */}
                       {conversations.length > 1 && (
                         <button
                           onClick={() => {
-                            setIsScrollLocked(!isScrollLocked);
+                            setIsScrollLocked(!isScrollLocked)
                           }}
                           style={{
                             padding: '0.5rem 0.75rem',
                             fontSize: '0.875rem',
-                            border: '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
+                            border:
+                              '1px solid ' + (isScrollLocked ? 'var(--primary-color)' : '#cccccc'),
                             background: isScrollLocked ? 'var(--primary-color)' : 'transparent',
                             color: isScrollLocked ? 'white' : '#666',
                             borderRadius: 'var(--radius-md)',
@@ -4440,30 +4810,52 @@ function AppContent() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            outline: 'none'
+                            outline: 'none',
                           }}
-                          title={isScrollLocked ? 'Unlock scrolling - Each card scrolls independently' : 'Lock scrolling - All cards scroll together'}
-                          onMouseOver={(e) => {
+                          title={
+                            isScrollLocked
+                              ? 'Unlock scrolling - Each card scrolls independently'
+                              : 'Lock scrolling - All cards scroll together'
+                          }
+                          onMouseOver={e => {
                             if (!isScrollLocked) {
-                              e.currentTarget.style.borderColor = '#999';
-                              e.currentTarget.style.color = '#333';
+                              e.currentTarget.style.borderColor = '#999'
+                              e.currentTarget.style.color = '#333'
                             }
                           }}
-                          onMouseOut={(e) => {
+                          onMouseOut={e => {
                             if (!isScrollLocked) {
-                              e.currentTarget.style.borderColor = '#cccccc';
-                              e.currentTarget.style.color = '#666';
+                              e.currentTarget.style.borderColor = '#cccccc'
+                              e.currentTarget.style.color = '#666'
                             }
                           }}
                         >
                           <span>Scroll</span>
                           {isScrollLocked ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
                               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                             </svg>
                           ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
                               <line x1="7" y1="11" x2="7" y2="7" />
                             </svg>
@@ -4474,7 +4866,11 @@ function AppContent() {
                         <button
                           onClick={handleFollowUp}
                           className="follow-up-button"
-                          title={isFollowUpDisabled() ? "Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison." : "Ask a follow-up question"}
+                          title={
+                            isFollowUpDisabled()
+                              ? 'Cannot follow up when new models are selected. You can follow up if you only deselect models from the original comparison.'
+                              : 'Ask a follow-up question'
+                          }
                           disabled={isFollowUpDisabled()}
                         >
                           Follow up
@@ -4492,15 +4888,15 @@ function AppContent() {
                             borderRadius: 'var(--radius-md)',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            fontWeight: '500'
+                            fontWeight: '500',
                           }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.background = 'var(--primary-hover)';
-                            e.currentTarget.style.borderColor = 'var(--primary-hover)';
+                          onMouseOver={e => {
+                            e.currentTarget.style.background = 'var(--primary-hover)'
+                            e.currentTarget.style.borderColor = 'var(--primary-hover)'
                           }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.background = 'var(--primary-color)';
-                            e.currentTarget.style.borderColor = 'var(--primary-color)';
+                          onMouseOut={e => {
+                            e.currentTarget.style.background = 'var(--primary-color)'
+                            e.currentTarget.style.borderColor = 'var(--primary-color)'
                           }}
                         >
                           Show All Results ({closedCards.size} hidden)
@@ -4514,13 +4910,15 @@ function AppContent() {
                     <div className={`results-metadata ${isMetadataCollapsed ? 'collapsed' : ''}`}>
                       <div className="metadata-header">
                         {isMetadataCollapsed && (
-                          <span className="metadata-details-text" style={{ marginRight: 'auto' }}>Details...</span>
+                          <span className="metadata-details-text" style={{ marginRight: 'auto' }}>
+                            Details...
+                          </span>
                         )}
                         <button
                           className="metadata-toggle-arrow"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsMetadataCollapsed(!isMetadataCollapsed);
+                          onClick={e => {
+                            e.stopPropagation()
+                            setIsMetadataCollapsed(!isMetadataCollapsed)
                           }}
                           style={{
                             padding: '0.5rem',
@@ -4537,7 +4935,7 @@ function AppContent() {
                             justifyContent: 'center',
                             width: '36px',
                             height: '36px',
-                            fontWeight: 'bold'
+                            fontWeight: 'bold',
                           }}
                           title={isMetadataCollapsed ? 'Show details' : 'Hide details'}
                         >
@@ -4548,26 +4946,34 @@ function AppContent() {
                         <div className="metadata-items">
                           <div className="metadata-item">
                             <span className="metadata-label">Input Length:</span>
-                            <span className="metadata-value">{response.metadata.input_length} characters</span>
+                            <span className="metadata-value">
+                              {response.metadata.input_length} characters
+                            </span>
                           </div>
                           <div className="metadata-item">
                             <span className="metadata-label">Models Successful:</span>
-                            <span className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}>
-                              {response.metadata.models_successful}/{response.metadata.models_requested}
+                            <span
+                              className={`metadata-value ${response.metadata.models_successful > 0 ? 'successful' : ''}`}
+                            >
+                              {response.metadata.models_successful}/
+                              {response.metadata.models_requested}
                             </span>
                           </div>
                           {Object.keys(response.results).length > 0 && (
                             <div className="metadata-item">
                               <span className="metadata-label">Results Visible:</span>
                               <span className="metadata-value">
-                                {Object.keys(response.results).length - closedCards.size}/{Object.keys(response.results).length}
+                                {Object.keys(response.results).length - closedCards.size}/
+                                {Object.keys(response.results).length}
                               </span>
                             </div>
                           )}
                           {response.metadata.models_failed > 0 && (
                             <div className="metadata-item">
                               <span className="metadata-label">Models Failed:</span>
-                              <span className="metadata-value failed">{response.metadata.models_failed}</span>
+                              <span className="metadata-value failed">
+                                {response.metadata.models_failed}
+                              </span>
                             </div>
                           )}
                           {processingTime && (
@@ -4576,13 +4982,13 @@ function AppContent() {
                               <span className="metadata-value">
                                 {(() => {
                                   if (processingTime < 1000) {
-                                    return `${processingTime}ms`;
+                                    return `${processingTime}ms`
                                   } else if (processingTime < 60000) {
-                                    return `${(processingTime / 1000).toFixed(1)}s`;
+                                    return `${(processingTime / 1000).toFixed(1)}s`
                                   } else {
-                                    const minutes = Math.floor(processingTime / 60000);
-                                    const seconds = Math.floor((processingTime % 60000) / 1000);
-                                    return `${minutes}m ${seconds}s`;
+                                    const minutes = Math.floor(processingTime / 60000)
+                                    const seconds = Math.floor((processingTime % 60000) / 1000)
+                                    return `${minutes}m ${seconds}s`
                                   }
                                 })()}
                               </span>
@@ -4595,22 +5001,29 @@ function AppContent() {
 
                   <div className="results-grid">
                     {conversations
-                      .filter((conv) => selectedModels.includes(conv.modelId) && !closedCards.has(conv.modelId))
-                      .map((conversation) => {
-                        const model = allModels.find(m => m.id === conversation.modelId);
-                        const latestMessage = conversation.messages[conversation.messages.length - 1];
-                        const content = latestMessage?.content || '';
+                      .filter(
+                        conv =>
+                          selectedModels.includes(conv.modelId) && !closedCards.has(conv.modelId)
+                      )
+                      .map(conversation => {
+                        const model = allModels.find(m => m.id === conversation.modelId)
+                        const latestMessage =
+                          conversation.messages[conversation.messages.length - 1]
+                        const content = latestMessage?.content || ''
                         // Check for error: backend error flag OR error message in content OR empty content after completion (timeout)
-                        const hasBackendError = modelErrors[conversation.modelId] === true;
-                        const hasErrorMessage = isErrorMessage(content);
+                        const hasBackendError = modelErrors[conversation.modelId] === true
+                        const hasErrorMessage = isErrorMessage(content)
                         // Consider empty content an error if:
                         // 1. Model has completed (has entry in modelErrors) - normal completion case
                         // 2. Model hasn't completed but loading is done (timeout case) - mark as failed
-                        const modelHasCompleted = conversation.modelId in modelErrors;
-                        const isLoadingDone = !isLoading; // If not loading, stream has ended (either completed or timed out)
-                        const isEmptyContent = content.trim().length === 0 && latestMessage?.type === 'assistant' && (modelHasCompleted || isLoadingDone);
-                        const isError = hasBackendError || hasErrorMessage || isEmptyContent;
-                        const safeId = getSafeId(conversation.modelId);
+                        const modelHasCompleted = conversation.modelId in modelErrors
+                        const isLoadingDone = !isLoading // If not loading, stream has ended (either completed or timed out)
+                        const isEmptyContent =
+                          content.trim().length === 0 &&
+                          latestMessage?.type === 'assistant' &&
+                          (modelHasCompleted || isLoadingDone)
+                        const isError = hasBackendError || hasErrorMessage || isEmptyContent
+                        const safeId = getSafeId(conversation.modelId)
 
                         return (
                           <div key={conversation.modelId} className="result-card conversation-card">
@@ -4620,14 +5033,23 @@ function AppContent() {
                                 <div className="header-buttons-container">
                                   <button
                                     className="screenshot-card-btn"
-                                    onClick={(e) => {
-                                      handleScreenshot(conversation.modelId);
-                                      e.currentTarget.blur();
+                                    onClick={e => {
+                                      handleScreenshot(conversation.modelId)
+                                      e.currentTarget.blur()
                                     }}
                                     title="Copy formatted chat history"
                                     aria-label={`Copy formatted chat history for ${model?.name || conversation.modelId}`}
                                   >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
                                       <rect x="2" y="3" width="20" height="14" rx="2" />
                                       <path d="M8 21h8" />
                                       <path d="M12 17v4" />
@@ -4639,7 +5061,16 @@ function AppContent() {
                                     title="Copy raw chat history"
                                     aria-label={`Copy raw chat history from ${model?.name || conversation.modelId}`}
                                   >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
                                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                     </svg>
@@ -4647,12 +5078,30 @@ function AppContent() {
                                   <button
                                     className="hide-others-btn"
                                     onClick={() => hideAllOtherModels(conversation.modelId)}
-                                    title="Hide all other models"
-                                    aria-label={`Hide all other models except ${model?.name || conversation.modelId}`}
+                                    title="Hide all other results"
+                                    aria-label={`Hide all other results except ${model?.name || conversation.modelId}`}
                                   >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                                      <line x1="1" y1="1" x2="23" y2="23" />
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <rect
+                                        x="3"
+                                        y="3"
+                                        width="7"
+                                        height="7"
+                                        fill="currentColor"
+                                        opacity="0.8"
+                                      />
+                                      <rect x="14" y="3" width="7" height="7" />
+                                      <rect x="14" y="14" width="7" height="7" />
+                                      <rect x="3" y="14" width="7" height="7" />
                                     </svg>
                                   </button>
                                   <button
@@ -4661,25 +5110,40 @@ function AppContent() {
                                     title="Hide this result"
                                     aria-label={`Hide result for ${model?.name || conversation.modelId}`}
                                   >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M18 6L6 18" />
-                                      <path d="M6 6l12 12" />
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                      <line x1="1" y1="1" x2="23" y2="23" />
                                     </svg>
                                   </button>
                                 </div>
                               </div>
                               <div className="result-header-bottom">
-                                <span className="output-length">{latestMessage?.content.length || 0} chars</span>
+                                <span className="output-length">
+                                  {latestMessage?.content.length || 0} chars
+                                </span>
                                 <div className="result-tabs">
                                   <button
                                     className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'active' : ''}`}
-                                    onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.FORMATTED)}
+                                    onClick={() =>
+                                      switchResultTab(conversation.modelId, RESULT_TAB.FORMATTED)
+                                    }
                                   >
                                     Formatted
                                   </button>
                                   <button
                                     className={`tab-button ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.RAW ? 'active' : ''}`}
-                                    onClick={() => switchResultTab(conversation.modelId, RESULT_TAB.RAW)}
+                                    onClick={() =>
+                                      switchResultTab(conversation.modelId, RESULT_TAB.RAW)
+                                    }
                                   >
                                     Raw
                                   </button>
@@ -4689,17 +5153,39 @@ function AppContent() {
                                 </span>
                               </div>
                             </div>
-                            <div className="conversation-content" id={`conversation-content-${safeId}`}>
-                              {conversation.messages.map((message) => {
-                                const messageSafeId = getSafeId(message.id);
-                                const messageContentId = `message-content-${safeId}-${messageSafeId}`;
+                            <div
+                              className="conversation-content"
+                              id={`conversation-content-${safeId}`}
+                            >
+                              {conversation.messages.map(message => {
+                                const messageSafeId = getSafeId(message.id)
+                                const messageContentId = `message-content-${safeId}-${messageSafeId}`
                                 return (
-                                  <div key={message.id} className={`conversation-message ${message.type}`}>
+                                  <div
+                                    key={message.id}
+                                    className={`conversation-message ${message.type}`}
+                                  >
                                     <div className="message-header">
-                                      <span className="message-type" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <span
+                                        className="message-type"
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                        }}
+                                      >
                                         {message.type === 'user' ? (
                                           <>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg
+                                              width="14"
+                                              height="14"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            >
                                               <circle cx="12" cy="8" r="4" />
                                               <path d="M20 21a8 8 0 1 0-16 0" />
                                             </svg>
@@ -4707,7 +5193,16 @@ function AppContent() {
                                           </>
                                         ) : (
                                           <>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg
+                                              width="14"
+                                              height="14"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            >
                                               <rect x="4" y="4" width="16" height="16" rx="2" />
                                               <rect x="9" y="9" width="6" height="6" />
                                               <line x1="9" y1="2" x2="9" y2="4" />
@@ -4723,17 +5218,32 @@ function AppContent() {
                                           </>
                                         )}
                                       </span>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.5rem',
+                                        }}
+                                      >
                                         <span className="message-time">
                                           {formatTime(message.timestamp)}
                                         </span>
                                         <button
                                           className="copy-message-btn"
-                                          onClick={(e) => {
-                                            handleCopyMessage(conversation.modelId, message.id, message.content);
-                                            e.currentTarget.blur();
+                                          onClick={e => {
+                                            handleCopyMessage(
+                                              conversation.modelId,
+                                              message.id,
+                                              message.content
+                                            )
+                                            e.currentTarget.blur()
                                           }}
-                                          title={(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? "Copy formatted message" : "Copy raw message"}
+                                          title={
+                                            (activeResultTabs[conversation.modelId] ||
+                                              RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED
+                                              ? 'Copy formatted message'
+                                              : 'Copy raw message'
+                                          }
                                           aria-label={`Copy ${(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? 'formatted' : 'raw'} message`}
                                         >
                                           <svg
@@ -4746,17 +5256,34 @@ function AppContent() {
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
                                           >
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                            <rect
+                                              x="9"
+                                              y="9"
+                                              width="13"
+                                              height="13"
+                                              rx="2"
+                                              ry="2"
+                                            />
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                           </svg>
                                         </button>
                                       </div>
                                     </div>
                                     <div className="message-content" id={messageContentId}>
-                                      {(activeResultTabs[conversation.modelId] || RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
+                                      {(activeResultTabs[conversation.modelId] ||
+                                        RESULT_TAB.FORMATTED) === RESULT_TAB.FORMATTED ? (
                                         /* Full LaTeX rendering for formatted view */
-                                        <Suspense fallback={<pre className="result-output raw-output">{message.content}</pre>}>
-                                          <LatexRenderer className="result-output" modelId={conversation.modelId}>
+                                        <Suspense
+                                          fallback={
+                                            <pre className="result-output raw-output">
+                                              {message.content}
+                                            </pre>
+                                          }
+                                        >
+                                          <LatexRenderer
+                                            className="result-output"
+                                            modelId={conversation.modelId}
+                                          >
                                             {message.content}
                                           </LatexRenderer>
                                         </Suspense>
@@ -4768,11 +5295,11 @@ function AppContent() {
                                       )}
                                     </div>
                                   </div>
-                                );
+                                )
                               })}
                             </div>
                           </div>
-                        );
+                        )
                       })}
                   </div>
                 </section>
@@ -4787,8 +5314,8 @@ function AppContent() {
           <AuthModal
             isOpen={isAuthModalOpen}
             onClose={() => {
-              setIsAuthModalOpen(false);
-              setLoginEmail(''); // Reset email when modal closes
+              setIsAuthModalOpen(false)
+              setLoginEmail('') // Reset email when modal closes
             }}
             initialMode={authModalMode}
             initialEmail={loginEmail}
@@ -4796,7 +5323,7 @@ function AppContent() {
         </>
       )}
     </div>
-  );
+  )
 }
 
 // Wrap AppContent with AuthProvider
@@ -4808,7 +5335,7 @@ function App() {
         <Route path="*" element={<AppContent />} />
       </Routes>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App
