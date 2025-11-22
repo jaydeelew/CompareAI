@@ -2063,10 +2063,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                             className={`mock-mode-btn ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'}`}
                                                             title={`Mock mode is ${userRow.mock_mode_enabled ? 'enabled' : 'disabled'} - ${userRow.mock_mode_enabled ? 'Using mock responses' : 'Using real API calls'}${import.meta.env.DEV ? ' (Dev Mode)' : ''}`}
                                                         >
-                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/>
-                                                                <path d="M13.024 21.204a2 2 0 0 1-2.048 0L8.218 19.7a2 2 0 0 1-1.073-1.07l-1.498-2.759a2 2 0 0 1 0-2.083l1.497-2.758a2 2 0 0 1 1.074-1.07l2.758-1.498a2 2 0 0 1 2.083 0l2.757 1.498a2 2 0 0 1 1.074 1.07l1.498 2.758a2 2 0 0 1 0 2.083l-1.498 2.758a2 2 0 0 1-1.073 1.07l-2.758 1.498Z"/>
-                                                            </svg>
                                                             {userRow.mock_mode_enabled ? 'Mock ON' : 'Mock OFF'}
                                                         </button>
                                                     )}
