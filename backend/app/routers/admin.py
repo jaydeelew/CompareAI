@@ -1323,23 +1323,51 @@ async def add_model(
                 raise HTTPException(status_code=500, detail="Could not find MODELS_BY_PROVIDER structure")
         else:
             # Add to existing provider
-            # Find the provider's list
+            # Use the already-loaded MODELS_BY_PROVIDER to get existing models
+            existing_models = MODELS_BY_PROVIDER.get(provider_name, []).copy()
+            
+            # Add the new model
+            new_model_dict = {
+                "id": model_id,
+                "name": model_name,
+                "description": model_description,  # Store as string, will format with repr when writing
+                "category": "Language",
+                "provider": provider_name,
+            }
+            if hasattr(req, 'available') and not req.available:
+                new_model_dict["available"] = False
+            
+            existing_models.append(new_model_dict)
+            
+            # Sort models by name in decreasing alphanumeric order (Z->A, 9->0)
+            existing_models.sort(key=lambda x: x["name"], reverse=True)
+            
+            # Find the provider's list in the file
             provider_pattern = rf'("{re.escape(provider_name)}"\s*:\s*\[)(.*?)(\s*\])'
             match = re.search(provider_pattern, content, re.DOTALL)
             if match:
-                # Add model before closing bracket
-                # Escape description for Python string (handle quotes and special chars)
-                escaped_description = repr(model_description)
-                new_model = f'''        {{
-            "id": "{model_id}",
-            "name": "{model_name}",
-            "description": {escaped_description},
-            "category": "Language",
-            "provider": "{provider_name}",
-        }},'''
-                # Insert before the closing bracket
-                insert_pos = match.end() - 1
-                content = content[:insert_pos] + '\n' + new_model + content[insert_pos:]
+                # Reconstruct the provider's list with sorted models
+                models_lines = []
+                for model in existing_models:
+                    model_lines = [
+                        "        {",
+                        f'            "id": "{model["id"]}",',
+                        f'            "name": "{model["name"]}",',
+                        f'            "description": {repr(model["description"])},',
+                        f'            "category": "{model["category"]}",',
+                        f'            "provider": "{model["provider"]}",'
+                    ]
+                    if "available" in model:
+                        model_lines.append(f'            "available": {model["available"]},')
+                    model_lines.append("        },")
+                    models_lines.extend(model_lines)
+                
+                # Join models with newlines
+                models_str = "\n".join(models_lines)
+                
+                # Replace the provider's list with the sorted one
+                new_provider_section = f'"{provider_name}": [\n{models_str}\n    ]'
+                content = content[:match.start(1)] + new_provider_section + content[match.end(3):]
             else:
                 raise HTTPException(status_code=500, detail=f"Could not find provider {provider_name} in MODELS_BY_PROVIDER")
         

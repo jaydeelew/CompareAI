@@ -130,7 +130,14 @@ MODELS_BY_PROVIDER = {
             "category": "Language",
             "provider": "Google",
         },
-    ],
+    
+        {
+            "id": "google/gemini-3-pro-preview",
+            "name": "Gemini 3 Pro Preview",
+            "description": 'Gemini 3 Pro is Google’s flagship frontier model for high-precision multimodal reasoning, combining strong performance across text, image, video, audio, and code with a 1M-token context window.',
+            "category": "Language",
+            "provider": "Google",
+        },],
     "Meta": [
         {
             "id": "meta-llama/llama-4-maverick",
