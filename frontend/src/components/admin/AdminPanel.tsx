@@ -427,7 +427,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         try {
             const headers = getAuthHeaders();
 
-            // First validate the model
+            // First validate the model with OpenRouter
             const validateResponse = await fetch('/api/admin/models/validate', {
                 method: 'POST',
                 headers: {
@@ -438,9 +438,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 credentials: 'include'
             });
 
+            const validateData = await validateResponse.json();
+
             if (!validateResponse.ok) {
-                const errorData = await validateResponse.json();
-                throw new Error(errorData.detail || 'Model validation failed');
+                throw new Error(validateData.detail || 'Model validation failed');
+            }
+
+            // Check the validation response body to ensure model is valid
+            if (!validateData.valid) {
+                throw new Error(validateData.message || `Model ${newModelId.trim()} is not valid in OpenRouter`);
             }
 
             // Then add the model

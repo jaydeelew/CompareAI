@@ -1059,6 +1059,7 @@ from pathlib import Path
 import ast
 import re
 import sys
+from openai import APIError, NotFoundError, APIConnectionError, RateLimitError, APITimeoutError
 
 
 class AddModelRequest(BaseModel):
@@ -1072,12 +1073,13 @@ class DeleteModelRequest(BaseModel):
 async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str]:
     """
     Fetch model description from OpenRouter's Models API.
+    Returns only the first sentence of the description.
     
     Args:
         model_id: The model ID (e.g., "openai/gpt-4")
         
     Returns:
-        The model description if found, None otherwise
+        The first sentence of the model description if found, None otherwise
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as http_client:
@@ -1098,7 +1100,21 @@ async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str
                     if model.get("id") == model_id:
                         description = model.get("description")
                         if description:
-                            return description
+                            # Extract only the first sentence
+                            description = description.strip()
+                            
+                            # Find the first sentence-ending punctuation
+                            # Look for . ! ? followed by space or end of string
+                            # Match sentence-ending punctuation followed by space or end of string
+                            match = re.search(r'([.!?])(?:\s+|$)', description)
+                            if match:
+                                # Return everything up to and including the punctuation
+                                end_pos = match.end()
+                                first_sentence = description[:end_pos].strip()
+                                return first_sentence
+                            else:
+                                # No sentence-ending punctuation found, return the full description
+                                return description
                         break
     except Exception as e:
         # Log error but don't fail - we'll fall back to template description
@@ -1175,20 +1191,49 @@ async def validate_model(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except NotFoundError:
+        # Model not found in OpenRouter
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model {model_id} not found in OpenRouter"
+        )
+    except (RateLimitError, APITimeoutError, APIConnectionError) as e:
+        # Temporary errors - network issues, rate limits, timeouts
+        # These are temporary and shouldn't block validation, but we should inform the user
+        return {
+            "valid": False,
+            "model_id": model_id,
+            "message": f"Unable to validate model {model_id} due to temporary error: {str(e)}. Please try again later."
+        }
+    except APIError as e:
+        # Other API errors - likely invalid model
         error_str = str(e).lower()
-        if "not found" in error_str or "404" in error_str or "model" in error_str and "not available" in error_str:
+        if "not found" in error_str or "404" in error_str or "model" in error_str and ("not available" in error_str or "invalid" in error_str or "does not exist" in error_str):
             raise HTTPException(
                 status_code=404,
                 detail=f"Model {model_id} not found in OpenRouter"
             )
         else:
-            # For other errors, we'll still allow validation to pass
-            # The actual test will happen when adding the model
+            # Unknown API error - treat as invalid model
             return {
-                "valid": True,
+                "valid": False,
                 "model_id": model_id,
-                "message": f"Model {model_id} validation attempted (will be verified during add)"
+                "message": f"Model {model_id} validation failed: {str(e)}"
+            }
+    except Exception as e:
+        # Unexpected errors - treat as validation failure
+        error_str = str(e).lower()
+        if "not found" in error_str or "404" in error_str or "model" in error_str and ("not available" in error_str or "invalid" in error_str or "does not exist" in error_str):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Model {model_id} not found in OpenRouter"
+            )
+        else:
+            # Unknown error - treat as invalid model
+            return {
+                "valid": False,
+                "model_id": model_id,
+                "message": f"Model {model_id} validation failed: {str(e)}"
             }
 
 

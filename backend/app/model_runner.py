@@ -422,6 +422,13 @@ MODELS_BY_PROVIDER = {
             "description": "xAI's fast Grok 4 model optimized for speed with enhanced reasoning capabilities",
             "category": "Language",
             "provider": "xAI",
+        },
+        {
+            "id": "x-ai/grok-4.1-fast",
+            "name": "Grok 4.1 Fast",
+            "description": "Grok 4.1 Fast is xAI's best agentic tool calling model that shines in real-world use cases like customer support and deep research.",
+            "category": "Language",
+            "provider": "xAI",
         },],
 }
 
