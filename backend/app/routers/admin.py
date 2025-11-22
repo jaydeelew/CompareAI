@@ -6,7 +6,7 @@ user CRUD operations, role management, and audit logging.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
 from typing import List, Optional, Dict, Any
@@ -1053,12 +1053,14 @@ async def zero_anonymous_usage(
 
 from pydantic import BaseModel
 from ..model_runner import MODELS_BY_PROVIDER, OPENROUTER_MODELS, client
+from .. import model_runner
 from ..config import settings
 import subprocess
 from pathlib import Path
 import ast
 import re
 import sys
+import importlib
 from openai import APIError, NotFoundError, APIConnectionError, RateLimitError, APITimeoutError
 
 
@@ -1376,9 +1378,6 @@ async def add_model(
             f.write(content)
         
         # Reload the model_runner module to get updated MODELS_BY_PROVIDER
-        import importlib
-        import sys
-        from .. import model_runner
         importlib.reload(model_runner)
         # Update the imported references in this module's namespace
         sys.modules[__name__].MODELS_BY_PROVIDER = model_runner.MODELS_BY_PROVIDER
@@ -1447,6 +1446,227 @@ async def add_model(
         )
 
 
+@router.post("/models/add-stream")
+async def add_model_stream(
+    request: Request,
+    req: AddModelRequest,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Add a new model to model_runner.py and set up its renderer config with progress streaming.
+    Uses Server-Sent Events (SSE) to stream progress updates to the frontend.
+    """
+    
+    async def generate_progress_stream():
+        model_id = req.model_id.strip()
+        
+        if not model_id:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Model ID cannot be empty'})}\n\n"
+            return
+        
+        try:
+            # Send initial progress
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'validating', 'message': f'Validating model {model_id}...', 'progress': 0})}\n\n"
+            
+            # Check if model already exists
+            for provider, models in MODELS_BY_PROVIDER.items():
+                for model in models:
+                    if model["id"] == model_id:
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'Model {model_id} already exists in model_runner.py'})}\n\n"
+                        return
+            
+            # Extract provider from model_id
+            if '/' not in model_id:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Invalid model ID format. Expected: provider/model-name'})}\n\n"
+                return
+            
+            provider_name = model_id.split('/')[0]
+            provider_name = provider_name.replace('-', ' ').title().replace(' ', '')
+            if provider_name.lower() == "xai":
+                provider_name = "xAI"
+            elif provider_name.lower() == "openai":
+                provider_name = "OpenAI"
+            elif provider_name.lower() == "meta-llama":
+                provider_name = "Meta"
+            
+            model_name = model_id.split('/')[-1]
+            model_name = model_name.replace('-', ' ').replace('_', ' ').title()
+            
+            # Fetch description
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'fetching', 'message': f'Fetching model description from OpenRouter...', 'progress': 10})}\n\n"
+            model_description = await fetch_model_description_from_openrouter(model_id)
+            
+            if not model_description:
+                model_description = f"{provider_name}'s {model_name} model"
+            
+            # Add model to model_runner.py
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'adding', 'message': f'Adding model to model_runner.py...', 'progress': 20})}\n\n"
+            
+            model_runner_path = Path(__file__).parent.parent / "model_runner.py"
+            
+            with open(model_runner_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            provider_found = False
+            for existing_provider in MODELS_BY_PROVIDER.keys():
+                if existing_provider.lower() == provider_name.lower():
+                    provider_name = existing_provider
+                    provider_found = True
+                    break
+            
+            if not provider_found:
+                pattern = r'(MODELS_BY_PROVIDER\s*=\s*\{[^}]*)\}'
+                match = re.search(pattern, content, re.DOTALL)
+                if match:
+                    escaped_description = repr(model_description)
+                    new_provider_section = f',\n    "{provider_name}": [\n        {{\n            "id": "{model_id}",\n            "name": "{model_name}",\n            "description": {escaped_description},\n            "category": "Language",\n            "provider": "{provider_name}",\n        }},\n    ]'
+                    content = content[:match.end()-1] + new_provider_section + content[match.end()-1:]
+                else:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Could not find MODELS_BY_PROVIDER structure'})}\n\n"
+                    return
+            else:
+                existing_models = MODELS_BY_PROVIDER.get(provider_name, []).copy()
+                new_model_dict = {
+                    "id": model_id,
+                    "name": model_name,
+                    "description": model_description,
+                    "category": "Language",
+                    "provider": provider_name,
+                }
+                existing_models.append(new_model_dict)
+                existing_models.sort(key=lambda x: x["name"], reverse=True)
+                
+                provider_pattern = rf'("{re.escape(provider_name)}"\s*:\s*\[)(.*?)(\s*\])'
+                match = re.search(provider_pattern, content, re.DOTALL)
+                if match:
+                    models_lines = []
+                    for model in existing_models:
+                        model_lines = [
+                            "        {",
+                            f'            "id": "{model["id"]}",',
+                            f'            "name": "{model["name"]}",',
+                            f'            "description": {repr(model["description"])},',
+                            f'            "category": "{model["category"]}",',
+                            f'            "provider": "{model["provider"]}",'
+                        ]
+                        if "available" in model:
+                            model_lines.append(f'            "available": {model["available"]},')
+                        model_lines.append("        },")
+                        models_lines.extend(model_lines)
+                    
+                    models_str = "\n".join(models_lines)
+                    new_provider_section = f'"{provider_name}": [\n{models_str}\n    ]'
+                    content = content[:match.start(1)] + new_provider_section + content[match.end(3):]
+                else:
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'Could not find provider {provider_name} in MODELS_BY_PROVIDER'})}\n\n"
+                    return
+            
+            # Write back to file
+            with open(model_runner_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            # Reload module
+            importlib.reload(model_runner)
+            sys.modules[__name__].MODELS_BY_PROVIDER = model_runner.MODELS_BY_PROVIDER
+            sys.modules[__name__].OPENROUTER_MODELS = model_runner.OPENROUTER_MODELS
+            
+            # Run setup script with streaming output
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'setup', 'message': f'Starting renderer configuration setup...', 'progress': 30})}\n\n"
+            
+            script_path = Path(__file__).parent.parent.parent / "scripts" / "setup_model_renderer.py"
+            backend_dir = Path(__file__).parent.parent.parent
+            
+            # Use asyncio subprocess for async output reading
+            import asyncio
+            
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, str(script_path), model_id,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(backend_dir)
+            )
+            
+            stderr_lines = []
+            
+            # Read stdout line by line asynchronously
+            while True:
+                line_bytes = await process.stdout.readline()
+                if not line_bytes:
+                    break
+                
+                line_str = line_bytes.decode('utf-8').strip()
+                if line_str.startswith('PROGRESS:'):
+                    try:
+                        progress_json = json.loads(line_str[9:])  # Remove 'PROGRESS:' prefix
+                        # Map script stages to our progress percentages
+                        stage = progress_json.get('stage', 'processing')
+                        message = progress_json.get('message', 'Processing...')
+                        script_progress = progress_json.get('progress', 0)
+                        
+                        # Map stages to progress ranges
+                        if stage == 'starting':
+                            mapped_progress = 30
+                        elif stage == 'collecting':
+                            # Collecting is 30-60% of total
+                            mapped_progress = 30 + (script_progress * 0.3)
+                        elif stage == 'analyzing':
+                            # Analyzing is 60-80% of total
+                            mapped_progress = 60 + (script_progress * 0.2)
+                        elif stage == 'generating':
+                            # Generating is 80-90% of total
+                            mapped_progress = 80 + (script_progress * 0.1)
+                        elif stage == 'saving':
+                            # Saving is 90-95% of total
+                            mapped_progress = 90 + (script_progress * 0.05)
+                        else:
+                            mapped_progress = 30 + (script_progress * 0.65)
+                        
+                        yield f"data: {json.dumps({'type': 'progress', 'stage': stage, 'message': message, 'progress': mapped_progress})}\n\n"
+                    except json.JSONDecodeError:
+                        pass  # Skip invalid JSON lines
+            
+            # Read remaining stderr
+            stderr_data = await process.stderr.read()
+            if stderr_data:
+                stderr_lines = stderr_data.decode('utf-8').split('\n')
+            
+            # Wait for process to complete
+            return_code = await process.wait()
+            
+            if return_code != 0:
+                # Get error from stderr
+                error_msg = '\n'.join(stderr_lines[-10:])[:500] if stderr_lines else "Unknown error"
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Renderer config generation failed: {error_msg}'})}\n\n"
+                return
+            
+            # Invalidate cache
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'finalizing', 'message': 'Finalizing model addition...', 'progress': 95})}\n\n"
+            from ..cache import invalidate_models_cache
+            invalidate_models_cache()
+            
+            # Log admin action
+            log_admin_action(
+                db=db,
+                admin_user=current_user,
+                action_type="add_model",
+                action_description=f"Added model {model_id} to system",
+                target_user_id=None,
+                details={"model_id": model_id, "provider": provider_name},
+                request=request,
+            )
+            
+            # Send success
+            yield f"data: {json.dumps({'type': 'success', 'message': f'Model {model_id} added successfully', 'model_id': model_id, 'provider': provider_name, 'progress': 100})}\n\n"
+            
+        except HTTPException as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': e.detail})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Error adding model: {str(e)}'})}\n\n"
+    
+    return StreamingResponse(generate_progress_stream(), media_type="text/event-stream")
+
+
 @router.post("/models/delete")
 async def delete_model(
     request: Request,
@@ -1493,23 +1713,43 @@ async def delete_model(
         
         # First, try to match with trailing comma (not last item)
         # Match: whitespace, opening brace, "id": "model_id", then everything until closing brace and comma
-        model_pattern_with_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}"[^}}]*?}},\s*\n)'
+        # Use a more robust pattern that matches the entire dict structure
+        model_pattern_with_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}".*?}},\s*\n)'
         original_content = content
         content = re.sub(model_pattern_with_comma, '', content, flags=re.DOTALL)
         
         # If no match, try without comma (last item in list)
         if content == original_content:
-            model_pattern_no_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}"[^}}]*?}}\s*\n)'
+            model_pattern_no_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}".*?}}\s*\n)'
             content = re.sub(model_pattern_no_comma, '', content, flags=re.DOTALL)
         
         # More robust: match entire dict by finding matching braces
         # This handles cases where the simple pattern doesn't work
+        model_removed = False
         if content == original_content:
-            # Find the start of the model dict
+            # Find the start of the model dict (need to find the opening brace before "id")
+            # Look for the pattern: whitespace, opening brace, then "id": "model_id"
             start_pattern = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}")'
             start_match = re.search(start_pattern, content)
             if start_match:
-                start_pos = start_match.start()
+                # Find the actual start of the dict (the opening brace)
+                # The regex matches: whitespace + { + whitespace + "id": "model_id"
+                # So we need to find the { within the match
+                match_start = start_match.start()
+                match_text = start_match.group(1)
+                # Find the opening brace in the matched text
+                brace_offset = match_text.find('{')
+                if brace_offset >= 0:
+                    start_pos = match_start + brace_offset
+                else:
+                    # Fallback: search backwards from match start
+                    start_pos = match_start
+                    for i in range(match_start - 1, max(0, match_start - 20), -1):
+                        if content[i] == '{':
+                            start_pos = i
+                            break
+                        elif not content[i].isspace():
+                            break
                 # Find the matching closing brace
                 brace_count = 0
                 in_string = False
@@ -1534,14 +1774,29 @@ async def delete_model(
                                 # Found the matching closing brace
                                 end_pos = i + 1
                                 # Check if there's a comma after
-                                if end_pos < len(content) and content[end_pos:end_pos+1] == ',':
+                                if end_pos < len(content) and content[end_pos] == ',':
                                     end_pos += 1
-                                # Remove the model dict
+                                # Check if there's a newline after the comma/brace
+                                if end_pos < len(content) and content[end_pos] == '\n':
+                                    end_pos += 1
+                                # Remove the model dict (including comma and newline if present)
                                 content = content[:start_pos] + content[end_pos:]
-                                # Remove trailing newline if present
-                                if end_pos < len(content) and content[end_pos:end_pos+1] == '\n':
-                                    content = content[:start_pos] + content[end_pos+1:]
+                                model_removed = True
                                 break
+        
+        # Verify that the model was actually removed
+        if content == original_content:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to remove model {model_id} from model_runner.py. The model entry could not be found or matched."
+            )
+        
+        # Verify the model is no longer in the content (double-check)
+        if f'"id": "{model_id}"' in content:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to remove model {model_id} from model_runner.py. Model entry still present after deletion attempt."
+            )
         
         # If provider list becomes empty, remove the provider section
         # This is more complex, so we'll leave empty provider lists for now
@@ -1551,9 +1806,6 @@ async def delete_model(
             f.write(content)
         
         # Reload the model_runner module to get updated MODELS_BY_PROVIDER
-        import importlib
-        import sys
-        from .. import model_runner
         importlib.reload(model_runner)
         # Update the imported references in this module's namespace
         sys.modules[__name__].MODELS_BY_PROVIDER = model_runner.MODELS_BY_PROVIDER

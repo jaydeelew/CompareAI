@@ -221,6 +221,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [modelsLoading, setModelsLoading] = useState(false);
     const [newModelId, setNewModelId] = useState('');
     const [addingModel, setAddingModel] = useState(false);
+    const [modelProgress, setModelProgress] = useState<{ stage: string; message: string; progress: number } | null>(null);
     const [modelError, setModelError] = useState<string | null>(null);
     const [modelSuccess, setModelSuccess] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -423,6 +424,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         setAddingModel(true);
         setModelError(null);
         setModelSuccess(null);
+        setModelProgress({ stage: 'validating', message: 'Validating model...', progress: 0 });
 
         try {
             const headers = getAuthHeaders();
@@ -449,8 +451,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 throw new Error(validateData.message || `Model ${newModelId.trim()} is not valid in OpenRouter`);
             }
 
-            // Then add the model
-            const addResponse = await fetch('/api/admin/models/add', {
+            // Use streaming endpoint to add the model with progress updates
+            const response = await fetch('/api/admin/models/add-stream', {
                 method: 'POST',
                 headers: {
                     ...headers,
@@ -460,39 +462,86 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 credentials: 'include'
             });
 
-            if (!addResponse.ok) {
-                const errorData = await addResponse.json();
-                throw new Error(errorData.detail || 'Failed to add model');
+            if (!response.ok) {
+                // Try to get error message from response
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to start model addition');
+                } catch {
+                    throw new Error(`Failed to start model addition: ${response.statusText}`);
+                }
             }
 
-            setModelSuccess(`Model ${newModelId.trim()} added successfully!`);
-            setNewModelId('');
-            await fetchModels();
-            // Ensure Models tab stays active
-            if (typeof window !== 'undefined') {
-                sessionStorage.setItem('adminPanel_activeTab', 'models');
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) {
+                throw new Error('Response body is not readable');
             }
-            setActiveTab('models');
+
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            
+                            if (data.type === 'progress') {
+                                setModelProgress({
+                                    stage: data.stage || 'processing',
+                                    message: data.message || 'Processing...',
+                                    progress: data.progress || 0
+                                });
+                            } else if (data.type === 'success') {
+                                setModelSuccess(`Model ${data.model_id || newModelId.trim()} added successfully!`);
+                                setNewModelId('');
+                                await fetchModels();
+                                setModelProgress(null);
+                                setAddingModel(false);
+                                isModelOperationRef.current = false;
+                                if (typeof window !== 'undefined') {
+                                    sessionStorage.setItem('adminPanel_activeTab', 'models');
+                                }
+                                setActiveTab('models');
+                                setTimeout(() => {
+                                    restoreScrollPosition();
+                                }, 50);
+                                return;
+                            } else if (data.type === 'error') {
+                                throw new Error(data.message || 'Failed to add model');
+                            }
+                        } catch (e) {
+                            // Skip invalid JSON
+                            if (e instanceof SyntaxError) continue;
+                            throw e;
+                        }
+                    }
+                }
+            }
+
+            // If we get here without success, something went wrong
+            throw new Error('Stream ended unexpectedly');
         } catch (err) {
             setModelError(err instanceof Error ? err.message : 'Failed to add model');
+            setModelProgress(null);
+            setAddingModel(false);
+            isModelOperationRef.current = false;
             // Ensure Models tab stays active even on error
             if (typeof window !== 'undefined') {
                 sessionStorage.setItem('adminPanel_activeTab', 'models');
             }
             setActiveTab('models');
-        } finally {
-            setAddingModel(false);
-            isModelOperationRef.current = false;
-            // Ensure Models tab stays active after operation completes
-            if (typeof window !== 'undefined') {
-                sessionStorage.setItem('adminPanel_activeTab', 'models');
-            }
-            setActiveTab('models');
-            // Restore scroll position after operation completes
             setTimeout(() => {
                 restoreScrollPosition();
             }, 50);
-            // Note: Route protection useEffect will handle staying on /admin
         }
     };
 
@@ -2594,13 +2643,50 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             }}>
                                 Adding model <strong>{newModelId.trim() || '...'}</strong>
                             </p>
-                            <p style={{ 
-                                marginTop: '0.5rem', 
-                                color: 'var(--text-secondary)', 
-                                fontSize: '0.875rem'
-                            }}>
-                                Please wait while we validate and add the model to your system.
-                            </p>
+                            {modelProgress && (
+                                <>
+                                    <p style={{ 
+                                        marginTop: '1rem', 
+                                        color: 'var(--text-primary)', 
+                                        fontSize: '0.95rem',
+                                        fontWeight: 600
+                                    }}>
+                                        {modelProgress.message}
+                                    </p>
+                                    <div style={{
+                                        marginTop: '1rem',
+                                        width: '100%',
+                                        height: '8px',
+                                        background: 'var(--bg-tertiary)',
+                                        borderRadius: '4px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            width: `${modelProgress.progress}%`,
+                                            height: '100%',
+                                            background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+                                            transition: 'width 0.3s ease',
+                                            borderRadius: '4px'
+                                        }} />
+                                    </div>
+                                    <p style={{ 
+                                        marginTop: '0.5rem', 
+                                        color: 'var(--text-secondary)', 
+                                        fontSize: '0.75rem'
+                                    }}>
+                                        {Math.round(modelProgress.progress)}% complete
+                                    </p>
+                                </>
+                            )}
+                            {!modelProgress && (
+                                <p style={{ 
+                                    marginTop: '0.5rem', 
+                                    color: 'var(--text-secondary)', 
+                                    fontSize: '0.875rem'
+                                }}>
+                                    Please wait while we validate and add the model to your system.
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

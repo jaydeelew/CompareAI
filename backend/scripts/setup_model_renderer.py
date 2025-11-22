@@ -44,18 +44,37 @@ class ModelRendererSetup:
         if self.verbose:
             print(message, end=end, flush=flush)
     
+    def log_progress(self, stage: str, message: str, progress: Optional[float] = None):
+        """Log progress in structured format for frontend consumption."""
+        progress_data = {
+            "stage": stage,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }
+        if progress is not None:
+            progress_data["progress"] = progress
+        # Output as JSON on a single line prefixed with PROGRESS: for easy parsing
+        print(f"PROGRESS:{json.dumps(progress_data)}", flush=True)
+        # Also log normally if verbose
+        if self.verbose:
+            print(message, flush=True)
+    
     def collect_responses(self) -> Dict[str, Dict]:
         """Collect responses from the model for all test prompts."""
         self.log(f"Collecting responses from {self.model_id}...")
+        self.log_progress("collecting", f"Collecting responses from {self.model_id}...", 0.0)
         
         responses = {}
         prompt_names = get_all_prompt_names()
+        total_prompts = len(prompt_names)
         
         for i, prompt_name in enumerate(prompt_names):
             prompt_data = next(p for p in TEST_PROMPTS if p["name"] == prompt_name)
             prompt_text = prompt_data["prompt"]
             
+            progress = (i / total_prompts) * 100
             self.log(f"  [{i+1}/{len(prompt_names)}] {prompt_name}...", end=" ", flush=True)
+            self.log_progress("collecting", f"Collecting response {i+1} of {total_prompts}: {prompt_name}...", progress)
             self.stats["total_requests"] += 1
             
             for attempt in range(self.max_retries):
@@ -106,11 +125,13 @@ class ModelRendererSetup:
             if i < len(prompt_names) - 1:
                 time.sleep(self.delay)
         
+        self.log_progress("collecting", f"Completed collecting {self.stats['successful']} successful responses", 100.0)
         return responses
     
     def analyze_responses(self, responses: Dict[str, Dict]) -> Dict[str, Any]:
         """Analyze collected responses to identify patterns."""
         self.log(f"Analyzing responses from {self.model_id}...")
+        self.log_progress("analyzing", f"Analyzing responses from {self.model_id}...", 0.0)
         
         all_delimiters = {"display": set(), "inline": set()}
         all_markdown_elements = defaultdict(bool)
@@ -144,6 +165,8 @@ class ModelRendererSetup:
             code_analysis = self._analyze_code_block_preservation(response)
             if code_analysis["code_block_count"] > 0:
                 code_block_analyses.append(code_analysis)
+        
+        self.log_progress("analyzing", f"Analysis complete. Found {len(all_delimiters['display'])} display and {len(all_delimiters['inline'])} inline delimiter types", 100.0)
         
         return {
             "model_id": self.model_id,
@@ -270,6 +293,7 @@ class ModelRendererSetup:
     def generate_config(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Generate renderer configuration from analysis data."""
         self.log(f"Generating config for {self.model_id}...")
+        self.log_progress("generating", f"Generating renderer configuration for {self.model_id}...", 0.0)
         
         display_delimiters = analysis.get("delimiters", {}).get("display", ["double-dollar"])
         inline_delimiters = analysis.get("delimiters", {}).get("inline", ["single-dollar"])
@@ -351,6 +375,7 @@ class ModelRendererSetup:
             },
         }
         
+        self.log_progress("generating", "Renderer configuration generated successfully", 100.0)
         return config
     
     def _create_delimiter_pattern(self, delimiter_type: str, priority: int) -> Optional[Dict[str, Any]]:
@@ -400,6 +425,7 @@ class ModelRendererSetup:
             raise ValueError(f"Model {self.model_id} already has a renderer configuration")
         
         # Step 1: Collect responses
+        self.log_progress("starting", f"Starting setup process for {self.model_id}...", 0.0)
         responses = self.collect_responses()
         
         if self.stats["successful"] == 0:
@@ -412,7 +438,9 @@ class ModelRendererSetup:
         config = self.generate_config(analysis)
         
         # Step 4: Save config
+        self.log_progress("saving", f"Saving renderer configuration to file...", 0.0)
         config_path = self.save_config(config)
+        self.log_progress("saving", f"Configuration saved successfully", 100.0)
         
         self.log(f"\n✓ Setup complete! Config saved to {config_path}")
         self.log(f"  Successful responses: {self.stats['successful']}/{self.stats['total_requests']}")
