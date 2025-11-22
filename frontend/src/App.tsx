@@ -1182,7 +1182,7 @@ function AppContent() {
 
   // Expose resetUsage to window for debugging (prevents TypeScript unused variable error)
   if (typeof window !== 'undefined') {
-    ;(window as Record<string, unknown>).resetUsage = resetUsage
+    ;(window as unknown as Record<string, unknown>).resetUsage = resetUsage
   }
 
   // Sync extendedUsageCount with user data when user changes
