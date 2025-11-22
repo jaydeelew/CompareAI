@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useAuthHeaders } from '../../contexts/AuthContext';
 import type { AvailableModelsResponse } from '../../services/modelsService';
 import type { Model } from '../../types/models';
+import { LoadingSpinner } from '../shared/LoadingSpinner';
 import './AdminPanel.css';
 
 interface AdminUser {
@@ -2558,6 +2559,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Model Loading Modal */}
+            {addingModel && (
+                <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }}>
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                </svg>
+                                Adding Model
+                            </h2>
+                        </div>
+                        <div style={{ padding: '2rem', textAlign: 'center' }}>
+                            <LoadingSpinner size="large" modern={true} />
+                            <p style={{ 
+                                marginTop: '1.5rem', 
+                                color: 'var(--text-primary)', 
+                                fontSize: '1rem',
+                                fontWeight: 500
+                            }}>
+                                Adding model <strong>{newModelId.trim() || '...'}</strong>
+                            </p>
+                            <p style={{ 
+                                marginTop: '0.5rem', 
+                                color: 'var(--text-secondary)', 
+                                fontSize: '0.875rem'
+                            }}>
+                                Please wait while we validate and add the model to your system.
+                            </p>
                         </div>
                     </div>
                 </div>
