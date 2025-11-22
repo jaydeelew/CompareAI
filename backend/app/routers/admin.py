@@ -1046,3 +1046,443 @@ async def zero_anonymous_usage(
         "message": f"Anonymous usage data cleared ({len(keys_to_remove)} entries removed). Client-side history should be cleared separately.",
         "entries_cleared": len(keys_to_remove),
     }
+
+
+# Model Management Endpoints
+
+from pydantic import BaseModel
+from ..model_runner import MODELS_BY_PROVIDER, OPENROUTER_MODELS, client
+import subprocess
+from pathlib import Path
+import ast
+import re
+import sys
+
+
+class AddModelRequest(BaseModel):
+    model_id: str
+
+
+class DeleteModelRequest(BaseModel):
+    model_id: str
+
+
+@router.get("/models")
+async def get_admin_models(
+    current_user: User = Depends(require_admin_role("admin")),
+) -> Dict[str, Any]:
+    """
+    Get all models organized by provider for admin panel.
+    """
+    return {
+        "models": OPENROUTER_MODELS,
+        "models_by_provider": MODELS_BY_PROVIDER,
+    }
+
+
+@router.post("/models/validate")
+async def validate_model(
+    request: Request,
+    req: AddModelRequest,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Validate that a model exists in OpenRouter.
+    """
+    model_id = req.model_id.strip()
+    
+    if not model_id:
+        raise HTTPException(status_code=400, detail="Model ID cannot be empty")
+    
+    # Check if model already exists in our system
+    for provider, models in MODELS_BY_PROVIDER.items():
+        for model in models:
+            if model["id"] == model_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Model {model_id} already exists in model_runner.py"
+                )
+    
+    # Check if model exists in OpenRouter by making a test API call
+    try:
+        # Make a minimal test call to OpenRouter to validate the model exists
+        # We'll use a very small prompt with minimal tokens to check if model is available
+        test_response = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": "Hi"}],
+            max_tokens=5,
+            timeout=10,
+        )
+        
+        # If we get here, the model exists and is accessible
+        # Log admin action
+        log_admin_action(
+            db=db,
+            admin_user=current_user,
+            action_type="validate_model",
+            action_description=f"Validated model {model_id} exists in OpenRouter",
+            target_user_id=None,
+            details={"model_id": model_id, "exists": True},
+            request=request,
+        )
+        
+        return {
+            "valid": True,
+            "model_id": model_id,
+            "message": f"Model {model_id} exists in OpenRouter"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_str = str(e).lower()
+        if "not found" in error_str or "404" in error_str or "model" in error_str and "not available" in error_str:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Model {model_id} not found in OpenRouter"
+            )
+        else:
+            # For other errors, we'll still allow validation to pass
+            # The actual test will happen when adding the model
+            return {
+                "valid": True,
+                "model_id": model_id,
+                "message": f"Model {model_id} validation attempted (will be verified during add)"
+            }
+
+
+@router.post("/models/add")
+async def add_model(
+    request: Request,
+    req: AddModelRequest,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Add a new model to model_runner.py and set up its renderer config.
+    """
+    model_id = req.model_id.strip()
+    
+    if not model_id:
+        raise HTTPException(status_code=400, detail="Model ID cannot be empty")
+    
+    # Check if model already exists (validation will happen via test API call)
+    # The validate endpoint checks OpenRouter, but we also need to check our local list
+    
+    # Check if model already exists
+    for provider, models in MODELS_BY_PROVIDER.items():
+        for model in models:
+            if model["id"] == model_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Model {model_id} already exists in model_runner.py"
+                )
+    
+    # Extract provider from model_id (format: provider/model-name)
+    if '/' not in model_id:
+        raise HTTPException(status_code=400, detail="Invalid model ID format. Expected: provider/model-name")
+    
+    provider_name = model_id.split('/')[0]
+    # Capitalize provider name (e.g., "x-ai" -> "xAI", "openai" -> "OpenAI")
+    provider_name = provider_name.replace('-', ' ').title().replace(' ', '')
+    if provider_name.lower() == "xai":
+        provider_name = "xAI"
+    elif provider_name.lower() == "openai":
+        provider_name = "OpenAI"
+    elif provider_name.lower() == "meta-llama":
+        provider_name = "Meta"
+    
+    # Get model name - use a formatted version of the model ID
+    model_name = model_id.split('/')[-1]
+    # Format the name nicely (e.g., "grok-4.1-fast" -> "Grok 4.1 Fast")
+    model_name = model_name.replace('-', ' ').replace('_', ' ').title()
+    model_description = f"{provider_name}'s {model_name} model"
+    
+    # Add model to model_runner.py
+    model_runner_path = Path(__file__).parent.parent / "model_runner.py"
+    
+    try:
+        with open(model_runner_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Find the provider section in MODELS_BY_PROVIDER
+        # We need to add the model to the appropriate provider list
+        provider_found = False
+        
+        # Try to find existing provider
+        for existing_provider in MODELS_BY_PROVIDER.keys():
+            if existing_provider.lower() == provider_name.lower():
+                provider_name = existing_provider  # Use exact case from file
+                provider_found = True
+                break
+        
+        if not provider_found:
+            # Create new provider section
+            # Find the closing brace of MODELS_BY_PROVIDER
+            pattern = r'(MODELS_BY_PROVIDER\s*=\s*\{[^}]*)\}'
+            match = re.search(pattern, content, re.DOTALL)
+            if match:
+                # Add new provider before closing brace
+                new_provider_section = f',\n    "{provider_name}": [\n        {{\n            "id": "{model_id}",\n            "name": "{model_name}",\n            "description": "{model_description}",\n            "category": "Language",\n            "provider": "{provider_name}",\n        }},\n    ]'
+                content = content[:match.end()-1] + new_provider_section + content[match.end()-1:]
+            else:
+                raise HTTPException(status_code=500, detail="Could not find MODELS_BY_PROVIDER structure")
+        else:
+            # Add to existing provider
+            # Find the provider's list
+            provider_pattern = rf'("{re.escape(provider_name)}"\s*:\s*\[)(.*?)(\s*\])'
+            match = re.search(provider_pattern, content, re.DOTALL)
+            if match:
+                # Add model before closing bracket
+                new_model = f'''        {{
+            "id": "{model_id}",
+            "name": "{model_name}",
+            "description": "{model_description}",
+            "category": "Language",
+            "provider": "{provider_name}",
+        }},'''
+                # Insert before the closing bracket
+                insert_pos = match.end() - 1
+                content = content[:insert_pos] + '\n' + new_model + content[insert_pos:]
+            else:
+                raise HTTPException(status_code=500, detail=f"Could not find provider {provider_name} in MODELS_BY_PROVIDER")
+        
+        # Write back to file
+        with open(model_runner_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        # Reload the model_runner module to get updated MODELS_BY_PROVIDER
+        import importlib
+        import sys
+        from .. import model_runner
+        importlib.reload(model_runner)
+        # Update the imported references in this module's namespace
+        sys.modules[__name__].MODELS_BY_PROVIDER = model_runner.MODELS_BY_PROVIDER
+        sys.modules[__name__].OPENROUTER_MODELS = model_runner.OPENROUTER_MODELS
+        
+        # Run setup script to generate renderer config
+        # Path from backend/app/routers/admin.py to backend/scripts/setup_model_renderer.py
+        script_path = Path(__file__).parent.parent.parent / "scripts" / "setup_model_renderer.py"
+        try:
+            # Run from backend directory
+            backend_dir = Path(__file__).parent.parent.parent
+            result = subprocess.run(
+                [sys.executable, str(script_path), model_id],
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minute timeout
+                cwd=str(backend_dir)
+            )
+            
+            if result.returncode != 0:
+                # Model was added but config generation failed
+                error_msg = result.stderr[:500] if result.stderr else "Unknown error"
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Model added but renderer config generation failed: {error_msg}"
+                )
+        except subprocess.TimeoutExpired:
+            raise HTTPException(
+                status_code=500,
+                detail="Renderer config generation timed out"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error generating renderer config: {str(e)}"
+            )
+        
+        # Invalidate models cache so fresh data is returned
+        from ..cache import invalidate_models_cache
+        invalidate_models_cache()
+        
+        # Log admin action
+        log_admin_action(
+            db=db,
+            admin_user=current_user,
+            action_type="add_model",
+            action_description=f"Added model {model_id} to system",
+            target_user_id=None,
+            details={"model_id": model_id, "provider": provider_name},
+            request=request,
+        )
+        
+        return {
+            "success": True,
+            "model_id": model_id,
+            "provider": provider_name,
+            "message": f"Model {model_id} added successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error adding model: {str(e)}"
+        )
+
+
+@router.post("/models/delete")
+async def delete_model(
+    request: Request,
+    req: DeleteModelRequest,
+    current_user: User = Depends(require_admin_role("admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a model from model_runner.py and remove its renderer config.
+    """
+    model_id = req.model_id.strip()
+    
+    if not model_id:
+        raise HTTPException(status_code=400, detail="Model ID cannot be empty")
+    
+    # Check if model exists
+    model_found = False
+    provider_name = None
+    for provider, models in MODELS_BY_PROVIDER.items():
+        for model in models:
+            if model["id"] == model_id:
+                model_found = True
+                provider_name = provider
+                break
+        if model_found:
+            break
+    
+    if not model_found:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model {model_id} not found in model_runner.py"
+        )
+    
+    # Remove from model_runner.py
+    model_runner_path = Path(__file__).parent.parent / "model_runner.py"
+    
+    try:
+        with open(model_runner_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Find and remove the model entry
+        # Model entries are multi-line dictionaries, so we need to match from opening brace to closing brace
+        # Pattern: match from "id": "model_id" to the closing brace and comma (or just closing brace if last item)
+        
+        # First, try to match with trailing comma (not last item)
+        # Match: whitespace, opening brace, "id": "model_id", then everything until closing brace and comma
+        model_pattern_with_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}"[^}}]*?}},\s*\n)'
+        original_content = content
+        content = re.sub(model_pattern_with_comma, '', content, flags=re.DOTALL)
+        
+        # If no match, try without comma (last item in list)
+        if content == original_content:
+            model_pattern_no_comma = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}"[^}}]*?}}\s*\n)'
+            content = re.sub(model_pattern_no_comma, '', content, flags=re.DOTALL)
+        
+        # More robust: match entire dict by finding matching braces
+        # This handles cases where the simple pattern doesn't work
+        if content == original_content:
+            # Find the start of the model dict
+            start_pattern = rf'(\s*{{\s*"id":\s*"{re.escape(model_id)}")'
+            start_match = re.search(start_pattern, content)
+            if start_match:
+                start_pos = start_match.start()
+                # Find the matching closing brace
+                brace_count = 0
+                in_string = False
+                escape_next = False
+                for i in range(start_pos, len(content)):
+                    char = content[i]
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    if char == '\\':
+                        escape_next = True
+                        continue
+                    if char == '"' and not escape_next:
+                        in_string = not in_string
+                        continue
+                    if not in_string:
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                # Found the matching closing brace
+                                end_pos = i + 1
+                                # Check if there's a comma after
+                                if end_pos < len(content) and content[end_pos:end_pos+1] == ',':
+                                    end_pos += 1
+                                # Remove the model dict
+                                content = content[:start_pos] + content[end_pos:]
+                                # Remove trailing newline if present
+                                if end_pos < len(content) and content[end_pos:end_pos+1] == '\n':
+                                    content = content[:start_pos] + content[end_pos+1:]
+                                break
+        
+        # If provider list becomes empty, remove the provider section
+        # This is more complex, so we'll leave empty provider lists for now
+        
+        # Write back to file
+        with open(model_runner_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        # Reload the model_runner module to get updated MODELS_BY_PROVIDER
+        import importlib
+        import sys
+        from .. import model_runner
+        importlib.reload(model_runner)
+        # Update the imported references in this module's namespace
+        sys.modules[__name__].MODELS_BY_PROVIDER = model_runner.MODELS_BY_PROVIDER
+        sys.modules[__name__].OPENROUTER_MODELS = model_runner.OPENROUTER_MODELS
+        
+        # Remove renderer config from frontend config file
+        project_root = Path(__file__).parent.parent.parent.parent
+        frontend_config_path = project_root / "frontend" / "src" / "config" / "model_renderer_configs.json"
+        
+        if frontend_config_path.exists():
+            try:
+                with open(frontend_config_path, "r", encoding="utf-8") as f:
+                    configs = json.load(f)
+                
+                # Filter out the deleted model's config
+                if isinstance(configs, list):
+                    configs = [c for c in configs if c.get("modelId") != model_id]
+                elif isinstance(configs, dict):
+                    configs.pop(model_id, None)
+                    configs = list(configs.values())
+                
+                with open(frontend_config_path, "w", encoding="utf-8") as f:
+                    json.dump(configs, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                # Log but don't fail if config removal fails
+                print(f"Warning: Could not remove renderer config from {frontend_config_path}: {e}")
+        
+        # Invalidate models cache so fresh data is returned
+        from ..cache import invalidate_models_cache
+        invalidate_models_cache()
+        
+        # Log admin action
+        log_admin_action(
+            db=db,
+            admin_user=current_user,
+            action_type="delete_model",
+            action_description=f"Deleted model {model_id} from system",
+            target_user_id=None,
+            details={"model_id": model_id, "provider": provider_name},
+            request=request,
+        )
+        
+        return {
+            "success": True,
+            "model_id": model_id,
+            "message": f"Model {model_id} deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting model: {str(e)}"
+        )

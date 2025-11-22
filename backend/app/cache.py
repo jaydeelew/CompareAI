@@ -166,6 +166,16 @@ def get_cached_models(getter_func: Callable[[], T]) -> T:
     return models
 
 
+def invalidate_models_cache() -> None:
+    """
+    Invalidate the models cache.
+    
+    Call this after adding or deleting models to ensure fresh data is returned.
+    """
+    cache.delete(CACHE_KEY_MODELS)
+    logger.info("Models cache invalidated")
+
+
 def get_cached_user(user_id: int, getter_func: Callable[[int], Optional[T]]) -> Optional[T]:
     """
     Get user from cache or call getter function.

@@ -73,11 +73,18 @@ function AppContent() {
   const currentView = location.pathname === '/admin' ? 'admin' : 'main'
 
   // Route protection: redirect non-admin users away from /admin
+  // Only redirect if we're definitely not an admin (not just during loading/transitions)
   useEffect(() => {
     if (location.pathname === '/admin' && !authLoading) {
-      if (!isAuthenticated || !user?.is_admin) {
-        navigate('/', { replace: true })
+      // Only redirect if we're certain the user is not an admin
+      // Don't redirect if user is null/undefined (might be during transitions)
+      // Only redirect if explicitly not authenticated OR explicitly not admin
+      if (isAuthenticated === false) {
+        navigate('/', { replace: true });
+      } else if (isAuthenticated === true && user !== null && user !== undefined && user.is_admin === false) {
+        navigate('/', { replace: true });
       }
+      // If isAuthenticated is true but user is null/undefined, don't redirect (might be loading)
     }
   }, [location.pathname, isAuthenticated, user?.is_admin, authLoading, navigate])
 
