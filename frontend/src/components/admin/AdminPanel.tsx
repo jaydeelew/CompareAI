@@ -2634,9 +2634,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             </h2>
                         </div>
                         <div style={{ padding: '2rem', textAlign: 'center' }}>
-                            <LoadingSpinner size="large" modern={true} />
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <LoadingSpinner size="large" modern={true} />
+                            </div>
                             <p style={{ 
-                                marginTop: '1.5rem', 
+                                marginTop: '0', 
                                 color: 'var(--text-primary)', 
                                 fontSize: '1rem',
                                 fontWeight: 500

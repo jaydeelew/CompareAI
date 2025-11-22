@@ -410,6 +410,13 @@ MODELS_BY_PROVIDER = {
             "available": False,
         },
         {
+            "id": "x-ai/grok-4.1-fast",
+            "name": "Grok 4.1 Fast",
+            "description": "Grok 4.1 Fast is xAI's best agentic tool calling model that shines in real-world use cases like customer support and deep research.",
+            "category": "Language",
+            "provider": "xAI",
+        },
+        {
             "id": "x-ai/grok-4-fast",
             "name": "Grok 4 Fast",
             "description": "Grok 4 Fast is xAI's latest multimodal model with SOTA cost-efficiency and a 2M token context window.",
