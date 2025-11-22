@@ -12,6 +12,7 @@ from sqlalchemy import func, desc, and_
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
+import httpx
 
 from ..database import get_db
 from ..models import User, AdminActionLog, AppSettings, Conversation, UsageLog
@@ -1052,6 +1053,7 @@ async def zero_anonymous_usage(
 
 from pydantic import BaseModel
 from ..model_runner import MODELS_BY_PROVIDER, OPENROUTER_MODELS, client
+from ..config import settings
 import subprocess
 from pathlib import Path
 import ast
@@ -1065,6 +1067,44 @@ class AddModelRequest(BaseModel):
 
 class DeleteModelRequest(BaseModel):
     model_id: str
+
+
+async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str]:
+    """
+    Fetch model description from OpenRouter's Models API.
+    
+    Args:
+        model_id: The model ID (e.g., "openai/gpt-4")
+        
+    Returns:
+        The model description if found, None otherwise
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
+            response = await http_client.get(
+                "https://openrouter.ai/api/v1/models",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "HTTP-Referer": "https://compareintel.com",
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("data", [])
+                
+                # Find the model by ID
+                for model in models:
+                    if model.get("id") == model_id:
+                        description = model.get("description")
+                        if description:
+                            return description
+                        break
+    except Exception as e:
+        # Log error but don't fail - we'll fall back to template description
+        print(f"Error fetching model description from OpenRouter: {e}")
+    
+    return None
 
 
 @router.get("/models")
@@ -1197,7 +1237,13 @@ async def add_model(
     model_name = model_id.split('/')[-1]
     # Format the name nicely (e.g., "grok-4.1-fast" -> "Grok 4.1 Fast")
     model_name = model_name.replace('-', ' ').replace('_', ' ').title()
-    model_description = f"{provider_name}'s {model_name} model"
+    
+    # Try to fetch description from OpenRouter's Models API
+    model_description = await fetch_model_description_from_openrouter(model_id)
+    
+    # Fall back to template-based description if OpenRouter doesn't have it
+    if not model_description:
+        model_description = f"{provider_name}'s {model_name} model"
     
     # Add model to model_runner.py
     model_runner_path = Path(__file__).parent.parent / "model_runner.py"
@@ -1224,7 +1270,9 @@ async def add_model(
             match = re.search(pattern, content, re.DOTALL)
             if match:
                 # Add new provider before closing brace
-                new_provider_section = f',\n    "{provider_name}": [\n        {{\n            "id": "{model_id}",\n            "name": "{model_name}",\n            "description": "{model_description}",\n            "category": "Language",\n            "provider": "{provider_name}",\n        }},\n    ]'
+                # Escape description for Python string (handle quotes and special chars)
+                escaped_description = repr(model_description)
+                new_provider_section = f',\n    "{provider_name}": [\n        {{\n            "id": "{model_id}",\n            "name": "{model_name}",\n            "description": {escaped_description},\n            "category": "Language",\n            "provider": "{provider_name}",\n        }},\n    ]'
                 content = content[:match.end()-1] + new_provider_section + content[match.end()-1:]
             else:
                 raise HTTPException(status_code=500, detail="Could not find MODELS_BY_PROVIDER structure")
@@ -1235,10 +1283,12 @@ async def add_model(
             match = re.search(provider_pattern, content, re.DOTALL)
             if match:
                 # Add model before closing bracket
+                # Escape description for Python string (handle quotes and special chars)
+                escaped_description = repr(model_description)
                 new_model = f'''        {{
             "id": "{model_id}",
             "name": "{model_name}",
-            "description": "{model_description}",
+            "description": {escaped_description},
             "category": "Language",
             "provider": "{provider_name}",
         }},'''

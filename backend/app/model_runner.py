@@ -422,13 +422,6 @@ MODELS_BY_PROVIDER = {
             "description": "xAI's fast Grok 4 model optimized for speed with enhanced reasoning capabilities",
             "category": "Language",
             "provider": "xAI",
-        },
-        {
-            "id": "x-ai/grok-4.1-fast",
-            "name": "Grok 4.1 Fast",
-            "description": "xAI's Grok 4.1 Fast model",
-            "category": "Language",
-            "provider": "xAI",
         },],
 }
 
