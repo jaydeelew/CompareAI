@@ -54,6 +54,7 @@ class ResponseCollector:
         max_retries: int = 3,
         verbose: bool = True,
         output_file: Optional[Path] = None,
+        concurrency: int = 5,
     ):
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +62,7 @@ class ResponseCollector:
         self.max_retries = max_retries
         self.verbose = verbose
         self.output_file = output_file
+        self.concurrency = concurrency
         self.stats = {"total_requests": 0, "successful": 0, "failed": 0, "skipped": 0, "errors": []}
         self.existing_results: Dict[str, Dict] = {}
         self.existing_collection_metadata: Dict = {}
@@ -107,20 +109,24 @@ class ResponseCollector:
             "success", False
         )
 
-    def collect_response(self, model_id: str, prompt_text: str, prompt_name: str) -> Dict:
-        """Collect a single response from a model."""
+    async def collect_response_async(self, model_id: str, prompt_text: str, prompt_name: str) -> Dict:
+        """Collect a single response asynchronously."""
         self.stats["total_requests"] += 1
+        loop = asyncio.get_event_loop()
 
         for attempt in range(self.max_retries):
             try:
                 self.log(f"    Attempt {attempt + 1}/{self.max_retries}...")
 
-                response = call_openrouter(
-                    prompt=prompt_text,
-                    model_id=model_id,
-                    tier="standard",
-                    conversation_history=None,
-                    use_mock=False,
+                # Run synchronous call_openrouter in a thread pool
+                response = await loop.run_in_executor(
+                    None,
+                    call_openrouter,
+                    prompt_text,
+                    model_id,
+                    "standard",
+                    None,
+                    False
                 )
 
                 self.stats["successful"] += 1
@@ -141,12 +147,12 @@ class ResponseCollector:
                     if "rate limit" in error_str or "429" in error_str:
                         wait_time = (attempt + 1) * 5  # Exponential backoff
                         self.log(f"      Rate limited, waiting {wait_time}s...")
-                        time.sleep(wait_time)
+                        await asyncio.sleep(wait_time)
                         continue
                     elif "timeout" in error_str:
                         wait_time = (attempt + 1) * 2
                         self.log(f"      Timeout, waiting {wait_time}s...")
-                        time.sleep(wait_time)
+                        await asyncio.sleep(wait_time)
                         continue
 
                 # Non-retryable or final attempt failed
@@ -176,6 +182,46 @@ class ResponseCollector:
             "success": False,
             "attempts": self.max_retries,
         }
+    
+    def collect_response(self, model_id: str, prompt_text: str, prompt_name: str) -> Dict:
+        """Collect a single response from a model (synchronous wrapper for backward compatibility)."""
+        return asyncio.run(self.collect_response_async(model_id, prompt_text, prompt_name))
+    
+    async def collect_model_responses_async(self, model_id: str, prompts_to_use: List[Dict]) -> Dict:
+        """Collect all responses for a single model concurrently."""
+        # Filter prompts that haven't been collected yet
+        prompts_to_collect = [
+            (prompt["name"], prompt["prompt"])
+            for prompt in prompts_to_use
+            if not self.has_response(model_id, prompt["name"])
+        ]
+        
+        if not prompts_to_collect:
+            return {}
+        
+        # Use semaphore to limit concurrent requests (respect rate limits)
+        semaphore = asyncio.Semaphore(self.concurrency)
+        
+        async def collect_with_semaphore(prompt_name: str, prompt_text: str):
+            async with semaphore:
+                return await self.collect_response_async(model_id, prompt_text, prompt_name)
+        
+        # Create all tasks
+        tasks = [
+            collect_with_semaphore(prompt_name, prompt_text)
+            for prompt_name, prompt_text in prompts_to_collect
+        ]
+        
+        # Execute concurrently
+        results = await asyncio.gather(*tasks)
+        
+        # Convert to dictionary
+        responses = {}
+        for result in results:
+            prompt_name = result["prompt_name"]
+            responses[prompt_name] = result
+        
+        return responses
 
     def collect_all_responses(self, model_ids: List[str], prompt_names: List[str]) -> Dict:
         """Collect responses from all specified models for all prompts."""
@@ -273,10 +319,18 @@ class ResponseCollector:
                     len(results[model_id]["responses"]) - existing_successful
                 )
 
+            # Collect all responses for this model concurrently
+            prompts_to_collect = [p for p in prompts_to_use if not self.has_response(model_id, p["name"])]
+            if prompts_to_collect:
+                self.log(f"  Collecting {len(prompts_to_collect)} responses concurrently...")
+                model_responses = asyncio.run(self.collect_model_responses_async(model_id, prompts_to_use))
+            else:
+                model_responses = {}
+            
+            # Merge with existing responses and log results
             for prompt in prompts_to_use:
                 prompt_name = prompt["name"]
-                prompt_text = prompt["prompt"]
-
+                
                 # Skip if already collected
                 if self.has_response(model_id, prompt_name):
                     self.log(
@@ -285,28 +339,21 @@ class ResponseCollector:
                     self.log("⊘")
                     current_request += 1
                     continue
+                
+                # Get response from concurrent collection
+                if prompt_name in model_responses:
+                    response_data = model_responses[prompt_name]
+                    results[model_id]["responses"][prompt_name] = response_data
 
-                self.log(f"  - {prompt_name}...", end=" ", flush=True)
-
-                response_data = self.collect_response(
-                    model_id=model_id, prompt_text=prompt_text, prompt_name=prompt_name
-                )
-
-                results[model_id]["responses"][prompt_name] = response_data
-
-                if response_data["success"]:
-                    results[model_id]["metadata"]["successful_responses"] += 1
-                    self.log("✓")
-                else:
-                    results[model_id]["metadata"]["failed_responses"] += 1
-                    error_preview = response_data.get("error", "Unknown error")[:50]
-                    self.log(f"✗ ({error_preview})")
-
-                current_request += 1
-
-                # Rate limiting delay
-                if current_request < total_needed:
-                    time.sleep(self.delay)
+                    if response_data["success"]:
+                        results[model_id]["metadata"]["successful_responses"] += 1
+                        self.log(f"  ✓ {prompt_name}")
+                    else:
+                        results[model_id]["metadata"]["failed_responses"] += 1
+                        error_preview = response_data.get("error", "Unknown error")[:50]
+                        self.log(f"  ✗ {prompt_name} ({error_preview})")
+                    
+                    current_request += 1
 
             # Save incrementally after each model completes
             if self.output_file:
@@ -385,13 +432,19 @@ def main():
         help="Directory to save responses",
     )
     parser.add_argument(
-        "--delay", type=float, default=1.0, help="Delay between requests in seconds (default: 1.0)"
+        "--delay", type=float, default=1.0, help="Delay between requests in seconds (default: 1.0, not used with concurrent collection)"
     )
     parser.add_argument(
         "--max-retries",
         type=int,
         default=3,
         help="Maximum retries for failed requests (default: 3)",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=5,
+        help="Max concurrent requests per model (default: 5)",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress verbose output")
     parser.add_argument(
@@ -454,6 +507,7 @@ def main():
         max_retries=args.max_retries,
         verbose=not args.quiet,
         output_file=output_file,
+        concurrency=args.concurrency,
     )
 
     # Load existing results if resuming

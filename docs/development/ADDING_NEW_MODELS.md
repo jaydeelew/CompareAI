@@ -39,18 +39,23 @@ python scripts/collect_model_responses.py \
   --models openai/gpt-5.1 openai/gpt-5.1-chat \
   --delay 1.5 \
   --max-retries 5 \
+  --concurrency 10 \
   --output-dir data/model_responses
 ```
 
 **What happens:**
+
 - Script checks which models already have configs
 - Skips those models automatically
-- Collects responses from new models only
+- Collects responses from new models only (concurrently for faster collection)
 - Saves results to `backend/data/model_responses/model_responses_TIMESTAMP.json`
 
 **Output:** JSON file with collected responses
 
-**Time:** ~5-15 minutes per model (depends on API speed and rate limits)
+**Time:** ~30-60 seconds per model (down from 5-15 minutes) thanks to concurrent collection
+
+- Uses parallel API calls with configurable concurrency (default: 5 concurrent requests)
+- Adjust `--concurrency` if you hit rate limits (lower) or want faster collection (higher)
 
 ### Step 2: Analyze Responses
 
@@ -75,12 +80,14 @@ python scripts/analyze_responses.py responses.json --format both       # Both (d
 ```
 
 **What happens:**
+
 - Script loads collected responses
 - Skips models that already have configs
 - Analyzes formatting patterns (math delimiters, markdown, issues)
 - Generates analysis report
 
 **Output:**
+
 - `backend/data/analysis/analysis_TIMESTAMP.json` - Detailed analysis data
 - `backend/data/analysis/analysis_TIMESTAMP.md` - Human-readable report
 
@@ -104,6 +111,7 @@ python scripts/generate_renderer_configs.py analysis.json --overwrite
 ```
 
 **What happens:**
+
 - Script loads analysis data
 - Skips models that already have configs
 - Generates new configs for analyzed models
@@ -142,12 +150,13 @@ python scripts/generate_renderer_configs.py \
 All three scripts automatically check for existing configurations in `frontend/src/config/model_renderer_configs.json`:
 
 - **collect_model_responses.py**: Skips collecting responses for models with configs
-- **analyze_responses.py**: Skips analyzing responses for models with configs  
+- **analyze_responses.py**: Skips analyzing responses for models with configs
 - **generate_renderer_configs.py**: Skips generating configs for models with configs AND preserves existing configs
 
 ### Manual Changes Preserved
 
 When `generate_renderer_configs.py` runs:
+
 - ✅ Models with existing configs are skipped (not regenerated)
 - ✅ Existing configs are preserved in the output file
 - ✅ Only new models get configs generated
@@ -169,12 +178,14 @@ python scripts/generate_renderer_configs.py analysis.json --overwrite
 After running the workflow:
 
 1. **Check config file:**
+
    ```bash
    # View the config file
    cat frontend/src/config/model_renderer_configs.json | jq '.[] | select(.modelId | startswith("openai/gpt-5.1"))'
    ```
 
 2. **Test in application:**
+
    - Start the application
    - Select one of the new models
    - Send a test prompt with math/markdown
@@ -233,11 +244,13 @@ python scripts/collect_model_responses.py --models model1 model2
 ## Best Practices
 
 1. **Always backup before overwriting:**
+
    ```bash
    cp frontend/src/config/model_renderer_configs.json frontend/src/config/model_renderer_configs.json.backup
    ```
 
 2. **Test with a few models first:**
+
    ```bash
    python scripts/collect_model_responses.py --models model1 model2
    ```
@@ -245,6 +258,7 @@ python scripts/collect_model_responses.py --models model1 model2
 3. **Review analysis reports** before generating configs
 
 4. **Commit config changes** after verifying they work:
+
    ```bash
    git add frontend/src/config/model_renderer_configs.json
    git commit -m "Add renderer configs for GPT 5.1 models"
@@ -275,10 +289,9 @@ cd backend
 # 1. Collect
 python scripts/collect_model_responses.py --models MODEL1 MODEL2
 
-# 2. Analyze  
+# 2. Analyze
 python scripts/analyze_responses.py data/model_responses/model_responses_TIMESTAMP.json
 
 # 3. Generate
 python scripts/generate_renderer_configs.py data/analysis/analysis_TIMESTAMP.json
 ```
-

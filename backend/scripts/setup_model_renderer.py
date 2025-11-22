@@ -15,6 +15,7 @@ import json
 import re
 import sys
 import argparse
+import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set
 from collections import defaultdict
@@ -32,11 +33,12 @@ from scripts.config_helpers import has_model_config, load_existing_configs
 class ModelRendererSetup:
     """Combined class for collecting, analyzing, and generating configs for a single model."""
     
-    def __init__(self, model_id: str, delay: float = 1.0, max_retries: int = 3, verbose: bool = True):
+    def __init__(self, model_id: str, delay: float = 1.0, max_retries: int = 3, verbose: bool = True, concurrency: int = 5):
         self.model_id = model_id
         self.delay = delay
         self.max_retries = max_retries
         self.verbose = verbose
+        self.concurrency = concurrency
         self.stats = {"total_requests": 0, "successful": 0, "failed": 0}
     
     def log(self, message: str, end: str = "\n", flush: bool = False):
@@ -59,74 +61,117 @@ class ModelRendererSetup:
         if self.verbose:
             print(message, flush=True)
     
-    def collect_responses(self) -> Dict[str, Dict]:
-        """Collect responses from the model for all test prompts."""
+    async def collect_response_async(self, prompt_name: str, prompt_text: str) -> tuple[str, Dict]:
+        """Collect a single response asynchronously."""
+        loop = asyncio.get_event_loop()
+        
+        for attempt in range(self.max_retries):
+            try:
+                # Run synchronous call_openrouter in a thread pool
+                response = await loop.run_in_executor(
+                    None,
+                    call_openrouter,
+                    prompt_text,
+                    self.model_id,
+                    "standard",
+                    None,
+                    False
+                )
+                
+                self.stats["successful"] += 1
+                return prompt_name, {
+                    "prompt": prompt_text,
+                    "prompt_name": prompt_name,
+                    "response": response,
+                    "timestamp": datetime.now().isoformat(),
+                    "success": True,
+                }
+                
+            except Exception as e:
+                error_str = str(e).lower()
+                if attempt < self.max_retries - 1:
+                    if "rate limit" in error_str or "429" in error_str:
+                        wait_time = (attempt + 1) * 5
+                        await asyncio.sleep(wait_time)
+                        continue
+                    elif "timeout" in error_str:
+                        wait_time = (attempt + 1) * 2
+                        await asyncio.sleep(wait_time)
+                        continue
+                
+                self.stats["failed"] += 1
+                return prompt_name, {
+                    "prompt": prompt_text,
+                    "prompt_name": prompt_name,
+                    "response": None,
+                    "error": str(e)[:200],
+                    "timestamp": datetime.now().isoformat(),
+                    "success": False,
+                }
+        
+        # Should not reach here
+        return prompt_name, {
+            "prompt": prompt_text,
+            "prompt_name": prompt_name,
+            "response": None,
+            "error": "Max retries exceeded",
+            "timestamp": datetime.now().isoformat(),
+            "success": False,
+        }
+    
+    async def collect_responses_async(self) -> Dict[str, Dict]:
+        """Collect responses from all prompts concurrently."""
         self.log(f"Collecting responses from {self.model_id}...")
         self.log_progress("collecting", f"Collecting responses from {self.model_id}...", 0.0)
         
-        responses = {}
         prompt_names = get_all_prompt_names()
         total_prompts = len(prompt_names)
+        self.stats["total_requests"] = total_prompts
         
-        for i, prompt_name in enumerate(prompt_names):
+        # Create list of (prompt_name, prompt_text) tuples
+        prompt_tasks = []
+        for prompt_name in prompt_names:
             prompt_data = next(p for p in TEST_PROMPTS if p["name"] == prompt_name)
-            prompt_text = prompt_data["prompt"]
-            
-            progress = (i / total_prompts) * 100
-            self.log(f"  [{i+1}/{len(prompt_names)}] {prompt_name}...", end=" ", flush=True)
-            self.log_progress("collecting", f"Collecting response {i+1} of {total_prompts}: {prompt_name}...", progress)
-            self.stats["total_requests"] += 1
-            
-            for attempt in range(self.max_retries):
-                try:
-                    response = call_openrouter(
-                        prompt=prompt_text,
-                        model_id=self.model_id,
-                        tier="standard",
-                        conversation_history=None,
-                        use_mock=False,
-                    )
-                    
-                    self.stats["successful"] += 1
-                    responses[prompt_name] = {
-                        "prompt": prompt_text,
-                        "prompt_name": prompt_name,
-                        "response": response,
-                        "timestamp": datetime.now().isoformat(),
-                        "success": True,
-                    }
-                    self.log("✓")
-                    break
-                    
-                except Exception as e:
-                    error_str = str(e).lower()
-                    if attempt < self.max_retries - 1:
-                        if "rate limit" in error_str or "429" in error_str:
-                            wait_time = (attempt + 1) * 5
-                            time.sleep(wait_time)
-                            continue
-                        elif "timeout" in error_str:
-                            wait_time = (attempt + 1) * 2
-                            time.sleep(wait_time)
-                            continue
-                    
-                    self.stats["failed"] += 1
-                    responses[prompt_name] = {
-                        "prompt": prompt_text,
-                        "prompt_name": prompt_name,
-                        "response": None,
-                        "error": str(e)[:200],
-                        "timestamp": datetime.now().isoformat(),
-                        "success": False,
-                    }
-                    self.log(f"✗ ({str(e)[:50]})")
-                    break
-            
-            if i < len(prompt_names) - 1:
-                time.sleep(self.delay)
+            prompt_tasks.append((prompt_name, prompt_data["prompt"]))
+        
+        # Collect all responses concurrently with a semaphore to limit concurrency
+        # This prevents overwhelming the API while still being much faster than sequential
+        semaphore = asyncio.Semaphore(self.concurrency)
+        
+        async def collect_with_semaphore(prompt_name: str, prompt_text: str):
+            async with semaphore:
+                return await self.collect_response_async(prompt_name, prompt_text)
+        
+        # Create all tasks
+        tasks = [
+            collect_with_semaphore(prompt_name, prompt_text)
+            for prompt_name, prompt_text in prompt_tasks
+        ]
+        
+        # Execute all tasks concurrently
+        self.log(f"  Collecting {total_prompts} responses concurrently...")
+        results = await asyncio.gather(*tasks)
+        
+        # Convert results to dictionary
+        responses = {}
+        for i, (prompt_name, response_data) in enumerate(results):
+            responses[prompt_name] = response_data
+            progress = ((i + 1) / total_prompts) * 100
+            if response_data["success"]:
+                self.log(f"  [{i+1}/{total_prompts}] ✓ {prompt_name}")
+                self.log_progress("collecting", f"Collected {i+1} of {total_prompts}: {prompt_name}", progress)
+            else:
+                error_preview = response_data.get("error", "Unknown error")[:50]
+                self.log(f"  [{i+1}/{total_prompts}] ✗ {prompt_name} ({error_preview})")
+                self.log_progress("collecting", f"Failed {i+1} of {total_prompts}: {prompt_name}", progress)
         
         self.log_progress("collecting", f"Completed collecting {self.stats['successful']} successful responses", 100.0)
         return responses
+    
+    def collect_responses(self) -> Dict[str, Dict]:
+        """Collect responses from the model for all test prompts (synchronous wrapper)."""
+        # Run async collection in sync context
+        return asyncio.run(self.collect_responses_async())
     
     def analyze_responses(self, responses: Dict[str, Dict]) -> Dict[str, Any]:
         """Analyze collected responses to identify patterns."""
@@ -457,8 +502,9 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Setup renderer config for a single model")
     parser.add_argument("model_id", type=str, help="Model ID (e.g., x-ai/grok-4.1-fast)")
-    parser.add_argument("--delay", type=float, default=1.0, help="Delay between requests (default: 1.0)")
+    parser.add_argument("--delay", type=float, default=1.0, help="Delay between requests (default: 1.0, not used with concurrent collection)")
     parser.add_argument("--max-retries", type=int, default=3, help="Max retries per request (default: 3)")
+    parser.add_argument("--concurrency", type=int, default=5, help="Max concurrent requests (default: 5)")
     parser.add_argument("--quiet", action="store_true", help="Suppress verbose output")
     
     args = parser.parse_args()
@@ -467,7 +513,8 @@ def main():
         model_id=args.model_id,
         delay=args.delay,
         max_retries=args.max_retries,
-        verbose=not args.quiet
+        verbose=not args.quiet,
+        concurrency=args.concurrency
     )
     
     try:
