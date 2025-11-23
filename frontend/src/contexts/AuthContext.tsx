@@ -37,16 +37,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (response.status === 401) {
           return null
         }
-        throw new Error('Failed to fetch user')
+        // For other errors, return null silently (don't throw)
+        return null
       }
 
       const userData = await response.json()
       return userData
     } catch (error) {
-      // Silently handle cancellation errors (expected when component unmounts)
-      if (error instanceof Error && error.name === 'AbortError') {
-        return null
-      }
+      // Silently handle all errors (network errors, cancellation, etc.)
+      // These are expected in various scenarios (no network, component unmount, etc.)
       return null
     }
   }, [])
@@ -63,14 +62,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       })
 
       if (!response.ok) {
-        // 401 (Unauthorized) is expected when user is not authenticated (e.g., after logout)
-        // Only throw/error for unexpected failures
-        if (response.status === 401) {
+        // 401 (Unauthorized) and 500 (Internal Server Error) are expected when:
+        // - User is not authenticated (no refresh token in cookies)
+        // - Refresh token is invalid/expired
+        // Handle silently without logging errors
+        if (response.status === 401 || response.status === 500) {
           setUser(null)
           setIsLoading(false)
           return
         }
-        throw new Error('Token refresh failed')
+        // For other unexpected status codes, still handle silently but log
+        console.warn(`Token refresh failed with status ${response.status}`)
+        setUser(null)
+        setIsLoading(false)
+        return
       }
 
       // Tokens are now set in cookies by the backend, no need to save them
@@ -83,9 +88,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null)
       }
     } catch (error) {
-      // Only log unexpected errors (network errors, 500s, etc.)
-      // 401s are handled above and are expected when not authenticated
-      console.error('Error refreshing token:', error)
+      // Network errors and other exceptions - handle silently
+      // These are expected in various scenarios (no network, etc.)
       setUser(null)
     } finally {
       setIsLoading(false)
@@ -244,26 +248,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let isMounted = true
 
     const initAuth = async () => {
-      console.log('[Auth] Initializing auth state...')
+      // Only log in development mode to reduce console noise
+      if (import.meta.env.DEV) {
+        console.log('[Auth] Initializing auth state...')
+      }
       const initStartTime = Date.now()
 
-      console.log('[Auth] Attempting to fetch user data...')
       // Try to fetch user (cookies are automatically sent)
       const userData = await fetchCurrentUser()
 
       if (!isMounted) return
 
       if (userData) {
-        console.log('[Auth] User data fetched successfully during initialization')
+        if (import.meta.env.DEV) {
+          const initDuration = Date.now() - initStartTime
+          console.log('[Auth] Auth initialization completed in', initDuration, 'ms')
+        }
         setUser(userData)
         setIsLoading(false)
-        const initDuration = Date.now() - initStartTime
-        console.log('[Auth] Auth initialization completed in', initDuration, 'ms')
       } else {
-        console.log('[Auth] User data fetch failed, attempting token refresh...')
-        // If access token is invalid, try to refresh
+        // If access token is invalid, try to refresh (silently)
         await refreshToken()
-        if (isMounted) {
+        if (isMounted && import.meta.env.DEV) {
           const initDuration = Date.now() - initStartTime
           console.log('[Auth] Auth initialization completed (after refresh) in', initDuration, 'ms')
         }

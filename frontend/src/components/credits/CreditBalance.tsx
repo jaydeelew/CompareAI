@@ -67,7 +67,7 @@ export const CreditBalance: React.FC<CreditBalanceProps> = ({
 
   const creditsRemaining = balance.credits_remaining
   const creditsAllocated = balance.credits_allocated
-  const creditsUsed = balance.credits_used_this_period || 0
+  const creditsUsed = balance.credits_used_this_period ?? balance.credits_used_today ?? 0
   const usagePercent = creditsAllocated > 0 
     ? (creditsUsed / creditsAllocated) * 100 
     : 0

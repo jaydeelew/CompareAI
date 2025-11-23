@@ -5,7 +5,6 @@
  */
 
 import { apiClient } from './api/client'
-import type { ApiResponse } from './api/types'
 
 /**
  * Credit balance information
@@ -13,8 +12,10 @@ import type { ApiResponse } from './api/types'
 export interface CreditBalance {
   /** Credits allocated for current period */
   credits_allocated: number
-  /** Credits used this period */
-  credits_used_this_period: number
+  /** Credits used this period (for authenticated users) */
+  credits_used_this_period?: number
+  /** Credits used today (for anonymous users) */
+  credits_used_today?: number
   /** Credits remaining */
   credits_remaining: number
   /** Total credits used (lifetime) */
@@ -118,8 +119,8 @@ export interface CreditEstimate {
  * Get current credit balance
  */
 export async function getCreditBalance(): Promise<CreditBalance> {
-  const response = await apiClient.get<ApiResponse<CreditBalance>>('/api/credits/balance')
-  return response.data.data
+  const response = await apiClient.get<CreditBalance>('/credits/balance')
+  return response.data
 }
 
 /**
@@ -129,10 +130,10 @@ export async function getCreditUsage(
   page: number = 1,
   perPage: number = 50
 ): Promise<CreditUsageHistory> {
-  const response = await apiClient.get<ApiResponse<CreditUsageHistory>>('/api/credits/usage', {
+  const response = await apiClient.get<CreditUsageHistory>('/credits/usage', {
     params: { page, per_page: perPage },
   })
-  return response.data.data
+  return response.data
 }
 
 /**
@@ -141,10 +142,10 @@ export async function getCreditUsage(
 export async function estimateCredits(
   request: CreditEstimateRequest
 ): Promise<CreditEstimate> {
-  const response = await apiClient.post<ApiResponse<CreditEstimate>>(
-    '/api/credits/estimate',
+  const response = await apiClient.post<CreditEstimate>(
+    '/credits/estimate',
     request
   )
-  return response.data.data
+  return response.data
 }
 

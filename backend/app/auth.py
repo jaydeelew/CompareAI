@@ -118,6 +118,9 @@ def verify_token(token: str, token_type: str = "access") -> Optional[Dict[str, A
     Returns:
         dict: Decoded token payload if valid, None otherwise
     """
+    if not token or not isinstance(token, str):
+        return None
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
@@ -127,6 +130,14 @@ def verify_token(token: str, token_type: str = "access") -> Optional[Dict[str, A
 
         return payload
     except JWTError:
+        # JWT-specific errors (expired, invalid signature, etc.)
+        return None
+    except (ValueError, TypeError):
+        # Malformed token format errors
+        return None
+    except Exception:
+        # Catch any other unexpected errors to prevent 500s
+        # Log in development but return None in production
         return None
 
 

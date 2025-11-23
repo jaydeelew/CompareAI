@@ -177,8 +177,6 @@ function AppContent() {
   const [anonymousCreditsRemaining, setAnonymousCreditsRemaining] = useState<number | null>(null)
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
   const [showLowCreditWarning, setShowLowCreditWarning] = useState(false)
-  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
-  const [showLowCreditWarning, setShowLowCreditWarning] = useState(false)
   const [submissionCount, setSubmissionCount] = useState<number>(() => {
     // Load submission count from localStorage
     if (typeof window !== 'undefined') {

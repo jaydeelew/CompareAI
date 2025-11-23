@@ -353,37 +353,51 @@ async def refresh_token(
     - Validates refresh token from cookies (preferred) or request body (backward compatibility)
     - Returns new access token and refresh token in cookies
     """
-    # Try to get refresh token from cookies first, fallback to request body
-    refresh_token_value = get_refresh_token_from_cookies(request)
-    if not refresh_token_value and token_data:
-        refresh_token_value = token_data.refresh_token
-    
-    if not refresh_token_value:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token required")
+    try:
+        # Try to get refresh token from cookies first, fallback to request body
+        refresh_token_value = get_refresh_token_from_cookies(request)
+        if not refresh_token_value and token_data:
+            refresh_token_value = token_data.refresh_token
+        
+        if not refresh_token_value:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token required")
 
-    payload = verify_token(refresh_token_value, token_type="refresh")
+        payload = verify_token(refresh_token_value, token_type="refresh")
 
-    if payload is None:
+        if payload is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        # Convert user_id to int, handling potential errors
+        try:
+            user_id = int(user_id_str)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+        # Create new tokens
+        access_token = create_access_token(data={"sub": str(user.id)})
+        new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+        # Create response with cookies
+        response = JSONResponse(
+            content={"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
+        )
+        set_auth_cookies(response, access_token, new_refresh_token)
+        return response
+    except HTTPException:
+        # Re-raise HTTP exceptions (401, etc.) as-is
+        raise
+    except Exception as e:
+        # Catch any other exceptions (malformed tokens, database errors, etc.)
+        # and return 401 instead of 500 to avoid exposing internal errors
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-    user_id: int = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
-
-    # Create new tokens
-    access_token = create_access_token(data={"sub": str(user.id)})
-    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
-
-    # Create response with cookies
-    response = JSONResponse(
-        content={"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
-    )
-    set_auth_cookies(response, access_token, new_refresh_token)
-    return response
 
 
 @router.post("/verify-email", status_code=status.HTTP_200_OK)
