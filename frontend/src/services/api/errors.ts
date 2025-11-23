@@ -152,6 +152,16 @@ export class RateLimitError extends ApiError {
 }
 
 /**
+ * Payment required error (402) - Insufficient credits
+ */
+export class PaymentRequiredError extends ApiError {
+  constructor(message: string = 'Payment required', response?: ApiErrorResponse) {
+    super(message, 402, 'Payment Required', response);
+    this.name = 'PaymentRequiredError';
+  }
+}
+
+/**
  * Validation error (422)
  */
 export class ValidationError extends ApiError {

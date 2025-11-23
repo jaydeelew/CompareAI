@@ -22,6 +22,8 @@ from ..model_runner import (
     run_models,
     call_openrouter_streaming,
     clean_model_response,
+    estimate_credits_before_request,
+    TokenUsage,
 )
 from ..models import (
     User,
@@ -30,6 +32,8 @@ from ..models import (
     Conversation,
     ConversationMessage as ConversationMessageModel,
 )
+from ..credit_manager import ensure_credits_allocated, get_user_credits
+from decimal import Decimal
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas import ConversationSummary, ConversationDetail
@@ -48,6 +52,11 @@ from ..rate_limiting import (
     increment_extended_usage,
     check_anonymous_extended_limit,
     increment_anonymous_extended_usage,
+    # Credit-based functions
+    check_user_credits,
+    deduct_user_credits,
+    check_anonymous_credits,
+    deduct_anonymous_credits,
 )
 
 router = APIRouter(tags=["API"])
@@ -69,6 +78,7 @@ from ..config import (
     get_daily_limit,
     get_model_limit,
 )
+from ..config.constants import DAILY_CREDIT_LIMITS
 
 
 # Pydantic models for request/response
@@ -158,16 +168,42 @@ def log_usage_to_db(usage_log: UsageLog, db: Session) -> None:
 
 
 @router.get("/models")
-async def get_available_models() -> Dict[str, Any]:
+async def get_available_models(
+    current_user: Optional[User] = Depends(get_current_user),
+) -> Dict[str, Any]:
     """
-    Get list of available AI models.
+    Get list of available AI models filtered by user's subscription tier.
+
+    - Anonymous/Free tiers: Only see free-tier models
+    - Paid tiers (Starter+): See all models
 
     OPTIMIZATION: Uses caching since model list is static data.
     """
     from ..cache import get_cached_models, CACHE_KEY_MODELS
+    from ..model_runner import filter_models_by_tier
+
+    # Determine user tier
+    if current_user:
+        tier = current_user.subscription_tier or "free"
+    else:
+        tier = "anonymous"
 
     def get_models():
-        return {"models": OPENROUTER_MODELS, "models_by_provider": MODELS_BY_PROVIDER}
+        # Filter models based on tier
+        filtered_models = filter_models_by_tier(OPENROUTER_MODELS, tier)
+        
+        # Filter models_by_provider
+        filtered_by_provider = {}
+        for provider, models in MODELS_BY_PROVIDER.items():
+            filtered_provider_models = filter_models_by_tier(models, tier)
+            if filtered_provider_models:  # Only add provider if it has available models
+                filtered_by_provider[provider] = filtered_provider_models
+        
+        return {
+            "models": filtered_models,
+            "models_by_provider": filtered_by_provider,
+            "user_tier": tier,
+        }
 
     return get_cached_models(get_models)
 
@@ -383,6 +419,23 @@ async def compare(
         tier_model_limit = ANONYMOUS_MODEL_LIMIT  # Anonymous users model limit from configuration
         tier_name = "anonymous"
 
+    # Validate model access based on tier (check if restricted models are selected)
+    from ..model_runner import is_model_available_for_tier
+    restricted_models = [model_id for model_id in req.models if not is_model_available_for_tier(model_id, tier_name)]
+    if restricted_models:
+        upgrade_message = ""
+        if tier_name == "anonymous":
+            upgrade_message = " Sign up for a free account or upgrade to a paid tier to access premium models."
+        elif tier_name == "free":
+            upgrade_message = " Upgrade to Starter ($9.95/month) or higher to access all premium models."
+        else:
+            upgrade_message = " This model requires a paid subscription."
+        
+        raise HTTPException(
+            status_code=403,
+            detail=f"The following models are not available for {tier_name} tier: {', '.join(restricted_models)}.{upgrade_message}",
+        )
+
     # Enforce tier-specific model limit
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
@@ -408,97 +461,96 @@ async def compare(
     # Get number of models for usage tracking
     num_models = len(req.models)
 
-    # --- HYBRID RATE LIMITING ---
+    # --- CREDIT-BASED RATE LIMITING ---
     client_ip = get_client_ip(request)
+
+    # Estimate credits needed for this request
+    estimated_credits = estimate_credits_before_request(
+        prompt=req.input_data,
+        tier=req.tier,
+        num_models=num_models,
+        conversation_history=req.conversation_history,
+    )
 
     is_overage = False
     overage_charge = 0.0
+    credits_used = Decimal(0)
+    credits_remaining = 0
+    credits_allocated = 0
 
     if current_user:
+        # Ensure credits are allocated for authenticated user
+        ensure_credits_allocated(current_user.id, db)
+        db.refresh(current_user)
+        
         # Debug logging for authentication and tier
         print(f"[API] Authenticated user: {current_user.email}, subscription_tier: '{current_user.subscription_tier}', is_active: {current_user.is_active}")
         
-        # Authenticated user - check subscription tier limits (model response based)
-        is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
+        # Check if user has sufficient credits
+        is_sufficient, credits_remaining, credits_allocated = check_user_credits(
+            current_user, estimated_credits, db
+        )
 
-        # Check if user has enough model responses remaining
-        if usage_count + num_models > daily_limit:
-            models_needed = num_models
-            models_over_limit = (usage_count + num_models) - daily_limit
-
-            # Check if overage is allowed for this tier
-            if is_overage_allowed(current_user.subscription_tier):
-                # Overage allowed but pricing not yet implemented
-                # For now, allow the request but track it
-                is_overage = True
-                overage_charge = 0.0  # Pricing TBD
-
-                # Track overage model responses for future billing
-                current_user.monthly_overage_count += models_over_limit
-
-                print(
-                    f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses (pricing TBD)"
+        if not is_sufficient:
+            # Insufficient credits
+            tier_name = current_user.subscription_tier or "free"
+            if tier_name in ["anonymous", "free"]:
+                # Free tier - suggest upgrade
+                error_msg = (
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Sign up for a paid tier to get more credits."
                 )
             else:
-                # Free tier - no overages allowed
-                models_available = max(0, daily_limit - usage_count)
-                # Provide more helpful error message based on actual tier
-                tier_name = current_user.subscription_tier or "unknown"
-                if tier_name.lower() in ["pro_plus", "pro+", "pro +"]:
-                    error_msg = f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. Please contact support if you believe this is an error."
-                else:
-                    starter_limit = get_daily_limit("starter")
-                    pro_limit = get_daily_limit("pro")
-                    error_msg = f"Daily limit of {daily_limit} model responses reached. You have {models_available} remaining and need {models_needed}. Upgrade to Starter ({starter_limit}/day) or Pro ({pro_limit}/day) for more capacity and overage options."
-                raise HTTPException(
-                    status_code=429,
-                    detail=error_msg,
+                # Paid tier - suggest overage or upgrade
+                error_msg = (
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Your credits reset on {current_user.credits_reset_at.date().isoformat() if current_user.credits_reset_at else 'N/A'}. "
+                    f"Upgrade to a higher tier or purchase additional credits."
                 )
+            raise HTTPException(
+                status_code=402,  # Payment Required
+                detail=error_msg,
+            )
 
-        # Don't increment here - wait until we know if requests succeeded
-        # Will be incremented below based on successful_models count
-        if is_overage:
-            print(f"Authenticated user {current_user.email} - Overage requested")
+        print(f"Authenticated user {current_user.email} - Credits: {credits_remaining}/{credits_allocated} (estimated: {estimated_credits:.2f})")
     else:
-        # Debug logging for anonymous users
+        # Anonymous user - check credit-based limits
         print(f"[API] Anonymous user - IP: {client_ip}, fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'}...")
         
-        # Anonymous user - check IP/fingerprint limits (model response based)
-        ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
+        # Check IP-based credits
+        ip_identifier = f"ip:{client_ip}"
+        ip_sufficient, ip_credits_remaining, ip_credits_allocated = check_anonymous_credits(
+            ip_identifier, estimated_credits
+        )
 
-        fingerprint_allowed = True
-        fingerprint_count = 0
+        fingerprint_sufficient = True
+        fingerprint_credits_remaining = 0
+        fingerprint_credits_allocated = 0
         if req.browser_fingerprint:
-            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(
-                f"fp:{req.browser_fingerprint}"
+            fp_identifier = f"fp:{req.browser_fingerprint}"
+            fingerprint_sufficient, fingerprint_credits_remaining, fingerprint_credits_allocated = check_anonymous_credits(
+                fp_identifier, estimated_credits
             )
 
-        # Check if user has enough model responses remaining
-        if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
-            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
-            free_tier_limit = get_daily_limit("free")
+        # Use the most restrictive limit (lowest remaining credits)
+        credits_remaining = min(ip_credits_remaining, fingerprint_credits_remaining if req.browser_fingerprint else ip_credits_remaining)
+        credits_allocated = ip_credits_allocated
+
+        if not ip_sufficient or (req.browser_fingerprint and not fingerprint_sufficient):
+            free_tier_limit = DAILY_CREDIT_LIMITS.get("free", 100)
             raise HTTPException(
-                status_code=429,
-                detail=f"Daily limit of {ANONYMOUS_DAILY_LIMIT} model responses exceeded. You have {models_available} remaining and need {num_models}. "
-                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
+                status_code=402,  # Payment Required
+                detail=(
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Sign up for a free account ({free_tier_limit} credits/day) to continue."
+                ),
             )
 
-        # Check if this request would exceed the limit
-        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (
-            req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT
-        ):
-            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
-            free_tier_limit = get_daily_limit("free")
-            raise HTTPException(
-                status_code=429,
-                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and chose {num_models}. "
-                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
-            )
-
-        # Don't increment here - wait until we know if requests succeeded
-        # Will be incremented below based on successful_models count
-        print(f"Anonymous user - IP: {client_ip} (checking limits)")
-    # --- END HYBRID RATE LIMITING ---
+        print(f"Anonymous user - IP: {client_ip} - Credits: {credits_remaining}/{credits_allocated} (estimated: {estimated_credits:.2f})")
+    # --- END CREDIT-BASED RATE LIMITING ---
 
     # --- EXTENDED TIER LIMITING ---
     if req.tier == "extended":
@@ -576,6 +628,8 @@ async def compare(
     start_time = datetime.now()
 
     try:
+        usage_data_dict = {}  # Store usage data per model
+        
         if use_mock:
             # Mock mode: Create fake successful results
             results = {}
@@ -583,15 +637,21 @@ async def compare(
                 results[model_id] = (
                     f"[MOCK MODE] This is a test response for {model_id}. Mock mode is enabled for testing."
                 )
+                # Mock mode: Use estimated credits (no actual token usage)
+                usage_data_dict[model_id] = None
         else:
             loop = asyncio.get_running_loop()
-            results = await loop.run_in_executor(
+            results, usage_data_dict = await loop.run_in_executor(
                 None, run_models, req.input_data, req.models, req.tier, req.conversation_history
             )
 
-        # Count successful vs failed models
+        # Count successful vs failed models and calculate total credits used
         successful_models = 0
         failed_models = 0
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_effective_tokens = 0
+        total_credits_used = Decimal(0)
 
         for model_id, result in results.items():
             current_time = datetime.now().isoformat()
@@ -603,43 +663,20 @@ async def compare(
                 successful_models += 1
                 model_stats[model_id]["success"] += 1
                 model_stats[model_id]["last_success"] = current_time
+                
+                # Accumulate token usage from successful models
+                usage = usage_data_dict.get(model_id)
+                if usage:
+                    total_input_tokens += usage.prompt_tokens
+                    total_output_tokens += usage.completion_tokens
+                    total_effective_tokens += usage.effective_tokens
+                    total_credits_used += usage.credits
 
-        # NOW increment usage counts - only for successful models
-        # In mock mode, all models are considered successful for counting purposes
-        if successful_models > 0:
-            # Increment regular usage count
-            if current_user:
-                increment_user_usage(current_user, db, count=successful_models)
-            else:
-                increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
-                if req.browser_fingerprint:
-                    increment_anonymous_usage(
-                        f"fp:{req.browser_fingerprint}", count=successful_models
-                    )
+        # If no actual usage data available (mock mode or missing), use estimated credits
+        if total_credits_used == 0 and successful_models > 0:
+            total_credits_used = estimated_credits
 
-            # Increment extended usage - only count 1 per request regardless of model count
-            if req.tier == "extended":
-                if current_user:
-                    increment_extended_usage(current_user, db, count=1)
-                else:
-                    increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
-                    if req.browser_fingerprint:
-                        increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
-
-        # Calculate processing time
-        processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-
-        # Add metadata
-        metadata = {
-            "input_length": len(req.input_data),
-            "models_requested": len(req.models),
-            "models_successful": successful_models,
-            "models_failed": failed_models,
-            "timestamp": datetime.now().isoformat(),
-            "processing_time_ms": processing_time_ms,
-        }
-
-        # Log usage to database
+        # Log usage to database first (so we have usage_log_id for credit transaction)
         usage_log = UsageLog(
             user_id=current_user.id if current_user else None,
             ip_address=client_ip,
@@ -650,12 +687,77 @@ async def compare(
             models_successful=successful_models,
             models_failed=failed_models,
             processing_time_ms=processing_time_ms,
-            estimated_cost=len(req.models) * 0.0166,  # Estimated cost per model
+            estimated_cost=len(req.models) * 0.0166,  # Legacy field - keep for backward compatibility
             is_overage=is_overage,
             overage_charge=overage_charge,
+            # Credit-based fields
+            input_tokens=total_input_tokens if total_input_tokens > 0 else None,
+            output_tokens=total_output_tokens if total_output_tokens > 0 else None,
+            total_tokens=total_input_tokens + total_output_tokens if (total_input_tokens > 0 or total_output_tokens > 0) else None,
+            effective_tokens=total_effective_tokens if total_effective_tokens > 0 else None,
+            credits_used=total_credits_used,
         )
         db.add(usage_log)
         db.commit()
+        db.refresh(usage_log)  # Get the ID
+
+        # Deduct credits - only for successful models (now we have usage_log_id)
+        if successful_models > 0 and total_credits_used > 0:
+            try:
+                if current_user:
+                    # Deduct credits for authenticated user
+                    deduct_user_credits(
+                        current_user,
+                        total_credits_used,
+                        usage_log.id,  # Link to usage log
+                        db,
+                        description=f"Credits used for {successful_models} model comparison(s)",
+                    )
+                    # Refresh to get updated credit balance
+                    db.refresh(current_user)
+                    credits_remaining = get_user_credits(current_user.id, db)
+                else:
+                    # Deduct credits for anonymous user
+                    ip_identifier = f"ip:{client_ip}"
+                    deduct_anonymous_credits(ip_identifier, total_credits_used)
+                    if req.browser_fingerprint:
+                        fp_identifier = f"fp:{req.browser_fingerprint}"
+                        deduct_anonymous_credits(fp_identifier, total_credits_used)
+                    # Get updated credit balance
+                    _, credits_remaining, _ = check_anonymous_credits(ip_identifier, Decimal(0))
+            except ValueError as e:
+                # Should not happen since we checked before, but handle gracefully
+                print(f"Warning: Credit deduction failed: {e}")
+
+        # Increment extended usage - only count 1 per request regardless of model count
+        if req.tier == "extended" and successful_models > 0:
+            if current_user:
+                increment_extended_usage(current_user, db, count=1)
+            else:
+                increment_anonymous_extended_usage(f"ip:{client_ip}", count=1)
+                if req.browser_fingerprint:
+                    increment_anonymous_extended_usage(f"fp:{req.browser_fingerprint}", count=1)
+
+        # Calculate processing time
+        processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+
+        # Add metadata including credit information
+        metadata = {
+            "input_length": len(req.input_data),
+            "models_requested": len(req.models),
+            "models_successful": successful_models,
+            "models_failed": failed_models,
+            "timestamp": datetime.now().isoformat(),
+            "processing_time_ms": processing_time_ms,
+            # Credit-based fields
+            "credits_used": float(total_credits_used),
+            "credits_remaining": credits_remaining,
+            "estimated_credits": float(estimated_credits),
+            # Token usage fields
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
+            "total_effective_tokens": total_effective_tokens,
+        }
 
         return CompareResponse(results=results, metadata=metadata)
 
@@ -721,6 +823,23 @@ async def compare_stream(
         tier_model_limit = ANONYMOUS_MODEL_LIMIT  # Anonymous users model limit from configuration
         tier_name = "anonymous"
 
+    # Validate model access based on tier (check if restricted models are selected)
+    from ..model_runner import is_model_available_for_tier
+    restricted_models = [model_id for model_id in req.models if not is_model_available_for_tier(model_id, tier_name)]
+    if restricted_models:
+        upgrade_message = ""
+        if tier_name == "anonymous":
+            upgrade_message = " Sign up for a free account or upgrade to a paid tier to access premium models."
+        elif tier_name == "free":
+            upgrade_message = " Upgrade to Starter ($9.95/month) or higher to access all premium models."
+        else:
+            upgrade_message = " This model requires a paid subscription."
+        
+        raise HTTPException(
+            status_code=403,
+            detail=f"The following models are not available for {tier_name} tier: {', '.join(restricted_models)}.{upgrade_message}",
+        )
+
     # Enforce tier-specific model limit
     if len(req.models) > tier_model_limit:
         upgrade_message = ""
@@ -746,76 +865,95 @@ async def compare_stream(
     # Get number of models for usage tracking
     num_models = len(req.models)
 
-    # --- HYBRID RATE LIMITING (same as regular endpoint) ---
+    # --- CREDIT-BASED RATE LIMITING ---
     client_ip = get_client_ip(request)
+
+    # Estimate credits needed for this request
+    estimated_credits = estimate_credits_before_request(
+        prompt=req.input_data,
+        tier=req.tier,
+        num_models=num_models,
+        conversation_history=req.conversation_history,
+    )
+
     is_overage = False
     overage_charge = 0.0
+    credits_remaining = 0
+    credits_allocated = 0
 
     if current_user:
+        # Ensure credits are allocated for authenticated user
+        ensure_credits_allocated(current_user.id, db)
+        db.refresh(current_user)
+        
         # Debug logging for authentication and tier
         print(f"[API] Authenticated user: {current_user.email}, subscription_tier: '{current_user.subscription_tier}', is_active: {current_user.is_active}")
         
-        is_allowed, usage_count, daily_limit = check_user_rate_limit(current_user, db)
+        # Check if user has sufficient credits
+        is_sufficient, credits_remaining, credits_allocated = check_user_credits(
+            current_user, estimated_credits, db
+        )
 
-        if usage_count + num_models > daily_limit:
-            models_needed = num_models
-            models_over_limit = (usage_count + num_models) - daily_limit
-
-            if is_overage_allowed(current_user.subscription_tier):
-                is_overage = True
-                overage_charge = 0.0
-                current_user.monthly_overage_count += models_over_limit
-                print(
-                    f"Authenticated user {current_user.email} - Using {models_over_limit} overage model responses"
+        if not is_sufficient:
+            # Insufficient credits
+            tier_name = current_user.subscription_tier or "free"
+            if tier_name in ["anonymous", "free"]:
+                # Free tier - suggest upgrade
+                error_msg = (
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Sign up for a paid tier to get more credits."
                 )
             else:
-                models_available = max(0, daily_limit - usage_count)
-                # Provide more helpful error message based on actual tier
-                tier_name = current_user.subscription_tier or "unknown"
-                if tier_name.lower() in ["pro_plus", "pro+", "pro +"]:
-                    error_msg = f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. Please contact support if you believe this is an error."
-                else:
-                    error_msg = f"Daily limit of {daily_limit} model responses exceeded. You have {models_available} remaining and need {models_needed}. Upgrade to Starter (150/day) or Pro (450/day) for more capacity."
-                raise HTTPException(
-                    status_code=429,
-                    detail=error_msg,
+                # Paid tier - suggest overage or upgrade
+                error_msg = (
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Your credits reset on {current_user.credits_reset_at.date().isoformat() if current_user.credits_reset_at else 'N/A'}. "
+                    f"Upgrade to a higher tier or purchase additional credits."
                 )
+            raise HTTPException(
+                status_code=402,  # Payment Required
+                detail=error_msg,
+            )
 
-        # Don't increment here - wait until we know if requests succeeded
-        print(f"Authenticated user {current_user.email} - Checking limits")
+        print(f"Authenticated user {current_user.email} - Credits: {credits_remaining}/{credits_allocated} (estimated: {estimated_credits:.2f})")
     else:
-        # Debug logging for anonymous users
+        # Anonymous user - check credit-based limits
         print(f"[API] Anonymous user - IP: {client_ip}, fingerprint: {req.browser_fingerprint[:20] if req.browser_fingerprint else 'None'}...")
         
-        ip_allowed, ip_count = check_anonymous_rate_limit(f"ip:{client_ip}")
-        fingerprint_allowed = True
-        fingerprint_count = 0
+        # Check IP-based credits
+        ip_identifier = f"ip:{client_ip}"
+        ip_sufficient, ip_credits_remaining, ip_credits_allocated = check_anonymous_credits(
+            ip_identifier, estimated_credits
+        )
+
+        fingerprint_sufficient = True
+        fingerprint_credits_remaining = 0
+        fingerprint_credits_allocated = 0
         if req.browser_fingerprint:
-            fingerprint_allowed, fingerprint_count = check_anonymous_rate_limit(
-                f"fp:{req.browser_fingerprint}"
+            fp_identifier = f"fp:{req.browser_fingerprint}"
+            fingerprint_sufficient, fingerprint_credits_remaining, fingerprint_credits_allocated = check_anonymous_credits(
+                fp_identifier, estimated_credits
             )
 
-        if not ip_allowed or (req.browser_fingerprint and not fingerprint_allowed):
-            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
-            free_tier_limit = get_daily_limit("free")
+        # Use the most restrictive limit (lowest remaining credits)
+        credits_remaining = min(ip_credits_remaining, fingerprint_credits_remaining if req.browser_fingerprint else ip_credits_remaining)
+        credits_allocated = ip_credits_allocated
+
+        if not ip_sufficient or (req.browser_fingerprint and not fingerprint_sufficient):
+            free_tier_limit = DAILY_CREDIT_LIMITS.get("free", 100)
             raise HTTPException(
-                status_code=429,
-                detail=f"Daily limit of {ANONYMOUS_DAILY_LIMIT} model responses exceeded. Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
+                status_code=402,  # Payment Required
+                detail=(
+                    f"Insufficient credits: You have {credits_remaining} credits remaining, "
+                    f"but need approximately {estimated_credits:.2f} credits for this request. "
+                    f"Sign up for a free account ({free_tier_limit} credits/day) to continue."
+                ),
             )
 
-        if ip_count + num_models > ANONYMOUS_DAILY_LIMIT or (
-            req.browser_fingerprint and fingerprint_count + num_models > ANONYMOUS_DAILY_LIMIT
-        ):
-            models_available = max(0, ANONYMOUS_DAILY_LIMIT - max(ip_count, fingerprint_count))
-            free_tier_limit = get_daily_limit("free")
-            raise HTTPException(
-                status_code=429,
-                detail=f"Daily limit would be exceeded. You have {models_available} model responses remaining and chose {num_models}. "
-                f"Sign up for a free account ({free_tier_limit} model responses/day) to continue.",
-            )
-
-        # Don't increment here - wait until we know if requests succeeded
-        print(f"Anonymous user - IP: {client_ip} (checking limits)")
+        print(f"Anonymous user - IP: {client_ip} - Credits: {credits_remaining}/{credits_allocated} (estimated: {estimated_credits:.2f})")
+    # --- END CREDIT-BASED RATE LIMITING ---
 
     # --- EXTENDED TIER LIMITING (same as regular endpoint) ---
     if req.tier == "extended":
@@ -1070,32 +1208,43 @@ async def compare_stream(
                 if pending_tasks:
                     await asyncio.sleep(0.01)  # 10ms yield
 
-            # NOW increment usage counts - only for successful models
-            # In mock mode, all models are considered successful for counting purposes
-            # Create a fresh database session to avoid detachment issues
-            from ..database import SessionLocal
-
-            if successful_models > 0:
-                # Increment regular usage count
-                if user_id:
-                    # Create new session and query user fresh
-                    increment_db = SessionLocal()
-                    try:
-                        increment_user_obj = (
-                            increment_db.query(User).filter(User.id == user_id).first()
-                        )
-                        if increment_user_obj:
-                            increment_user_usage(
-                                increment_user_obj, increment_db, count=successful_models
+            # Calculate credits used (use estimated if actual usage not available)
+            # TODO: Capture actual usage data from streaming responses
+            total_credits_used = estimated_credits if successful_models > 0 else Decimal(0)
+            
+            # Deduct credits - only for successful models
+            if successful_models > 0 and total_credits_used > 0:
+                # Create a fresh database session to avoid detachment issues
+                from ..database import SessionLocal
+                credit_db = SessionLocal()
+                try:
+                    if user_id:
+                        # Deduct credits for authenticated user
+                        credit_user = credit_db.query(User).filter(User.id == user_id).first()
+                        if credit_user:
+                            deduct_user_credits(
+                                credit_user,
+                                total_credits_used,
+                                None,  # usage_log_id will be set after commit
+                                credit_db,
+                                description=f"Credits used for {successful_models} model comparison(s) (streaming)",
                             )
-                    finally:
-                        increment_db.close()
-                else:
-                    increment_anonymous_usage(f"ip:{client_ip}", count=successful_models)
-                    if req.browser_fingerprint:
-                        increment_anonymous_usage(
-                            f"fp:{req.browser_fingerprint}", count=successful_models
-                        )
+                            credit_db.refresh(credit_user)
+                            credits_remaining = get_user_credits(user_id, credit_db)
+                    else:
+                        # Deduct credits for anonymous user
+                        ip_identifier = f"ip:{client_ip}"
+                        deduct_anonymous_credits(ip_identifier, total_credits_used)
+                        if req.browser_fingerprint:
+                            fp_identifier = f"fp:{req.browser_fingerprint}"
+                            deduct_anonymous_credits(fp_identifier, total_credits_used)
+                        # Get updated credit balance
+                        _, credits_remaining, _ = check_anonymous_credits(ip_identifier, Decimal(0))
+                except ValueError as e:
+                    # Should not happen since we checked before, but handle gracefully
+                    print(f"Warning: Credit deduction failed: {e}")
+                finally:
+                    credit_db.close()
 
                 # Increment extended usage - only count 1 per request regardless of model count
                 if req.tier == "extended":
@@ -1120,7 +1269,7 @@ async def compare_stream(
             # Calculate processing time
             processing_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
 
-            # Build metadata
+            # Build metadata including credit information
             metadata = {
                 "input_length": len(req.input_data),
                 "models_requested": len(req.models),
@@ -1130,6 +1279,10 @@ async def compare_stream(
                 "processing_time_ms": processing_time_ms,
                 "conversation_message_count": conversation_message_count,
                 "is_extended_interaction": is_extended_interaction,
+                # Credit-based fields
+                "credits_used": float(total_credits_used),
+                "credits_remaining": credits_remaining,
+                "estimated_credits": float(estimated_credits),
             }
 
             # Log usage to database in background
@@ -1143,9 +1296,11 @@ async def compare_stream(
                 models_successful=successful_models,
                 models_failed=failed_models,
                 processing_time_ms=processing_time_ms,
-                estimated_cost=len(req.models) * 0.0166,
+                estimated_cost=len(req.models) * 0.0166,  # Legacy field - keep for backward compatibility
                 is_overage=is_overage,
                 overage_charge=overage_charge,
+                # Credit-based fields
+                credits_used=total_credits_used,
             )
             # Create new session for background task
             log_db = SessionLocal()
@@ -1459,6 +1614,194 @@ async def get_conversation(
         created_at=conversation.created_at,
         messages=message_schemas,
     )
+
+
+# ============================================================================
+# Credit Management Endpoints
+# ============================================================================
+
+@router.get("/credits/balance")
+async def get_credit_balance(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+    request: Request = None,
+):
+    """
+    Get current credit balance and usage statistics.
+    
+    Returns credit balance, usage, and reset information for the current user.
+    For anonymous users, returns daily credit balance.
+    """
+    if current_user:
+        # Authenticated user
+        ensure_credits_allocated(current_user.id, db)
+        db.refresh(current_user)
+        
+        stats = get_credit_usage_stats(current_user.id, db)
+        
+        return {
+            "credits_allocated": stats["credits_allocated"],
+            "credits_used_this_period": stats["credits_used_this_period"],
+            "credits_remaining": stats["credits_remaining"],
+            "total_credits_used": stats["total_credits_used"],
+            "credits_reset_at": stats["credits_reset_at"],
+            "billing_period_start": stats["billing_period_start"],
+            "billing_period_end": stats["billing_period_end"],
+            "period_type": stats["period_type"],
+            "subscription_tier": stats["subscription_tier"],
+        }
+    else:
+        # Anonymous user
+        client_ip = get_client_ip(request) if request else "unknown"
+        ip_identifier = f"ip:{client_ip}"
+        
+        # Get anonymous credit stats
+        _, credits_remaining, credits_allocated = check_anonymous_credits(ip_identifier, Decimal(0))
+        
+        return {
+            "credits_allocated": credits_allocated,
+            "credits_used_today": credits_allocated - credits_remaining,
+            "credits_remaining": credits_remaining,
+            "period_type": "daily",
+            "subscription_tier": "anonymous",
+        }
+
+
+@router.get("/credits/usage")
+async def get_credit_usage(
+    page: int = 1,
+    per_page: int = 50,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Get detailed credit usage history.
+    
+    Returns paginated list of usage logs with credit and token information.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    # Calculate offset
+    offset = (page - 1) * per_page
+    
+    # Query usage logs for this user
+    query = db.query(UsageLog).filter(UsageLog.user_id == current_user.id)
+    
+    # Get total count
+    total_count = query.count()
+    
+    # Get paginated results
+    usage_logs = (
+        query.order_by(UsageLog.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+        .all()
+    )
+    
+    # Format results
+    results = []
+    for log in usage_logs:
+        try:
+            models_used = json.loads(log.models_used) if log.models_used else []
+        except (json.JSONDecodeError, TypeError):
+            models_used = []
+        
+        results.append({
+            "id": log.id,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+            "models_used": models_used,
+            "models_successful": log.models_successful,
+            "models_failed": log.models_failed,
+            "credits_used": float(log.credits_used) if log.credits_used else None,
+            "input_tokens": log.input_tokens,
+            "output_tokens": log.output_tokens,
+            "total_tokens": log.total_tokens,
+            "effective_tokens": log.effective_tokens,
+            "processing_time_ms": log.processing_time_ms,
+        })
+    
+    return {
+        "total": total_count,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total_count + per_page - 1) // per_page,
+        "results": results,
+    }
+
+
+class CreditEstimateRequest(BaseModel):
+    """Request model for credit estimation."""
+    input_data: str
+    models: list[str]
+    tier: str = "standard"
+    conversation_history: list[ConversationMessage] = []
+
+
+@router.post("/credits/estimate")
+async def estimate_credits(
+    req: CreditEstimateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Estimate credits needed for a request before submitting.
+    
+    Returns estimated credits based on prompt length, tier, and number of models.
+    """
+    if not req.input_data.strip():
+        raise HTTPException(status_code=400, detail="Input data cannot be empty")
+    
+    if not req.models:
+        raise HTTPException(status_code=400, detail="At least one model must be selected")
+    
+    # Validate tier
+    if req.tier not in TIER_LIMITS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid tier '{req.tier}'. Valid tiers are: {', '.join(TIER_LIMITS.keys())}",
+        )
+    
+    # Estimate credits
+    estimated_credits = estimate_credits_before_request(
+        prompt=req.input_data,
+        tier=req.tier,
+        num_models=len(req.models),
+        conversation_history=req.conversation_history,
+    )
+    
+    # Get current credit balance
+    credits_remaining = 0
+    credits_allocated = 0
+    is_sufficient = False
+    
+    if current_user:
+        ensure_credits_allocated(current_user.id, db)
+        db.refresh(current_user)
+        is_sufficient, credits_remaining, credits_allocated = check_user_credits(
+            current_user, estimated_credits, db
+        )
+    else:
+        # Anonymous user
+        client_ip = get_client_ip(request)
+        ip_identifier = f"ip:{client_ip}"
+        is_sufficient, credits_remaining, credits_allocated = check_anonymous_credits(
+            ip_identifier, estimated_credits
+        )
+    
+    return {
+        "estimated_credits": float(estimated_credits),
+        "credits_remaining": credits_remaining,
+        "credits_allocated": credits_allocated,
+        "is_sufficient": is_sufficient,
+        "breakdown": {
+            "num_models": len(req.models),
+            "tier": req.tier,
+            "input_length": len(req.input_data),
+            "conversation_history_length": len(req.conversation_history),
+        },
+    }
 
 
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_200_OK)

@@ -17,3 +17,6 @@ export * from './comparison';
 
 // Conversation components
 export * from './conversation';
+
+// Credits components
+export * from './credits';

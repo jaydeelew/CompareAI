@@ -123,3 +123,39 @@ CONVERSATION_LIMITS: Dict[str, int] = {
     "pro_plus": 80,
 }
 
+
+# ============================================================================
+# Credit-Based System Configuration
+# ============================================================================
+# Credit allocations for each tier
+# 1 credit = 1,000 effective tokens
+# Effective tokens = input_tokens + (output_tokens × 2.5)
+# Average exchange: ~5 credits (mix of standard/extended/follow-ups)
+
+# Daily credit limits for free tiers (resets daily)
+DAILY_CREDIT_LIMITS: Dict[str, int] = {
+    "anonymous": 50,   # 50 credits/day (~10 exchanges/day)
+    "free": 100,       # 100 credits/day (~20 exchanges/day)
+}
+
+# Monthly credit allocations for paid tiers
+MONTHLY_CREDIT_ALLOCATIONS: Dict[str, int] = {
+    "starter": 1,200,      # $9.95/month - ~240 exchanges/month (~8/day)
+    "starter_plus": 2,500,  # $19.95/month - ~500 exchanges/month (~17/day)
+    "pro": 5,000,          # $39.95/month - ~1,000 exchanges/month (~33/day)
+    "pro_plus": 10,000,    # $79.95/month - ~2,000 exchanges/month (~67/day)
+}
+
+# Subscription pricing (monthly)
+TIER_PRICING: Dict[str, float] = {
+    "anonymous": 0.0,
+    "free": 0.0,
+    "starter": 9.95,
+    "starter_plus": 19.95,
+    "pro": 39.95,
+    "pro_plus": 79.95,
+}
+
+# Overage pricing (per 1,000 credits)
+OVERAGE_PRICE_PER_1000_CREDITS: float = 12.0  # $12 per 1,000 credits ($0.012 per credit)
+

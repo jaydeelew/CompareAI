@@ -61,6 +61,14 @@ class User(Base):
     daily_extended_usage = Column(Integer, default=0)  # Number of Extended tier responses used today
     extended_usage_reset_date = Column(Date, default=func.current_date())
 
+    # Credit-based system tracking
+    monthly_credits_allocated = Column(Integer, default=0)  # Credits allocated for current billing period
+    credits_used_this_period = Column(Integer, default=0)  # Credits used in current billing period
+    total_credits_used = Column(Integer, default=0)  # Lifetime total credits used
+    billing_period_start = Column(DateTime)  # Start of current billing period (for paid tiers)
+    billing_period_end = Column(DateTime)  # End of current billing period (for paid tiers)
+    credits_reset_at = Column(DateTime)  # When credits reset (daily for free/anonymous, monthly for paid)
+
     # Timestamps
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -71,6 +79,15 @@ class User(Base):
     usage_logs = relationship("UsageLog", back_populates="user")
     subscription_history = relationship("SubscriptionHistory", back_populates="user", cascade="all, delete-orphan")
     payment_transactions = relationship("PaymentTransaction", back_populates="user", cascade="all, delete-orphan")
+    credit_transactions = relationship("CreditTransaction", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def credits_remaining(self) -> int:
+        """
+        Calculate remaining credits for the current period.
+        Returns: credits_remaining = monthly_credits_allocated - credits_used_this_period
+        """
+        return max(0, (self.monthly_credits_allocated or 0) - (self.credits_used_this_period or 0))
 
 
 class UserPreference(Base):
@@ -168,11 +185,20 @@ class UsageLog(Base):
     is_overage = Column(Boolean, default=False)  # Whether this included overage model responses
     overage_charge = Column(DECIMAL(10, 4), default=0)  # Charge for overage model responses (if applicable)
 
+    # Token and credit tracking (CREDITS-BASED SYSTEM)
+    input_tokens = Column(Integer)  # Input tokens used
+    output_tokens = Column(Integer)  # Output tokens used
+    total_tokens = Column(Integer)  # Total tokens (input + output)
+    effective_tokens = Column(Integer)  # Effective tokens = input + (output × 2.5)
+    credits_used = Column(DECIMAL(10, 4))  # Credits used (effective_tokens / 1000)
+    actual_cost = Column(DECIMAL(10, 4))  # Actual cost in USD from OpenRouter
+
     # Timestamp
     created_at = Column(DateTime, default=func.now(), index=True)
 
     # Relationships
     user = relationship("User", back_populates="usage_logs")
+    credit_transactions = relationship("CreditTransaction", back_populates="usage_log")
 
 
 class SubscriptionHistory(Base):
@@ -248,6 +274,28 @@ class AdminActionLog(Base):
     # Relationships
     admin_user = relationship("User", foreign_keys=[admin_user_id], backref="admin_actions_performed")
     target_user = relationship("User", foreign_keys=[target_user_id], backref="admin_actions_received")
+
+
+class CreditTransaction(Base):
+    """Track all credit transactions (allocations, usage, purchases, refunds, expirations)."""
+
+    __tablename__ = "credit_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Transaction details
+    transaction_type = Column(String(50), nullable=False)  # 'allocation', 'usage', 'purchase', 'refund', 'expiration'
+    credits_amount = Column(Integer, nullable=False)  # Positive for allocations/purchases/refunds, negative for usage/expiration
+    description = Column(Text)  # Human-readable description of the transaction
+    related_usage_log_id = Column(Integer, ForeignKey("usage_logs.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Timestamp
+    created_at = Column(DateTime, default=func.now(), index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="credit_transactions")
+    usage_log = relationship("UsageLog", back_populates="credit_transactions")
 
 
 class AppSettings(Base):

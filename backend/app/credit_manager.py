@@ -1,0 +1,336 @@
+"""
+Credit management module for CompareIntel credits-based system.
+
+This module provides functions for managing user credits including:
+- Getting current credit balance
+- Checking if user has sufficient credits
+- Deducting credits for usage
+- Allocating credits based on subscription tier
+- Resetting credits (daily for free/anonymous, monthly for paid)
+- Getting credit usage statistics
+
+All operations use database transactions and row-level locking to ensure
+atomicity and handle concurrent requests gracefully.
+"""
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select, update, func
+from sqlalchemy.dialects.postgresql import select as pg_select
+from decimal import Decimal, ROUND_CEILING
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Any, Optional
+from .models import User, UsageLog, CreditTransaction
+from .config.constants import (
+    DAILY_CREDIT_LIMITS,
+    MONTHLY_CREDIT_ALLOCATIONS,
+)
+
+
+def get_user_credits(user_id: int, db: Session) -> int:
+    """
+    Get current credit balance for a user.
+    
+    Calculates: monthly_credits_allocated - credits_used_this_period
+    
+    Args:
+        user_id: User ID
+        db: Database session
+        
+    Returns:
+        Current credit balance (remaining credits)
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    allocated = user.monthly_credits_allocated or 0
+    used = user.credits_used_this_period or 0
+    return max(0, allocated - used)
+
+
+def check_credits_sufficient(user_id: int, required_credits: Decimal, db: Session) -> bool:
+    """
+    Check if user has sufficient credits for a request.
+    
+    Args:
+        user_id: User ID
+        required_credits: Credits needed for the request (as Decimal)
+        db: Database session
+        
+    Returns:
+        True if user has sufficient credits, False otherwise
+    """
+    # Check and reset credits if needed before checking balance
+    check_and_reset_credits_if_needed(user_id, db)
+    
+    current_credits = get_user_credits(user_id, db)
+    # Convert required_credits to int (round up to be conservative)
+    required_int = int(required_credits.quantize(Decimal('1'), rounding=ROUND_CEILING))
+    return current_credits >= required_int
+
+
+def deduct_credits(
+    user_id: int,
+    credits: Decimal,
+    usage_log_id: Optional[int],
+    db: Session,
+    description: Optional[str] = None
+) -> None:
+    """
+    Deduct credits from user's balance atomically.
+    
+    Uses row-level locking to prevent race conditions in concurrent requests.
+    Creates a CreditTransaction record for audit trail.
+    
+    Args:
+        user_id: User ID
+        credits: Credits to deduct (as Decimal, e.g., 4.25)
+        usage_log_id: Optional UsageLog ID this deduction is related to
+        db: Database session
+        description: Optional description for the transaction
+        
+    Raises:
+        ValueError: If user doesn't have sufficient credits
+    """
+    # Convert Decimal to int (round to nearest integer for User model storage)
+    # User model stores credits_used_this_period as Integer
+    credits_int = int(round(credits))
+    
+    # Use row-level locking for atomic update
+    # SQLite and PostgreSQL handle this differently, so we use a generic approach
+    user = db.query(User).filter(User.id == user_id).with_for_update().first()
+    
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    # Check if user has sufficient credits
+    allocated = user.monthly_credits_allocated or 0
+    used = user.credits_used_this_period or 0
+    remaining = allocated - used
+    
+    if remaining < credits_int:
+        raise ValueError(
+            f"Insufficient credits: {remaining} remaining, {credits_int} required"
+        )
+    
+    # Update user's credit usage
+    user.credits_used_this_period = (user.credits_used_this_period or 0) + credits_int
+    user.total_credits_used = (user.total_credits_used or 0) + credits_int
+    
+    # Create credit transaction record
+    # Store exact Decimal value in transaction (as integer representing millicredits for precision)
+    credits_millicredits = int(credits * 1000)  # Store as millicredits for transaction precision
+    transaction = CreditTransaction(
+        user_id=user_id,
+        transaction_type="usage",
+        credits_amount=-credits_millicredits,  # Negative for usage, stored as millicredits
+        description=description or f"Credits used for request ({float(credits):.4f} credits)",
+        related_usage_log_id=usage_log_id,
+    )
+    db.add(transaction)
+    
+    db.commit()
+
+
+def allocate_monthly_credits(user_id: int, tier: str, db: Session) -> None:
+    """
+    Allocate monthly credits to a user based on their subscription tier.
+    
+    For paid tiers: Allocates monthly credits and sets billing period.
+    For free/anonymous tiers: Allocates daily credits (handled by reset_daily_credits).
+    
+    Args:
+        user_id: User ID
+        tier: Subscription tier
+        db: Database session
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    # Get credit allocation for tier
+    if tier in MONTHLY_CREDIT_ALLOCATIONS:
+        credits = MONTHLY_CREDIT_ALLOCATIONS[tier]
+        
+        # Set billing period (monthly for paid tiers)
+        now = datetime.now(timezone.utc)
+        user.billing_period_start = now
+        user.billing_period_end = now + timedelta(days=30)
+        user.credits_reset_at = user.billing_period_end
+        
+        # Allocate credits and reset usage
+        user.monthly_credits_allocated = credits
+        user.credits_used_this_period = 0
+        
+        # Create allocation transaction
+        transaction = CreditTransaction(
+            user_id=user_id,
+            transaction_type="allocation",
+            credits_amount=credits,
+            description=f"Monthly credit allocation for {tier} tier",
+        )
+        db.add(transaction)
+        db.commit()
+    elif tier in DAILY_CREDIT_LIMITS:
+        # Free/anonymous tiers use daily limits (handled by reset_daily_credits)
+        credits = DAILY_CREDIT_LIMITS[tier]
+        user.monthly_credits_allocated = credits
+        user.credits_used_this_period = 0
+        db.commit()
+    else:
+        # Unknown tier - set to 0
+        user.monthly_credits_allocated = 0
+        user.credits_used_this_period = 0
+        db.commit()
+
+
+def reset_daily_credits(user_id: int, tier: str, db: Session) -> None:
+    """
+    Reset daily credits for free/anonymous tier users.
+    
+    Called daily at midnight UTC to reset credit balance.
+    
+    Args:
+        user_id: User ID
+        tier: Subscription tier (should be 'anonymous' or 'free')
+        db: Database session
+    """
+    if tier not in DAILY_CREDIT_LIMITS:
+        # Not a daily-reset tier, skip
+        return
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    credits = DAILY_CREDIT_LIMITS[tier]
+    
+    # Reset credits for next day
+    now = datetime.now(timezone.utc)
+    tomorrow = now + timedelta(days=1)
+    # Set reset time to midnight UTC tomorrow
+    user.credits_reset_at = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Reset allocation and usage
+    user.monthly_credits_allocated = credits
+    user.credits_used_this_period = 0
+    
+    # Create allocation transaction
+    transaction = CreditTransaction(
+        user_id=user_id,
+        transaction_type="allocation",
+        credits_amount=credits,
+        description=f"Daily credit allocation for {tier} tier",
+    )
+    db.add(transaction)
+    db.commit()
+
+
+def get_credit_usage_stats(user_id: int, db: Session) -> Dict[str, Any]:
+    """
+    Get comprehensive credit usage statistics for a user.
+    
+    Args:
+        user_id: User ID
+        db: Database session
+        
+    Returns:
+        Dictionary with credit usage statistics
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    allocated = user.monthly_credits_allocated or 0
+    used = user.credits_used_this_period or 0
+    remaining = max(0, allocated - used)
+    total_used = user.total_credits_used or 0
+    
+    # Get reset time
+    reset_at = user.credits_reset_at
+    reset_time_str = reset_at.isoformat() if reset_at else None
+    
+    # Get billing period info for paid tiers
+    billing_period_start = user.billing_period_start
+    billing_period_end = user.billing_period_end
+    
+    # Calculate period type
+    tier = user.subscription_tier or "free"
+    if tier in DAILY_CREDIT_LIMITS:
+        period_type = "daily"
+    elif tier in MONTHLY_CREDIT_ALLOCATIONS:
+        period_type = "monthly"
+    else:
+        period_type = "unknown"
+    
+    return {
+        "credits_allocated": allocated,
+        "credits_used_this_period": used,
+        "credits_remaining": remaining,
+        "total_credits_used": total_used,
+        "credits_reset_at": reset_time_str,
+        "billing_period_start": billing_period_start.isoformat() if billing_period_start else None,
+        "billing_period_end": billing_period_end.isoformat() if billing_period_end else None,
+        "period_type": period_type,
+        "subscription_tier": tier,
+    }
+
+
+def ensure_credits_allocated(user_id: int, db: Session) -> None:
+    """
+    Ensure user has credits allocated based on their tier.
+    Called when user makes first request or after tier change.
+    
+    Args:
+        user_id: User ID
+        db: Database session
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User {user_id} not found")
+    
+    tier = user.subscription_tier or "free"
+    
+    # Check if credits need to be allocated
+    if user.monthly_credits_allocated is None or user.monthly_credits_allocated == 0:
+        if tier in MONTHLY_CREDIT_ALLOCATIONS:
+            allocate_monthly_credits(user_id, tier, db)
+        elif tier in DAILY_CREDIT_LIMITS:
+            # Set daily credits and reset time
+            credits = DAILY_CREDIT_LIMITS[tier]
+            now = datetime.now(timezone.utc)
+            tomorrow = now + timedelta(days=1)
+            user.credits_reset_at = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+            user.monthly_credits_allocated = credits
+            user.credits_used_this_period = 0
+            db.commit()
+
+
+def check_and_reset_credits_if_needed(user_id: int, db: Session) -> None:
+    """
+    Check if credits need to be reset based on reset time, and reset if needed.
+    Called before checking credit balance to ensure fresh credits are available.
+    
+    Args:
+        user_id: User ID
+        db: Database session
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return
+    
+    tier = user.subscription_tier or "free"
+    
+    # Check if reset is needed
+    if user.credits_reset_at:
+        now = datetime.now(timezone.utc)
+        if now >= user.credits_reset_at:
+            # Reset needed
+            if tier in DAILY_CREDIT_LIMITS:
+                reset_daily_credits(user_id, tier, db)
+            elif tier in MONTHLY_CREDIT_ALLOCATIONS:
+                allocate_monthly_credits(user_id, tier, db)
+    else:
+        # No reset time set - ensure credits are allocated
+        ensure_credits_allocated(user_id, db)
+

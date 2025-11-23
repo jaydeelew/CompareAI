@@ -88,6 +88,40 @@ export const CONVERSATION_LIMITS = {
 } as const;
 
 // ============================================================================
+// Credit-Based System Configuration
+// ============================================================================
+// Credit allocations for each tier
+// 1 credit = 1,000 effective tokens
+// Effective tokens = input_tokens + (output_tokens × 2.5)
+
+// Daily credit limits for free tiers (resets daily)
+export const DAILY_CREDIT_LIMITS = {
+  anonymous: 50,   // 50 credits/day (~10 exchanges/day)
+  free: 100,       // 100 credits/day (~20 exchanges/day)
+} as const;
+
+// Monthly credit allocations for paid tiers
+export const MONTHLY_CREDIT_ALLOCATIONS = {
+  starter: 1,200,      // $9.95/month - ~240 exchanges/month (~8/day)
+  starter_plus: 2,500,  // $19.95/month - ~500 exchanges/month (~17/day)
+  pro: 5,000,          // $39.95/month - ~1,000 exchanges/month (~33/day)
+  pro_plus: 10,000,    // $79.95/month - ~2,000 exchanges/month (~67/day)
+} as const;
+
+// Subscription pricing (monthly)
+export const TIER_PRICING = {
+  anonymous: 0.0,
+  free: 0.0,
+  starter: 9.95,
+  starter_plus: 19.95,
+  pro: 39.95,
+  pro_plus: 79.95,
+} as const;
+
+// Overage pricing (per 1,000 credits)
+export const OVERAGE_PRICE_PER_1000_CREDITS = 12.0; // $12 per 1,000 credits ($0.012 per credit)
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 // TypeScript types derived from constants for type safety
@@ -162,5 +196,40 @@ export function getTierMaxTokens(tier: ResponseTier | string): number {
  */
 export function getConversationLimit(tier: SubscriptionTier | string): number {
   return CONVERSATION_LIMITS[tier as SubscriptionTier] ?? CONVERSATION_LIMITS.anonymous;
+}
+
+/**
+ * Get daily credit limit for a given subscription tier (for free/anonymous tiers).
+ * 
+ * @param tier - Subscription tier name
+ * @returns Daily credit limit (0 if not a daily-reset tier)
+ */
+export function getDailyCreditLimit(tier: SubscriptionTier | string): number {
+  return DAILY_CREDIT_LIMITS[tier as keyof typeof DAILY_CREDIT_LIMITS] ?? 0;
+}
+
+/**
+ * Get monthly credit allocation for a given subscription tier (for paid tiers).
+ * 
+ * @param tier - Subscription tier name
+ * @returns Monthly credit allocation (0 if not a paid tier)
+ */
+export function getMonthlyCreditAllocation(tier: SubscriptionTier | string): number {
+  return MONTHLY_CREDIT_ALLOCATIONS[tier as keyof typeof MONTHLY_CREDIT_ALLOCATIONS] ?? 0;
+}
+
+/**
+ * Get credit allocation for a given subscription tier.
+ * Returns daily limit for free/anonymous, monthly allocation for paid tiers.
+ * 
+ * @param tier - Subscription tier name
+ * @returns Credit allocation for the tier
+ */
+export function getCreditAllocation(tier: SubscriptionTier | string): number {
+  const dailyLimit = getDailyCreditLimit(tier);
+  if (dailyLimit > 0) {
+    return dailyLimit;
+  }
+  return getMonthlyCreditAllocation(tier);
 }
 

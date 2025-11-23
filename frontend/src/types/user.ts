@@ -30,12 +30,24 @@ export interface User {
   subscription_status: SubscriptionStatus;
   /** Billing period (monthly or yearly) */
   subscription_period: SubscriptionPeriod;
-  /** MODEL-BASED: counts individual model responses, not comparisons */
+  /** MODEL-BASED: counts individual model responses, not comparisons (legacy) */
   daily_usage_count: number;
   /** Extended tier usage count */
   daily_extended_usage: number;
-  /** MODEL-BASED: counts overage model responses */
+  /** MODEL-BASED: counts overage model responses (legacy) */
   monthly_overage_count: number;
+  /** CREDITS-BASED: Credits allocated for current billing period */
+  monthly_credits_allocated?: number;
+  /** CREDITS-BASED: Credits used in current billing period */
+  credits_used_this_period?: number;
+  /** CREDITS-BASED: Total credits used (lifetime) */
+  total_credits_used?: number;
+  /** CREDITS-BASED: When credits reset (ISO timestamp) */
+  credits_reset_at?: string;
+  /** CREDITS-BASED: Billing period start (ISO timestamp, for paid tiers) */
+  billing_period_start?: string;
+  /** CREDITS-BASED: Billing period end (ISO timestamp, for paid tiers) */
+  billing_period_end?: string;
   /** Testing feature - use mock responses instead of API calls (admin only) */
   mock_mode_enabled: boolean;
   /** ISO timestamp when the user account was created */
@@ -120,12 +132,20 @@ export interface AuthContextType {
  * Usage statistics for a user
  */
 export interface UsageStats {
-  /** MODEL-BASED: number of model responses used today */
+  /** MODEL-BASED: number of model responses used today (legacy) */
   daily_usage: number;
-  /** MODEL-BASED: total model responses allowed per day */
+  /** MODEL-BASED: total model responses allowed per day (legacy) */
   daily_limit: number;
-  /** MODEL-BASED: remaining model responses */
+  /** MODEL-BASED: remaining model responses (legacy) */
   remaining_usage: number;
+  /** CREDITS-BASED: Credits allocated for current period */
+  credits_allocated?: number;
+  /** CREDITS-BASED: Credits used this period */
+  credits_used_this_period?: number;
+  /** CREDITS-BASED: Credits remaining */
+  credits_remaining?: number;
+  /** CREDITS-BASED: When credits reset (ISO timestamp) */
+  credits_reset_date?: string;
   /** User's subscription tier */
   subscription_tier: string;
   /** Max models per comparison (uniform 9 for all tiers) */
@@ -134,7 +154,7 @@ export interface UsageStats {
   overage_allowed: boolean;
   /** Price per additional model response (TBD) */
   overage_price: number | null;
-  /** MODEL-BASED: overage model responses this month */
+  /** MODEL-BASED: overage model responses this month (legacy) */
   monthly_overage_count: number;
   /** ISO timestamp when usage resets */
   reset_time: string;

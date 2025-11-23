@@ -1052,7 +1052,7 @@ async def zero_anonymous_usage(
 # Model Management Endpoints
 
 from pydantic import BaseModel
-from ..model_runner import MODELS_BY_PROVIDER, OPENROUTER_MODELS, client
+from ..model_runner import MODELS_BY_PROVIDER, OPENROUTER_MODELS, client, ANONYMOUS_TIER_MODELS, FREE_TIER_MODELS
 from .. import model_runner
 from ..config import settings
 import subprocess
@@ -1072,16 +1072,16 @@ class DeleteModelRequest(BaseModel):
     model_id: str
 
 
-async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str]:
+async def fetch_model_data_from_openrouter(model_id: str) -> Optional[Dict[str, Any]]:
     """
-    Fetch model description from OpenRouter's Models API.
-    Returns only the first sentence of the description.
+    Fetch model data from OpenRouter's Models API.
+    Returns full model data including pricing information.
     
     Args:
         model_id: The model ID (e.g., "openai/gpt-4")
         
     Returns:
-        The first sentence of the model description if found, None otherwise
+        Model data dictionary if found, None otherwise
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as http_client:
@@ -1100,29 +1100,127 @@ async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str
                 # Find the model by ID
                 for model in models:
                     if model.get("id") == model_id:
-                        description = model.get("description")
-                        if description:
-                            # Extract only the first sentence
-                            description = description.strip()
-                            
-                            # Find the first sentence-ending punctuation
-                            # Look for . ! ? followed by space or end of string
-                            # Match sentence-ending punctuation followed by space or end of string
-                            match = re.search(r'([.!?])(?:\s+|$)', description)
-                            if match:
-                                # Return everything up to and including the punctuation
-                                end_pos = match.end()
-                                first_sentence = description[:end_pos].strip()
-                                return first_sentence
-                            else:
-                                # No sentence-ending punctuation found, return the full description
-                                return description
-                        break
+                        return model
     except Exception as e:
-        # Log error but don't fail - we'll fall back to template description
-        print(f"Error fetching model description from OpenRouter: {e}")
+        # Log error but don't fail
+        print(f"Error fetching model data from OpenRouter: {e}")
     
     return None
+
+
+async def fetch_model_description_from_openrouter(model_id: str) -> Optional[str]:
+    """
+    Fetch model description from OpenRouter's Models API.
+    Returns only the first sentence of the description.
+    
+    Args:
+        model_id: The model ID (e.g., "openai/gpt-4")
+        
+    Returns:
+        The first sentence of the model description if found, None otherwise
+    """
+    model_data = await fetch_model_data_from_openrouter(model_id)
+    if not model_data:
+        return None
+    
+    description = model_data.get("description")
+    if description:
+        # Extract only the first sentence
+        description = description.strip()
+        
+        # Find the first sentence-ending punctuation
+        match = re.search(r'([.!?])(?:\s+|$)', description)
+        if match:
+            end_pos = match.end()
+            first_sentence = description[:end_pos].strip()
+            return first_sentence
+        else:
+            return description
+    
+    return None
+
+
+def calculate_average_cost_per_million_tokens(model_data: Dict[str, Any]) -> Optional[float]:
+    """
+    Calculate average cost per million tokens from OpenRouter pricing data.
+    
+    Args:
+        model_data: Model data dictionary from OpenRouter API
+        
+    Returns:
+        Average cost per million tokens, or None if pricing data unavailable
+    """
+    pricing = model_data.get("pricing", {})
+    if not pricing:
+        return None
+    
+    # Get input and output pricing (per million tokens)
+    input_price = pricing.get("prompt", 0)  # Price per million input tokens
+    output_price = pricing.get("completion", 0)  # Price per million output tokens
+    
+    # If both are zero or missing, return None
+    if input_price == 0 and output_price == 0:
+        return None
+    
+    # Calculate average: (input + output) / 2
+    # This gives us a rough average cost per million tokens
+    if input_price > 0 and output_price > 0:
+        avg_cost = (input_price + output_price) / 2
+    elif input_price > 0:
+        avg_cost = input_price
+    elif output_price > 0:
+        avg_cost = output_price
+    else:
+        return None
+    
+    return avg_cost
+
+
+async def classify_model_by_pricing(model_id: str, model_data: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Classify a model into anonymous, free, or paid tier based on OpenRouter pricing.
+    
+    Classification criteria:
+    - Anonymous tier: Models costing <$0.50 per million tokens (input+output average)
+    - Free tier: Models costing <$1 per million tokens (includes anonymous + mid-level)
+    - Paid tier: Models costing >=$1 per million tokens
+    
+    Args:
+        model_id: The model ID (e.g., "openai/gpt-4")
+        model_data: Optional model data from OpenRouter (will fetch if not provided)
+        
+    Returns:
+        Tier classification: "anonymous", "free", or "paid"
+    """
+    # If model_data not provided, fetch it
+    if model_data is None:
+        model_data = await fetch_model_data_from_openrouter(model_id)
+    
+    # If we can't get pricing data, default to paid tier (safest option)
+    if not model_data:
+        print(f"Warning: Could not fetch pricing data for {model_id}, defaulting to paid tier")
+        return "paid"
+    
+    avg_cost = calculate_average_cost_per_million_tokens(model_data)
+    
+    # If pricing unavailable, check model name patterns as fallback
+    if avg_cost is None:
+        # Fallback: use naming patterns to classify
+        model_name_lower = model_id.lower()
+        if any(pattern in model_name_lower for pattern in [":free", "-mini", "-nano", "-small", "-flash", "-fast"]):
+            return "anonymous"
+        elif any(pattern in model_name_lower for pattern in ["-medium", "-plus", "-chat"]):
+            return "free"
+        else:
+            return "paid"
+    
+    # Classify based on pricing thresholds
+    if avg_cost < 0.5:
+        return "anonymous"
+    elif avg_cost < 1.0:
+        return "free"
+    else:
+        return "paid"
 
 
 @router.get("/models")
@@ -1377,6 +1475,53 @@ async def add_model(
         with open(model_runner_path, "w", encoding="utf-8") as f:
             f.write(content)
         
+        # Classify model based on OpenRouter pricing and add to appropriate tier set
+        model_data = await fetch_model_data_from_openrouter(model_id)
+        tier_classification = await classify_model_by_pricing(model_id, model_data)
+        
+        # Read file again to add model to tier sets
+        with open(model_runner_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Add model to appropriate tier set(s)
+        if tier_classification == "anonymous":
+            # Add to ANONYMOUS_TIER_MODELS
+            anonymous_pattern = r'(ANONYMOUS_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+            match = re.search(anonymous_pattern, content, re.DOTALL)
+            if match:
+                # Check if model already in set
+                if f'"{model_id}"' not in match.group(2):
+                    # Find a good insertion point (after last model in the set)
+                    # Add before closing brace
+                    insertion_point = match.end() - 1  # Before closing brace
+                    # Format: add with proper indentation and comment if needed
+                    model_entry = f',\n    "{model_id}",  # Auto-classified based on pricing'
+                    content = content[:insertion_point] + model_entry + content[insertion_point:]
+        elif tier_classification == "free":
+            # Add to FREE_TIER_MODELS (which includes anonymous models)
+            free_pattern = r'(FREE_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+            match = re.search(free_pattern, content, re.DOTALL)
+            if match:
+                # Check if model already in set
+                if f'"{model_id}"' not in match.group(2):
+                    # Find insertion point - add after the anonymous models unpacking
+                    # Look for the comment about additional mid-level models
+                    mid_level_comment = "# Additional mid-level models"
+                    if mid_level_comment in match.group(2):
+                        insertion_point = match.start(2) + match.group(2).find(mid_level_comment)
+                        model_entry = f'\n    "{model_id}",  # Auto-classified based on pricing\n    '
+                        content = content[:insertion_point] + model_entry + content[insertion_point:]
+                    else:
+                        # Add before closing brace
+                        insertion_point = match.end() - 1
+                        model_entry = f',\n    "{model_id}",  # Auto-classified based on pricing'
+                        content = content[:insertion_point] + model_entry + content[insertion_point:]
+        # If tier_classification == "paid", don't add to any tier set (defaults to paid)
+        
+        # Write updated content back
+        with open(model_runner_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
         # Reload the model_runner module to get updated MODELS_BY_PROVIDER
         importlib.reload(model_runner)
         # Update the imported references in this module's namespace
@@ -1565,6 +1710,56 @@ async def add_model_stream(
             # Write back to file
             with open(model_runner_path, "w", encoding="utf-8") as f:
                 f.write(content)
+            
+            # Classify model based on OpenRouter pricing and add to appropriate tier set
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'classifying', 'message': f'Classifying model tier based on pricing...', 'progress': 25})}\n\n"
+            model_data = await fetch_model_data_from_openrouter(model_id)
+            tier_classification = await classify_model_by_pricing(model_id, model_data)
+            
+            # Read file again to add model to tier sets
+            with open(model_runner_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            # Add model to appropriate tier set(s)
+            if tier_classification == "anonymous":
+                # Add to ANONYMOUS_TIER_MODELS
+                anonymous_pattern = r'(ANONYMOUS_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+                match = re.search(anonymous_pattern, content, re.DOTALL)
+                if match:
+                    # Check if model already in set
+                    if f'"{model_id}"' not in match.group(2):
+                        # Find a good insertion point (after last model in the set)
+                        # Add before closing brace
+                        insertion_point = match.end() - 1  # Before closing brace
+                        # Format: add with proper indentation and comment if needed
+                        model_entry = f',\n    "{model_id}",  # Auto-classified based on pricing'
+                        content = content[:insertion_point] + model_entry + content[insertion_point:]
+            elif tier_classification == "free":
+                # Add to FREE_TIER_MODELS (which includes anonymous models)
+                free_pattern = r'(FREE_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+                match = re.search(free_pattern, content, re.DOTALL)
+                if match:
+                    # Check if model already in set
+                    if f'"{model_id}"' not in match.group(2):
+                        # Find insertion point - add after the anonymous models unpacking
+                        # Look for the comment about additional mid-level models
+                        mid_level_comment = "# Additional mid-level models"
+                        if mid_level_comment in match.group(2):
+                            insertion_point = match.start(2) + match.group(2).find(mid_level_comment)
+                            model_entry = f'\n    "{model_id}",  # Auto-classified based on pricing\n    '
+                            content = content[:insertion_point] + model_entry + content[insertion_point:]
+                        else:
+                            # Add before closing brace
+                            insertion_point = match.end() - 1
+                            model_entry = f',\n    "{model_id}",  # Auto-classified based on pricing'
+                            content = content[:insertion_point] + model_entry + content[insertion_point:]
+            # If tier_classification == "paid", don't add to any tier set (defaults to paid)
+            
+            # Write updated content back
+            with open(model_runner_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            yield f"data: {json.dumps({'type': 'progress', 'stage': 'classifying', 'message': f'Model classified as {tier_classification} tier', 'progress': 27})}\n\n"
             
             # Reload module
             importlib.reload(model_runner)
@@ -1797,6 +1992,25 @@ async def delete_model(
                 status_code=500,
                 detail=f"Failed to remove model {model_id} from model_runner.py. Model entry still present after deletion attempt."
             )
+        
+        # Remove model from tier classification sets (ANONYMOUS_TIER_MODELS and FREE_TIER_MODELS)
+        # Remove from ANONYMOUS_TIER_MODELS
+        anonymous_pattern = r'(ANONYMOUS_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+        match = re.search(anonymous_pattern, content, re.DOTALL)
+        if match:
+            anonymous_content = match.group(2)
+            # Remove the model entry (with or without trailing comma)
+            anonymous_content = re.sub(rf'\s*"{re.escape(model_id)}",?\s*(?:#.*)?\n?', '', anonymous_content)
+            content = content[:match.start(2)] + anonymous_content + content[match.end(2):]
+        
+        # Remove from FREE_TIER_MODELS
+        free_pattern = r'(FREE_TIER_MODELS\s*=\s*\{)(.*?)(\s*\})'
+        match = re.search(free_pattern, content, re.DOTALL)
+        if match:
+            free_content = match.group(2)
+            # Remove the model entry (with or without trailing comma)
+            free_content = re.sub(rf'\s*"{re.escape(model_id)}",?\s*(?:#.*)?\n?', '', free_content)
+            content = content[:match.start(2)] + free_content + content[match.end(2):]
         
         # If provider list becomes empty, remove the provider section
         # This is more complex, so we'll leave empty provider lists for now

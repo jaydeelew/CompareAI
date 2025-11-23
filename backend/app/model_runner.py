@@ -18,10 +18,11 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import concurrent.futures
-from typing import Dict, List, Any, Optional, Generator, Tuple
+from typing import Dict, List, Any, Optional, Generator, Tuple, NamedTuple
 import time
 import re
 import tiktoken
+from decimal import Decimal
 from .mock_responses import stream_mock_response, get_mock_response
 from .types import ConnectionQualityDict
 
@@ -29,6 +30,151 @@ from .types import ConnectionQualityDict
 from .config import settings, TIER_LIMITS, get_tier_max_tokens
 
 OPENROUTER_API_KEY = settings.openrouter_api_key
+
+# ============================================================================
+# Model Tier Classification System
+# ============================================================================
+# Models are classified into three tiers:
+# - "anonymous": Most basic/budget models (available to unregistered users)
+# - "free": Anonymous models + mid-level inexpensive models (available to registered free users)
+# - "paid": Premium models (requires paid subscription)
+# All paid tiers (Starter, Starter+, Pro, Pro+) have access to ALL models
+
+# List of model IDs available to anonymous (unregistered) users
+# These are the most basic/budget models - the absolute cheapest tier
+# Classification criteria: Models costing <$0.50 per million tokens (input+output average)
+# Generally includes: models with ":free" suffix, nano/mini versions, absolute cheapest options
+ANONYMOUS_TIER_MODELS = {
+    # Anthropic - Most efficient models
+    "anthropic/claude-haiku-4.5",
+    # OpenAI - Most efficient models
+    "openai/gpt-5-mini",
+    "openai/gpt-5-nano",
+    "openai/gpt-5.1-codex-mini",
+    "openai/o3-mini",
+    # Meta - Free/open models
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct",  # Also allow non-free version
+    # Microsoft - Free models
+    "microsoft/mai-ds-r1:free",
+    "microsoft/phi-4",  # Efficient reasoning model
+    # Mistral - Small/efficient models
+    "mistralai/mistral-small-3.2-24b-instruct",
+    "mistralai/devstral-small",  # Smaller code model
+    # Cohere - Efficient models
+    "cohere/command-r7b-12-2024",
+    # Google - Efficient models
+    "google/gemini-2.5-flash",  # Fast/efficient version
+    # Qwen - Efficient models
+    "qwen/qwen3-coder-flash",  # Fast/efficient code model
+    "qwen/qwen3-30b-a3b-instruct-2507",  # Smaller efficient model
+    # xAI - Efficient models
+    "x-ai/grok-code-fast-1",
+    "x-ai/grok-4-fast",
+    "x-ai/grok-4.1-fast",  # Fast version
+}
+
+# List of model IDs available to free (registered) users
+# Includes all anonymous tier models PLUS mid-level inexpensive models as an incentive to register
+# Classification criteria: Models costing <$1 per million tokens (input+output average)
+# Generally includes: anonymous models + small/medium versions, "plus" variants, fast versions of premium models
+FREE_TIER_MODELS = {
+    # Include all anonymous tier models
+    *ANONYMOUS_TIER_MODELS,
+    # Additional mid-level models (inexpensive but better than anonymous tier)
+    # These provide incentive for users to register for a free account
+    # OpenAI - Mid-level models
+    "openai/gpt-5.1-chat",  # Fast version of GPT-5.1
+    "openai/gpt-5-chat",  # Fast version of GPT-5
+    "openai/gpt-4o",  # Efficient premium model
+    # Anthropic - Mid-level models
+    "anthropic/claude-3.7-sonnet",  # Older but still efficient Sonnet version
+    # Mistral - Mid-level models
+    "mistralai/mistral-medium-3.1",  # Medium tier model
+    "mistralai/devstral-medium",  # Medium code model
+    # Cohere - Mid-level models
+    "cohere/command-r-plus-08-2024",  # Plus version
+    # Microsoft - Mid-level models
+    "microsoft/phi-4-reasoning-plus",  # Plus version
+    # Google - Mid-level models
+    "google/gemini-2.5-pro",  # Pro version (if cost-effective)
+    # Meta - Mid-level models
+    "meta-llama/llama-4-scout",  # Smaller MoE model
+    # Qwen - Mid-level models
+    "qwen/qwen3-next-80b-a3b-instruct",  # Mid-size model
+    # Note: Premium models (GPT-5.1, Claude Opus, Gemini 3 Pro, etc.) require paid subscription
+    # When adding new models, classify based on OpenRouter pricing:
+    # - Anonymous tier: Models costing <$0.50 per million tokens
+    # - Free tier: Models costing <$1 per million tokens (includes anonymous + mid-level)
+    # - Paid tier: Models costing >=$1 per million tokens
+}
+
+
+def is_model_available_for_tier(model_id: str, tier: str) -> bool:
+    """
+    Check if a model is available for a given subscription tier.
+
+    Args:
+        model_id: Model identifier (e.g., "openai/gpt-5.1")
+        tier: Subscription tier ("anonymous", "free", "starter", "starter_plus", "pro", "pro_plus")
+
+    Returns:
+        True if model is available for the tier, False otherwise
+    """
+    # All paid tiers have access to all models
+    if tier in ["starter", "starter_plus", "pro", "pro_plus"]:
+        return True
+
+    # Anonymous tier only has access to anonymous-tier models (most basic/budget)
+    if tier == "anonymous":
+        return model_id in ANONYMOUS_TIER_MODELS
+
+    # Free tier (registered users) has access to free-tier models (anonymous + mid-level)
+    if tier == "free":
+        return model_id in FREE_TIER_MODELS
+
+    # Default to False for unknown tiers
+    return False
+
+
+def filter_models_by_tier(models: List[Dict[str, Any]], tier: str) -> List[Dict[str, Any]]:
+    """
+    Filter models based on subscription tier.
+
+    Args:
+        models: List of model dictionaries
+        tier: Subscription tier
+
+    Returns:
+        Filtered list of models available for the tier
+    """
+    filtered = []
+    for model in models:
+        model_id = model.get("id")
+        if model_id and is_model_available_for_tier(model_id, tier):
+            # Add tier_access field for frontend display
+            model_with_access = model.copy()
+            if model_id in ANONYMOUS_TIER_MODELS:
+                model_with_access["tier_access"] = "anonymous"
+            elif model_id in FREE_TIER_MODELS:
+                model_with_access["tier_access"] = "free"
+            else:
+                model_with_access["tier_access"] = "paid"
+            filtered.append(model_with_access)
+        elif tier in ["starter", "starter_plus", "pro", "pro_plus"]:
+            # Paid tiers get all models
+            model_with_access = model.copy()
+            # Set tier_access based on model classification
+            if model_id in ANONYMOUS_TIER_MODELS:
+                model_with_access["tier_access"] = "anonymous"
+            elif model_id in FREE_TIER_MODELS:
+                model_with_access["tier_access"] = "free"
+            else:
+                model_with_access["tier_access"] = "paid"
+            filtered.append(model_with_access)
+
+    return filtered
+
 
 # List of available models organized by providers
 MODELS_BY_PROVIDER = {
@@ -397,7 +543,7 @@ MODELS_BY_PROVIDER = {
         {
             "id": "x-ai/grok-code-fast-1",
             "name": "Grok Code Fast 1",
-            "description": 'Grok Code Fast 1 is a speedy and economical reasoning model that excels at agentic coding.',
+            "description": "Grok Code Fast 1 is a speedy and economical reasoning model that excels at agentic coding.",
             "category": "Language",
             "provider": "xAI",
         },
@@ -505,6 +651,100 @@ def estimate_token_count(text: str) -> int:
         return len(text) // 4
 
 
+class TokenUsage(NamedTuple):
+    """Token usage data from OpenRouter API response."""
+
+    prompt_tokens: int  # Input tokens
+    completion_tokens: int  # Output tokens
+    total_tokens: int  # Total tokens
+    effective_tokens: int  # Effective tokens = prompt + (completion × 2.5)
+    credits: Decimal  # Credits used = effective_tokens / 1000
+
+
+def calculate_credits(prompt_tokens: int, completion_tokens: int) -> Decimal:
+    """
+    Calculate credits from token usage.
+
+    Formula:
+    - Effective tokens = prompt_tokens + (completion_tokens × 2.5)
+    - Credits = effective_tokens / 1000
+
+    Args:
+        prompt_tokens: Number of input tokens
+        completion_tokens: Number of output tokens
+
+    Returns:
+        Credits used (as Decimal for precision)
+    """
+    effective_tokens = prompt_tokens + int(completion_tokens * 2.5)
+    credits = Decimal(effective_tokens) / Decimal(1000)
+    return credits
+
+
+def calculate_token_usage(prompt_tokens: int, completion_tokens: int) -> TokenUsage:
+    """
+    Calculate token usage and credits from raw token counts.
+
+    Args:
+        prompt_tokens: Number of input tokens
+        completion_tokens: Number of output tokens
+
+    Returns:
+        TokenUsage named tuple with all calculated values
+    """
+    total_tokens = prompt_tokens + completion_tokens
+    effective_tokens = prompt_tokens + int(completion_tokens * 2.5)
+    credits = calculate_credits(prompt_tokens, completion_tokens)
+
+    return TokenUsage(
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        effective_tokens=effective_tokens,
+        credits=credits,
+    )
+
+
+def estimate_credits_before_request(
+    prompt: str, tier: str = "standard", num_models: int = 1, conversation_history: Optional[List[Any]] = None
+) -> Decimal:
+    """
+    Estimate credits needed for a request before making the API call.
+    Used for pre-validation to check if user has sufficient credits.
+
+    Args:
+        prompt: User prompt text
+        tier: Response tier ('standard' or 'extended')
+        num_models: Number of models that will be called
+        conversation_history: Optional conversation history
+
+    Returns:
+        Estimated credits needed (as Decimal)
+    """
+    # Estimate input tokens
+    input_tokens = estimate_token_count(prompt)
+
+    # Add conversation history tokens if present
+    if conversation_history:
+        input_tokens += count_conversation_tokens(conversation_history)
+
+    # Estimate output tokens based on tier
+    # Standard tier: average ~1,500 tokens (37.5% of 4,000 max)
+    # Extended tier: average ~3,000 tokens (36.6% of 8,192 max)
+    if tier == "extended":
+        estimated_output_tokens = 3000
+    else:
+        estimated_output_tokens = 1500
+
+    # Calculate credits for one model call
+    credits_per_model = calculate_credits(input_tokens, estimated_output_tokens)
+
+    # Multiply by number of models
+    total_credits = credits_per_model * num_models
+
+    return total_credits
+
+
 def count_conversation_tokens(messages: List[Any]) -> int:
     """
     Count total tokens in a conversation history.
@@ -562,10 +802,11 @@ def call_openrouter_streaming(
     tier: str = "standard",
     conversation_history: Optional[List[Any]] = None,
     use_mock: bool = False,
-) -> Generator[str, None, None]:
+) -> Generator[Any, None, Optional[TokenUsage]]:
     """
     Stream OpenRouter responses token-by-token for faster perceived response time.
     Yields chunks of text as they arrive from the model.
+    Returns usage data after streaming completes.
 
     Supports all OpenRouter providers that have streaming enabled:
     - OpenAI, Azure, Anthropic, Fireworks, Mancer, Recursal
@@ -579,13 +820,19 @@ def call_openrouter_streaming(
         tier: Response tier ('standard' or 'extended')
         conversation_history: Optional conversation history
         use_mock: If True, return mock responses instead of calling API (admin testing feature)
+
+    Yields:
+        str: Content chunks as they arrive
+
+    Returns:
+        Optional[TokenUsage]: Token usage data, or None if unavailable or in mock mode
     """
     # Mock mode: return pre-defined responses for testing
     if use_mock:
         print(f"🎭 Mock mode enabled - returning mock {tier} response for {model_id}")
         for chunk in stream_mock_response(tier=tier, chunk_size=50):
             yield chunk
-        return
+        return None
 
     try:
         # Build messages array - use standard format like official AI providers
@@ -642,6 +889,7 @@ def call_openrouter_streaming(
 
         full_content = ""
         finish_reason = None
+        usage_data = None
 
         # Iterate through chunks as they arrive
         for chunk in response:
@@ -658,6 +906,15 @@ def call_openrouter_streaming(
                 if chunk.choices[0].finish_reason:
                     finish_reason = chunk.choices[0].finish_reason
 
+            # Extract usage data from chunk if available
+            # OpenRouter/OpenAI streaming responses include usage in the final chunk
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = chunk.usage
+                prompt_tokens = getattr(usage, "prompt_tokens", 0)
+                completion_tokens = getattr(usage, "completion_tokens", 0)
+                if prompt_tokens > 0 or completion_tokens > 0:
+                    usage_data = calculate_token_usage(prompt_tokens, completion_tokens)
+
         # After streaming completes, handle finish_reason warnings
         if finish_reason == "length":
             tier_messages = {
@@ -668,6 +925,9 @@ def call_openrouter_streaming(
             yield warning
         elif finish_reason == "content_filter":
             yield "\n\n⚠️ **Note:** Response stopped by content filter."
+
+        # Return usage data (generator return value)
+        return usage_data
 
     except Exception as e:
         error_str = str(e).lower()
@@ -682,6 +942,8 @@ def call_openrouter_streaming(
             yield f"Error: Authentication failed"
         else:
             yield f"Error: {str(e)[:100]}"
+        # Return None for usage data on error
+        return None
 
 
 def call_openrouter(
@@ -690,7 +952,7 @@ def call_openrouter(
     tier: str = "standard",
     conversation_history: Optional[List[Any]] = None,
     use_mock: bool = False,
-) -> str:
+) -> Tuple[str, Optional[TokenUsage]]:
     """
     Non-streaming version of OpenRouter call (kept for backward compatibility).
     For better performance, use call_openrouter_streaming instead.
@@ -701,11 +963,15 @@ def call_openrouter(
         tier: Response tier ('standard' or 'extended')
         conversation_history: Optional conversation history
         use_mock: If True, return mock responses instead of calling API (admin testing feature)
+
+    Returns:
+        Tuple of (content: str, usage: Optional[TokenUsage])
+        Usage will be None if unavailable or in mock mode
     """
     # Mock mode: return pre-defined responses for testing
     if use_mock:
         print(f"🎭 Mock mode enabled - returning mock {tier} response for {model_id}")
-        return get_mock_response(tier=tier)
+        return get_mock_response(tier=tier), None
 
     try:
         # Build messages array - use standard format like official AI providers
@@ -760,6 +1026,15 @@ def call_openrouter(
         content = response.choices[0].message.content
         finish_reason = response.choices[0].finish_reason
 
+        # Extract token usage from response
+        usage_data = None
+        if hasattr(response, "usage") and response.usage:
+            usage = response.usage
+            prompt_tokens = getattr(usage, "prompt_tokens", 0)
+            completion_tokens = getattr(usage, "completion_tokens", 0)
+            if prompt_tokens > 0 or completion_tokens > 0:
+                usage_data = calculate_token_usage(prompt_tokens, completion_tokens)
+
         # Only log issues, not every successful response
         model_name = model_id.split("/")[-1]
 
@@ -800,20 +1075,23 @@ def call_openrouter(
 
         # Clean up MathML and other unwanted markup before returning
         cleaned_content = clean_model_response(content) if content is not None else "No response generated"
-        return cleaned_content
+        return cleaned_content, usage_data
     except Exception as e:
         error_str = str(e).lower()
         # More descriptive error messages for faster debugging
+        error_content = None
         if "timeout" in error_str:
-            return f"Error: Timeout ({settings.individual_model_timeout}s)"
+            error_content = f"Error: Timeout ({settings.individual_model_timeout}s)"
         elif "rate limit" in error_str or "429" in error_str:
-            return f"Error: Rate limited"
+            error_content = f"Error: Rate limited"
         elif "not found" in error_str or "404" in error_str:
-            return f"Error: Model not available"
+            error_content = f"Error: Model not available"
         elif "unauthorized" in error_str or "401" in error_str:
-            return f"Error: Authentication failed"
+            error_content = f"Error: Authentication failed"
         else:
-            return f"Error: {str(e)[:100]}"  # Truncate long error messages
+            error_content = f"Error: {str(e)[:100]}"  # Truncate long error messages
+
+        return error_content, None
 
 
 def run_models(
@@ -821,21 +1099,28 @@ def run_models(
     model_list: List[str],
     tier: str = "standard",
     conversation_history: Optional[List[Any]] = None,
-) -> Dict[str, str]:
+) -> Tuple[Dict[str, str], Dict[str, Optional[TokenUsage]]]:
     """
     Run models concurrently without batching.
 
     Note: This function is kept for backward compatibility with the non-streaming endpoint.
     The application primarily uses the streaming endpoint (/compare-stream) which processes
     all models concurrently via asyncio tasks.
+
+    Returns:
+        Tuple of:
+        - Dictionary mapping model_id to response content
+        - Dictionary mapping model_id to TokenUsage (or None if unavailable/error)
     """
     results = {}
+    usage_data = {}
 
     def call(model_id):
         try:
-            return model_id, call_openrouter(prompt, model_id, tier, conversation_history)
+            content, usage = call_openrouter(prompt, model_id, tier, conversation_history)
+            return model_id, content, usage
         except Exception as e:
-            return model_id, f"Error: {str(e)}"
+            return model_id, f"Error: {str(e)}", None
 
     # Process all models concurrently without batching limits
     # Uses default ThreadPoolExecutor which handles concurrency automatically
@@ -847,12 +1132,14 @@ def run_models(
         for future in concurrent.futures.as_completed(future_to_model):
             model_id = future_to_model[future]
             try:
-                _, result = future.result()
+                _, result, usage = future.result()
                 results[model_id] = result
+                usage_data[model_id] = usage
             except Exception as e:
                 results[model_id] = f"Error: {str(e)}"
+                usage_data[model_id] = None
 
-    return results
+    return results, usage_data
 
 
 def test_connection_quality() -> ConnectionQualityDict:

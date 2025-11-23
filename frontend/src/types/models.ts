@@ -23,6 +23,8 @@ export interface Model {
   provider: string;
   /** Whether the model is currently available for selection */
   available?: boolean;
+  /** Tier access level: 'anonymous', 'free', or 'paid' */
+  tier_access?: 'anonymous' | 'free' | 'paid';
 }
 
 /**

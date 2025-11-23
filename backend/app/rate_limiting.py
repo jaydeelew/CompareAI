@@ -4,11 +4,18 @@ Hybrid rate limiting for authenticated and anonymous users.
 This module provides rate limiting functionality that works with both
 authenticated users (subscription-based limits) and anonymous users
 (IP/fingerprint-based limits).
+
+CREDITS-BASED SYSTEM:
+- Authenticated users: Credit-based monthly allocations (paid tiers) or daily limits (free tier)
+- Anonymous users: Credit-based daily limits
+- All rate limiting now uses credits instead of model responses
+- Legacy functions maintained for backward compatibility during transition
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, Tuple, Dict, Any
 from sqlalchemy.orm import Session
+from decimal import Decimal, ROUND_CEILING
 from .models import User
 from collections import defaultdict
 from .types import (
@@ -31,13 +38,149 @@ from .config import (
     get_extended_limit,
 )
 
+# Import credit management functions
+from .credit_manager import (
+    get_user_credits,
+    check_credits_sufficient,
+    deduct_credits,
+    get_credit_usage_stats,
+    check_and_reset_credits_if_needed,
+    ensure_credits_allocated,
+)
+from .config.constants import (
+    DAILY_CREDIT_LIMITS,
+    MONTHLY_CREDIT_ALLOCATIONS,
+)
+
 # In-memory storage for anonymous rate limiting
 # Structure: { "identifier": { "count": int, "date": str, "first_seen": datetime } }
+# CREDITS-BASED: Now stores credits used instead of model responses
 def _default_rate_limit_data() -> AnonymousRateLimitData:
     """Default factory for anonymous rate limit storage."""
     return {"count": 0, "date": "", "first_seen": None}
 
 anonymous_rate_limit_storage: Dict[str, AnonymousRateLimitData] = defaultdict(_default_rate_limit_data)
+
+# ============================================================================
+# CREDITS-BASED RATE LIMITING FUNCTIONS
+# ============================================================================
+# New credit-based functions that replace model-response-based functions
+# Legacy functions below are kept for backward compatibility during transition
+
+
+def check_user_credits(user: User, required_credits: Decimal, db: Session) -> Tuple[bool, int, int]:
+    """
+    Check if authenticated user has sufficient credits for a request.
+    
+    CREDITS-BASED: Replaces check_user_rate_limit() for credit-based system.
+    
+    Args:
+        user: Authenticated user object
+        required_credits: Credits needed for the request (as Decimal)
+        db: Database session
+        
+    Returns:
+        tuple: (is_allowed, credits_remaining, credits_allocated)
+    """
+    # Ensure credits are allocated
+    ensure_credits_allocated(user.id, db)
+    
+    # Check and reset credits if needed
+    check_and_reset_credits_if_needed(user.id, db)
+    
+    # Refresh user to get latest credit data
+    db.refresh(user)
+    
+    # Check if user has sufficient credits
+    is_sufficient = check_credits_sufficient(user.id, required_credits, db)
+    
+    allocated = user.monthly_credits_allocated or 0
+    used = user.credits_used_this_period or 0
+    remaining = max(0, allocated - used)
+    
+    return is_sufficient, remaining, allocated
+
+
+def deduct_user_credits(
+    user: User,
+    credits: Decimal,
+    usage_log_id: Optional[int],
+    db: Session,
+    description: Optional[str] = None
+) -> None:
+    """
+    Deduct credits from authenticated user's balance.
+    
+    CREDITS-BASED: Replaces increment_user_usage() for credit-based system.
+    
+    Args:
+        user: Authenticated user object
+        credits: Credits to deduct (as Decimal)
+        usage_log_id: Optional UsageLog ID this deduction is related to
+        db: Database session
+        description: Optional description for the transaction
+    """
+    deduct_credits(user.id, credits, usage_log_id, db, description)
+
+
+def check_anonymous_credits(identifier: str, required_credits: Decimal) -> Tuple[bool, int, int]:
+    """
+    Check if anonymous user has sufficient credits for a request.
+    
+    CREDITS-BASED: Replaces check_anonymous_rate_limit() for credit-based system.
+    Uses in-memory storage to track daily credits for anonymous users.
+    
+    Args:
+        identifier: Unique identifier (e.g., "ip:192.168.1.1" or "fp:xxx")
+        required_credits: Credits needed for the request (as Decimal)
+        
+    Returns:
+        tuple: (is_allowed, credits_remaining, credits_allocated)
+    """
+    today = datetime.now(timezone.utc).date().isoformat()
+    user_data = anonymous_rate_limit_storage[identifier]
+    
+    # Reset credits if it's a new day
+    if user_data["date"] != today:
+        user_data["count"] = 0  # Credits used (stored as integer)
+        user_data["date"] = today
+        user_data["first_seen"] = datetime.now(timezone.utc)
+    
+    # Get daily credit limit for anonymous users
+    credits_allocated = DAILY_CREDIT_LIMITS.get("anonymous", 50)
+    credits_used = user_data["count"]
+    credits_remaining = max(0, credits_allocated - credits_used)
+    
+    # Convert required_credits to int (round up to be conservative)
+    required_int = int(required_credits.quantize(Decimal('1'), rounding=ROUND_CEILING))
+    
+    is_allowed = credits_remaining >= required_int
+    
+    return is_allowed, credits_remaining, credits_allocated
+
+
+def deduct_anonymous_credits(identifier: str, credits: Decimal) -> None:
+    """
+    Deduct credits from anonymous user's daily balance.
+    
+    CREDITS-BASED: Replaces increment_anonymous_usage() for credit-based system.
+    
+    Args:
+        identifier: Unique identifier (e.g., "ip:192.168.1.1" or "fp:xxx")
+        credits: Credits to deduct (as Decimal)
+    """
+    today = datetime.now(timezone.utc).date().isoformat()
+    user_data = anonymous_rate_limit_storage[identifier]
+    
+    # Reset if new day
+    if user_data["date"] != today:
+        user_data["count"] = 0
+        user_data["date"] = today
+        user_data["first_seen"] = datetime.now(timezone.utc)
+    
+    # Convert Decimal to int (round to nearest integer)
+    credits_int = int(round(credits))
+    user_data["count"] += credits_int
 
 
 def check_user_rate_limit(user: User, db: Session) -> Tuple[bool, int, int]:
@@ -147,47 +290,91 @@ def increment_anonymous_usage(identifier: str, count: int = 1) -> None:
 def get_user_usage_stats(user: User) -> FullUsageStatsDict:
     """
     Get usage statistics for authenticated user.
+    
+    CREDITS-BASED: Now returns credit-based statistics.
+    Legacy model-response fields maintained for backward compatibility.
 
     Args:
         user: Authenticated user object
 
     Returns:
-        dict: Usage statistics including daily usage, limit, remaining, and extended usage
+        dict: Usage statistics including credits, daily usage (legacy), and extended usage
     """
-    daily_limit = get_daily_limit(user.subscription_tier)
-    remaining = max(0, daily_limit - user.daily_usage_count)
+    # Get credit-based stats
+    tier = user.subscription_tier or "free"
+    allocated = user.monthly_credits_allocated or 0
+    used = user.credits_used_this_period or 0
+    remaining = max(0, allocated - used)
+    
+    # Get reset time
+    reset_at = user.credits_reset_at
+    reset_date = reset_at.date() if reset_at else user.usage_reset_date if user.usage_reset_date else date.today()
+    
+    # Legacy fields (for backward compatibility during transition)
+    daily_limit = get_daily_limit(tier)
+    daily_remaining = max(0, daily_limit - user.daily_usage_count)
     
     # Get extended tier limits
-    extended_limit = get_extended_limit(user.subscription_tier)
+    extended_limit = get_extended_limit(tier)
     extended_remaining = max(0, extended_limit - user.daily_extended_usage)
 
     return {
+        # Credits-based fields (new)
+        "credits_allocated": allocated,
+        "credits_used_this_period": used,
+        "credits_remaining": remaining,
+        "credits_reset_date": reset_date.isoformat(),
+        
+        # Legacy fields (for backward compatibility)
         "daily_usage": user.daily_usage_count,
         "daily_limit": daily_limit,
-        "remaining_usage": remaining,
+        "remaining_usage": daily_remaining,
         "daily_extended_usage": user.daily_extended_usage,
         "daily_extended_limit": extended_limit,
         "remaining_extended_usage": extended_remaining,
-        "subscription_tier": user.subscription_tier,
-        "usage_reset_date": user.usage_reset_date.isoformat(),
+        "subscription_tier": tier,
+        "usage_reset_date": reset_date.isoformat(),
     }
 
 
 def get_anonymous_usage_stats(identifier: str) -> UsageStatsDict:
     """
     Get usage statistics for anonymous user.
+    
+    CREDITS-BASED: Now returns credit-based statistics.
+    Legacy model-response fields maintained for backward compatibility.
 
     Args:
         identifier: Unique identifier
 
     Returns:
-        dict: Usage statistics including daily usage, limit, and remaining
+        dict: Usage statistics including credits and legacy daily usage
     """
+    # Get credit-based stats
+    credits_allocated = DAILY_CREDIT_LIMITS.get("anonymous", 50)
+    today = datetime.now(timezone.utc).date().isoformat()
+    user_data = anonymous_rate_limit_storage[identifier]
+    
+    # Reset if new day
+    if user_data["date"] != today:
+        credits_used = 0
+    else:
+        credits_used = user_data["count"]
+    
+    credits_remaining = max(0, credits_allocated - credits_used)
+    
+    # Legacy fields (for backward compatibility)
     _, current_count = check_anonymous_rate_limit(identifier)
     daily_limit = ANONYMOUS_DAILY_LIMIT
     remaining = max(0, daily_limit - current_count)
 
     return {
+        # Credits-based fields (new)
+        "credits_allocated": credits_allocated,
+        "credits_used_today": credits_used,
+        "credits_remaining": credits_remaining,
+        
+        # Legacy fields (for backward compatibility)
         "daily_usage": current_count,
         "daily_limit": daily_limit,
         "remaining_usage": remaining,

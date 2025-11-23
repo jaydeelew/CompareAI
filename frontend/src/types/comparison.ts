@@ -23,6 +23,18 @@ export interface ComparisonMetadata {
   timestamp: string;
   /** Optional processing time in milliseconds */
   processing_time_ms?: number;
+  /** Credits used for this comparison */
+  credits_used?: number;
+  /** Credits remaining after this comparison */
+  credits_remaining?: number;
+  /** Estimated credits (before comparison) */
+  estimated_credits?: number;
+  /** Total input tokens used */
+  total_input_tokens?: number;
+  /** Total output tokens used */
+  total_output_tokens?: number;
+  /** Total effective tokens used */
+  total_effective_tokens?: number;
 }
 
 /**

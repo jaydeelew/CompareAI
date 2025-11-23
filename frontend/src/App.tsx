@@ -22,8 +22,9 @@ import { AuthModal, VerifyEmail, VerificationBanner, ResetPassword } from './com
 import { ComparisonForm } from './components/comparison'
 import { Navigation, Hero, MockModeBanner } from './components/layout'
 import { DoneSelectingCard, ErrorBoundary, LoadingSpinner } from './components/shared'
+import { LowCreditWarningBanner } from './components/credits'
 import { TermsOfService } from './components/TermsOfService'
-import { ANONYMOUS_DAILY_LIMIT, getExtendedLimit, getDailyLimit } from './config/constants'
+import { ANONYMOUS_DAILY_LIMIT, getExtendedLimit, getDailyLimit, getCreditAllocation, getDailyCreditLimit } from './config/constants'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import {
   useConversationHistory,
@@ -33,7 +34,7 @@ import {
   useModelComparison,
 } from './hooks'
 import { apiClient } from './services/api/client'
-import { ApiError } from './services/api/errors'
+import { ApiError, PaymentRequiredError } from './services/api/errors'
 import {
   getAnonymousMockModeStatus,
   getRateLimitStatus,
@@ -42,6 +43,8 @@ import {
 } from './services/compareService'
 import { getConversation } from './services/conversationService'
 import { getAvailableModels } from './services/modelsService'
+import { estimateCredits, getCreditBalance } from './services/creditService'
+import type { CreditBalance } from './services/creditService'
 import type {
   CompareResponse,
   ConversationMessage,
@@ -171,6 +174,11 @@ function AppContent() {
   const [modelErrors, setModelErrors] = useState<{ [key: string]: boolean }>({})
   const [showUsageBanner, setShowUsageBanner] = useState(false)
   const usageBannerTimeoutRef = useRef<number | null>(null)
+  const [anonymousCreditsRemaining, setAnonymousCreditsRemaining] = useState<number | null>(null)
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [showLowCreditWarning, setShowLowCreditWarning] = useState(false)
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [showLowCreditWarning, setShowLowCreditWarning] = useState(false)
   const [submissionCount, setSubmissionCount] = useState<number>(() => {
     // Load submission count from localStorage
     if (typeof window !== 'undefined') {
@@ -2290,6 +2298,15 @@ function AppContent() {
                 })
               )
             }
+
+            // Fetch anonymous credit balance
+            try {
+              const creditBalance = await getCreditBalance()
+              setAnonymousCreditsRemaining(creditBalance.credits_remaining)
+            } catch (error) {
+              // Silently handle credit balance fetch errors
+              console.error('Failed to fetch anonymous credit balance:', error)
+            }
           } catch (error) {
             // Silently handle cancellation errors (expected when component unmounts)
             if (error instanceof Error && error.name === 'CancellationError') {
@@ -3056,10 +3073,23 @@ function AppContent() {
     // Determine user tier and their regular limit (userTier already declared above)
     const regularLimit = getDailyLimit(userTier)
 
+    // Note: Credit checking is now handled by the backend (returns 402 if insufficient)
+    // This frontend check is kept as a fallback/early warning
+    // The backend will return proper credit error messages
+    
     if (currentUsageCount >= regularLimit) {
       // Use the synced count for the error message to match what we just set in state
+      // Updated to mention credits as primary, model responses as legacy
+      const creditsAllocated = isAuthenticated && user 
+        ? (user.monthly_credits_allocated || getCreditAllocation(userTier))
+        : getDailyCreditLimit(userTier) || getCreditAllocation(userTier)
+      const creditsUsed = isAuthenticated && user 
+        ? (user.credits_used_this_period || 0)
+        : 0
+      const creditsRemaining = Math.max(0, creditsAllocated - creditsUsed)
+      
       setError(
-        `You've reached your daily limit of ${regularLimit} model responses.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`
+        `You've reached your limit. ${creditsRemaining > 0 ? `You have ${Math.round(creditsRemaining)} credits remaining. ` : ''}${userTier === 'anonymous' ? ' Sign up for a free account to get 100 credits per day!' : ' Upgrade to a paid tier for more credits!'}`
       )
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
@@ -3068,9 +3098,18 @@ function AppContent() {
     // Check if this comparison would exceed the limit
     if (currentUsageCount + modelsNeeded > regularLimit) {
       const remaining = regularLimit - currentUsageCount
+      const creditsAllocated = isAuthenticated && user 
+        ? (user.monthly_credits_allocated || getCreditAllocation(userTier))
+        : getDailyCreditLimit(userTier) || getCreditAllocation(userTier)
+      const creditsUsed = isAuthenticated && user 
+        ? (user.credits_used_this_period || 0)
+        : 0
+      const creditsRemaining = Math.max(0, creditsAllocated - creditsUsed)
+      const estimatedCredits = modelsNeeded * 5 // Rough estimate
+      
       // State and localStorage are already updated above, so UI components will show correct values
       setError(
-        `You have ${remaining} model responses remaining today, but selected ${modelsNeeded} for this comparison.${userTier === 'anonymous' ? ' Sign up for a free account to get 20 model responses per day!' : ' Paid tiers with higher limits will be available soon!'}`
+        `This request requires approximately ${estimatedCredits} credits, but you have ${Math.round(creditsRemaining)} credits remaining.${userTier === 'anonymous' ? ' Sign up for a free account to get 100 credits per day!' : ' Upgrade to a paid tier for more credits!'}`
       )
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
@@ -3194,6 +3233,70 @@ function AppContent() {
       }
     }
 
+    // Prepare conversation history for the API (needed for credit estimation)
+    // For follow-up mode, we send the complete conversation history (both user and assistant messages)
+    // This matches how official AI chat interfaces work and provides proper context
+    const conversationHistory =
+      isFollowUpMode && conversations.length > 0
+        ? (() => {
+            // Get the first conversation that has messages and is for a selected model
+            const selectedConversations = conversations.filter(
+              conv => selectedModels.includes(conv.modelId) && conv.messages.length > 0
+            )
+            if (selectedConversations.length === 0) return []
+
+            // Use the first selected conversation's messages
+            return selectedConversations[0].messages.map(msg => ({
+              role: msg.type === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+            }))
+          })()
+        : []
+
+    // Estimate credits before submission (before setting loading state)
+    try {
+      const estimate = await estimateCredits({
+        input_data: input,
+        models: selectedModels,
+        tier: shouldUseExtendedTier ? 'extended' : 'standard',
+        conversation_history: conversationHistory,
+      })
+
+      // Check if user has sufficient credits
+      if (!estimate.is_sufficient) {
+        setError(
+          `Insufficient credits: You have ${estimate.credits_remaining.toFixed(2)} credits remaining, ` +
+          `but need approximately ${estimate.estimated_credits.toFixed(2)} credits for this request. ` +
+          `${userTier === 'anonymous' ? 'Sign up for a free account to get 100 credits per day!' : 'Upgrade to a paid tier for more credits!'}`
+        )
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+
+      // Show warning if credits are low (< 20% remaining)
+      const creditUsagePercent = estimate.credits_allocated > 0
+        ? (estimate.credits_remaining / estimate.credits_allocated) * 100
+        : 100
+      if (creditUsagePercent < 20 && creditUsagePercent > 0) {
+        // Update credit balance to show warning banner
+        setCreditBalance({
+          credits_allocated: estimate.credits_allocated,
+          credits_used_this_period: estimate.credits_allocated - estimate.credits_remaining,
+          credits_remaining: estimate.credits_remaining,
+          period_type: userTier === 'anonymous' || userTier === 'free' ? 'daily' : 'monthly',
+          subscription_tier: userTier,
+        })
+        setShowLowCreditWarning(true)
+      } else {
+        setShowLowCreditWarning(false)
+      }
+    } catch (error) {
+      // Handle estimation error gracefully - don't block submission
+      // Backend will validate credits anyway
+      console.error('Failed to estimate credits:', error)
+      // Continue with submission - backend will validate
+    }
+
     setIsLoading(true)
     setError(null)
     setIsModelsHidden(true) // Hide models section after clicking Compare
@@ -3248,26 +3351,6 @@ function AppContent() {
       setCurrentAbortController(controller)
 
       const timeoutId = setTimeout(() => controller.abort(), dynamicTimeout)
-
-      // Prepare conversation history for the API
-      // For follow-up mode, we send the complete conversation history (both user and assistant messages)
-      // This matches how official AI chat interfaces work and provides proper context
-      const conversationHistory =
-        isFollowUpMode && conversations.length > 0
-          ? (() => {
-              // Get the first conversation that has messages and is for a selected model
-              const selectedConversations = conversations.filter(
-                conv => selectedModels.includes(conv.modelId) && conv.messages.length > 0
-              )
-              if (selectedConversations.length === 0) return []
-
-              // Use the first selected conversation's messages
-              return selectedConversations[0].messages.map(msg => ({
-                role: msg.type === 'user' ? 'user' : 'assistant',
-                content: msg.content,
-              }))
-            })()
-          : []
 
       // Determine tier: Extended if manually toggled OR if conversation exceeds 6 messages
       // Extended mode doubles token limits (5K→15K chars, 4K→8K tokens), equivalent to ~2 messages
@@ -3436,6 +3519,44 @@ function AppContent() {
                   const endTime = Date.now()
                   setProcessingTime(endTime - startTime)
                   shouldUpdate = true
+
+                  // Refresh credit balance if credits were used
+                  if (streamingMetadata?.credits_used !== undefined) {
+                    if (isAuthenticated) {
+                      // Refresh user data to get updated credit balance
+                      refreshUser()
+                        .then(() => getCreditBalance())
+                        .then(balance => {
+                          setCreditBalance(balance)
+                          const remainingPercent = balance.credits_allocated > 0
+                            ? (balance.credits_remaining / balance.credits_allocated) * 100
+                            : 100
+                          setShowLowCreditWarning(remainingPercent < 20 && remainingPercent > 0)
+                        })
+                        .catch(error => console.error('Failed to refresh user credit balance:', error))
+                    } else {
+                      // For anonymous users, refresh credit balance from API
+                      const updateBalance = (balance: CreditBalance) => {
+                        setAnonymousCreditsRemaining(balance.credits_remaining)
+                        setCreditBalance(balance)
+                        const remainingPercent = balance.credits_allocated > 0
+                          ? (balance.credits_remaining / balance.credits_allocated) * 100
+                          : 100
+                        setShowLowCreditWarning(remainingPercent < 20 && remainingPercent > 0)
+                      }
+                      
+                      if (streamingMetadata.credits_remaining !== undefined) {
+                        setAnonymousCreditsRemaining(streamingMetadata.credits_remaining)
+                        getCreditBalance()
+                          .then(updateBalance)
+                          .catch(error => console.error('Failed to refresh anonymous credit balance:', error))
+                      } else {
+                        getCreditBalance()
+                          .then(updateBalance)
+                          .catch(error => console.error('Failed to refresh anonymous credit balance:', error))
+                      }
+                    }
+                  }
 
                   // Note: Conversation saving will happen after final state update
                   // For authenticated users: backend handles it, refresh history after a delay
@@ -4146,6 +4267,16 @@ function AppContent() {
             `Request timed out after ${timeoutMinutes}:${timeoutSeconds.toString().padStart(2, '0')} (${selectedModels.length} ${modelText}). ${suggestionText}`
           )
         }
+      } else if (err instanceof PaymentRequiredError) {
+        // Handle insufficient credits error (402 Payment Required)
+        // The error message from backend already includes credit information
+        setError(err.message || 'Insufficient credits for this request. Please upgrade your plan or wait for credits to reset.')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else if (err instanceof ApiError && err.status === 402) {
+        // Handle 402 Payment Required (insufficient credits)
+        const errorMessage = err.response?.detail || err.message || 'Insufficient credits for this request.'
+        setError(errorMessage)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (err instanceof Error && err.message.includes('Failed to fetch')) {
         setError('Unable to connect to the server. Please check if the backend is running.')
       } else if (err instanceof Error) {
@@ -4167,10 +4298,19 @@ function AppContent() {
     const regularLimit = getDailyLimit(userTier)
     const extendedLimit = getExtendedLimit(userTier)
 
-    // Calculate current usage
+    // Calculate current usage (legacy - model responses)
     const currentRegularUsage = isAuthenticated && user ? user.daily_usage_count : usageCount
     const currentExtendedUsage =
       isAuthenticated && user ? user.daily_extended_usage : extendedUsageCount
+
+    // Get credit information (if available)
+    const creditsAllocated = isAuthenticated && user 
+      ? (user.monthly_credits_allocated || getCreditAllocation(userTier))
+      : getDailyCreditLimit(userTier) || getCreditAllocation(userTier)
+    const creditsUsed = isAuthenticated && user 
+      ? (user.credits_used_this_period || 0)
+      : 0
+    const creditsRemaining = Math.max(0, creditsAllocated - creditsUsed)
 
     // Extended mode is based on isExtendedMode flag
     const isExtendedInteraction = isExtendedMode
@@ -4179,9 +4319,32 @@ function AppContent() {
     const regularToUse = selectedModels.length
     const extendedToUse = isExtendedInteraction ? 1 : 0 // Extended counts as 1 per request, not per model
 
-    // Calculate remaining
+    // Calculate remaining (legacy - model responses)
     const regularRemaining = Math.max(0, regularLimit - currentRegularUsage)
     const extendedRemaining = Math.max(0, extendedLimit - currentExtendedUsage)
+
+    // Estimate credits for this request
+    // Base estimate: ~4 characters per token, ~1000 tokens = 1 credit
+    // Extended mode uses ~2x credits due to larger context
+    // Conversation history adds to input tokens
+    const inputTokens = Math.ceil(input.length / 4) // Rough estimate: 4 chars per token
+    const conversationHistoryTokens = isFollowUpMode && conversationHistory.length > 0
+      ? conversationHistory.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0)
+      : 0
+    const totalInputTokens = inputTokens + conversationHistoryTokens
+    
+    // Estimate output tokens: ~500-1500 tokens per model response (use 1000 as average)
+    // Effective tokens = input_tokens + (output_tokens × 2.5)
+    // Credits = effective_tokens / 1000
+    const outputTokensPerModel = 1000
+    const effectiveTokensPerModel = totalInputTokens + (outputTokensPerModel * 2.5)
+    const creditsPerModel = effectiveTokensPerModel / 1000
+    
+    // Extended mode multiplier (approximately 2x due to larger context)
+    const extendedMultiplier = isExtendedInteraction ? 2 : 1
+    
+    // Total estimated credits
+    const estimatedCredits = Math.ceil(creditsPerModel * regularToUse * extendedMultiplier)
 
     return (
       <div
@@ -4192,10 +4355,11 @@ function AppContent() {
           color: 'rgba(255, 255, 255, 0.85)',
         }}
       >
+        {/* Credits Display (Primary) */}
         <span className={isExtendedInteraction ? 'usage-preview-item' : ''}>
-          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected with{' '}
-          <strong>{regularRemaining}</strong> remaining model response
-          {regularRemaining !== 1 ? 's' : ''}
+          <strong>{regularToUse}</strong> {regularToUse === 1 ? 'model' : 'models'} selected •{' '}
+          Estimated: <strong>~{estimatedCredits}</strong> credits •{' '}
+          <strong>{Math.round(creditsRemaining)}</strong> credits remaining
         </span>
         {isExtendedInteraction && (
           <span className="usage-preview-item">
@@ -4246,19 +4410,19 @@ function AppContent() {
                     className="usage-banner-text-desktop"
                     style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}
                   >
-                    {`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today • Sign up for 20 free per day`}
+                    {`${anonymousCreditsRemaining !== null ? Math.round(anonymousCreditsRemaining) : getDailyCreditLimit('anonymous') - (usageCount * 5)} of ${getDailyCreditLimit('anonymous')} credits remaining today • Sign up for 100 free per day`}
                   </div>
                   <div
                     className="usage-banner-text-mobile"
                     style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}
                   >
-                    <div>{`${ANONYMOUS_DAILY_LIMIT - usageCount} of ${ANONYMOUS_DAILY_LIMIT} model responses remaining today`}</div>
-                    <div>Sign up for 20 free per day</div>
+                    <div>{`${anonymousCreditsRemaining !== null ? Math.round(anonymousCreditsRemaining) : getDailyCreditLimit('anonymous') - (usageCount * 5)} of ${getDailyCreditLimit('anonymous')} credits remaining today`}</div>
+                    <div>Sign up for 100 free per day</div>
                   </div>
                 </>
               ) : (
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  Daily limit reached! Sign up for a free account to get 20 model responses per day.
+                  Daily limit reached! Sign up for a free account to get 100 credits per day.
                 </div>
               )}
             </div>
@@ -4343,6 +4507,19 @@ function AppContent() {
                 />
               </ErrorBoundary>
             </Hero>
+
+            {/* Low Credit Warning Banner */}
+            {showLowCreditWarning && creditBalance && (
+              <LowCreditWarningBanner
+                balance={creditBalance}
+                onUpgradeClick={() => {
+                  // Open upgrade modal - you can integrate with your upgrade modal here
+                  // For now, just show an error message
+                  setError('Please upgrade your plan to get more credits. Visit your account settings to upgrade.')
+                }}
+                onDismiss={() => setShowLowCreditWarning(false)}
+              />
+            )}
 
             {error && (
               <div className="error-message">
@@ -4639,27 +4816,52 @@ function AppContent() {
                                         model.id
                                       )
                                       const isUnavailable = model.available === false
+                                      
+                                      // Check if model is restricted for current user tier
+                                      const userTier = isAuthenticated ? user?.subscription_tier || 'free' : 'anonymous'
+                                      const isPaidTier = ['starter', 'starter_plus', 'pro', 'pro_plus'].includes(userTier)
+                                      const isRestricted = model.tier_access === 'paid' && !isPaidTier
+                                      const requiresUpgrade = isRestricted && (userTier === 'anonymous' || userTier === 'free')
+                                      
                                       const isDisabled =
                                         isUnavailable ||
+                                        isRestricted ||
                                         (selectedModels.length >= maxModelsLimit && !isSelected) ||
                                         (isFollowUpMode && !isSelected && !wasOriginallySelected)
+                                      
+                                      const handleModelClick = () => {
+                                        if (isRestricted && requiresUpgrade) {
+                                          // Open upgrade modal or show upgrade message
+                                          setError(`This model requires a paid subscription. Upgrade to access premium models like ${model.name}.`)
+                                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                                          return
+                                        }
+                                        if (!isDisabled) {
+                                          handleModelToggle(model.id)
+                                        }
+                                      }
+                                      
                                       return (
                                         <label
                                           key={model.id}
-                                          className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                          className={`model-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${isRestricted ? 'restricted' : ''}`}
+                                          title={isRestricted ? `Upgrade to ${userTier === 'anonymous' ? 'a free account' : 'a paid tier'} to access this model` : undefined}
                                         >
                                           <input
                                             type="checkbox"
                                             checked={isSelected}
                                             disabled={isDisabled}
-                                            onChange={() =>
-                                              !isDisabled && handleModelToggle(model.id)
-                                            }
+                                            onChange={handleModelClick}
                                             className={`model-checkbox ${isFollowUpMode && !isSelected && wasOriginallySelected ? 'follow-up-deselected' : ''}`}
                                           />
                                           <div className="model-info">
                                             <h4>
                                               {model.name}
+                                              {isRestricted && (
+                                                <span className="model-badge premium" title="Premium model - upgrade required">
+                                                  🔒 Premium
+                                                </span>
+                                              )}
                                               {isFollowUpMode &&
                                                 !isSelected &&
                                                 !wasOriginallySelected && (
