@@ -15,7 +15,6 @@ atomicity and handle concurrent requests gracefully.
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, func
-from sqlalchemy.dialects.postgresql import select as pg_select
 from decimal import Decimal, ROUND_CEILING
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional

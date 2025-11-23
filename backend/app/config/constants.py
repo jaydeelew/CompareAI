@@ -140,10 +140,10 @@ DAILY_CREDIT_LIMITS: Dict[str, int] = {
 
 # Monthly credit allocations for paid tiers
 MONTHLY_CREDIT_ALLOCATIONS: Dict[str, int] = {
-    "starter": 1,200,      # $9.95/month - ~240 exchanges/month (~8/day)
-    "starter_plus": 2,500,  # $19.95/month - ~500 exchanges/month (~17/day)
-    "pro": 5,000,          # $39.95/month - ~1,000 exchanges/month (~33/day)
-    "pro_plus": 10,000,    # $79.95/month - ~2,000 exchanges/month (~67/day)
+    "starter": 1_200,      # $9.95/month - ~240 exchanges/month (~8/day)
+    "starter_plus": 2_500,  # $19.95/month - ~500 exchanges/month (~17/day)
+    "pro": 5_000,          # $39.95/month - ~1,000 exchanges/month (~33/day)
+    "pro_plus": 10_000,    # $79.95/month - ~2,000 exchanges/month (~67/day)
 }
 
 # Subscription pricing (monthly)
